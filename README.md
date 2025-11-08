@@ -42,7 +42,15 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/
 uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
 ```
 
-## Quick Start
+## Setup
+
+本节仅内部沟通使用
+
+### Creating a AgentScope Workflow
+
+```
+
+```
 
 ### Launching with Different Environments
 
