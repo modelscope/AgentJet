@@ -1,0 +1,52 @@
+# Config manifest v2
+
+Config items referenced in the specified source paths:
+
+- `config.actor_rollout_ref.actor.ppo_max_token_len_per_gpu`
+- `config.actor_rollout_ref.ref.log_prob_max_token_len_per_gpu`
+- `config.actor_rollout_ref.rollout.agentscope_learn_protocal`
+- `config.actor_rollout_ref.rollout.binary_reward`
+- `config.actor_rollout_ref.rollout.compute_madness_checklist`
+- `config.actor_rollout_ref.rollout.context_template`
+- `config.actor_rollout_ref.rollout.debug_llm_io`
+- `config.actor_rollout_ref.rollout.enable_oversample`
+- `config.actor_rollout_ref.rollout.force_no_think`
+- `config.actor_rollout_ref.rollout.force_think`
+- `config.actor_rollout_ref.rollout.gamma`
+- `config.actor_rollout_ref.rollout.gone_mad_reward_override`
+- `config.actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu`
+- `config.actor_rollout_ref.rollout.magnify_success`
+- `config.actor_rollout_ref.rollout.max_env_len`
+- `config.actor_rollout_ref.rollout.max_model_len`
+- `config.actor_rollout_ref.rollout.multi_turn.max_sample_per_task`
+- `config.actor_rollout_ref.rollout.multi_turn.max_steps`
+- `config.actor_rollout_ref.rollout.n`
+- `config.actor_rollout_ref.rollout.response_length`
+- `config.actor_rollout_ref.rollout.step_skip_action`
+- `config.actor_rollout_ref.rollout.submit_oversample_multiplier`
+- `config.actor_rollout_ref.rollout.temperature`
+- `config.actor_rollout_ref.rollout.top_p`
+- `config.actor_rollout_ref.rollout.terminate_after_gone_mad`
+- `config.actor_rollout_ref.rollout.train_history_infer_token`
+- `config.actor_rollout_ref.rollout.use_agentscope`
+- `config.actor_rollout_ref.rollout.use_step_reward_from_env`
+- `config.actor_rollout_ref.rollout.val_kwargs.temperature`
+- `config.actor_rollout_ref.rollout.val_kwargs.top_k`
+- `config.actor_rollout_ref.rollout.val_kwargs.top_p`
+- `config.context_manager.context_template_alien_llm_model`
+- `config.context_manager.context_template_alien_model_response_length`
+- `config.context_manager.context_template_clip_trigger_token_num`
+- `config.context_manager.context_template_train_sp_action`
+- `config.context_manager.linear_think_context_manager.extract_box_before_submit_as_action`
+- `config.context_manager.linear_think_context_manager.remove_think_before_submit_as_action`
+- `config.context_manager.sliding_window_context_manager`
+- `config.critic.ppo_max_token_len_per_gpu`
+- `config.data.max_prompt_length`
+- `config.data.max_response_length`
+- `config.env_service.env_feedin_preference`
+- `config.env_service.env_type`
+- `config.env_service.env_url`
+- `config.trainer.experiment_name`
+- `config.trainer.n_gpus_per_node`
+- `config.trainer.nnodes`
+

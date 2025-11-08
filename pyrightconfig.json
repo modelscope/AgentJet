@@ -1,0 +1,24 @@
+{
+  "logLevel": "Trace",
+  "include": [
+    "agentopia/**/*.py",
+    ".venv/lib/python3.10/site-packages"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "checkpoints",
+    "experiments",
+    "launcher",
+    "logs",
+    "launcher",
+    "outputs",
+    "wanlog",
+    "wandb",
+    "dist",
+    "**/.vscode-server",
+    "**/__pycache__",
+    "**/*.log",
+    "**/*"
+  ]
+}

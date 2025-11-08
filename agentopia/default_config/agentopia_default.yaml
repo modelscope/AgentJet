@@ -1,0 +1,80 @@
+data:
+  max_prompt_length: 1024
+  max_response_length: 1024
+  train_batch_size: 256
+  val_batch_size: 100000000000
+  return_raw_chat: True
+  filter_overlong_prompts: True
+  truncation: error
+  fast_eval: True
+
+trainer:
+  eval_pass_n: 3
+  hfmodelpath: ''
+  experiment_name: "read_yaml_name"
+
+algorithm:
+  task_norm_patch: False
+
+actor_rollout_ref:
+  hybrid_engine: True
+  actor:
+    override_ppo_mini_batch_num: -1
+    entropy_coeff: 0
+    loss_agg_mode: seq-mean-token-mean
+  rollout:
+    name: vllm
+    mode: async
+    use_agentscope: False
+    debug_llm_io: False
+    temperature: 0.9
+    multi_turn:
+      completion_callback: beyondagent.module.trainer.simple_completion_callback.SimpleCompletionCallback
+      enable: True
+      format: llama3_json
+      max_steps: 30
+      tool_config_path: null
+    custom_dataflow_cls:
+      path: ""
+      name: ""
+    use_qwen3: False
+    force_no_think: False
+    force_think: False
+    context_template: "linear"
+    context_template_train_sp_action: False
+    max_env_worker: 64
+    max_env_len: 4096
+    enable_oversample: False
+    submit_oversample_multiplier: 1.5
+    enable_request_id: False
+    magnify_success: False
+    train_history_infer_token: True
+    env_array: False
+    gamma: 1.0
+    terminate_after_gone_mad: True
+    gone_mad_reward_override: -1.0
+    binary_reward: False
+    compute_madness_checklist:
+      - "nonsense"
+      # - "non_ascii"
+    step_skip_action: 0
+    use_step_reward_from_env: False
+
+context_manager:
+  context_template_train_sp_action: False
+  context_template_clip_trigger_token_num: 8000
+  context_template_alien_llm_model: qwen3-235b-a22b-instruct-2507
+  context_template_alien_model_response_length: 512
+  sliding_window_context_manager:
+    enable_llm_memory_extraction: False
+  linear_think_context_manager:
+    remove_think_before_submit_as_action: False
+    extract_box_before_submit_as_action: False
+
+thread_pool:
+  max_workers: 5
+
+env_service:
+  env_type: "appworld"
+  env_url: "http://127.0.0.1:8000"
+  env_feedin_preference: code # code, text, box
