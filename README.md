@@ -1,34 +1,31 @@
-# ASTune
+# AgentScope Tune
 
-ASTune is an advanced reinforcement learning framework for training and evaluating agentic AI systems. Built on top of the BeyondAgent platform, it provides seamless switching between different tasks and background environments, supporting both vLLM and SGLang inference backends.
+AgentScope Tune, or **ASTune**, is an advanced agent training framework for tuning AgentScope workflow and agent(s).
 
-## Features
-
-- **Flexible Inference Backends**: Seamlessly switch between vLLM (high-throughput asynchronous inference) and SGLang (structured generative language tasks)
-- **GSPO Loss Mode**: Gradient-based Structured Policy Optimization for more efficient reinforcement learning
-- **Multi-Environment Support**: Integration with diverse simulation platforms via `env_service`
-- **MoE Model Support**: Scalable training with Mixture of Experts models
-- **Advanced Logging**: Token-level logging system for fine-grained analysis
-- **Dynamic Sampling**: Enhanced data efficiency through advanced sampling techniques
-- **Real-time Monitoring**: Progress tracking with real-time rollout visualization
 
 ## Installation
 
-You can choose between `Trinity training backbone` and `Verl training backbone`.
+You can choose between `Trinity training backbone` and `Verl training backbone`. We recommend using `uv` to setup the dependencies and `conda` also works.
 
-1. Trinity backbone
+1. Trinity backbone (Option 1)
 
 ```bash
+# Create virtual environment
 uv venv --python=3.10.16
 source .venv/bin/activate
 git clone https://github.com/binary-husky/Trinity-RFT external/trinity
+
+# Install dependencies
 uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
-uv pip install -r std_req.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
-uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/
+uv pip install -r requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
+uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
+
+# Install flash attention (must be installed last)
+uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
 ```
 
 
-2. VERL Backbone
+2. VERL Backbone (Option 2)
 
 ```bash
 # Create virtual environment
@@ -38,7 +35,7 @@ git clone https://github.com/binary-husky/verl.git external/verl
 
 # Install dependencies
 uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
-uv pip install -r std_req.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
+uv pip install -r requirements_verl.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
 uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/
 
 # Install flash attention (must be installed last)
