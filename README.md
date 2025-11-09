@@ -64,7 +64,7 @@ killer vllm  && \
 killer VLLM  && \
 python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
 ```
-备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试
+备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置见文档最后
 
 
 2. 使用launcher进行训练：使用trinity进行训练
@@ -98,3 +98,27 @@ FlashInfer?
 clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
 
 clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+
+
+- `launche.json` for vscode debugging
+```json
+{
+
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Launch rollout",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "launcher.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--backbone",  "debug",
+                "--conf", "xxxx/xxxx/xxxx.yaml"
+            ],
+            "env": {
+            }
+        },
+    ]
+}
+```

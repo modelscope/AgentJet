@@ -87,8 +87,6 @@ class AgentScopeWorkflow(BaseAgentFlow):
                 raw_reward = 0.0 + raw_reward * 0.5
         if self.config.astune.rollout.binary_reward:
             raw_reward = success_rate
-
-        # generate token before merging
         beyondagent_proxy.process_reward(
             reward_structure = Reward(
                 raw_reward=raw_reward,
@@ -98,6 +96,8 @@ class AgentScopeWorkflow(BaseAgentFlow):
                 description="Success=1, Failure=0"
             )
         )
+
+        # generate token before merging
         beyondagent_proxy.remove_last_context()
         beyondagent_proxy.task_id = task_id
         beyondagent_proxy.task_tag = task_tag

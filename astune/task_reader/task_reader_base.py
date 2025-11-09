@@ -142,46 +142,15 @@ class TaskReaderHuggingFace(TaskReaderBase):
 
         tasks = []
         for idx, example in enumerate(dataset):
-            # Try to extract relevant information from the dataset example
-            # The structure might vary between datasets, so we handle common cases
-
-            # Extract main query - try common field names for questions/instructions
-            main_query = None
-            for field in ['question', 'input', 'instruction', 'text', 'prompt']:
-                if field in example:
-                    main_query = example[field]
-                    break
-
-            if main_query is None:
-                # Use the first string field as main_query if no known field is found
-                for key, value in example.items():
-                    if isinstance(value, str) and value.strip():
-                        main_query = value
-                        break
-
-            # If still no main query, use a generic placeholder
-            if main_query is None:
-                main_query = f"Example {idx} from {dataset_name}"
-
-            # Create a unique task_id if not provided
-            task_id = str(example.get('task_id', f"{dataset_name}-{split}-{idx}-{uuid.uuid4().hex[:8]}"))
-
-            # Extract any answer/target/label as metadata
-            metadata = {}
-            for field in ['answer', 'output', 'target', 'label', 'solution']:
-                if field in example:
-                    metadata[field] = example[field]
-
-            # Include all original fields in metadata for reference
-            metadata['original_data'] = {k: v for k, v in example.items()}
+            # /mnt/data_cpfs/qingxu.fu/astune
 
             # Create Task object
             task = Task(
-                main_query=main_query,
+                main_query=example['question'],
                 init_messages=[],  # Dataset examples typically don't have init messages
-                task_id=task_id,
-                env_type=f"huggingface/{dataset_name}",
-                metadata=metadata,
+                task_id=str(idx),
+                env_type=f"no_env",
+                metadata=example,
             )
             tasks.append(task)
 
@@ -194,7 +163,7 @@ class TaskReaderHuggingFace(TaskReaderBase):
         Returns:
             List[Task]: List of training Task objects.
         """
-        dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_name
+        dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_path
         split = self.config.astune.task_reader.huggingface_dat_repo.training_split
         return self._load_dataset_split(dataset_name, split)
 
@@ -205,7 +174,7 @@ class TaskReaderHuggingFace(TaskReaderBase):
         Returns:
             List[Task]: List of validation Task objects.
         """
-        dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_name
+        dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_path
         split = self.config.astune.task_reader.huggingface_dat_repo.validation_split
         return self._load_dataset_split(dataset_name, split)
 

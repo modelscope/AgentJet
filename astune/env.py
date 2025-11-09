@@ -22,6 +22,8 @@ class EnvWorker(object):
             self.env = EnvClientNg(base_url=url)
             self.env_params = {}
             self.env_type: str = env_type
+        else:
+            self.env = None
 
         self.task_core_arg = task_core_arg
         self.task_id: str = task_core_arg.task_id
@@ -32,17 +34,27 @@ class EnvWorker(object):
     def execute(self) -> CMTLinear:
 
         # >>>>>>>>>>>>>> create
-        try:
-            init_response = self.env.create_instance(
-                env_type=self.env_type,
-                task_id=self.task_id,
-                instance_id=self.task_core_arg.task_env_uuid,
-                params=self.env_params
-            )
-        except Exception as e:
-            logger.bind(exception=True).exception(f"encounter exception in env_worker.create_instance~ error={e.args}")
-            self.env.release_instance(self.task_core_arg.task_env_uuid)
-            raise e
+        if self.config.astune.task_reader.type == 'env_service':
+            try:
+                init_response = self.env.create_instance(
+                    env_type=self.env_type,
+                    task_id=self.task_id,
+                    instance_id=self.task_core_arg.task_env_uuid,
+                    params=self.env_params
+                )
+                state_message: dict = init_response["state"]
+                _, init_messages = self.get_init_messages(state_message)
+            except Exception as e:
+                logger.bind(exception=True).exception(f"encounter exception in env_worker.create_instance~ error={e.args}")
+                self.env.release_instance(self.task_core_arg.task_env_uuid)
+                raise e
+        else:
+            task = self.task_core_arg.task
+            if task.init_messages:
+                init_messages = task.init_messages
+            else:
+                assert task.main_query, "You must provide init_messages or main_query in task."
+                init_messages = [{"role": "user", "content": task.main_query}]
 
         # =============== simulate
         try:
@@ -52,8 +64,6 @@ class EnvWorker(object):
             else:
                 agent_flow: BaseAgentFlow = AgentScopeWorkflow(llm_chat_fn=self.llm_chat_fn, tokenizer=self.tokenizer, config=self.config)
 
-            state_message: dict = init_response["state"]
-            _, init_messages = self.get_init_messages(state_message)
             cmt = agent_flow.execute(
                 init_messages=init_messages,
                 env=self.env,   # type:ignore || self.env: Union[EnvClient, EnvClientNg]
@@ -62,14 +72,15 @@ class EnvWorker(object):
             cmt.task_batch_index = self.task_core_arg.task_batch_index
             cmt.task_tag = self.task_core_arg.task_tag
             cmt.task_id = self.task_id
+
         except Exception as e:
             logger.bind(exception=True).exception(f"encounter exception in env_worker.agent_flow~ error={e.args}")
-            self.env.release_instance(self.task_core_arg.task_env_uuid)
+            if self.env: self.env.release_instance(self.task_core_arg.task_env_uuid)
             raise e
 
         # <<<<<<<<<<<<<< destory
         try:
-            self.env.release_instance(self.task_core_arg.task_env_uuid)
+            if self.env: self.env.release_instance(self.task_core_arg.task_env_uuid)
         except Exception as e:
             logger.bind(exception=True).exception(f"encounter exception in env_worker.release_instance~ error={e.args}")
             raise e

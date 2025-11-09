@@ -1248,7 +1248,6 @@ class BeyondAgentRayPPOTrainer:
 
                 # pass global_steps to trace
                 gen_batch.meta_info["global_steps"] = self.global_steps
-
                 is_last_step = self.global_steps >= self.total_training_steps
 
                 with marked_timer("step", timing_raw):
@@ -1267,7 +1266,7 @@ class BeyondAgentRayPPOTrainer:
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],
                                 main_query=gen_batch.non_tensor_batch["main_query"][i],
                                 env_type=gen_batch.non_tensor_batch["env_type"][i],
-                                metadata={'global_steps': self.global_steps}
+                                metadata=gen_batch.non_tensor_batch["metadata"][i]
                             ) for i in range(len(gen_batch))
                         ]
                         print([gen_batch.non_tensor_batch["task_id"][i] for i in range(len(gen_batch))])

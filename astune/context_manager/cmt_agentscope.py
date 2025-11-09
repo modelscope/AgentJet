@@ -68,6 +68,7 @@ class BeyondAgentContextTemplate(CMTLinear):
         self.generated_token_callback_fn = generated_token_callback_fn
         self.context_overflow = False
         self.model_name = kwargs['model_name']
+        self.output_kwargs = {}
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
@@ -405,3 +406,8 @@ class BeyondAgentProxy(BeyondAgentLmProxy):
         )
         return response
 
+    def update_output_kwargs(self, **kwargs):
+        self.output_kwargs.update(kwargs)
+
+    def get_output_kwargs(self):
+        return self.output_kwargs
