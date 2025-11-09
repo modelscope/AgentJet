@@ -333,7 +333,7 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
 class DynamicRollout(StaticRollout):
 
     def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
-        if mode=="sample" and (self.rollout_n!=1) and self.config.actor_rollout_ref.rollout.enable_oversample:
+        if mode=="sample" and (self.rollout_n!=1) and self.config.astune.rollout.enable_oversample:
             return self.rollout_dynamic(tasks, mode, epoch)
         else:
             return super().rollout(tasks, mode, epoch)

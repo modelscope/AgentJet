@@ -28,6 +28,7 @@ astune:
       max_steps: 30
     step_skip_action: 0 # skip action generation every N steps, 0 means never skip
     submit_oversample_multiplier: 1.5
+    enable_oversample: True
     num_repeat: 4
     val_kwargs:
       temperature: 0.0

@@ -42,6 +42,14 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
 ```
 
+注意：二者不能同时安装
+```bash
+# verl -> trinity
+cd external/verl && uv pip uninstall . && cd ../..
+# trinity -> verl
+uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
+```
+
 ## Get Started
 
 本节仅内部沟通使用，后期重写。
@@ -67,7 +75,8 @@ killer ray && \
 killer python  && \
 python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
 ```
-备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
+备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`，并在代码中需要断点的地方标记一行特殊代码 ``
+
 
 3. 使用launcher进行训练：使用verl进行训练
 ```bash
@@ -85,3 +94,7 @@ python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appw
 # note
 
 FlashInfer?
+
+clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+
+clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'

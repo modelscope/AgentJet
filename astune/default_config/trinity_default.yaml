@@ -17,7 +17,7 @@ buffer:
       rollout_args:
         temperature: 1.0
       split: train
-      storage_type: env_service
+      storage_type: astune
       subset_name: appworld
   total_epochs: 1000
   train_batch_size: 36

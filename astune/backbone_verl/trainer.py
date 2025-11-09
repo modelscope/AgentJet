@@ -1270,7 +1270,7 @@ class BeyondAgentRayPPOTrainer:
                                 metadata={'global_steps': self.global_steps}
                             ) for i in range(len(gen_batch))
                         ]
-                        print([gen_batch.non_tensor_batch["task_id"] for i in range(len(gen_batch))])
+                        print([gen_batch.non_tensor_batch["task_id"][i] for i in range(len(gen_batch))])
                         print("=" * 10 + "start fit rollout" + "=" * 10)
                         self.parallel_env.current_global_steps = self.global_steps
                         trajectories: List[CMTLinear] = self.parallel_env.rollout(tasks, mode="sample", epoch=f"train.{epoch}")
