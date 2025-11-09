@@ -220,18 +220,13 @@ def launch_logview(exp_name=None):
         print(f"Error opening web browser: {e}")
         pass
 
-def start_ray_service(args):
+def start_ray_service(args, env):
     """
     Start a Ray service with appropriate configuration.
 
     Args:
         args: Command line arguments containing debug settings
     """
-    ray_env = {}
-    if args.db:
-        ray_env["RAY_DEBUG_POST_MORTEM"] = "1"
-        ray_env["DEBUG_TAGS"] = args.db
-        ray_env["RAY_record_task_actor_creation_sites"] = "true"
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[
             f"source ./.venv/bin/activate && ray start --head --block"
@@ -243,7 +238,7 @@ def start_ray_service(args):
     companion.launch(
         launch_wait_time=1800,
         success_std_string="Ray runtime started",
-        env_dict=ray_env,
+        env_dict=env,
     )
 
 def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env):
@@ -322,7 +317,7 @@ def main():
         print("Debug mode is OFF")
 
     if args.with_ray:
-        start_ray_service(args)
+        start_ray_service(args, env)
 
     if args.with_exp_maker:
         # test done

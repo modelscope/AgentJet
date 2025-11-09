@@ -2,6 +2,7 @@
   "logLevel": "Trace",
   "include": [
     "agentopia/**/*.py",
+    "external/trinity/**/*.py",
     ".venv/lib/python3.10/site-packages"
   ],
   "exclude": [

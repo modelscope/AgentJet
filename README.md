@@ -49,7 +49,11 @@ uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.co
 ### Creating a AgentScope Workflow
 
 ```
-
+clear && \
+ray stop && \
+killer ray && \
+killer python  && \
+python launcher.py --with-appworld --conf launcher/appworld_trinity/qwen2.yaml --with-ray
 ```
 
 ### Launching with Different Environments

@@ -292,8 +292,6 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
     def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
         # 1. if enable_oversample
         self.current_token_count_time = time.time()
-        if mode=="sample" and (self.rollout_n!=1) and self.config.actor_rollout_ref.rollout.enable_oversample:
-            return self.rollout_dynamic(tasks, mode, epoch)
         # 2. otherwise, use legacy rollout method
         cmt_array: List[CMTLinear] = []
         rollout_n = 1 if mode=="validate" else self.rollout_n
@@ -326,17 +324,20 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
 
             task_success_rate = np.mean([cmt.reward_structure.success_rate for cmt in cmt_array])
             for cmt in cmt_array:
-                cmt.current_batch_success_rate = np.mean(task_success_rate)
+                cmt.current_batch_success_rate = float(task_success_rate)
 
             return cmt_array
 
 
 class DynamicRollout(StaticRollout):
 
+    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
+        if mode=="sample" and (self.rollout_n!=1) and self.config.actor_rollout_ref.rollout.enable_oversample:
+            return self.rollout_dynamic(tasks, mode, epoch)
+        else:
+            return super().rollout(tasks, mode, epoch)
 
     def greedy_max_std_selection(self, samples: List[CMTLinear], n):
-        # 要从 m 个样本中选择 n 个样本，使得所选样本的标准差最大化，可以采用以下方法：
-        # 计算平均值
         if len(samples) < n:
             additional_n = n - len(samples)
             n = len(samples)
@@ -366,7 +367,6 @@ class DynamicRollout(StaticRollout):
                 pick_right = preserve_n - pick_left
                 macro_selected_value += selected_value[:pick_left] + selected_value[-pick_right:]
                 macro_selected_index += selected_index[:pick_left] + selected_index[-pick_right:]
-            # print(macro_selected_value, macro_selected_index)
 
         if additional_n > 0:
             # randomly select `additional_n` samples from `macro_selected_index`, then concat to `macro_selected_index`

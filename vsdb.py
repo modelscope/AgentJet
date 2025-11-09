@@ -72,27 +72,9 @@ Ray Distributed Debugger VSCode Extension (Recommended)
       :alt: Disconnecting and reconnecting the debugger
 """
 
-def vscode_conditional_breakpoint(tag=None, rank=-1, once=True):
-   """
-   根据给定的标签和等级条件，在VSCode中设置条件断点。
+def vscode_conditional_breakpoint(tag=None, once=True):
 
-   该函数用于在调试时根据特定条件触发断点。如果满足以下条件，则触发断点：
-   1. `rank` 参数为 0，或者rank环境变量为0。
-   2. 环境变量 `RAY_DEBUG_POST_MORTEM` 已设置。
-   3. 如果提供了 `tag` 参数，且该标签存在于环境变量 `DEBUG_TAGS` 中。
-
-   参数:
-   - tag (str, 可选): 用于匹配环境变量 `DEBUG_TAGS` 中的标签。如果为None，则无条件触发断点。
-   - rank (int, 可选): GPU序号，world rank。
-
-   环境变量:
-   - RAY_DEBUG_POST_MORTEM: 如果未设置，函数将直接返回，不触发断点。
-   - DEBUG_TAGS: 包含多个标签的字符串，标签之间用 `|` 分隔。如果 `tag` 参数存在于该环境变量中，则触发断点。
-
-   """
    env_tag = f'HIT_BREAKPOINT_REC_{tag}'
-   # if rank < 0: rank = os.getenv("RANK", 0)
-   # if rank != 0: return
    if not os.getenv('RAY_DEBUG_POST_MORTEM'): return
    if tag is None:
       if once:

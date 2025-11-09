@@ -195,7 +195,7 @@ class TaskRunner:
         else:
             raise NotImplementedError
 
-        from agentopia.trainer import ResourcePoolManager, Role
+        from agentopia.backbone_verl.trainer import ResourcePoolManager, Role
 
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
@@ -252,7 +252,7 @@ class TaskRunner:
         val_dataset = create_rl_dataset(config.data.val_files, config.data, tokenizer, processor, is_train=False, env_config=config.env_service)
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
-        from agentopia.trainer import BeyondAgentRayPPOTrainer
+        from agentopia.backbone_verl.trainer import BeyondAgentRayPPOTrainer
         # Initialize the PPO trainer.
         trainer = BeyondAgentRayPPOTrainer(
             config=config,

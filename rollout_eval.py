@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from beast_logger import print_dict
 from agentopia.schema.task import Task
 from agentopia.parallel_env import ParallelEnvManager
-from agentopia.trainer import BeyondAgentRayPPOTrainer
+from agentopia.backbone_verl.trainer import BeyondAgentRayPPOTrainer
 from agentopia.utils.process_dataset import create_rl_dataset, create_rl_sampler
 
 class TokenAndProb:
