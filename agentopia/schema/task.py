@@ -3,15 +3,11 @@ from typing import List, Dict, Any
 
 
 class Task(BaseModel):
-    task_id: str = Field(default=...)
-
-    env_type: str = Field(default="appworld")
-
+    main_query: str = Field(default="")
+    init_messages: List[dict] = Field(default=[])
+    task_id: str = Field(default="")
+    env_type: str = Field(default="")
     metadata: dict = Field(default_factory=dict)
-
-    query: List | str = Field(default="")
-
-
 
 
 class TaskLaunchCoreArgument(BaseModel):
@@ -24,4 +20,5 @@ class TaskLaunchCoreArgument(BaseModel):
     obs_window: dict = Field(default={})
     llm_chat_fn: Any = Field(default=None)
     tokenizer: Any = Field(default=None)
+    task: Task = Field(default=None)    # type: ignore
 

@@ -51,10 +51,18 @@ class TrinityCompatWorkflow(DynamicRollout):
         )
 
     def convert_task(self, task):
-        return Task(task_id=task.raw_task['task_selector'],
-            env_type=task.workflow_args['env_type'],
-            metadata={},
-            query=""
+        main_query = task.raw_task.get('main_query', "[not defined]")
+        task_id = task.raw_task.get('task_selector', str(uuid.uuid4().hex))
+        env_type = task.raw_task.get('env_type', "[not defined]")
+        metadata = task.raw_task.get('metadata', {})
+        init_messages = task.raw_task.get('init_messages', [])
+
+        return Task(
+            main_query=main_query,
+            task_id=task_id,
+            env_type=env_type,
+            metadata=metadata,
+            init_messages=init_messages,
         )
 
     def thread_worker(self):
@@ -152,9 +160,6 @@ class AgentopiatWorkflowWrap(Workflow):
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
             config=read_astune_config(os.path.relpath(yaml_path, os.path.dirname(__file__))),
         ).run_in_new_thread()
-
-        from vsdb import bp
-        bp("DEV3")
 
         sample_final = []
         try:

@@ -1275,7 +1275,7 @@ class BeyondAgentRayPPOTrainer:
                         tasks = [
                             Task(
                                 task_id=str(gen_batch.non_tensor_batch["extras"][i]["task_id"]),
-                                query=gen_batch.non_tensor_batch["raw_prompt"][i],
+                                main_query=gen_batch.non_tensor_batch["raw_prompt"][i],
                                 env_type=self.config.env_service.env_type,
                                 metadata= {'global_steps': self.global_steps}
                             ) for i in range(len(gen_batch))
@@ -1562,7 +1562,7 @@ class BeyondAgentRayPPOTrainer:
             tasks += [
                 Task(
                     task_id=str(dat['extras']['task_id']),
-                    query=dat['raw_prompt'],
+                    main_query=dat['raw_prompt'],
                     env_type=self.config.env_service.env_type
                 ) for dat in target_dataset
             ]

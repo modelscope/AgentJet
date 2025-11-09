@@ -24,10 +24,10 @@ class SelfContextClipCMT(LinearThinkCMT):
         self.latest_env_response_content = ""
         self.console_debug_mode = False
         self.force_think = config.astune.rollout.force_think
-        self.env_feedin_preference = config.env_service.env_feedin_preference
+        self.env_action_preference = config.env_service.env_action_preference
         self.train_sp_action = config.astune.context_manager.auto_context_cm.train_sp_action
         self.clipped_before = False
-        if self.env_feedin_preference == "box":
+        if self.env_action_preference == "box":
             self.force_think_prompt = dedent("""
                 Additional requirements: Think before action! You must think step by step before your next action, and you must use <think>...</think> to wrap your thinking process before finally produce your answer with \\box{}.
                 Your thought (<think>...</think>) should be as short and concise as possible.
@@ -35,7 +35,7 @@ class SelfContextClipCMT(LinearThinkCMT):
                 <think>...your thinking process...</think>
                 \\box{...your final answer...}
             """)
-        elif self.env_feedin_preference == "code":
+        elif self.env_action_preference == "code":
             self.force_think_prompt = dedent("""
                 Additional requirements: Think before action! You must think step by step before your next action, and you must use <think>...</think> to wrap your thinking process before finally produce the next-step action.
                 Your thought (<think>...</think>) should be as short and concise as possible.

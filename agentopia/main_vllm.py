@@ -69,7 +69,6 @@ def run(config):
 
     # --------- init ---------
     async_rollout_manager = ChatCompletionScheduler(config=config, url="http://localhost:18000/v1")
-    print(f"Using tokenizer: {async_rollout_manager.tokenizer}")
     parallel_env = ParallelEnvManager(
         config=config,
         async_rollout_manager=async_rollout_manager,
@@ -78,13 +77,7 @@ def run(config):
         llm_mode="remote",
         tokenizer=async_rollout_manager.tokenizer
     )
-    val_dataset = create_rl_dataset(data_paths=config.data.val_files, data_config=config.data, tokenizer=async_rollout_manager.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-    tasks = [
-        Task(
-            task_id=str(dat['extras']['task_id']),
-            query=dat['raw_prompt'],
-            env_type=config.env_service.env_type
-        ) for dat in val_dataset]
+
 
     cmt = parallel_env.rollout(tasks=tasks[:n_task], mode="sample", epoch='1') # "sample" or "validate"
     gen_batch_output = parallel_env.to_dataproto(cmt)

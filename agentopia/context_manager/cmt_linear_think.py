@@ -34,19 +34,19 @@ class MultiSampleCMT(CMTLinear):
         self.already_mad_flag = False
 
         self.force_think = config.astune.rollout.force_think
-        self.env_feedin_preference = config.env_service.env_feedin_preference
+        self.env_action_preference = config.env_service.env_action_preference
         if not self.force_think:
             # think_hint_for_qwen3 =
             self.think_hint: str = "\n\nThink about the next step before answering. Your thought (<think>...</think>) should be as short and concise as possible."
         else:
-            if self.env_feedin_preference == "box":
+            if self.env_action_preference == "box":
                 force_think_prompt = dedent("""
                     Additional requirements: Think before action! You must think step by step before your next action, and you must use <think>...</think> to wrap your thinking process before finally produce your answer with \\box{}.
                     For example:
                     <think>...your thinking process...</think>
                     \\box{...your final answer...}
                 """)
-            elif self.env_feedin_preference == "code":
+            elif self.env_action_preference == "code":
                 force_think_prompt = dedent("""
                     Additional requirements: Think before action! You must think step by step before your next action, and you must use <think>...</think> to wrap your thinking process before finally produce the next-step action.
                     For example:
@@ -56,7 +56,7 @@ class MultiSampleCMT(CMTLinear):
                     ```
                 """)
             else:
-                raise ValueError(f"Unsupported env_feedin_preference: {self.env_feedin_preference}")
+                raise ValueError(f"Unsupported env_action_preference: {self.env_action_preference}")
             # think_hint_for_qwen2 =
             self.think_hint: str = force_think_prompt
 

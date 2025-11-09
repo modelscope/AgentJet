@@ -60,7 +60,7 @@ trainer:
 env_service:
   env_type: "appworld"
   env_url: "http://127.0.0.1:8000"
-  env_feedin_preference: code # code, text, box
+  env_action_preference: code # code, text, box
 
 
 
