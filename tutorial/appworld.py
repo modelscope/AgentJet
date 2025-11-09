@@ -33,6 +33,7 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
         for _ in range(config.astune.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
+            print(reply_message.content)
             # env service protocol
             obs, _, terminate, _ = beyondagent_proxy.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
             # generate new message from env output

@@ -53,7 +53,7 @@ model:
   model_path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 monitor:
   monitor_type: swanlab
-name: git-appworld-qwen2-agentscope-bz32-tp4-linear
+name: git-math-agentscope
 project: appworld_astune
 synchronizer:
   sync_interval: 2

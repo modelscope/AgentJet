@@ -54,7 +54,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
 本节仅内部沟通使用，后期重写。
 
-我们提供一个多功能launcher用于调试和训练，您借助launcher选择任意训练框架启动训练。
+项目提供一个多功能launcher用于调试和训练，借助launcher，只需要修改一个`--backbone`参数，就选择任意训练框架启动训练 or 调试。
 
 1. 使用launcher进行全链路调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试
     ```bash
@@ -74,6 +74,8 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
     # 建议开始前杀死所有ray、vllm、env_service进程
     clear && \
     python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
+
+    python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --with-ray --backbone='trinity'
     ```
 备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`，并在代码中需要断点的地方标记一行特殊代码 ``
 
@@ -82,7 +84,9 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程
     clear && \
-    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='verl'
+
+    python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='verl'
     ```
 备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
 
