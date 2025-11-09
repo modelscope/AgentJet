@@ -16,7 +16,7 @@ def parse_args():
         type=str,
         default="trinity",
         required=False,
-        help='verl or trinity'
+        help='verl or trinity or debug'
     )
     parser.add_argument('--conf',
         type=str,
@@ -382,6 +382,8 @@ def main():
 
     if args.backbone == "trinity":
         env['ASTUNE_CONFIG_REDIRECT'] = yaml_backup_dst # type: ignore
+    if args.backbone == "debug":
+        env['ASTUNE_DEBUG'] = '1'  # type: ignore
 
     if args.with_ray:
         start_ray_service(args, env)

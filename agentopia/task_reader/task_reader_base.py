@@ -207,3 +207,23 @@ class TaskReaderHuggingFace(TaskReaderBase):
         dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_name
         split = self.config.astune.task_reader.huggingface_dat_repo.validation_split
         return self._load_dataset_split(dataset_name, split)
+
+
+class TaskReaderRouter(TaskReaderBase):
+    def __init__(self, config):
+        super().__init__(config)
+        self.task_reader_type = self.config.astune.task_reader.type
+        if self.task_reader_type == 'env_service':
+            self.task_reader = TaskReaderAppWorld(config)
+        elif self.task_reader_type == 'dataset_file':
+            self.task_reader = TaskReaderJsonl(config)
+        elif self.task_reader_type == 'huggingface_dat_repo':
+            self.task_reader = TaskReaderHuggingFace(config)
+        else:
+            raise ValueError(f"Unsupported task reader type: {self.task_reader_type}")
+
+    def get_training_tasks(self) -> List[Task]:
+        return self.task_reader.get_training_tasks()
+
+    def get_validation_tasks(self) -> List[Task]:
+        return self.task_reader.get_validation_tasks()

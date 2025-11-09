@@ -55,7 +55,9 @@ uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.co
 ```bash
 clear && \
 killer ray && killer python && \
-python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug'
+killer vllm  && \
+killer VLLM  && \
+python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
 ```
 
 2. 使用trinity进行训练

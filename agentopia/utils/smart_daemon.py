@@ -81,7 +81,7 @@ class LaunchWhenAbsent:
             # Check if the process group ID is still running, if true, psutil
             is_running, proc = self.is_pgid_running(pgid)
             if is_running:
-                time.sleep(3)
+                time.sleep(1)
                 is_running, proc = self.is_pgid_running(pgid)
             if is_running:
                 return True, proc, pgid
@@ -153,7 +153,7 @@ class LaunchWhenAbsent:
                 logger.warning(f"Force restarting")
                 self._kill_existing_process_group(pgid)
             else:
-                logger.success(f"Script is already running, skipping launch. pgid: {pgid}. Command {'' ''.join(self.cmd)}")
+                logger.success(f"Script is already running, skipping launch. pgid: {pgid}. Command [{' '.join(self.cmd)}]")
                 return
         try:
             # Set up process creation flags and environment

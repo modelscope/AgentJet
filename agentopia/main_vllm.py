@@ -64,11 +64,12 @@ class ChatCompletionScheduler():
 
 def run(config):
     # --------- fast adjustment for debugging ---------
-    max_parallel = 1
-    n_task = 1
+    max_parallel = config.astune.debug.debug_max_parallel
+    n_task = config.astune.debug.debug_first_n_tasks
+    vllm_port = config.astune.debug.debug_vllm_port
 
     # --------- init ---------
-    async_rollout_manager = ChatCompletionScheduler(config=config, url="http://localhost:18000/v1")
+    async_rollout_manager = ChatCompletionScheduler(config=config, url=f"http://localhost:{vllm_port}/v1")
     parallel_env = ParallelEnvManager(
         config=config,
         async_rollout_manager=async_rollout_manager,
@@ -78,7 +79,10 @@ def run(config):
         tokenizer=async_rollout_manager.tokenizer
     )
 
-
+    from agentopia.task_reader.task_reader_base import TaskReaderRouter
+    task_reader = TaskReaderRouter(config)
+    tasks = task_reader.get_validation_tasks()
+    print(tasks)
     cmt = parallel_env.rollout(tasks=tasks[:n_task], mode="sample", epoch='1') # "sample" or "validate"
     gen_batch_output = parallel_env.to_dataproto(cmt)
     print("Generated batch output")
@@ -95,7 +99,7 @@ def main(config):
         import torch
         print("Launching companion process for async LLM server...")
         model_path = config.astune.model.path
-        tensor_parallel_size = config.actor_rollout_ref.rollout.tensor_model_parallel_size
+        tensor_parallel_size = config.astune.debug.debug_tensor_parallel_size
         n_avail_gpus = torch.cuda.device_count()
         if tensor_parallel_size > n_avail_gpus:
             print(f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}.")
@@ -103,8 +107,8 @@ def main(config):
         gpu_memory_utilization = config.actor_rollout_ref.rollout.gpu_memory_utilization
         max_num_seqs = config.actor_rollout_ref.rollout.max_num_seqs
         max_model_len = config.astune.rollout.max_model_len
-        seed = 12345
-        port = 18000
+        seed = config.astune.debug.debug_vllm_seed
+        vllm_port = config.astune.debug.debug_vllm_port
         companion = LaunchCommandWhenAbsent(
             full_argument_list=[
                 sys.executable, "-m",
@@ -121,7 +125,7 @@ def main(config):
                 f"--enable-chunked-prefill",
                 f"--enable-prefix-caching",
                 f"--seed", f"{seed}",
-                f"--port", f"{port}",
+                f"--port", f"{vllm_port}",
             ],
             dir='./',
             tag="external_vllm_server"

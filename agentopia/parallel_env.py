@@ -31,6 +31,7 @@ def init_logger(experiment_name):
     os.environ['BEST_LOGGER_INIT'] = '1'
     from datetime import datetime
     final_log_path = os.path.join( "launcher_record", experiment_name, datetime.now().strftime("%Y_%m_%d_%H_%M") )
+    os.environ['BEST_LOGGER_PATH'] = final_log_path
     non_console_mods = ["rollout", "token_clip", "bad_case", "env_clip"]
     register_logger(mods=["evaluation", "exception"], non_console_mods=non_console_mods, auto_clean_mods=[], base_log_path=final_log_path, debug=False)
 
@@ -273,6 +274,7 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
                         obs_window=obs_window,
                         llm_chat_fn=llm_chat_fn,
                         tokenizer=self.tokenizer,
+                        task=task
                     ),
                     config=self.config
                 ).execute()
@@ -594,9 +596,11 @@ class ParallelEnvManager(DynamicRollout):
             try:
                 sample_arr = cmt.group_tokenize()
             except Exception as e:
-                cmt.generate_log(global_step=self.current_global_steps)
                 raise e
-            cmt.generate_log(global_step=self.current_global_steps)
+            finally:
+                cmt.generate_log(global_step=self.current_global_steps)
+                if os.environ.get('BEST_LOGGER_PATH', None) and os.environ.get('ASTUNE_DEBUG', None):
+                    logger.success(f"View rollout details at [https://localhost:8181/file={os.environ['BEST_LOGGER_PATH']}]")
             sample_arr_final += sample_arr
 
         # Step 2: Calculate how many samples need to be removed
