@@ -24,7 +24,7 @@ class SelfContextClipCMT(LinearThinkCMT):
         self.latest_env_response_content = ""
         self.console_debug_mode = False
         self.force_think = config.astune.rollout.force_think
-        self.env_action_preference = config.env_service.env_action_preference
+        self.env_action_preference = config.astune.task_reader.env_service.env_action_preference
         self.train_sp_action = config.astune.context_manager.auto_context_cm.train_sp_action
         self.clipped_before = False
         if self.env_action_preference == "box":

@@ -81,75 +81,7 @@ python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appw
 
 
 
-### Launching with Different Environments
 
-```bash
-# Launch with appworld environment
-python launcher.py --with-appworld
+# note
 
-# Launch with a specific configuration
-python launcher.py --conf launcher/appworld_context_clip/appworld-context-clip.yaml --with-appworld
-
-# Launch with webshop environment
-python launcher.py --with-webshop
-```
-
-### Configuration
-
-To switch between vLLM and SGLang modes, modify the `mode` parameter in your configuration file:
-
-```yaml
-actor_rollout_ref:
-  rollout:
-    mode: async  # Use 'async' for vLLM or specify another mode for SGLang
-```
-
-To enable GSPO loss mode:
-
-```yaml
-actor_rollout_ref.actor.policy_loss.loss_mode=gspo
-```
-
-## Advanced Features
-
-### Multi-Environment Support
-
-Define environment settings in your configuration file:
-
-```yaml
-env_service:
-  env_url: http://localhost:8080
-  env_type: webshop
-```
-
-### Dynamic Sampling
-
-Enable oversampling to improve data efficiency:
-
-```yaml
-enable_oversample: True
-submit_oversample_multiplier: 2
-```
-
-## Project Structure
-
-```
-├── agentopia/                 # Agentopia modules
-├── beyondagent/               # BeyondAgent core components
-├── external/                  # External dependencies
-├── launcher/                  # Launcher configurations
-│   ├── appworld_context_clip/
-│   ├── appworld_linear_base/
-│   └── ...
-├── checkpoints/               # Model checkpoints
-├── logs/                      # Log files
-└── outputs/                   # Output files
-```
-
-## Contributing
-
-Please read our contributing guidelines before submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+FlashInfer?

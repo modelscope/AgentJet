@@ -68,7 +68,6 @@ from agentopia.parallel_env import ParallelEnvManager
 from agentopia.schema.task import Task
 from agentopia.schema.trajectory import Trajectory
 from agentopia.utils.message import send_train_message
-from agentopia.utils.vscode_breakpoint import vscode_conditional_breakpoint
 from beast_logger import register_logger, print_dict
 from agentopia.context_manager.cmt_linear import CMTLinear
 import os
@@ -1007,7 +1006,6 @@ class BeyondAgentRayPPOTrainer:
         self.val_reward_fn = parse_reward_from_dataproto
         from concurrent.futures import ThreadPoolExecutor
         self.parallel_env = ParallelEnvManager(config=self.config, async_rollout_manager=self.async_rollout_manager, max_parallel=self.config.astune.rollout.max_env_worker, tokenizer=self.tokenizer)
-        self.thread_pool = ThreadPoolExecutor(max_workers=self.config.thread_pool.max_workers)
 
     def _save_checkpoint(self):
         from verl.utils.fs import local_mkdir_safe
@@ -1229,6 +1227,10 @@ class BeyondAgentRayPPOTrainer:
                         else curr_step_profile
                     )
 
+                # from vsdb import bp
+                # bp("YYY")
+                batch_dict['index'] = torch.tensor([i for i in range(len(batch_dict['task_id']))], dtype=torch.long)
+
                 batch: DataProto = DataProto.from_single_dict(batch_dict)
 
                 # add uid to batch
@@ -1236,23 +1238,21 @@ class BeyondAgentRayPPOTrainer:
                     [str(uuid.uuid4()) for _ in range(len(batch.batch))], dtype=object
                 )
 
-                # pop those keys for generation
-                batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
-                non_tensor_batch_keys_to_pop = ["raw_prompt_ids"]
-                if "multi_modal_data" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("multi_modal_data")
-                if "raw_prompt" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("raw_prompt")
-                if "tools_kwargs" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("tools_kwargs")
-                if "interaction_kwargs" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("interaction_kwargs")
-                if "index" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("index")
-                if "agent_name" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("agent_name")
-                if "extras" in batch.non_tensor_batch:
-                    non_tensor_batch_keys_to_pop.append("extras")
+                # # pop those keys for generation
+                batch_keys_to_pop = ['index']
+                non_tensor_batch_keys_to_pop = ['task_id', 'main_query', 'env_type', 'metadata', 'init_messages']
+                # if "multi_modal_data" in batch.non_tensor_batch:
+                #     non_tensor_batch_keys_to_pop.append("multi_modal_data")
+                # if "raw_prompt" in batch.non_tensor_batch:
+                #     non_tensor_batch_keys_to_pop.append("raw_prompt")
+                # if "tools_kwargs" in batch.non_tensor_batch:
+                #     non_tensor_batch_keys_to_pop.append("tools_kwargs")
+                # if "interaction_kwargs" in batch.non_tensor_batch:
+                #     non_tensor_batch_keys_to_pop.append("interaction_kwargs")
+                # if "agent_name" in batch.non_tensor_batch:
+                #     non_tensor_batch_keys_to_pop.append("agent_name")
+                # if "extras" in batch.non_tensor_batch:
+                #     non_tensor_batch_keys_to_pop.append("extras")
                 gen_batch = batch.pop(
                     batch_keys=batch_keys_to_pop,
                     non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
@@ -1272,12 +1272,14 @@ class BeyondAgentRayPPOTrainer:
                         self.async_rollout_manager.wake_up()
                         print("=== wake up end ===")
                         # time.sleep(36000)
+                        # from vsdb import bp
+                        # bp("XXX")
                         tasks = [
                             Task(
-                                task_id=str(gen_batch.non_tensor_batch["extras"][i]["task_id"]),
-                                main_query=gen_batch.non_tensor_batch["raw_prompt"][i],
-                                env_type=self.config.env_service.env_type,
-                                metadata= {'global_steps': self.global_steps}
+                                task_id=gen_batch.non_tensor_batch["task_id"][i],
+                                main_query=gen_batch.non_tensor_batch["main_query"][i],
+                                env_type=gen_batch.non_tensor_batch["env_type"][i],
+                                metadata={'global_steps': self.global_steps}
                             ) for i in range(len(gen_batch))
                         ]
                         print([gen_batch.non_tensor_batch["extras"][i]["task_id"] for i in range(len(gen_batch))])
@@ -1347,7 +1349,6 @@ class BeyondAgentRayPPOTrainer:
                         entropys = old_log_prob.batch["entropys"]
                         response_masks = batch.batch["response_mask"]
                         loss_agg_mode = self.config.actor_rollout_ref.actor.loss_agg_mode
-                        # vscode_conditional_breakpoint(tag='MAJOR_LOOP')
                         entropy_loss = agg_loss(loss_mat=entropys, loss_mask=response_masks, loss_agg_mode=loss_agg_mode)
                         assert not torch.isnan(entropy_loss).item(), "Entropy loss should not be NaN, something must have gone terribly wrong."
                         old_log_prob_metrics = {"actor/entropy": entropy_loss.detach().item()}
@@ -1657,42 +1658,40 @@ class BeyondAgentRayPPOTrainer:
 
     def get_eval_dataset(self):
         from agentopia.utils.process_dataset import create_rl_dataset
-        if self.config.env_service.env_type == "appworld":
-            if hasattr(self, 'main_val_dataset'):
-                return self.main_val_dataset, None, None
-            else:
-                config = self.config
+        if self.config.astune.task_reader.type == 'env_service':
+            if self.config.astune.task_reader.env_service.env_type == "appworld":
+                if hasattr(self, 'main_val_dataset'):
+                    return self.main_val_dataset, None, None
+                else:
+                    from agentopia.task_reader.task_reader_base import TaskReaderRouter
+                    task_reader = TaskReaderRouter(self.config)
+                    tasks = task_reader.get_validation_tasks()
+                    self.main_val_dataset = tasks
+                    return self.main_val_dataset, None, None
 
-                from agentopia.task_reader.task_reader_base import TaskReaderRouter
-                task_reader = TaskReaderRouter(config)
-                tasks = task_reader.get_validation_tasks()
+            # elif self.config.env_service.env_type == "webshop":
+            #     if hasattr(self, 'main_val_dataset'):
+            #         return self.main_val_dataset, None, None
+            #     else:
+            #         config = self.config
+            #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+            #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+            #         if config.data.fast_eval: # 使用一个小测试集
+            #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(100))   # limit to 100 samples
+            #             return self.main_val_dataset, None, None
+            #         else:
+            #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(500))   # limit to 100 samples
+            #             return self.main_val_dataset, None, None
 
-                self.main_val_dataset = tasks
-                return self.main_val_dataset, None, None
-
-        # elif self.config.env_service.env_type == "webshop":
-        #     if hasattr(self, 'main_val_dataset'):
-        #         return self.main_val_dataset, None, None
-        #     else:
-        #         config = self.config
-        #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-        #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-        #         if config.data.fast_eval: # 使用一个小测试集
-        #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(100))   # limit to 100 samples
-        #             return self.main_val_dataset, None, None
-        #         else:
-        #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(500))   # limit to 100 samples
-        #             return self.main_val_dataset, None, None
-
-        # elif self.config.env_service.env_type == "crafters":
-        #     if hasattr(self, 'main_val_dataset'):
-        #         return self.main_val_dataset, None, None
-        #     else:
-        #         config = self.config
-        #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-        #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-        #         self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(10))   # limit to 100 samples
-        #         return self.main_val_dataset, None, None
+            # elif self.config.env_service.env_type == "crafters":
+            #     if hasattr(self, 'main_val_dataset'):
+            #         return self.main_val_dataset, None, None
+            #     else:
+            #         config = self.config
+            #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+            #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+            #         self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(10))   # limit to 100 samples
+            #         return self.main_val_dataset, None, None
 
         else:
             raise NotImplementedError

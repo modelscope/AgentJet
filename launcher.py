@@ -325,6 +325,7 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
             'run', '--config', trinity_boot_yaml
         ]
     else:
+        align_parameters(yaml_backup_dst, yaml_backup_dst, 'agentopia/default_config/config_auto_convertion_verl.json')
         cmd = [
             sys.executable,
             '-m', backbone_target,

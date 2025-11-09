@@ -14,23 +14,22 @@ from agentopia.agent_flow import BaseAgentFlow
 class EnvWorker(object):
 
     def __init__(self, task_core_arg, config: DictConfig):
+        self.config = config
 
-        url = config.env_service.env_url
-        env_type = config.env_service.env_type
-
-        self.env = EnvClientNg(base_url=url)
-        self.env_params = {}
+        if config.astune.task_reader.type == 'env_service':
+            url = config.astune.task_reader.env_service.env_url
+            env_type = config.astune.task_reader.env_service.env_type
+            self.env = EnvClientNg(base_url=url)
+            self.env_params = {}
+            self.env_type: str = env_type
 
         self.task_core_arg = task_core_arg
-        self.config = config
-        self.env_type: str = env_type
         self.task_id: str = task_core_arg.task_id
         self.tokenizer = task_core_arg.tokenizer
         self.llm_chat_fn = task_core_arg.llm_chat_fn
         self.obs_window = task_core_arg.obs_window
 
     def execute(self) -> CMTLinear:
-
 
         # >>>>>>>>>>>>>> create
         try:

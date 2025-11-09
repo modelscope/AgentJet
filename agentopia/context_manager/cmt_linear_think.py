@@ -34,7 +34,7 @@ class MultiSampleCMT(CMTLinear):
         self.already_mad_flag = False
 
         self.force_think = config.astune.rollout.force_think
-        self.env_action_preference = config.env_service.env_action_preference
+        self.env_action_preference = config.astune.task_reader.env_service.env_action_preference
         if not self.force_think:
             # think_hint_for_qwen3 =
             self.think_hint: str = "\n\nThink about the next step before answering. Your thought (<think>...</think>) should be as short and concise as possible."

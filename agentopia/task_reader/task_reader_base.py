@@ -1,5 +1,6 @@
 import json
 import uuid
+import torch
 import datasets
 from typing import List, Dict, Optional
 from agentopia.schema.task import Task
