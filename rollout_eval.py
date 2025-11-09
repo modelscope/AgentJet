@@ -198,7 +198,7 @@ def run(config, hf_modelpath):
         if obj is None: obj = {}
     except:
         obj = {}
-    obj[config.trainer.experiment_name] = {}
+    obj[config.astune.experiment_name] = {}
     obj[hf_modelpath] = val_metrics
     objdump(obj)
     print_dict(val_metrics)

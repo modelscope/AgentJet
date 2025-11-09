@@ -526,8 +526,8 @@ class BeyondAgentRayPPOTrainer:
         self.ray_worker_group_cls = ray_worker_group_cls
         self.device_name = device_name if device_name else self.config.trainer.device
         self.validation_generations_logger = ValidationGenerationsLogger(
-            project_name=self.config.trainer.project_name,
-            experiment_name=self.config.trainer.experiment_name,
+            project_name=self.config.astune.project_name,
+            experiment_name=self.config.astune.experiment_name,
         )
 
         # if ref_in_actor is True, the reference policy will be actor without lora applied
@@ -557,23 +557,7 @@ class BeyondAgentRayPPOTrainer:
         config = self.config
         # number of GPUs total
         n_gpus = config.trainer.n_gpus_per_node * config.trainer.nnodes
-        if config.actor_rollout_ref.actor.strategy == "megatron":
-            model_parallel_size = (
-                config.actor_rollout_ref.actor.megatron.tensor_model_parallel_size
-                * config.actor_rollout_ref.actor.megatron.pipeline_model_parallel_size
-            )
-            assert (
-                n_gpus % (model_parallel_size * config.actor_rollout_ref.actor.megatron.context_parallel_size) == 0
-            ), (
-                f"n_gpus ({n_gpus}) must be divisible by model_parallel_size ({model_parallel_size}) times "
-                f"context_parallel_size ({config.actor_rollout_ref.actor.megatron.context_parallel_size})"
-            )
-            megatron_dp = n_gpus // (
-                model_parallel_size * config.actor_rollout_ref.actor.megatron.context_parallel_size
-            )
-            minimal_bsz = megatron_dp * config.actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu
-        else:
-            minimal_bsz = n_gpus
+        minimal_bsz = n_gpus
 
         # 1. Check total batch size for data correctness
         real_train_batch_size = config.astune.data.train_batch_size * config.astune.rollout.num_repeat
@@ -1191,8 +1175,8 @@ class BeyondAgentRayPPOTrainer:
         from verl.utils.tracking import Tracking
 
         logger = Tracking(
-            project_name=self.config.trainer.project_name,
-            experiment_name=self.config.trainer.experiment_name,
+            project_name=self.config.astune.project_name,
+            experiment_name=self.config.astune.experiment_name,
             default_backend=self.config.trainer.logger,
             config=OmegaConf.to_container(self.config, resolve=True),
         )

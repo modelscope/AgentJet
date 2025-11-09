@@ -103,6 +103,9 @@ actor_rollout_ref:
       path: ""
       name: ""
     train_sp_action: False
+    tensor_model_parallel_size: 1
+    max_num_seqs: 10
+    gpu_memory_utilization: 0.9
     max_env_worker: 64
     enable_oversample: False
     enable_request_id: False

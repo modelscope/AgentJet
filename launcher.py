@@ -4,6 +4,7 @@ import shutil
 import time
 import sys
 import os
+from loguru import logger
 from dotenv import load_dotenv; load_dotenv()
 from agentopia.utils.smart_daemon import LaunchCommandWhenAbsent
 
@@ -73,10 +74,6 @@ def parse_args():
     return parser.parse_args()
 
 def check_debugpy_version():
-    """
-    检查 debugpy 模块版本是否 >= 1.8.0
-    如果未安装或版本过低，抛出 RuntimeError
-    """
     try:
         import debugpy
     except ImportError:
@@ -85,18 +82,14 @@ def check_debugpy_version():
             "Ray Debugpy Debugger will not work without 'debugpy>=1.8.0' installed. "
             "Install this module using 'pip install debugpy>=1.8.0'"
         )
-
-    # 检查版本
     version = getattr(debugpy, '__version__', '0.0.0')
     from packaging import version as packaging_version
-
     if packaging_version.parse(version) < packaging_version.parse('1.8.0'):
         raise RuntimeError(
             f"debugpy version {version} is too old. "
             "Ray Debugpy Debugger requires 'debugpy>=1.8.0'. "
             "Upgrade using 'pip install debugpy>=1.8.0'"
         )
-
     print(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
 
 
@@ -134,14 +127,16 @@ def prepare_experiment_config(yaml_path, args):
     if not os.path.exists(exp_base):
         raise FileNotFoundError(f"Configuration file not found: {exp_base}")
 
-    ## 0. read yaml (get trainer.experiment_name)
+    ## 0. read yaml (get astune.experiment_name)
     import yaml
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
-    exp_name = config.get('trainer').get('experiment_name')
+    exp_name = config.get('astune').get('experiment_name')
+    print('C1', exp_name)
     if exp_name is None or exp_name == 'read_yaml_name':
         if exp_name is not None: exp_name = exp_name.replace('|', '-')
         exp_name = os.path.basename(yaml_path).replace('.yaml', '')
+        print('C2', yaml_path, exp_name)
     else:
         exp_name = exp_name.replace('|', '-')
 
@@ -179,15 +174,17 @@ def prepare_experiment_config(yaml_path, args):
 
     ## 4. edit new yaml
     yaml_path = yaml_backup_dst
-    # now, replace the trainer.experiment_name
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
-    if args.backbone != "trinity":
-        config['trainer']['experiment_name'] = exp_name
+    config['astune']['experiment_name'] = exp_name
+    # remove extra config
+    if args.backbone != "verl":
+        config['defaults'].remove('ppo_trainer')
+        config['hydra']['searchpath'].remove('file://external/verl/verl/trainer/config')
     with open(yaml_path, 'w') as file:
         yaml.dump(config, file)
 
-    return yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name
+    return yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name, config
 
 def launch_logview(exp_name=None):
     """
@@ -241,7 +238,71 @@ def start_ray_service(args, env):
         env_dict=env,
     )
 
-def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env):
+import yaml
+
+def align_parameters(from_config_fp, to_config_fp, convertion_json_fg):
+    # read yaml files
+    with open(from_config_fp, 'r') as file:
+        from_config = yaml.safe_load(file)
+    with open(to_config_fp, 'r') as file:
+        to_config = yaml.safe_load(file)
+    # read convertion json
+    import json
+    with open(convertion_json_fg, 'r') as file:
+        convertion_json = json.load(file)
+    logger.success("----------------------------------------------------")
+    for from_key, to_key in convertion_json.items():
+        # get value from from_config
+        keys = from_key.split('.')
+        value = from_config
+        for key in keys:
+            value = value.get(key, None)
+            if value is None:
+                break
+        if value is None:
+            logger.warning(f"[Warning]: Cannot find value for key: {from_key} in {from_config_fp}, skip aligning {to_key}")
+            continue
+        # set value to to_config
+        keys = to_key.split('.')
+        sub_config = to_config
+        for key in keys[:-1]:
+            if key not in sub_config:
+                sub_config[key] = {}
+            sub_config = sub_config[key]
+        sub_config[keys[-1]] = value
+        logger.success(f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]")
+        time.sleep(1)
+    logger.success("----------------------------------------------------")
+    # read from_config_fp's trinity section and copy to to_config_fp
+    # for example:
+    #    (from_config_fp) trinity.algorithm.algorithm_type --->  (to_config_fp) algorithm.algorithm_type
+    # do this recursively for all keys under trinity, one config key at a time
+    if 'trinity' in from_config:
+        trinity_config = from_config['trinity']
+        def recursive_copy(src_dict, dst_dict, parent_key=""):
+            for key, value in src_dict.items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+                if isinstance(value, dict):
+                    if key not in dst_dict:
+                        dst_dict[key] = {}
+                    recursive_copy(value, dst_dict[key], full_key)
+                else:
+                    dst_dict[key] = value
+                    logger.info(f"[Note]: Aligned parameter from [trinity.{full_key}] to [{full_key}] with value: [{value}]")
+        recursive_copy(trinity_config, to_config)
+
+    logger.success("----------------------------------------------------")
+
+
+    # save to_config_fp
+    with open(to_config_fp, 'w') as file:
+        yaml.dump(to_config, file)
+    logger.success(f"Saved aligned configuration to {to_config_fp}")
+
+
+
+
+def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env, exp_config):
     """
     Execute the training process based on the specified backbone and configuration.
 
@@ -255,10 +316,13 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
     """
     # let's begin the training process
     if args.backbone == "trinity":
+        # replace boot yaml
+        trinity_boot_yaml = exp_config['backbone']['backbone_config']['trinity']
+        align_parameters(yaml_backup_dst, trinity_boot_yaml, 'agentopia/default_config/config_auto_convertion_trinity.json')
         cmd = [
             sys.executable,
             '-m', backbone_target,
-            'run', '--config', yaml_backup_dst
+            'run', '--config', trinity_boot_yaml
         ]
     else:
         cmd = [
@@ -285,7 +349,6 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
         sys.exit(1)
 
 
-
 def main():
     args = parse_args()
 
@@ -304,35 +367,35 @@ def main():
     if args.backbone == "trinity":
         backbone_target = "agentopia.main_trinity"
 
+    exp_config = None
     if args.conf:
         yaml_path = args.conf
-        yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name = prepare_experiment_config(yaml_path, args)
+        yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name, exp_config = prepare_experiment_config(yaml_path, args)
 
     if args.db:
         env["RAY_DEBUG_POST_MORTEM"] = "1"
         env["DEBUG_TAGS"] = args.db
         env["RAY_record_task_actor_creation_sites"] = "true"
-        print("Debug mode is ON")
+        logger.warning("Debug mode is ON")
     else:
-        print("Debug mode is OFF")
+        logger.warning("Debug mode is OFF")
+
+    if args.backbone == "trinity":
+        env['ASTUNE_CONFIG_REDIRECT'] = yaml_backup_dst # type: ignore
 
     if args.with_ray:
         start_ray_service(args, env)
 
     if args.with_exp_maker:
-        # test done
         pty_launch("exp_maker", success_std_string="Uvicorn running on")
 
     if args.with_appworld:
-        # test done
         pty_launch("appworld")
 
     if args.with_crafters:
-        # test done
         pty_launch("crafters")
 
     if args.with_webshop:
-        # not tesed
         pty_launch("webshop")
 
     if args.with_bfcl:
@@ -342,7 +405,7 @@ def main():
         launch_logview(exp_name)
 
     if args.conf and yaml_backup_dst and exe_exp_base and exe_yaml_path:
-        execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env)
+        execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env, exp_config)
 
 if __name__ == "__main__":
     check_debugpy_version()

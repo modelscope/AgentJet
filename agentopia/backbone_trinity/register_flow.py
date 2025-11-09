@@ -1,4 +1,6 @@
+import os
 import uuid
+import hydra
 import openai
 import numpy as np
 import asyncio, uuid, copy
@@ -93,6 +95,21 @@ class TrinityCompatWorkflow(DynamicRollout):
 
         return result_holder.get("result", None)
 
+
+def read_astune_config(yaml_fp):
+    from hydra import initialize, compose
+    from omegaconf import DictConfig
+
+    def load_hydra_config(config_path: str, config_name: str) -> DictConfig:
+        with initialize(config_path=config_path, version_base=None):
+            cfg = compose(config_name=config_name, overrides=[])
+            return cfg
+
+    dir_path = os.path.dirname(yaml_fp)
+    file_name = os.path.basename(yaml_fp)
+    return load_hydra_config(config_path=dir_path, config_name=file_name)
+
+
 @WORKFLOWS.register_module("agentopia_workflow")
 class AgentopiatWorkflowWrap(Workflow):
     is_async: bool = True
@@ -124,14 +141,16 @@ class AgentopiatWorkflowWrap(Workflow):
         }
 
     async def run_async(self):
-        #   config_path: '/mnt/data/qingxu.fu/ba-verl-advance/launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml'
-        config = OmegaConf.load(self.config.agentopia_configuration.config_path)
-        config.trainer.experiment_name = "dummy"
+
+        yaml_path = os.environ.get('ASTUNE_CONFIG_REDIRECT', None)
+        if yaml_path is None:
+            raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
+
         cmt = TrinityCompatWorkflow(
             task=self.task,
             llm_handle=self.model_client,
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
-            config=config,
+            config=read_astune_config(os.path.relpath(yaml_path, os.path.dirname(__file__))),
         ).run_in_new_thread()
 
         from vsdb import bp

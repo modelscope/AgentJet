@@ -259,7 +259,7 @@ class LaunchWhenAbsent:
                         if success_std_string:
                             raise TimeoutError(f"Process did not output success string '{success_std_string}' within {launch_wait_time} seconds")
 
-                print(f"Successfully launched {self.cmd} with PID {proc.pid}")
+                logger.success(f"Successfully launched {self.cmd} with PID {proc.pid}")
 
         except Exception as e:
             logging.error(f"Error launching script: {e}")

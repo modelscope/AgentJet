@@ -102,13 +102,13 @@ def main(config):
         import torch
         print("Launching companion process for async LLM server...")
         model_path = config.astune.model.path
-        tensor_parallel_size = config.astune.rollout.tensor_model_parallel_size
+        tensor_parallel_size = config.actor_rollout_ref.rollout.tensor_model_parallel_size
         n_avail_gpus = torch.cuda.device_count()
         if tensor_parallel_size > n_avail_gpus:
             print(f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}.")
             tensor_parallel_size = n_avail_gpus
-        gpu_memory_utilization = config.astune.rollout.gpu_memory_utilization
-        max_num_seqs = config.astune.rollout.max_num_seqs
+        gpu_memory_utilization = config.actor_rollout_ref.rollout.gpu_memory_utilization
+        max_num_seqs = config.actor_rollout_ref.rollout.max_num_seqs
         max_model_len = config.astune.rollout.max_model_len
         seed = 12345
         port = 18000

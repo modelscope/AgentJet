@@ -39,7 +39,7 @@ class AsyncLlmBridge(object):
     def __init__(self, config: DictConfig, async_rollout_manager, max_parallel: int,
                  max_llm_retries: int = 3, tokenizer: "AutoTokenizer"=None, llm_mode= "local", **kwargs):
 
-        init_logger(experiment_name=config.trainer.experiment_name)
+        init_logger(experiment_name=config.astune.experiment_name)
         self.llm_mode = llm_mode
         self.config: DictConfig = config
         self.async_rollout_manager = async_rollout_manager

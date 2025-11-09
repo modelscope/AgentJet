@@ -46,15 +46,27 @@ uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.co
 
 本节仅内部沟通使用
 
+
 ### Creating a AgentScope Workflow
 
+
+
+1. 脱离trinity和verl，只与vllm（自动创建）连接，进行调试
+```bash
+clear && \
+killer ray && killer python && \
+python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug'
 ```
+
+2. 使用trinity进行训练
+```bash
 clear && \
 ray stop && \
 killer ray && \
 killer python  && \
-python launcher.py --with-appworld --conf launcher/appworld_trinity/qwen2.yaml --with-ray
+python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
 ```
+
 
 ### Launching with Different Environments
 
