@@ -1,7 +1,7 @@
-from agentopia.agentscope_flow import BeyondAgentProxy
+from astune.agentscope_flow import BeyondAgentProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
-from agentopia.agentscope_protocol import AgentScopeLearnProtocol
+from astune.agentscope_protocol import AgentScopeLearnProtocol
 
 class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
 

@@ -6,7 +6,7 @@ import sys
 import os
 from loguru import logger
 from dotenv import load_dotenv; load_dotenv()
-from agentopia.utils.smart_daemon import LaunchCommandWhenAbsent
+from astune.utils.smart_daemon import LaunchCommandWhenAbsent
 
 
 def parse_args():
@@ -318,14 +318,14 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
     if args.backbone == "trinity":
         # replace boot yaml
         trinity_boot_yaml = exp_config['backbone']['backbone_config']['trinity']
-        align_parameters(yaml_backup_dst, trinity_boot_yaml, 'agentopia/default_config/config_auto_convertion_trinity.json')
+        align_parameters(yaml_backup_dst, trinity_boot_yaml, 'astune/default_config/config_auto_convertion_trinity.json')
         cmd = [
             sys.executable,
             '-m', backbone_target,
             'run', '--config', trinity_boot_yaml
         ]
     else:
-        align_parameters(yaml_backup_dst, yaml_backup_dst, 'agentopia/default_config/config_auto_convertion_verl.json')
+        align_parameters(yaml_backup_dst, yaml_backup_dst, 'astune/default_config/config_auto_convertion_verl.json')
         cmd = [
             sys.executable,
             '-m', backbone_target,
@@ -354,7 +354,7 @@ def main():
     args = parse_args()
 
     # Initialize variables with default values to avoid "possibly unbound" errors
-    backbone_target = "agentopia.main_trinity"  # Default to trinity
+    backbone_target = "astune.main_trinity"  # Default to trinity
     yaml_backup_dst = None
     exe_exp_base = None
     exe_yaml_path = None
@@ -362,11 +362,11 @@ def main():
     env = os.environ.copy()
 
     if args.backbone == "verl":
-        backbone_target = "agentopia.main_verl"
+        backbone_target = "astune.main_verl"
     if args.backbone == "debug":
-        backbone_target = "agentopia.main_vllm"
+        backbone_target = "astune.main_vllm"
     if args.backbone == "trinity":
-        backbone_target = "agentopia.main_trinity"
+        backbone_target = "astune.main_trinity"
 
     exp_config = None
     if args.conf:
