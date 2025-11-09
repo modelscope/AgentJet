@@ -25,7 +25,7 @@ class SelfContextClipCMT(LinearThinkCMT):
         self.console_debug_mode = False
         self.force_think = config.actor_rollout_ref.rollout.force_think
         self.env_feedin_preference = config.env_service.env_feedin_preference
-        self.train_sp_action = config.context_manager.context_template_train_sp_action
+        self.train_sp_action = config.astune.context_manager.auto_context_cm.train_sp_action
         self.clipped_before = False
         if self.env_feedin_preference == "box":
             self.force_think_prompt = dedent("""
@@ -198,7 +198,7 @@ class SelfContextClipCMT(LinearThinkCMT):
         if not self.latest_env_response_id:
             return
 
-        clip_token_cnt = self.config.context_manager.context_template_clip_trigger_token_num
+        clip_token_cnt = self.config.astune.context_manager.auto_context_cm.token_num_trigger_clip
         this_interaction = copy.deepcopy(this_interaction)
         if self._get_seq_length(this_interaction) < clip_token_cnt:
             return

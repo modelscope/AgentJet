@@ -25,7 +25,7 @@ actor_rollout_ref:
   rollout:
     name: vllm
     mode: async
-    use_agentscope: False
+    use_agentscope_protocol: False
     debug_llm_io: False
     temperature: 0.9
     multi_turn:
@@ -41,7 +41,7 @@ actor_rollout_ref:
     force_no_think: False
     force_think: False
     context_template: "linear"
-    context_template_train_sp_action: False
+    train_sp_action: False
     max_env_worker: 64
     max_env_len: 4096
     enable_oversample: False
@@ -60,16 +60,25 @@ actor_rollout_ref:
     step_skip_action: 0
     use_step_reward_from_env: False
 
-context_manager:
-  context_template_train_sp_action: False
-  context_template_clip_trigger_token_num: 8000
-  context_template_alien_llm_model: qwen3-235b-a22b-instruct-2507
-  context_template_alien_model_response_length: 512
-  sliding_window_context_manager:
-    enable_llm_memory_extraction: False
-  linear_think_context_manager:
-    remove_think_before_submit_as_action: False
-    extract_box_before_submit_as_action: False
+astune:
+  rollout:
+    use_agentscope_protocol: True
+    agentscope_learn_protocol: null
+
+
+
+
+  context_manager: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
+    auto_context_cm:
+      train_sp_action: False
+      token_num_trigger_clip: 8000
+    sliding_window_cm:
+      enable_llm_memory_extraction: False
+    linear_think_cm:
+      remove_think_before_submit_as_action: False
+      extract_box_before_submit_as_action: False
 
 thread_pool:
   max_workers: 5

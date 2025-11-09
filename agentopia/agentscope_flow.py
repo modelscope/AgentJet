@@ -7,7 +7,7 @@ from agentopia.client.env_client import EnvClient
 from agentopia.agent_flow import BaseAgentFlow
 from agentopia.schema.trajectory import Reward, Trajectory
 from agentopia.context_manager.cmt_linear import CMTLinear, ExtendedMessage
-from agentopia.agentscope_protocol import AgentScopeLearnProtocal
+from agentopia.agentscope_protocol import AgentScopeLearnProtocol
 from agentopia.context_manager.cmt_linear import replace_token_ids, CMTLinear
 from agentopia.schema.trajectory import Sample, Reward
 from typing import Any, Dict, List, Union, Tuple
@@ -26,9 +26,9 @@ class AgentScopeWorkflow(BaseAgentFlow):
         task_id = task_core_arg.task_id
 
         # fetch learn protocol
-        protocol = self.config.actor_rollout_ref.rollout.agentscope_learn_protocal
+        protocol = self.config.actor_rollout_ref.rollout.agentscope_learn_protocol
         module_, class_ = protocol.split('->')
-        protocol_cls: AgentScopeLearnProtocal = getattr(importlib.import_module(module_), class_)
+        protocol_cls: AgentScopeLearnProtocol = getattr(importlib.import_module(module_), class_)
         agentscope_protocol = protocol_cls(trainer='agentopia-trinity', agentflow_name='appworld')  # type: ignore
 
         def env_step_fn(action: dict) -> Tuple[str, float, bool, dict]:

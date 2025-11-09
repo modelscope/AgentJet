@@ -5,11 +5,11 @@ from textwrap import dedent
 from openai import OpenAI
 from loguru import logger
 
-def construct_alien_llm_chat_fn(config, rollout_config):
+def construct_alien_llm_chat_fn(config, *args):
     def alien_llm_chat_fn(messages, request_id=""):
         max_try = 4
-        alien_model_name = config.context_manager.context_template_alien_llm_model
-        alien_model_response_length = config.context_manager.context_template_alien_model_response_length
+        alien_model_name = config.astune.context_manager.alien_llm_model
+        alien_model_response_length = config.astune.context_manager.alien_llm_response_length
 
         if os.environ.get("DASHSCOPE_API_KEY") is None or os.environ.get("DASHSCOPE_API_KEY_BACKUP") is None:
             raise RuntimeError(dedent("""

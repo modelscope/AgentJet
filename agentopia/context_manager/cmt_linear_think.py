@@ -288,13 +288,13 @@ class LinearThinkCMT(MultiSampleCMT):
 
     def prepare_world_interaction(self) -> str:
         latest_content = self.full_context[-1].content
-        if self.config.context_manager.linear_think_context_manager.remove_think_before_submit_as_action:
+        if self.config.astune.context_manager.linear_think_cm.remove_think_before_submit_as_action:
             import re
             new_ext_msg_content = re.sub(r'<think>.*?</think>', '', latest_content, flags=re.DOTALL).strip()
             new_ext_msg_content = new_ext_msg_content.replace("<think>", "")
             new_ext_msg_content = new_ext_msg_content.replace("</think>", "")
             latest_content = new_ext_msg_content.strip()
-        if self.config.context_manager.linear_think_context_manager.extract_box_before_submit_as_action:
+        if self.config.astune.context_manager.linear_think_cm.extract_box_before_submit_as_action:
             # take content within \box
             # 提取 \box 中的内容
             import re

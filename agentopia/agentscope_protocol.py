@@ -4,7 +4,7 @@ from typing import Callable, List
 try: from agentopia.agentscope_flow import BeyondAgentProxy
 except ImportError: pass
 
-class AgentScopeLearnProtocal(BaseModel):
+class AgentScopeLearnProtocol(BaseModel):
     # Trainer to use; default "trinity". Optional: "agentscorpion-trinity".
     trainer: str = Field(default="trinity")
     # Experiment name

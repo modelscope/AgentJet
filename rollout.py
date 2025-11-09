@@ -25,7 +25,6 @@ class ChatCompletionScheduler():
         from transformers import AutoTokenizer
         self.url = url
         self.config = config
-        self.rollout_config = self.config.actor_rollout_ref.rollout
         self.tokenizer = AutoTokenizer.from_pretrained(self.config.actor_rollout_ref.model.path)
         self.chat_scheduler = SimpleNamespace(
             model_name="dummy-model-name",
@@ -40,13 +39,13 @@ class ChatCompletionScheduler():
         )
         sampling_params = dict(
             n=1,
-            max_completion_tokens=self.rollout_config.response_length,
-            temperature=self.rollout_config.temperature,
-            top_p=self.rollout_config.top_p
+            max_completion_tokens=self.config.actor_rollout_ref.rollout.response_length,
+            temperature=self.config.actor_rollout_ref.rollout.temperature,
+            top_p=self.config.actor_rollout_ref.rollout.top_p
         )
-        sampling_params["temperature"] = self.rollout_config.val_kwargs.temperature
-        sampling_params["top_k"] = self.rollout_config.val_kwargs.top_k
-        sampling_params["top_p"] = self.rollout_config.val_kwargs.top_p
+        sampling_params["temperature"] = self.config.actor_rollout_ref.rollout.val_kwargs.temperature
+        sampling_params["top_k"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_k
+        sampling_params["top_p"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_p
         sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
 
         completion = client.chat.completions.create(

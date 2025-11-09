@@ -2,9 +2,7 @@
 
 Config items referenced in the specified source paths:
 
-- `config.actor_rollout_ref.actor.ppo_max_token_len_per_gpu`
-- `config.actor_rollout_ref.ref.log_prob_max_token_len_per_gpu`
-- `config.actor_rollout_ref.rollout.agentscope_learn_protocal`
+- `config.actor_rollout_ref.rollout.agentscope_learn_protocol`
 - `config.actor_rollout_ref.rollout.binary_reward`
 - `config.actor_rollout_ref.rollout.compute_madness_checklist`
 - `config.actor_rollout_ref.rollout.context_template`
@@ -28,18 +26,16 @@ Config items referenced in the specified source paths:
 - `config.actor_rollout_ref.rollout.top_p`
 - `config.actor_rollout_ref.rollout.terminate_after_gone_mad`
 - `config.actor_rollout_ref.rollout.train_history_infer_token`
-- `config.actor_rollout_ref.rollout.use_agentscope`
+- `config.actor_rollout_ref.rollout.use_agentscope_protocol`
 - `config.actor_rollout_ref.rollout.use_step_reward_from_env`
 - `config.actor_rollout_ref.rollout.val_kwargs.temperature`
 - `config.actor_rollout_ref.rollout.val_kwargs.top_k`
 - `config.actor_rollout_ref.rollout.val_kwargs.top_p`
-- `config.context_manager.context_template_alien_llm_model`
-- `config.context_manager.context_template_alien_model_response_length`
-- `config.context_manager.context_template_clip_trigger_token_num`
-- `config.context_manager.context_template_train_sp_action`
-- `config.context_manager.linear_think_context_manager.extract_box_before_submit_as_action`
-- `config.context_manager.linear_think_context_manager.remove_think_before_submit_as_action`
-- `config.context_manager.sliding_window_context_manager`
+
+
+- `config.actor_rollout_ref.actor.ppo_max_token_len_per_gpu`
+- `config.actor_rollout_ref.ref.log_prob_max_token_len_per_gpu`
+
 - `config.critic.ppo_max_token_len_per_gpu`
 - `config.data.max_prompt_length`
 - `config.data.max_response_length`

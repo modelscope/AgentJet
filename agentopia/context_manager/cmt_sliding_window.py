@@ -143,7 +143,7 @@ class SlidingWindowCMT(MultiSampleCMT):
         """TODO: create a better summary message
         """
         x = self.omitted_msg_so_far // 2
-        enable_llm_memory_extraction = self.config.context_manager.sliding_window_context_manager
+        enable_llm_memory_extraction = self.config.astune.context_manager.sliding_window_cm
         if not enable_llm_memory_extraction:
             return ExtendedMessage(
                 author="memory",

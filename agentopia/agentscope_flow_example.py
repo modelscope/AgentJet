@@ -1,9 +1,9 @@
 from agentopia.agentscope_flow import BeyondAgentProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
-from agentopia.agentscope_protocol import AgentScopeLearnProtocal
+from agentopia.agentscope_protocol import AgentScopeLearnProtocol
 
-class ExampleAgentScopeLearnProtocal(AgentScopeLearnProtocal):
+class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
 
     trainer: str = Field(default="agentscorpion-trinity")
 
@@ -33,7 +33,7 @@ class ExampleAgentScopeLearnProtocal(AgentScopeLearnProtocal):
         for _ in range(config.actor_rollout_ref.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
-            # env service protocal
+            # env service protocol
             obs, _, terminate, _ = beyondagent_proxy.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
             # generate new message from env output
             interaction_message = Msg(name="env", content=obs, role="user")

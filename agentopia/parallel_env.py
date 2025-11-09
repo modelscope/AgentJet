@@ -50,7 +50,6 @@ class AsyncLlmBridge(object):
         # self.model_name = self.async_rollout_manager.chat_scheduler.model_name
         self.tokenizer = tokenizer
         self.pad_token_id = self.tokenizer.pad_token_id
-        self.rollout_config = config.actor_rollout_ref.rollout
         self.current_token = 0
         self.current_global_steps = "NA"
 
@@ -84,9 +83,9 @@ class AsyncLlmBridge(object):
                 )
             )
 
-            if self.rollout_config.name == 'vllm':
+            if self.config.actor_rollout_ref.rollout.name == 'vllm':
                 token_array = final_res.outputs[0].token_ids
-            elif self.rollout_config.name == 'sglang':
+            elif self.config.actor_rollout_ref.rollout.name == 'sglang':
                 token_array = final_res
 
             decoded_text = self.tokenizer.decode(token_array)
@@ -236,26 +235,26 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
         """
         def get_sample_params():
             response_length_eps = 6 # 减少几个token给lm_start等special token的后续处理留余地
-            if self.rollout_config.name == 'vllm':
+            if self.config.actor_rollout_ref.rollout.name == 'vllm':
                 sampling_params = dict(
                     n=1,
-                    max_tokens=self.rollout_config.response_length - response_length_eps,
+                    max_tokens=self.config.actor_rollout_ref.rollout.response_length - response_length_eps,
                     min_tokens=1,   # 必须至少输出1个token
-                    temperature=self.rollout_config.temperature,
-                    top_p=self.rollout_config.top_p
+                    temperature=self.config.actor_rollout_ref.rollout.temperature,
+                    top_p=self.config.actor_rollout_ref.rollout.top_p
                 )
             else:
                 sampling_params = dict(
                     n=1,
-                    max_new_tokens=self.rollout_config.response_length,
-                    temperature=self.rollout_config.temperature,
-                    top_p=self.rollout_config.top_p
+                    max_new_tokens=self.config.actor_rollout_ref.rollout.response_length,
+                    temperature=self.config.actor_rollout_ref.rollout.temperature,
+                    top_p=self.config.actor_rollout_ref.rollout.top_p
                 )
 
             if mode == "validate":
-                sampling_params["temperature"] = self.rollout_config.val_kwargs.temperature
-                sampling_params["top_k"] = self.rollout_config.val_kwargs.top_k
-                sampling_params["top_p"] = self.rollout_config.val_kwargs.top_p
+                sampling_params["temperature"] = self.config.actor_rollout_ref.rollout.val_kwargs.temperature
+                sampling_params["top_k"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_k
+                sampling_params["top_p"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_p
             return sampling_params
 
 
