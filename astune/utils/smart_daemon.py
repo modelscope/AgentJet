@@ -50,7 +50,7 @@ class LaunchWhenAbsent:
         else:
             self.cmd = ['nohup'] + [self.exe] + full_argument_list
 
-        log_dir = Path("logs/companion")
+        log_dir = Path("launcher_record/companion_logs/companion")
         log_dir.mkdir(parents=True, exist_ok=True)
         hostname = os.uname().nodename
         if tag:
