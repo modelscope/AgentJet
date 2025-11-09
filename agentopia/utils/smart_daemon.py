@@ -6,6 +6,7 @@ import hashlib
 import time
 import json
 import logging
+from loguru import logger
 from pathlib import Path
 from typing import Optional, Tuple, List
 
@@ -146,10 +147,10 @@ class LaunchWhenAbsent:
 
         if is_running:
             if force_restart:
-                print(f"Force restarting")
+                logger.warning(f"Force restarting")
                 self._kill_existing_process_group(pgid)
             else:
-                print(f"Script is already running, skipping launch")
+                logger.success(f"Script is already running, skipping launch. pgid: {pgid}")
                 return
         try:
             # Set up process creation flags and environment
@@ -165,8 +166,8 @@ class LaunchWhenAbsent:
                 raise NotImplementedError("Windows support is not implemented yet.")
             else:  # Unix-like systems
                 # Use nohup and redirect output
-                print("log to", log_file)
-                print("launching", " ".join(self.cmd))
+                logger.warning("\nlaunching: " + " ".join(self.cmd))
+                logger.warning(f"\nlogging to {log_file}\n")
                 # Open log file
                 if log_file.exists():
                     os.remove(log_file)

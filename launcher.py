@@ -8,8 +8,6 @@ from dotenv import load_dotenv; load_dotenv()
 from agentopia.utils.smart_daemon import LaunchCommandWhenAbsent
 
 
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='BA Launcher')
 
@@ -31,6 +29,11 @@ def parse_args():
         required=False,
         help='Path to configuration file'
     )
+    parser.add_argument('--with-exp-maker',
+        action='store_true',
+        default=False,
+        help='Launch exp maker'
+    )
     parser.add_argument('--with-ray',
         action='store_true',
         default=False,
@@ -45,6 +48,11 @@ def parse_args():
         action='store_true',
         default=False,
         help='Launch webshop'
+    )
+    parser.add_argument('--with-bfcl',
+        action='store_true',
+        default=False,
+        help='Launch bfcl'
     )
     parser.add_argument('--with-logview',
         action='store_true',
@@ -91,11 +99,12 @@ def check_debugpy_version():
 
     print(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
 
-check_debugpy_version()
 
 def pty_launch(service_name: str, success_std_string="Starting server on"):
     service_path = os.environ.get(f'{service_name.upper()}_PATH')
     service_script = os.environ.get(f'{service_name.upper()}_SCRIPT')
+    if service_path is None or service_script is None:
+        raise ValueError(f"Environment variables for {service_name} not properly set.")
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[service_script],
         dir=service_path,
@@ -158,6 +167,7 @@ def prepare_experiment_config(yaml_path, args):
 
     ## 2. copy files to backup
     BACK_TARGETS = os.environ.get('BACK_TARGETS', '').split(',')
+    BACK_TARGETS = [p for p in BACK_TARGETS if os.path.exists(p)]
 
     for backup_target in BACK_TARGETS:
         print(f"Copying {backup_target} to {os.path.join(backup_dir, os.path.basename(backup_target))}")
@@ -179,105 +189,62 @@ def prepare_experiment_config(yaml_path, args):
 
     return yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name
 
+def launch_logview(exp_name=None):
+    """
+    Launch the log viewer service and open the web browser to view logs.
 
-def main():
-    args = parse_args()
+    Args:
+        exp_name: Optional experiment name. If not provided, "default_experiment" is used.
+    """
+    companion = LaunchCommandWhenAbsent(
+        full_argument_list=[
+            sys.executable,
+            '-m',
+            'web_display.start_web',
+        ],
+        dir='./',
+        tag="logview"
+    )
+    companion.launch(launch_wait_time=1800, success_std_string="Uvicorn running on", env_dict={})
+    time.sleep(2.5)
+    try:
+        import webbrowser
+        from datetime import datetime
+        # Use default experiment name if not set
+        log_exp_name = exp_name if exp_name else "default_experiment"
+        final_log_path = os.path.join("experiments", log_exp_name, "trace_rollout", datetime.now().strftime("%Y_%m_%d_%H_%M"))
+        # make dir
+        os.makedirs(final_log_path)
+        webbrowser.open("http://127.0.0.1:8181/"+"?path="+os.path.abspath(final_log_path))
+    except Exception as e:
+        print(f"Error opening web browser: {e}")
+        pass
 
-    # Initialize variables with default values to avoid "possibly unbound" errors
-    backbone_target = "agentopia.main_trinity"  # Default to trinity
-    yaml_backup_dst = None
-    exe_exp_base = None
-    exe_yaml_path = None
-    exp_name = None
-    env = os.environ.copy()
+def start_ray_service(args):
+    """
+    Start a Ray service with appropriate configuration.
 
-    if args.backbone == "verl":
-        backbone_target = "agentopia.main_verl"
-    if args.backbone == "debug":
-        backbone_target = "agentopia.main_vllm"
-    if args.backbone == "trinity":
-        backbone_target = "agentopia.main_trinity"
-
-    if args.conf:
-        yaml_path = args.conf
-        yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name = prepare_experiment_config(yaml_path, args)
-    else:
-        assert args.with_appworld or args.with_webshop or args.with_logview or args.with_crafters, "You must at least do something."
-
+    Args:
+        args: Command line arguments containing debug settings
+    """
+    ray_env = {}
     if args.db:
-        env["RAY_DEBUG_POST_MORTEM"] = "1"
-        env["DEBUG_TAGS"] = args.db
-        env["RAY_record_task_actor_creation_sites"] = "true"
-        print("Debug mode is ON")
-    else:
-        print("Debug mode is OFF")
-
-    if args.with_ray:
-        ray_env = {}
-        if args.db:
-            ray_env["RAY_DEBUG_POST_MORTEM"] = "1"
-            ray_env["DEBUG_TAGS"] = args.db
-            ray_env["RAY_record_task_actor_creation_sites"] =  "true"
-        companion = LaunchCommandWhenAbsent(
-            full_argument_list=[
-                f"source ./.venv/bin/activate && ray start --head && sleep infinity"
-            ],
-            dir='./',
-            tag="ray_service",
-            use_pty=True
-        )
-        companion.launch(
-            launch_wait_time=1800,
-            success_std_string="Ray runtime started",
-            env_dict=ray_env,
-        )
-
-    if args.with_exp_maker:
-        # test done
-        pty_launch("exp_maker", success_std_string="Uvicorn running on")
-
-    if args.with_appworld:
-        # test done
-        pty_launch("appworld")
-
-    if args.with_crafters:
-        # test done
-        pty_launch("crafters")
-
-    if args.with_webshop:
-        # not tesed
-        pty_launch("webshop")
-
-    if args.with_bfcl:
-        pty_launch("bfcl")
-
-    if args.with_logview:
-        companion = LaunchCommandWhenAbsent(
-            full_argument_list=[
-                sys.executable,
-                '-m',
-                'web_display.start_web',
-            ],
-            dir='./',
-            tag="logview"
-        )
-        companion.launch(launch_wait_time=1800,success_std_string="Uvicorn running on", env_dict={})
-        time.sleep(2.5)
-        try:
-            import webbrowser
-            from datetime import datetime
-            # Use default experiment name if not set
-            log_exp_name = exp_name if exp_name else "default_experiment"
-            final_log_path = os.path.join("experiments", log_exp_name, "trace_rollout", datetime.now().strftime("%Y_%m_%d_%H_%M"))
-            # make dir
-            os.makedirs(final_log_path)
-            webbrowser.open("http://127.0.0.1:8181/"+"?path="+os.path.abspath(final_log_path))
-        except Exception as e:
-            print(f"Error opening web browser: {e}")
-            pass
-
-    if args.conf and yaml_backup_dst and exe_exp_base and exe_yaml_path:
-        execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env)
+        ray_env["RAY_DEBUG_POST_MORTEM"] = "1"
+        ray_env["DEBUG_TAGS"] = args.db
+        ray_env["RAY_record_task_actor_creation_sites"] = "true"
+    companion = LaunchCommandWhenAbsent(
+        full_argument_list=[
+            f"source ./.venv/bin/activate && ray start --head --block"
+        ],
+        dir='./',
+        tag="ray_service",
+        use_pty=True
+    )
+    companion.launch(
+        launch_wait_time=1800,
+        success_std_string="Ray runtime started",
+        env_dict=ray_env,
+    )
 
 def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env):
     """
@@ -323,5 +290,65 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
         sys.exit(1)
 
 
+
+def main():
+    args = parse_args()
+
+    # Initialize variables with default values to avoid "possibly unbound" errors
+    backbone_target = "agentopia.main_trinity"  # Default to trinity
+    yaml_backup_dst = None
+    exe_exp_base = None
+    exe_yaml_path = None
+    exp_name = None
+    env = os.environ.copy()
+
+    if args.backbone == "verl":
+        backbone_target = "agentopia.main_verl"
+    if args.backbone == "debug":
+        backbone_target = "agentopia.main_vllm"
+    if args.backbone == "trinity":
+        backbone_target = "agentopia.main_trinity"
+
+    if args.conf:
+        yaml_path = args.conf
+        yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name = prepare_experiment_config(yaml_path, args)
+
+    if args.db:
+        env["RAY_DEBUG_POST_MORTEM"] = "1"
+        env["DEBUG_TAGS"] = args.db
+        env["RAY_record_task_actor_creation_sites"] = "true"
+        print("Debug mode is ON")
+    else:
+        print("Debug mode is OFF")
+
+    if args.with_ray:
+        start_ray_service(args)
+
+    if args.with_exp_maker:
+        # test done
+        pty_launch("exp_maker", success_std_string="Uvicorn running on")
+
+    if args.with_appworld:
+        # test done
+        pty_launch("appworld")
+
+    if args.with_crafters:
+        # test done
+        pty_launch("crafters")
+
+    if args.with_webshop:
+        # not tesed
+        pty_launch("webshop")
+
+    if args.with_bfcl:
+        pty_launch("bfcl")
+
+    if args.with_logview:
+        launch_logview(exp_name)
+
+    if args.conf and yaml_backup_dst and exe_exp_base and exe_yaml_path:
+        execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env)
+
 if __name__ == "__main__":
+    check_debugpy_version()
     main()
