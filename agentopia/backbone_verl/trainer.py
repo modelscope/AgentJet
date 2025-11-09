@@ -1560,11 +1560,7 @@ class BeyondAgentRayPPOTrainer:
         tasks = []
         for _ in range(pass_n):
             tasks += [
-                Task(
-                    task_id=str(dat['extras']['task_id']),
-                    main_query=dat['raw_prompt'],
-                    env_type=self.config.env_service.env_type
-                ) for dat in target_dataset
+                task for task in target_dataset
             ]
 
         cmts = self.parallel_env.rollout(tasks=tasks, mode=mode, epoch=epoch) # "sample" or "validate"
@@ -1660,58 +1656,43 @@ class BeyondAgentRayPPOTrainer:
 
 
     def get_eval_dataset(self):
-        from agentopia.utils.process_dataset import create_rl_dataset, create_rl_sampler
+        from agentopia.utils.process_dataset import create_rl_dataset
         if self.config.env_service.env_type == "appworld":
             if hasattr(self, 'main_val_dataset'):
                 return self.main_val_dataset, None, None
             else:
                 config = self.config
-                appworld_dataset_base = os.path.dirname(config.data.val_files)
-                dev_dataset_path = "val(read_from_env_service)"
-                # test_normal_dataset_path = os.path.join(appworld_dataset_base, "test_normal.parquet")
-                # test_chanllenge_dataset_path = os.path.join(appworld_dataset_base, "test_challenge.parquet")
-                test_dev_dataset = create_rl_dataset(dev_dataset_path, config.data, tokenizer=self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                # test_normal_dataset = create_rl_dataset(test_normal_dataset_path, config.data, tokenizer=self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                # test_chanllenge_dataset = create_rl_dataset(test_chanllenge_dataset_path, config.data, tokenizer=self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                # if config.data.fast_eval: # 使用一个小测试集
-                self.main_val_dataset = test_dev_dataset
-                return self.main_val_dataset, None, None
-                # else:
-                #     self.main_val_dataset = test_normal_dataset
-                #     return self.main_val_dataset, None, None
 
-        elif self.config.env_service.env_type == "webshop":
-            if hasattr(self, 'main_val_dataset'):
-                return self.main_val_dataset, None, None
-            else:
-                config = self.config
-                self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                if config.data.fast_eval: # 使用一个小测试集
-                    self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(100))   # limit to 100 samples
-                    return self.main_val_dataset, None, None
-                else:
-                    self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(500))   # limit to 100 samples
-                    return self.main_val_dataset, None, None
+                from agentopia.task_reader.task_reader_base import TaskReaderRouter
+                task_reader = TaskReaderRouter(config)
+                tasks = task_reader.get_validation_tasks()
 
-        elif self.config.env_service.env_type == "crafters":
-            if hasattr(self, 'main_val_dataset'):
-                return self.main_val_dataset, None, None
-            else:
-                config = self.config
-                self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(10))   # limit to 100 samples
+                self.main_val_dataset = tasks
                 return self.main_val_dataset, None, None
 
-        elif self.config.env_service.env_type == "appworld2":
-            if hasattr(self, 'main_val_dataset'):
-                return self.main_val_dataset, None, None
-            else:
-                config = self.config
-                self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-                self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(100))   # limit to 100 samples
-                return self.main_val_dataset, None, None
+        # elif self.config.env_service.env_type == "webshop":
+        #     if hasattr(self, 'main_val_dataset'):
+        #         return self.main_val_dataset, None, None
+        #     else:
+        #         config = self.config
+        #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+        #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+        #         if config.data.fast_eval: # 使用一个小测试集
+        #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(100))   # limit to 100 samples
+        #             return self.main_val_dataset, None, None
+        #         else:
+        #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(500))   # limit to 100 samples
+        #             return self.main_val_dataset, None, None
+
+        # elif self.config.env_service.env_type == "crafters":
+        #     if hasattr(self, 'main_val_dataset'):
+        #         return self.main_val_dataset, None, None
+        #     else:
+        #         config = self.config
+        #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+        #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
+        #         self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(10))   # limit to 100 samples
+        #         return self.main_val_dataset, None, None
+
         else:
             raise NotImplementedError

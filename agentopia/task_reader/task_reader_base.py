@@ -227,3 +227,30 @@ class TaskReaderRouter(TaskReaderBase):
 
     def get_validation_tasks(self) -> List[Task]:
         return self.task_reader.get_validation_tasks()
+
+def task_to_standard_dataset(tasks: List[Task]) -> datasets.Dataset:
+    """
+    Convert a list of Task objects to a standard Hugging Face Dataset.
+
+    Args:
+        tasks (List[Task]): List of Task objects.
+
+    Returns:
+        datasets.Dataset: Hugging Face Dataset containing the tasks.
+    """
+    data = {
+        'task_id': [],
+        'main_query': [],
+        'init_messages': [],
+        'env_type': [],
+        'metadata': [],
+    }
+
+    for task in tasks:
+        data['task_id'].append(task.task_id)
+        data['main_query'].append(task.main_query)
+        data['init_messages'].append(task.init_messages)
+        data['env_type'].append(task.env_type)
+        data['metadata'].append(task.metadata)
+
+    return datasets.Dataset.from_dict(data)

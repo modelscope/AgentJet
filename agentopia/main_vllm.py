@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from agentopia.schema.task import Task
 from beast_logger import register_logger
 from agentopia.parallel_env import ParallelEnvManager
-from agentopia.utils.process_dataset import create_rl_dataset, create_rl_sampler
 
 class TokenAndProb:
     def __init__(self, t):

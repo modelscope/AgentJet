@@ -600,7 +600,7 @@ class ParallelEnvManager(DynamicRollout):
             finally:
                 cmt.generate_log(global_step=self.current_global_steps)
                 if os.environ.get('BEST_LOGGER_PATH', None) and os.environ.get('ASTUNE_DEBUG', None):
-                    logger.success(f"View rollout details at [https://localhost:8181/file={os.environ['BEST_LOGGER_PATH']}]")
+                    logger.success(f"View rollout details at [https://localhost:8181/?path={os.path.abspath(os.environ['BEST_LOGGER_PATH'])}]")
             sample_arr_final += sample_arr
 
         # Step 2: Calculate how many samples need to be removed

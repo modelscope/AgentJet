@@ -36,22 +36,19 @@ git clone https://github.com/binary-husky/verl.git external/verl
 # Install dependencies
 uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
 uv pip install -r requirements_verl.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
-uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/
+uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
 
 # Install flash attention (must be installed last)
 uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
 ```
 
-## Setup
+## Get Started
 
-本节仅内部沟通使用
+本节仅内部沟通使用，后期重写。
 
+我们提供一个多功能launcher用于调试和训练，您借助launcher选择任意训练框架启动训练。
 
-### Creating a AgentScope Workflow
-
-
-
-1. 脱离trinity和verl，只与vllm（自动创建）连接，进行调试
+1. 使用launcher进行调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试
 ```bash
 clear && \
 killer ray && killer python && \
@@ -59,8 +56,10 @@ killer vllm  && \
 killer VLLM  && \
 python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
 ```
+备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试
 
-2. 使用trinity进行训练
+
+2. 使用launcher进行训练：使用trinity进行训练
 ```bash
 clear && \
 ray stop && \
@@ -68,6 +67,18 @@ killer ray && \
 killer python  && \
 python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
 ```
+备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
+
+3. 使用launcher进行训练：使用verl进行训练
+```bash
+clear && \
+ray stop && \
+killer ray && \
+killer python  && \
+python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+```
+备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
+
 
 
 ### Launching with Different Environments

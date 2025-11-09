@@ -245,11 +245,13 @@ class TaskRunner:
         resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
 
         from verl.utils.dataset.rl_dataset import collate_fn
-        from agentopia.utils.process_dataset import create_rl_dataset, create_rl_sampler
+        from agentopia.utils.process_dataset import create_rl_sampler
 
         # Create training and validation datasets.
-        train_dataset = create_rl_dataset(config.data.train_files, config.data, tokenizer, processor, is_train=True, env_config=config.env_service)
-        val_dataset = create_rl_dataset(config.data.val_files, config.data, tokenizer, processor, is_train=False, env_config=config.env_service)
+        from agentopia.task_reader.task_reader_base import TaskReaderRouter, task_to_standard_dataset
+        task_reader = TaskReaderRouter(config)
+        val_dataset = task_to_standard_dataset(task_reader.get_validation_tasks())
+        train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
         from agentopia.backbone_verl.trainer import BeyondAgentRayPPOTrainer
