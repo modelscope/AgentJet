@@ -50,6 +50,10 @@ cd external/verl && uv pip uninstall . && cd ../..
 uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
 ```
 
+<div align="center">
+  <img src="project-diagram.png" alt="项目架构图">
+</div>
+
 ## Get Started
 
 本节仅内部沟通使用，后期重写。
@@ -91,7 +95,42 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
 
 
+# 简要架构
 
+1. 读取task（对应配置字段 astune.task_reader）
+    - astune/task_reader/task_reader_base.py
+        - class::TaskReaderEnvService
+        - class::TaskReaderJsonl
+        - class::TaskReaderHuggingFace
+
+2. 定义 AgentScopeWorkflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
+    - tutorial/appworld.py
+    - tutorial/math_agent.py
+
+3. 定义评分函数（对应配置字段 astune.task_judge.judge_protocol ）
+    - astune/task_judge/judge_base.py
+    - astune/task_judge/env_service_as_judge.py
+        - class::EnvServiceJudge
+    - astune/task_judge/math_answer_as_judge.py
+        - class::MathAnswerAsJudge
+        - class::MathAnswerAndLlmAsJudge
+
+4. 指定模型（对应配置字段 astune.model.path ）
+
+5. 配置系统（完善中，先凑合着用一下）
+    - 默认配置
+        - astune/default_config/default.yaml         （ 存储verl的默认训练配置，可以被 --conf 指定的 yaml 以同名配置的形式覆盖 ）
+        - astune/default_config/trinity_default.yaml （ 存储trinity默认配置，但可以被 --conf 指定的 yaml 以 trinity.xxx 的形式覆盖 ）
+    - 配置自动对齐（定义哪些参数需要自动对齐到verl或者trinity上）
+        - astune/default_config/config_auto_convertion_verl.json
+        - astune/default_config/config_auto_convertion_trinity.json
+
+6. ASTune 和 AgentScope 交互系统 V0.5
+    - astune/context_manager/cmt_agentscope.py 负责
+        - 处理AgentScope生成的Token
+        - 缓存judge给出评分需要的各种数据（包括但不限于所有对话message，env_service句柄，从astune.task_reader读取的task metadata等）
+        - 提供LLM的桥接
+        - 负责合并timeline
 
 # note
 
