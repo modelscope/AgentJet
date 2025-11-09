@@ -1,7 +1,7 @@
 from astune.agentscope_flow import BeyondAgentProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
-from astune.agentscope_protocol import AgentScopeLearnProtocol
+from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
 from loguru import logger
 
 def extract_final_answer(result) -> str:

@@ -3,11 +3,11 @@ import importlib
 import torch
 import copy
 import asyncio
-from astune.client.env_client import EnvClient
+from astune.env_service_client.env_client import EnvClient
 from astune.agent_flow import BaseAgentFlow
 from astune.schema.trajectory import Reward, Trajectory
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
-from astune.agentscope_protocol import AgentScopeLearnProtocol
+from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
 from astune.context_manager.cmt_linear import replace_token_ids, CMTLinear
 from astune.schema.trajectory import Sample, Reward
 from typing import Any, Dict, List, Union, Tuple
@@ -75,6 +75,7 @@ class AgentScopeWorkflow(BaseAgentFlow):
         )
         beyondagent_proxy.update_judge_input_dictionary(env=env)
         beyondagent_proxy.update_judge_input_dictionary(task_core_arg=task_core_arg)
+        beyondagent_proxy.update_judge_input_dictionary(grouped_steps=beyondagent_proxy.grouped_steps)
 
         raw_reward, is_success = beyondagent_proxy.get_judge().compute_reward(
             beyondagent_proxy.get_judge_input_dictionary()
@@ -89,7 +90,6 @@ class AgentScopeWorkflow(BaseAgentFlow):
             description=""
         )
         beyondagent_proxy.process_reward(reward)
-
 
         # generate token before merging
         beyondagent_proxy.remove_last_context()

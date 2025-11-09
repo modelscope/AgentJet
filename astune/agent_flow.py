@@ -2,7 +2,7 @@ import time
 import os
 
 from loguru import logger
-from astune.client.env_client import EnvClient
+from astune.env_service_client.env_client import EnvClient
 from astune.utils.utils import convert_tool_to_user_message
 from astune.schema.trajectory import Reward
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage

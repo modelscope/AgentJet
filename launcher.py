@@ -208,11 +208,7 @@ def launch_logview(exp_name=None):
         import webbrowser
         from datetime import datetime
         # Use default experiment name if not set
-        log_exp_name = exp_name if exp_name else "default_experiment"
-        final_log_path = os.path.join("experiments", log_exp_name, "trace_rollout", datetime.now().strftime("%Y_%m_%d_%H_%M"))
-        # make dir
-        os.makedirs(final_log_path)
-        webbrowser.open("http://127.0.0.1:8181/"+"?path="+os.path.abspath(final_log_path))
+        webbrowser.open("http://127.0.0.1:8181/")
     except Exception as e:
         print(f"Error opening web browser: {e}")
         pass

@@ -184,9 +184,6 @@ class BeyondAgentContextTemplate(CMTLinear):
                     assert source_step[i].need_training
             return source_step
 
-        from vsdb import bp
-        bp("MERGE")
-
         absorbed_step_indices = []
         reversed_grouped_steps = list(reversed(self.grouped_steps))
         for i in range(len(reversed_grouped_steps)):

@@ -2,7 +2,7 @@ import uuid
 import random
 
 from omegaconf import DictConfig
-from astune.client.env_client_ng import EnvClient as EnvClientNg
+from astune.env_service_client.env_client_ng import EnvClient as EnvClientNg
 from astune.agent_flow import AgentFlow
 from astune.context_manager.cmt_linear import CMTLinear
 from loguru import logger

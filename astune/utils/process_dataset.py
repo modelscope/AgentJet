@@ -56,7 +56,7 @@ class EnvServiceDataset(RLHFDataset):
         env_type = self.env_config.env_type
         dataframes = []
 
-        from astune.client.env_client_ng import EnvClient
+        from astune.env_service_client.env_client_ng import EnvClient
         for parquet_file in self.data_files:
             # read parquet files and cache
             if 'train(read_from_env_service)' in parquet_file:
