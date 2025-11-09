@@ -12,16 +12,16 @@ class MultiSampleCMT(CMTLinear):
         self.tokenizer = tokenizer
         self.full_context: List[ExtendedMessage] = []
         self.current_context_status = ""
-        max_response_length = self.config.actor_rollout_ref.rollout.response_length
-        max_model_len: int = self.config.actor_rollout_ref.rollout.max_model_len
+        max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
+        max_model_len: int = self.config.astune.rollout.max_model_len
 
-        assert self.config.data.max_response_length < self.config.data.max_prompt_length, "think linear template requires a big max_prompt_length"
+        assert self.config.astune.data.max_response_length < self.config.astune.data.max_prompt_length, "think linear template requires a big max_prompt_length"
 
         self.max_seq_length: int = max_model_len - max_response_length
-        assert self.max_seq_length <= self.config.data.max_prompt_length, "max_seq_length should be less than or equal to max_prompt_length"
+        assert self.max_seq_length <= self.config.astune.data.max_prompt_length, "max_seq_length should be less than or equal to max_prompt_length"
 
 
-        self.max_env_output_length: int = self.config.actor_rollout_ref.rollout.max_env_len
+        self.max_env_output_length: int = self.config.astune.rollout.max_env_len
         self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
 
         self.terminal_rewards_dict = {}
@@ -33,7 +33,7 @@ class MultiSampleCMT(CMTLinear):
         self.context_time_cost = 0
         self.already_mad_flag = False
 
-        self.force_think = config.actor_rollout_ref.rollout.force_think
+        self.force_think = config.astune.rollout.force_think
         self.env_feedin_preference = config.env_service.env_feedin_preference
         if not self.force_think:
             # think_hint_for_qwen3 =
@@ -65,7 +65,7 @@ class MultiSampleCMT(CMTLinear):
         return len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
 
     def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
-        if self.already_mad_flag and self.config.actor_rollout_ref.rollout.terminate_after_gone_mad:
+        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
         if self._get_seq_length(messages) < self.max_seq_length:   # self.config.env_engine.max_seq_length = 20480
             return True, "safe"
@@ -137,7 +137,7 @@ class MultiSampleCMT(CMTLinear):
 
     def process_reward(self, reward_structure: Reward):
         # lienar 模式有多条轨迹
-        use_step_reward_from_env = self.config.actor_rollout_ref.rollout.get("use_step_reward_from_env", False)
+        use_step_reward_from_env = self.config.astune.rollout.get("use_step_reward_from_env", False)
         if not use_step_reward_from_env:
             self.reward_structure = reward_structure
             self.reward_structure.step_reward = [0.0 for _ in range(len(self.grouped_steps))]
@@ -159,13 +159,13 @@ class MultiSampleCMT(CMTLinear):
 
         # --------------- global level reward ---------------
         global_reward = self.reward_structure.raw_reward
-        gamma = self.config.actor_rollout_ref.rollout.gamma
+        gamma = self.config.astune.rollout.gamma
         step_reward_base = global_reward * (gamma ** (total_steps - index - 1))
 
         # --------------- compute step level reward ---------------
         step_reward = step_reward_base
         if self.already_mad_flag:
-            step_reward = self.config.actor_rollout_ref.rollout.gone_mad_reward_override
+            step_reward = self.config.astune.rollout.agent_madness_reward
             self.reward_structure.madness = -1.0
 
         return step_reward
@@ -209,7 +209,8 @@ class LinearThinkCMT(MultiSampleCMT):
                 new_ext_msg_content = new_ext_msg_content.replace("<think>", "")
                 new_ext_msg_content = new_ext_msg_content.replace("</think>", "")
                 # new_ext_msg_content = re.sub(r'<think>.*?</think>', '<think>\n\n</think>', ext_msg.content, flags=re.DOTALL)
-                if self.config.actor_rollout_ref.rollout.train_history_infer_token:
+
+                if self.config.astune.context_manager.linear_think_cm.train_history_infer_token:
                     assert ext_msg.author == "llm"
                     self.latest_llm_interaction_socket[index] = ExtendedMessage(
                         author=ext_msg.author,
@@ -229,7 +230,7 @@ class LinearThinkCMT(MultiSampleCMT):
                         tokenizer=self.tokenizer,
                     )
             elif ext_msg.author in ["env", "initialization"]:
-                if self.config.actor_rollout_ref.rollout.train_history_infer_token:
+                if self.config.astune.context_manager.linear_think_cm.train_history_infer_token:
                     # 如果是初始化或者环境反馈，都加上 /no_think 标签
                     if not is_last:
                         self.latest_llm_interaction_socket[index] = ExtendedMessage(

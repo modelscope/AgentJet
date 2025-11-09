@@ -235,12 +235,12 @@ class BeyondAgentContextTemplate(CMTLinear):
     def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
         prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
-        max_response_length = self.config.actor_rollout_ref.rollout.response_length
-        max_model_len: int = self.config.actor_rollout_ref.rollout.max_model_len
+        max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
+        max_model_len: int = self.config.astune.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
         if self.should_interrupt_fn():
             return False, "externally_interrupted"
-        if self.already_mad_flag and self.config.actor_rollout_ref.rollout.terminate_after_gone_mad:
+        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
         if length < self.max_seq_length:
             return True, f"safe[{length} < {max_model_len} - {max_response_length}]"
@@ -292,7 +292,7 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
 
         # compute_string_madness
         if not self.already_mad_flag:
-            if compute_string_madness(completion=llm_output['content'], checklist=self.config.actor_rollout_ref.rollout.compute_madness_checklist) < 0.0:
+            if compute_string_madness(completion=llm_output['content'], checklist=self.config.astune.rollout.compute_madness_checklist) < 0.0:
                 self.already_mad_flag = True
 
         # dummy response for now
@@ -311,7 +311,7 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
         if token_generator == "manual":
             input_msg_ref = copy.deepcopy(messages)
             token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output)
-            assert len(token_arr_method2) <= self.config.actor_rollout_ref.rollout.response_length, f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.actor_rollout_ref.rollout.response_length}"
+            assert len(token_arr_method2) <= self.config.astune.rollout.max_response_length_in_one_turn, f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.astune.rollout.max_response_length_in_one_turn}"
             llm_ext_msg.token_arr = token_arr_method2
             llm_ext_msg.token_logprob_arr = token_logprob_arr
             self.generated_token_callback_fn(llm_ext_msg.token_arr)
@@ -323,7 +323,7 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
             ]
             prompt_text = self.tokenizer.apply_chat_template(self.to_role_content(self.full_context), tokenize=False, add_generation_prompt=True)
             length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
-            if length >= self.config.actor_rollout_ref.rollout.max_model_len:
+            if length >= self.config.astune.rollout.max_model_len:
                 raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, before gen info {info}, generated token length {len(llm_ext_msg.token_arr)}")
 
             self.grouped_steps += [copy.deepcopy(self.full_context)]

@@ -26,7 +26,7 @@ class AgentScopeWorkflow(BaseAgentFlow):
         task_id = task_core_arg.task_id
 
         # fetch learn protocol
-        protocol = self.config.actor_rollout_ref.rollout.agentscope_learn_protocol
+        protocol = self.config.astune.rollout.agentscope_learn_protocol
         module_, class_ = protocol.split('->')
         protocol_cls: AgentScopeLearnProtocol = getattr(importlib.import_module(module_), class_)
         agentscope_protocol = protocol_cls(trainer='agentopia-trinity', agentflow_name='appworld')  # type: ignore
@@ -80,12 +80,12 @@ class AgentScopeWorkflow(BaseAgentFlow):
         if raw_reward >= 1: success_rate = 1.0
         else: success_rate = 0.0
 
-        if self.config.actor_rollout_ref.rollout.magnify_success:
+        if self.config.astune.rollout.add_special_success_reward:
             if success_rate == 1:
                 raw_reward = 1.0 + raw_reward * 0.5
             else:
                 raw_reward = 0.0 + raw_reward * 0.5
-        if self.config.actor_rollout_ref.rollout.binary_reward:
+        if self.config.astune.rollout.binary_reward:
             raw_reward = success_rate
 
         # generate token before merging

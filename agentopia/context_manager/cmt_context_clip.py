@@ -23,7 +23,7 @@ class SelfContextClipCMT(LinearThinkCMT):
         self.latest_env_response_id = ""
         self.latest_env_response_content = ""
         self.console_debug_mode = False
-        self.force_think = config.actor_rollout_ref.rollout.force_think
+        self.force_think = config.astune.rollout.force_think
         self.env_feedin_preference = config.env_service.env_feedin_preference
         self.train_sp_action = config.astune.context_manager.auto_context_cm.train_sp_action
         self.clipped_before = False

@@ -70,7 +70,7 @@ class CMTLinear(CMTBaseAttr):
         def get_seq_length(messages):
             prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
             return len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
-        if self.already_mad_flag and self.config.actor_rollout_ref.rollout.terminate_after_gone_mad:
+        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
         messages = self.prepare_previous_context(mod="raw")
         if get_seq_length(messages) < self.max_seq_length:   # self.config.env_engine.max_seq_length = 20480
@@ -191,7 +191,7 @@ class CMTLinear(CMTBaseAttr):
         if auto_register_full_context:
             self.full_context += [ext_msg]
             if not self.already_mad_flag:
-                if compute_string_madness(completion=llm_output['content'], checklist=self.config.actor_rollout_ref.rollout.compute_madness_checklist) < 0.0:
+                if compute_string_madness(completion=llm_output['content'], checklist=self.config.astune.rollout.compute_madness_checklist) < 0.0:
                     self.already_mad_flag = True
 
         if token_generator == "manual":
@@ -349,7 +349,7 @@ class CMTLinear(CMTBaseAttr):
 
     def group_tokenize_multi_group(self):
         sample_arr = []
-        max_num_group = self.config.actor_rollout_ref.rollout.multi_turn.max_sample_per_task
+        max_num_group = self.config.astune.rollout.multi_turn.max_sample_per_task
         for index, ext_steps in enumerate(self.grouped_steps):
             cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=index, total_steps=len(self.grouped_steps))
             sample = Sample(
@@ -440,13 +440,13 @@ class CMTLinear(CMTBaseAttr):
 
         # --------------- global level reward ---------------
         global_reward = self.reward_structure.raw_reward
-        gamma = self.config.actor_rollout_ref.rollout.gamma
+        gamma = self.config.astune.rollout.gamma
         step_reward_base = global_reward * (gamma ** (total_steps - index - 1))
 
         # --------------- compute step level reward ---------------
         step_reward = step_reward_base
         if self.already_mad_flag:
-            step_reward = self.config.actor_rollout_ref.rollout.gone_mad_reward_override
+            step_reward = self.config.astune.rollout.agent_madness_reward
             self.reward_structure.madness = -1.0
 
         return step_reward
@@ -457,7 +457,7 @@ class CMTLinear(CMTBaseAttr):
     #     # --------------- global level reward ---------------
     #     global_reward = self.reward_structure.raw_reward
     #     # here we assume global reward is given at the end of the trajectory
-    #     gamma = self.config.actor_rollout_ref.rollout.gamma
+    #     gamma = self.config.astune.rollout.gamma
     #     step_reward_base = global_reward * (gamma ** (total_steps - index - 1))
     #     # when index=0, total_steps=1, step_reward = global_reward * (gamma ** 0) = global_reward
     #     # when index=0, total_steps=2, step_reward = global_reward * (gamma ** 1) = global_reward * 0.95
@@ -477,11 +477,11 @@ class CMTLinear(CMTBaseAttr):
 
     #     # if any([r < 0 for r in mini_step_reward]):
     #     #     self.reward_structure.madness = -1.0
-    #     #     step_reward = self.config.actor_rollout_ref.rollout.gone_mad_reward_override
+    #     #     step_reward = self.config.astune.rollout.agent_madness_reward
     #     # else:
     #     #     pass
     #     if self.already_mad_flag:
-    #         step_reward = self.config.actor_rollout_ref.rollout.gone_mad_reward_override
+    #         step_reward = self.config.astune.rollout.agent_madness_reward
     #         self.reward_structure.madness = -1.0
 
     #     return step_reward
@@ -540,12 +540,12 @@ class CMTLinear(CMTBaseAttr):
 
             if split_prompt_reponse_index == -1:
                 # should we begin split point early?
-                if input_ids_len[-1] > self.config.data.max_prompt_length:
+                if input_ids_len[-1] > self.config.astune.data.max_prompt_length:
                     message_dict = self.to_role_content(ext_steps)
                     logger.error(f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix...")
                     logger.bind(exception=True).exception(f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix...\n\n" + str(message_dict))
                     assert i >= 1, "There should be at least one message before exceeding max_prompt_length"
-                    assert input_ids_len[-2] <= self.config.data.max_prompt_length, "The previous message should be within max_prompt_length, something is wrong"
+                    assert input_ids_len[-2] <= self.config.astune.data.max_prompt_length, "The previous message should be within max_prompt_length, something is wrong"
                     split_point_message_left_index = i - 1
                     assert split_point_message_left_index == (len(input_ids_len) - 2), "what?"
                     split_prompt_reponse_index = input_ids_len[split_point_message_left_index]

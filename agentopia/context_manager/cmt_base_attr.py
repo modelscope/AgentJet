@@ -162,10 +162,10 @@ class CMTBaseAttr(object):
         self.full_context: List[ExtendedMessage] = []
         self.grouped_steps: List[List[ExtendedMessage]] = []
         self.current_context_status = ""
-        max_response_length = self.config.actor_rollout_ref.rollout.response_length
-        max_model_len: int = self.config.actor_rollout_ref.rollout.max_model_len
+        max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
+        max_model_len: int = self.config.astune.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
-        self.max_env_output_length: int = self.config.actor_rollout_ref.rollout.max_env_len
+        self.max_env_output_length: int = self.config.astune.rollout.max_env_len
         self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
         self.generated_token_cnt = 0
 
@@ -179,12 +179,4 @@ class CMTBaseAttr(object):
         self.already_mad_flag = False
         self.round_cnt = 0
 
-        log_prob_max_token_len_per_gpu: int = self.config.actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu
-        ref_log_prob_max_token_len_per_gpu: int = self.config.actor_rollout_ref.ref.log_prob_max_token_len_per_gpu
-        actor_ppo_max_token_len_per_gpu: int = self.config.actor_rollout_ref.actor.ppo_max_token_len_per_gpu
-        critic_ppo_max_token_len_per_gpu: int = self.config.critic.ppo_max_token_len_per_gpu
-        assert log_prob_max_token_len_per_gpu >= max_model_len
-        assert critic_ppo_max_token_len_per_gpu >= max_model_len
-        assert actor_ppo_max_token_len_per_gpu >= max_model_len
-        assert ref_log_prob_max_token_len_per_gpu >= max_model_len
-        assert self.config.data.max_prompt_length + self.config.data.max_response_length <= max_model_len
+        assert self.config.astune.data.max_prompt_length + self.config.astune.data.max_response_length <= max_model_len

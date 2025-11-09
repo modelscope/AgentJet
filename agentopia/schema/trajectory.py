@@ -72,9 +72,9 @@ class Sample(BaseModel):
     def __init__(self, cmt_tokenized:dict, messages, config, **kwargs):
         super().__init__(**kwargs)
 
-        self.max_prompt_len = config.data.max_prompt_length
-        self.max_response_len = config.data.max_response_length
-        self.max_model_len = config.data.max_response_length + config.data.max_prompt_length
+        self.max_prompt_len = config.astune.data.max_prompt_length
+        self.max_response_len = config.astune.data.max_response_length
+        self.max_model_len = config.astune.data.max_response_length + config.astune.data.max_prompt_length
 
         self.input_ids = cmt_tokenized["input_ids"]
         self.attention_mask = cmt_tokenized["attention_mask"]

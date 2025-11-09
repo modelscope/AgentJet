@@ -1,17 +1,83 @@
+astune:
+  model:
+    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+  data:
+    max_prompt_length: 3000
+    max_response_length: 15000
+    train_batch_size: 32
+  rollout:
+    use_agentscope_protocol: True
+    agentscope_learn_protocol: null
+    use_step_reward_from_env: False
+    binary_reward: False
+    force_no_think: False
+    force_think: False
+    compute_madness_checklist:
+      - "nonsense"
+    gamma: 1.0
+    agent_madness_termination: True # terminate_after_gone_mad
+    agent_madness_reward: -1.0  # customize the reward when agent is detected as gone mad
+    add_special_success_reward: False
+    temperature: 0.9
+    top_p: 1.0
+    max_env_len: 4096
+    max_response_length_in_one_turn: 4096
+    max_model_len: 18000
+    multi_turn:
+      max_sample_per_task: 30
+      max_steps: 30
+    step_skip_action: 0 # skip action generation every N steps, 0 means never skip
+    submit_oversample_multiplier: 1.5
+    num_repeat: 4
+    val_kwargs:
+      temperature: 0.0
+      top_k: -1
+      top_p: 1.0
+  context_manager: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
+    context_manager_type: "linear"
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
+    auto_context_cm:
+      train_sp_action: False
+      token_num_trigger_clip: 8000
+    sliding_window_cm:
+      enable_llm_memory_extraction: False
+    linear_think_cm:
+      remove_think_before_submit_as_action: False
+      extract_box_before_submit_as_action: False
+      train_history_infer_token: True
+
+
+
+########################## verl config below ##########################
+trainer:
+  eval_pass_n: 3
+  hfmodelpath: ""
+  experiment_name: "read_yaml_name"
+  n_gpus_per_node: 8
+  nnodes: 1
+
+env_service:
+  env_type: "appworld"
+  env_url: "http://127.0.0.1:8000"
+  env_feedin_preference: code # code, text, box
+
+
+
+
+
+
+
+
+
+########################## deprecated below ##########################
 data:
-  max_prompt_length: 1024
-  max_response_length: 1024
-  train_batch_size: 256
   val_batch_size: 100000000000
   return_raw_chat: True
   filter_overlong_prompts: True
   truncation: error
   fast_eval: True
 
-trainer:
-  eval_pass_n: 3
-  hfmodelpath: ''
-  experiment_name: "read_yaml_name"
 
 algorithm:
   task_norm_patch: False
@@ -27,7 +93,6 @@ actor_rollout_ref:
     mode: async
     use_agentscope_protocol: False
     debug_llm_io: False
-    temperature: 0.9
     multi_turn:
       completion_callback: beyondagent.module.trainer.simple_completion_callback.SimpleCompletionCallback
       enable: True
@@ -37,53 +102,12 @@ actor_rollout_ref:
     custom_dataflow_cls:
       path: ""
       name: ""
-    use_qwen3: False
-    force_no_think: False
-    force_think: False
-    context_template: "linear"
     train_sp_action: False
     max_env_worker: 64
-    max_env_len: 4096
     enable_oversample: False
-    submit_oversample_multiplier: 1.5
     enable_request_id: False
-    magnify_success: False
-    train_history_infer_token: True
     env_array: False
-    gamma: 1.0
-    terminate_after_gone_mad: True
-    gone_mad_reward_override: -1.0
-    binary_reward: False
-    compute_madness_checklist:
-      - "nonsense"
-      # - "non_ascii"
-    step_skip_action: 0
-    use_step_reward_from_env: False
 
-astune:
-  rollout:
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: null
-
-
-
-
-  context_manager: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    auto_context_cm:
-      train_sp_action: False
-      token_num_trigger_clip: 8000
-    sliding_window_cm:
-      enable_llm_memory_extraction: False
-    linear_think_cm:
-      remove_think_before_submit_as_action: False
-      extract_box_before_submit_as_action: False
 
 thread_pool:
   max_workers: 5
-
-env_service:
-  env_type: "appworld"
-  env_url: "http://127.0.0.1:8000"
-  env_feedin_preference: code # code, text, box

@@ -21,17 +21,17 @@ class SlidingWindowCMT(MultiSampleCMT):
         self.latest_env_response_id = ""
         self.latest_env_response_content = ""
         self.console_debug_mode = False
-        self.force_think = config.actor_rollout_ref.rollout.force_think
+        self.force_think = config.astune.rollout.force_think
         self.env_cnt = 0
         self.llm_cnt = 0
         self.config = config
         self.tokenizer = tokenizer
         self.full_context: List[ExtendedMessage] = []
         self.current_context_status = ""
-        max_response_length = self.config.actor_rollout_ref.rollout.response_length
-        max_model_len: int = self.config.actor_rollout_ref.rollout.max_model_len
+        max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
+        max_model_len: int = self.config.astune.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
-        self.max_env_output_length: int = self.config.actor_rollout_ref.rollout.max_env_len
+        self.max_env_output_length: int = self.config.astune.rollout.max_env_len
         self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
         self.terminal_rewards_dict = {}
         self.latest_llm_interaction_socket: List[ExtendedMessage] = None
@@ -62,7 +62,7 @@ class SlidingWindowCMT(MultiSampleCMT):
 
             dict_context, self.latest_llm_interaction_socket = self._prepare_next_llm_context_static()
             cur_seq_len = self._get_seq_length(dict_context)
-            if cur_seq_len > self.config.data.max_prompt_length:
+            if cur_seq_len > self.config.astune.data.max_prompt_length:
                 print(f"Warning! cur_seq_len={cur_seq_len} immediately after new sliding window is created")
                 print_listofdict(
                     dict_context, mod='env_clip'
@@ -83,7 +83,7 @@ class SlidingWindowCMT(MultiSampleCMT):
     def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
         """Always be safe because we already check in `prepare_next_llm_context`
         """
-        if self.already_mad_flag and self.config.actor_rollout_ref.rollout.terminate_after_gone_mad:
+        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
 
         assert self._get_seq_length(messages) < self.max_seq_length

@@ -15,7 +15,7 @@ class SelfContextAwareCMT(LinearThinkCMT):
         self.latest_env_response_id = ""
         self.latest_env_response_content = ""
         self.console_debug_mode = False
-        self.force_think = config.actor_rollout_ref.rollout.force_think
+        self.force_think = config.astune.rollout.force_think
         super().__init__(config, tokenizer)
 
 

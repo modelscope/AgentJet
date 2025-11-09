@@ -29,16 +29,16 @@ class BaseAgentFlow(object):
         self.alien_llm_chat_fn: Union[Callable, None] = None
         self.llm_chat_fn: Callable = llm_chat_fn
         self.config = config
-        self.console_debug_mode: bool = self.config.actor_rollout_ref.rollout.debug_llm_io
-        self.max_steps: int = self.config.actor_rollout_ref.rollout.multi_turn.max_steps
-        self.max_model_len: int = self.config.actor_rollout_ref.rollout.max_model_len
-        self.max_env_len: int = self.config.actor_rollout_ref.rollout.max_env_len
+        # self.console_debug_mode: bool = False
+        self.max_steps: int = self.config.astune.rollout.multi_turn.max_steps
+        self.max_model_len: int = self.config.astune.rollout.max_model_len
+        self.max_env_len: int = self.config.astune.rollout.max_env_len
 
 class AgentFlow(BaseAgentFlow):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.use_step_reward_from_env: bool = self.config.actor_rollout_ref.rollout.get("use_step_reward_from_env", False)
+        self.use_step_reward_from_env: bool = self.config.astune.rollout.get("use_step_reward_from_env", False)
         self.step_reward = []
 
 
@@ -47,19 +47,19 @@ class AgentFlow(BaseAgentFlow):
         task_thread_index = task_core_arg.task_thread_index
 
         # 1. 🚀 Initialize messages
-        if self.config.actor_rollout_ref.rollout.context_template == "linear":
+        if self.config.astune.context_manager.context_manager_type == "linear":
             self.cmt = CMTLinear(self.config, self.tokenizer)
-        elif self.config.actor_rollout_ref.rollout.context_template == "linear_think":
+        elif self.config.astune.context_manager.context_manager_type == "linear_think":
             self.cmt = LinearThinkCMT(self.config, self.tokenizer)
-        elif self.config.actor_rollout_ref.rollout.context_template == "context_selfclip":
+        elif self.config.astune.context_manager.context_manager_type == "context_selfclip":
             self.cmt = SelfContextClipCMT(self.config, self.tokenizer, self.llm_chat_fn)
-        elif self.config.actor_rollout_ref.rollout.context_template == "sliding_window":
+        elif self.config.astune.context_manager.context_manager_type == "sliding_window":
             self.cmt = SlidingWindowCMT(self.config, self.tokenizer, self.llm_chat_fn)
         else:
-            raise ValueError(f"Unsupported context template: {self.config.actor_rollout_ref.rollout.context_template}")
+            raise ValueError(f"Unsupported context template: {self.config.astune.context_manager.context_manager_type}")
 
-        assert not (self.config.actor_rollout_ref.rollout.force_think and self.config.actor_rollout_ref.rollout.force_no_think), "Cannot force both think and no_think"
-        add_nothink = self.config.actor_rollout_ref.rollout.force_no_think
+        assert not (self.config.astune.rollout.force_think and self.config.astune.rollout.force_no_think), "Cannot force both think and no_think"
+        add_nothink = self.config.astune.rollout.force_no_think
 
         self.cmt.save_init_input(init_messages, add_nothink)
 
@@ -100,17 +100,17 @@ class AgentFlow(BaseAgentFlow):
                 env_output = env.step(
                     instance_id=task_core_arg.task_env_uuid,
                     action={"content": self.cmt.prepare_world_interaction(), "role": "assistant"},
-                    params={"step_skip_action": self.config.actor_rollout_ref.rollout.step_skip_action}
+                    params={"step_skip_action": self.config.astune.rollout.step_skip_action}
                 )
                 if env_output["state"]["role"] == "tool":
                     env_output["state"] = convert_tool_to_user_message(env_output["state"], self.tokenizer, format="qwen")
-                if self.console_debug_mode:
-                    if isinstance(env_output["state"], dict):
-                        print_listofdict(
-                            step_input_message_arr +
-                            [{'role': 'llm_latest', 'content': llm_output['content']}] +
-                            [{'role': 'env',        'content': env_output["state"]['content']}]
-                        , mod='c')
+                # if self.console_debug_mode:
+                #     if isinstance(env_output["state"], dict):
+                #         print_listofdict(
+                #             step_input_message_arr +
+                #             [{'role': 'llm_latest', 'content': llm_output['content']}] +
+                #             [{'role': 'env',        'content': env_output["state"]['content']}]
+                #         , mod='c')
             except Exception as e:
                 logger.bind(exception=True).exception(f"call env.step error with {e}")
                 self.cmt.is_terminated = True
@@ -143,12 +143,12 @@ class AgentFlow(BaseAgentFlow):
         else:
             success_rate = 0.0
         if not self.use_step_reward_from_env:
-            if self.config.actor_rollout_ref.rollout.magnify_success:
+            if self.config.astune.rollout.add_special_success_reward:
                 if success_rate == 1:
                     raw_reward = 1.0 + raw_reward * 0.5
                 else:
                     raw_reward = 0.0 + raw_reward * 0.5
-            if self.config.actor_rollout_ref.rollout.binary_reward:
+            if self.config.astune.rollout.binary_reward:
                 raw_reward = success_rate
             self.cmt.process_reward(
                 reward_structure = Reward(

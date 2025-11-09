@@ -30,7 +30,7 @@ class ChatCompletionScheduler():
         from transformers import AutoTokenizer
         self.url = url
         self.config = config
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.actor_rollout_ref.model.path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.astune.model.path)
         self.chat_scheduler = SimpleNamespace(
             model_name="dummy-model-name",
             weighted_addresses="dummy-weighted-addresses",
@@ -45,21 +45,21 @@ class ChatCompletionScheduler():
         response_length_eps = 6 # 减少几个token给lm_start等special token的后续处理留余地
         sampling_params = dict(
             n=1,
-            max_completion_tokens=self.config.actor_rollout_ref.rollout.response_length - response_length_eps,
+            max_completion_tokens=self.config.astune.rollout.max_response_length_in_one_turn - response_length_eps,
             # min_tokens=1,   # 必须至少输出1个token： OpenAI API不支持min_tokens参数
-            temperature=self.config.actor_rollout_ref.rollout.temperature,
+            temperature=self.config.astune.rollout.temperature,
             repetition_penalty=1.0,
-            top_p=self.config.actor_rollout_ref.rollout.top_p
+            top_p=self.config.astune.rollout.top_p
         )
-        sampling_params["temperature"] = self.config.actor_rollout_ref.rollout.val_kwargs.temperature
-        sampling_params["top_k"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_k
-        sampling_params["top_p"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_p
+        sampling_params["temperature"] = self.config.astune.rollout.val_kwargs.temperature
+        sampling_params["top_k"] = self.config.astune.rollout.val_kwargs.top_k
+        sampling_params["top_p"] = self.config.astune.rollout.val_kwargs.top_p
         sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
         assert sampling_params["temperature"] == 0
         assert sampling_params["n"] == 1
         assert sampling_params["top_p"] == 1.0
         completion = client.chat.completions.create(
-            model=self.config.actor_rollout_ref.model.path,
+            model=self.config.astune.model.path,
             messages=messages,
             extra_body=sampling_params
         )

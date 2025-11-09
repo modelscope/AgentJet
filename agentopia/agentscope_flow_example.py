@@ -30,7 +30,7 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
         )
         agent.set_console_output_enabled(False)
 
-        for _ in range(config.actor_rollout_ref.rollout.multi_turn.max_steps):
+        for _ in range(config.astune.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol

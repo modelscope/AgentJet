@@ -25,7 +25,7 @@ class ChatCompletionScheduler():
         from transformers import AutoTokenizer
         self.url = url
         self.config = config
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.actor_rollout_ref.model.path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.astune.model.path)
         self.chat_scheduler = SimpleNamespace(
             model_name="dummy-model-name",
             weighted_addresses="dummy-weighted-addresses",
@@ -39,17 +39,17 @@ class ChatCompletionScheduler():
         )
         sampling_params = dict(
             n=1,
-            max_completion_tokens=self.config.actor_rollout_ref.rollout.response_length,
-            temperature=self.config.actor_rollout_ref.rollout.temperature,
-            top_p=self.config.actor_rollout_ref.rollout.top_p
+            max_completion_tokens=self.config.astune.rollout.max_response_length_in_one_turn,
+            temperature=self.config.astune.rollout.temperature,
+            top_p=self.config.astune.rollout.top_p
         )
-        sampling_params["temperature"] = self.config.actor_rollout_ref.rollout.val_kwargs.temperature
-        sampling_params["top_k"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_k
-        sampling_params["top_p"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_p
+        sampling_params["temperature"] = self.config.astune.rollout.val_kwargs.temperature
+        sampling_params["top_k"] = self.config.astune.rollout.val_kwargs.top_k
+        sampling_params["top_p"] = self.config.astune.rollout.val_kwargs.top_p
         sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
 
         completion = client.chat.completions.create(
-            model=self.config.actor_rollout_ref.model.path,
+            model=self.config.astune.model.path,
             messages=messages,
             extra_body=sampling_params
         )
@@ -101,15 +101,15 @@ def main(config):
         from agentopia.utils.smart_daemon import LaunchCommandWhenAbsent
         import torch
         print("Launching companion process for async LLM server...")
-        model_path = config.actor_rollout_ref.model.path
-        tensor_parallel_size = config.actor_rollout_ref.rollout.tensor_model_parallel_size
+        model_path = config.astune.model.path
+        tensor_parallel_size = config.astune.rollout.tensor_model_parallel_size
         n_avail_gpus = torch.cuda.device_count()
         if tensor_parallel_size > n_avail_gpus:
             print(f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}.")
             tensor_parallel_size = n_avail_gpus
-        gpu_memory_utilization = config.actor_rollout_ref.rollout.gpu_memory_utilization
-        max_num_seqs = config.actor_rollout_ref.rollout.max_num_seqs
-        max_model_len = config.actor_rollout_ref.rollout.max_model_len
+        gpu_memory_utilization = config.astune.rollout.gpu_memory_utilization
+        max_num_seqs = config.astune.rollout.max_num_seqs
+        max_model_len = config.astune.rollout.max_model_len
         seed = 12345
         port = 18000
         companion = LaunchCommandWhenAbsent(

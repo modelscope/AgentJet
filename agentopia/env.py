@@ -48,7 +48,7 @@ class EnvWorker(object):
         # =============== simulate
         try:
 
-            if not self.config.actor_rollout_ref.rollout.use_agentscope_protocol:
+            if not self.config.astune.rollout.use_agentscope_protocol:
                 agent_flow: BaseAgentFlow = AgentFlow(llm_chat_fn=self.llm_chat_fn, tokenizer=self.tokenizer, config=self.config)
             else:
                 agent_flow: BaseAgentFlow = AgentScopeWorkflow(llm_chat_fn=self.llm_chat_fn, tokenizer=self.tokenizer, config=self.config)

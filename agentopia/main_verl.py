@@ -143,7 +143,7 @@ class TaskRunner:
         # Download the checkpoint from HDFS to the local machine.
         # `use_shm` determines whether to use shared memory, which could lead to faster model loading if turned on
         local_path = copy_to_local(
-            config.actor_rollout_ref.model.path, use_shm=config.actor_rollout_ref.model.get("use_shm", False)
+            config.astune.model.path, use_shm=config.actor_rollout_ref.model.get("use_shm", False)
         )
 
         # Instantiate the tokenizer and processor.
@@ -175,7 +175,7 @@ class TaskRunner:
 
             actor_rollout_cls = (
                 AsyncActorRolloutRefWorker
-                if config.actor_rollout_ref.rollout.mode == "async"
+                if config.astune.rollout.mode == "async"
                 else ActorRolloutRefWorker
             )
             ray_worker_group_cls = RayWorkerGroup
@@ -187,7 +187,7 @@ class TaskRunner:
 
             actor_rollout_cls = (
                 AsyncActorRolloutRefWorker
-                if config.actor_rollout_ref.rollout.mode == "async"
+                if config.astune.rollout.mode == "async"
                 else ActorRolloutRefWorker
             )
             ray_worker_group_cls = NVMegatronRayWorkerGroup

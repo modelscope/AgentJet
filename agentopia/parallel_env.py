@@ -46,7 +46,7 @@ class AsyncLlmBridge(object):
         self.max_parallel: int = max_parallel
         self.max_llm_retries: int = max_llm_retries
 
-        self.rollout_n = config.actor_rollout_ref.rollout.n
+        self.rollout_n = config.astune.rollout.num_repeat
         # self.model_name = self.async_rollout_manager.chat_scheduler.model_name
         self.tokenizer = tokenizer
         self.pad_token_id = self.tokenizer.pad_token_id
@@ -83,9 +83,9 @@ class AsyncLlmBridge(object):
                 )
             )
 
-            if self.config.actor_rollout_ref.rollout.name == 'vllm':
+            if self.config.astune.rollout.name == 'vllm':
                 token_array = final_res.outputs[0].token_ids
-            elif self.config.actor_rollout_ref.rollout.name == 'sglang':
+            elif self.config.astune.rollout.name == 'sglang':
                 token_array = final_res
 
             decoded_text = self.tokenizer.decode(token_array)
@@ -235,26 +235,26 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
         """
         def get_sample_params():
             response_length_eps = 6 # 减少几个token给lm_start等special token的后续处理留余地
-            if self.config.actor_rollout_ref.rollout.name == 'vllm':
+            if self.config.astune.rollout.name == 'vllm':
                 sampling_params = dict(
                     n=1,
-                    max_tokens=self.config.actor_rollout_ref.rollout.response_length - response_length_eps,
+                    max_tokens=self.config.astune.rollout.max_response_length_in_one_turn - response_length_eps,
                     min_tokens=1,   # 必须至少输出1个token
-                    temperature=self.config.actor_rollout_ref.rollout.temperature,
-                    top_p=self.config.actor_rollout_ref.rollout.top_p
+                    temperature=self.config.astune.rollout.temperature,
+                    top_p=self.config.astune.rollout.top_p
                 )
             else:
                 sampling_params = dict(
                     n=1,
-                    max_new_tokens=self.config.actor_rollout_ref.rollout.response_length,
-                    temperature=self.config.actor_rollout_ref.rollout.temperature,
-                    top_p=self.config.actor_rollout_ref.rollout.top_p
+                    max_new_tokens=self.config.astune.rollout.max_response_length_in_one_turn,
+                    temperature=self.config.astune.rollout.temperature,
+                    top_p=self.config.astune.rollout.top_p
                 )
 
             if mode == "validate":
-                sampling_params["temperature"] = self.config.actor_rollout_ref.rollout.val_kwargs.temperature
-                sampling_params["top_k"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_k
-                sampling_params["top_p"] = self.config.actor_rollout_ref.rollout.val_kwargs.top_p
+                sampling_params["temperature"] = self.config.astune.rollout.val_kwargs.temperature
+                sampling_params["top_k"] = self.config.astune.rollout.val_kwargs.top_k
+                sampling_params["top_p"] = self.config.astune.rollout.val_kwargs.top_p
             return sampling_params
 
 
@@ -385,7 +385,7 @@ class DynamicRollout(StaticRollout):
         assert mode != "validate"
         rollout_n = self.rollout_n
 
-        submit_oversample_multiplier = self.config.actor_rollout_ref.rollout.submit_oversample_multiplier
+        submit_oversample_multiplier = self.config.astune.rollout.submit_oversample_multiplier
         rollout_n_oversample = int(rollout_n * submit_oversample_multiplier)
         rollout_n_confirm = int(rollout_n * (1 + submit_oversample_multiplier) / 2)
         assert rollout_n < rollout_n_confirm < rollout_n_oversample, \
@@ -636,11 +636,11 @@ class ParallelEnvManager(DynamicRollout):
             task_ids.append(sample.task_id)
             rollout_ids.append(sample.task_tag)
             # Discard samples with prompt length exceeding limit
-            if len(sample.prompt_ids) > self.config.data.max_prompt_length:
+            if len(sample.prompt_ids) > self.config.astune.data.max_prompt_length:
                 raise RuntimeError(f"Sample has prompt_ids length {len(sample.prompt_ids)} ")
 
             # Warn if response is longer than expected (but still include it)
-            if len(sample.response_ids) > self.config.data.max_response_length:
+            if len(sample.response_ids) > self.config.astune.data.max_response_length:
                 raise RuntimeError(f"Sample has prompt_ids length {len(sample.prompt_ids)} ")
 
             # Append tensors to respective lists
@@ -665,9 +665,9 @@ class ParallelEnvManager(DynamicRollout):
             step_reward_scores.append(sample.step_reward)
 
         max_prompt_length_this_batch = max([p.shape[-1] for p in prompt_ids])
-        assert max_prompt_length_this_batch <= self.config.data.max_prompt_length
+        assert max_prompt_length_this_batch <= self.config.astune.data.max_prompt_length
         max_response_length_this_batch = max([p.shape[-1] for p in response_ids])
-        assert max_response_length_this_batch <= self.config.data.max_response_length
+        assert max_response_length_this_batch <= self.config.astune.data.max_response_length
 
         # Batch and pad sequences
         prompt_ids =            pad_sequence(prompt_ids, batch_first=True, padding_value=self.pad_token_id, padding_side="left")
