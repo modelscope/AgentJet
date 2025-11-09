@@ -1,4 +1,5 @@
 import copy
+import importlib
 from loguru import logger
 from datetime import datetime
 from astune.schema.trajectory import Reward, Trajectory
@@ -251,7 +252,7 @@ class BeyondAgentContextTemplate(CMTLinear):
 
 class BeyondAgentLmProxy(BeyondAgentContextTemplate):
 
-    async def execute_model_proxy(self, messages: List[dict], tools: List[dict], tool_choice: str = "auto", **kwargs) -> dict:
+    async def execute_model_proxy(self, messages: List[dict], tools: List[dict]=[], tool_choice: str = "auto", **kwargs) -> dict:
         # load messages into `self.full_context`
         self.full_context = []
 
@@ -406,8 +407,14 @@ class BeyondAgentProxy(BeyondAgentLmProxy):
         )
         return response
 
-    def update_output_kwargs(self, **kwargs):
+    def update_judge_input_dictionary(self, **kwargs):
         self.output_kwargs.update(kwargs)
 
-    def get_output_kwargs(self):
+    def get_judge_input_dictionary(self):
         return self.output_kwargs
+
+    def get_judge(self):
+        judge_protocol = self.config.astune.task_judge.judge_protocol
+        module_, class_ = judge_protocol.split('->')
+        protocol_cls = getattr(importlib.import_module(module_), class_)
+        return protocol_cls(self.config)  # type: ignore

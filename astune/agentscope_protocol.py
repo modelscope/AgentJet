@@ -5,6 +5,7 @@ try: from astune.agentscope_flow import BeyondAgentProxy
 except ImportError: pass
 
 class AgentScopeLearnProtocol(BaseModel):
+    model_config = {"extra": "allow"}
     # Trainer to use; default "trinity". Optional: "agentscorpion-trinity".
     trainer: str = Field(default="trinity")
     # Experiment name

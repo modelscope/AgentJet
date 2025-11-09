@@ -81,7 +81,7 @@ def run(config):
     from astune.task_reader.task_reader_base import TaskReaderRouter
     task_reader = TaskReaderRouter(config)
     tasks = task_reader.get_validation_tasks()
-    print(tasks)
+    print(tasks[:2])
     cmt = parallel_env.rollout(tasks=tasks[:n_task], mode="sample", epoch='1') # "sample" or "validate"
     gen_batch_output = parallel_env.to_dataproto(cmt)
     print("Generated batch output")

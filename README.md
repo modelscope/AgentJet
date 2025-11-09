@@ -56,36 +56,34 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
 我们提供一个多功能launcher用于调试和训练，您借助launcher选择任意训练框架启动训练。
 
-1. 使用launcher进行调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试
-```bash
-clear && \
-killer ray && killer python && \
-killer vllm  && \
-killer VLLM  && \
-python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
-```
+1. 使用launcher进行全链路调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试
+    ```bash
+    # （训练math agent demo）建议开始前杀死所有ray、env_service进程
+    clear && \
+    python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='debug' --with-logview
+
+    # （训练appworld demo）建议开始前杀死所有ray、env_service进程
+    clear && \
+    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
+    ```
 备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置见文档最后
 
 
 2. 使用launcher进行训练：使用trinity进行训练
-```bash
-clear && \
-ray stop && \
-killer ray && \
-killer python  && \
-python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
-```
+    ```bash
+    # 建议开始前杀死所有ray、vllm、env_service进程
+    clear && \
+    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
+    ```
 备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`，并在代码中需要断点的地方标记一行特殊代码 ``
 
 
 3. 使用launcher进行训练：使用verl进行训练
-```bash
-clear && \
-ray stop && \
-killer ray && \
-killer python  && \
-python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
-```
+    ```bash
+    # 建议开始前杀死所有ray、vllm、env_service进程
+    clear && \
+    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+    ```
 备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
 
 

@@ -37,7 +37,6 @@ class AgentScopeWorkflow(BaseAgentFlow):
                 instance_id=task_core_arg.task_env_uuid,
                 action=action,
             )
-
             obs = ""
             assert isinstance(env_output, dict)
             if ('content' not in env_output["state"]) and ('error' in env_output["state"]):
@@ -71,50 +70,33 @@ class AgentScopeWorkflow(BaseAgentFlow):
             should_interrupt_fn=should_interrupt_fn,
             generated_token_callback_fn=generated_token_callback_fn,
         )
-        beyondagent_proxy = asyncio.run(agentscope_protocol.agentscope_execute(init_messages, beyondagent_proxy, self.config))
+        beyondagent_proxy = asyncio.run(
+            agentscope_protocol.agentscope_execute(init_messages, beyondagent_proxy, self.config)
+        )
+        beyondagent_proxy.update_judge_input_dictionary(env=env)
+        beyondagent_proxy.update_judge_input_dictionary(task_core_arg=task_core_arg)
 
+        raw_reward, is_success = beyondagent_proxy.get_judge().compute_reward(
+            beyondagent_proxy.get_judge_input_dictionary()
+        )
 
         # evaluate
-        raw_reward = 0
-        raw_reward = env.evaluate(task_core_arg.task_env_uuid, params={"sparse": False})
-        if raw_reward >= 1: success_rate = 1.0
-        else: success_rate = 0.0
-
-        if self.config.astune.rollout.add_special_success_reward:
-            if success_rate == 1:
-                raw_reward = 1.0 + raw_reward * 0.5
-            else:
-                raw_reward = 0.0 + raw_reward * 0.5
-        if self.config.astune.rollout.binary_reward:
-            raw_reward = success_rate
-        beyondagent_proxy.process_reward(
-            reward_structure = Reward(
-                raw_reward=raw_reward,
-                raw_step_reward=None,
-                success_rate=success_rate,
-                madness=0,
-                description="Success=1, Failure=0"
-            )
+        reward = Reward(
+            raw_reward=raw_reward,
+            raw_step_reward=None,
+            success_rate=1.0 if is_success else 0.0,
+            madness=0,
+            description=""
         )
+        beyondagent_proxy.process_reward(reward)
+
 
         # generate token before merging
         beyondagent_proxy.remove_last_context()
         beyondagent_proxy.task_id = task_id
         beyondagent_proxy.task_tag = task_tag
-
-        # merge
         beyondagent_proxy.group_merge()
-
-        # generate token after merging
-        beyondagent_proxy.process_reward(
-            reward_structure = Reward(
-                raw_reward=raw_reward,
-                raw_step_reward=None,
-                success_rate=success_rate,
-                madness=0,
-                description="Success=1, Failure=0"
-            )
-        )
+        beyondagent_proxy.process_reward(reward)
         return beyondagent_proxy
 
 

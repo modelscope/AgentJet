@@ -60,10 +60,10 @@ class ExampleMathLearn(AgentScopeLearnProtocol):
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
         )
-        msg = Msg("user", init_messages['content'], role="user")
+        msg = Msg("user", init_messages[0]['content'], role="user")
         result = await self.agent.reply(msg, structured_model=FinalResult)
         final_answer = extract_final_answer(result)
-        beyondagent_proxy.update_output_kwargs(final_answer=final_answer)
+        beyondagent_proxy.update_judge_input_dictionary(final_answer=final_answer)
 
         return beyondagent_proxy
 

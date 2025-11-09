@@ -386,7 +386,7 @@ class DynamicRollout(StaticRollout):
         cmt_array: List[CMTLinear] = []
         assert mode != "validate"
         rollout_n = self.rollout_n
-
+        self.current_token_count_time = time.time()
         submit_oversample_multiplier = self.config.astune.rollout.submit_oversample_multiplier
         rollout_n_oversample = int(rollout_n * submit_oversample_multiplier)
         rollout_n_confirm = int(rollout_n * (1 + submit_oversample_multiplier) / 2)
