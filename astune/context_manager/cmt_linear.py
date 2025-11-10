@@ -263,7 +263,11 @@ class CMTLinear(CMTBaseAttr):
         return
 
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List[dict]:
-        return [{"role": ext_msg.role, "content": ext_msg.content_for_future} for ext_msg in ext_msg_array]
+        return [
+            {"role": ext_msg.role, "content": ext_msg.content_for_future} if not ext_msg.tools else
+            {"role": ext_msg.role, "content": ext_msg.content_for_future, "tools": ext_msg.tools}
+            for ext_msg in ext_msg_array
+        ]
 
     def prepare_world_interaction(self) -> str:
         """

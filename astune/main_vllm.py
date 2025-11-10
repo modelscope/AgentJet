@@ -47,17 +47,36 @@ class ChatCompletionScheduler():
         sampling_params["top_p"] = self.config.astune.rollout.val_kwargs.top_p
         sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
 
-        completion = client.chat.completions.create(
-            model=self.config.astune.model.path,
-            messages=messages,
-            extra_body=sampling_params
-        )
+        tools = messages[-1].get("tools", None)
+        for msg in messages: msg.pop("tools", None)
+
+        if tools is not None:
+            completion = client.chat.completions.create(
+                model=self.config.astune.model.path,
+                messages=messages,
+                tools=tools,
+                tool_choice="required",
+                extra_body=sampling_params
+            )
+        else:
+            completion = client.chat.completions.create(
+                model=self.config.astune.model.path,
+                messages=messages,
+                extra_body=sampling_params
+            )
 
         message = completion.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
-        if "content" not in message: message["content"] = ""
-        t = {"role": message["role"], "request_id":completion.id, "content": message['content'], "tokens": [TokenAndProb(t) for t in completion.choices[0].logprobs.content]}
-        messages.append(t)
 
+        if "content" not in message:
+            message["content"] = ""
+
+        messages.append({
+            "role": message["role"],
+            "request_id":completion.id,
+            "content": message['content'],
+            "tool_calls": message.get("tool_calls", None),
+            "tokens": [TokenAndProb(t) for t in completion.choices[0].logprobs.content] # type: ignore
+        })
         return messages
 
 

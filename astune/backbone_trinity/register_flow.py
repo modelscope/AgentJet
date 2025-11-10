@@ -23,7 +23,7 @@ from verl import DataProto
 from verl.utils.torch_functional import pad_sequence_to_length
 from beast_logger import register_logger, print_dict, print_listofdict
 from astune.schema.task import Task
-from astune.utils.utils import run_async_coro__no_matter_what_the_fuck
+from astune.utils.utils import run_async_coro__no_matter_what
 from astune.parallel_env import DynamicRollout
 from astune.schema.logprob import TokenAndProb
 from astune.schema.task import Task
