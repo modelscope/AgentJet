@@ -21,6 +21,6 @@ class AgentScopeLearnProtocol(BaseModel):
     # Other settings
     multiturn_token_consolidation: bool = Field(default=True)
 
-    async def agentscope_execute(self, init_messages, beyondagent_proxy: "BeyondAgentProxy", config):
+    async def agentscope_execute(self, init_messages, beyondagent_proxy: "BeyondAgentProxy", config)->"BeyondAgentProxy":
         raise NotImplementedError
 

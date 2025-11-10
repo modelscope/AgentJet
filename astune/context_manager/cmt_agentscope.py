@@ -70,6 +70,7 @@ class BeyondAgentContextTemplate(CMTLinear):
         self.context_overflow = False
         self.model_name = kwargs['model_name']
         self.output_kwargs = {}
+        self.input_kwargs = {}
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
@@ -403,6 +404,12 @@ class BeyondAgentProxy(BeyondAgentLmProxy):
             **kwargs,
         )
         return response
+
+    def update_agentscope_input_dictionary(self, **kwargs):
+        self.input_kwargs.update(kwargs)
+
+    def get_agentscope_input_dictionary(self):
+        return self.input_kwargs
 
     def update_judge_input_dictionary(self, **kwargs):
         self.output_kwargs.update(kwargs)

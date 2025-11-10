@@ -7,6 +7,7 @@ import os
 from loguru import logger
 from dotenv import load_dotenv; load_dotenv()
 from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+from astune.utils.cleaner import _fast_kill_by_keyword_bash
 
 
 def parse_args():
@@ -69,6 +70,12 @@ def parse_args():
         action='store_true',
         default=False,
         help='reboot flag'
+    )
+    parser.add_argument('--kill',
+        type=str,
+        default="",
+        required=False,
+        help='list of keywords for killing processes'
     )
 
     return parser.parse_args()
@@ -348,6 +355,18 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
 
 def main():
     args = parse_args()
+
+    # Handle kill-keywords argument if provided
+    if args.kill:
+        print(f"Killing processes matching keywords: {args.kill}")
+        for keyword in args.kill.split('|'):
+            print(f"Killing processes matching keyword: {keyword}")
+            killed_pids = _fast_kill_by_keyword_bash(keyword)
+            if killed_pids:
+                print(f"Successfully killed processes with PIDs: {killed_pids}")
+            else:
+                print(f"No processes found matching keyword: {keyword}")
+        return  # Exit after killing processes
 
     # Initialize variables with default values to avoid "possibly unbound" errors
     backbone_target = "astune.main_trinity"  # Default to trinity

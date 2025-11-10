@@ -62,11 +62,11 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
 1. 使用launcher进行全链路调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试
     ```bash
-    # （训练math agent demo）建议开始前杀死所有ray、env_service进程
+    # （训练math agent demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
     python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='debug' --with-logview
 
-    # （训练appworld demo）建议开始前杀死所有ray、env_service进程
+    # （训练appworld demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
     python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
     ```
@@ -75,7 +75,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
 2. 使用launcher进行训练：使用trinity进行训练
     ```bash
-    # 建议开始前杀死所有ray、vllm、env_service进程
+    # 建议开始前杀死所有ray、vllm、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
     python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
 
@@ -86,7 +86,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
 3. 使用launcher进行训练：使用verl进行训练
     ```bash
-    # 建议开始前杀死所有ray、vllm、env_service进程
+    # 建议开始前杀死所有ray、vllm、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
     python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='verl'
 

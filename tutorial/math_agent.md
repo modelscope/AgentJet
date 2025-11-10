@@ -61,7 +61,7 @@ beyondagent_proxy.update_judge_input_dictionary(final_answer=final_answer)
 ```
 
 
-### 3. 准备Judge
+### 3. 准备Judge (奖励模块)
 
 在 astune/task_judge/math_answer_as_judge.py 中，提供了两个简单的Judge。可以在项目任意地方新建新的Judge代码
 
@@ -125,7 +125,7 @@ python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbon
 
 4.3 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='verl')
 ```bash
-# 建议开始前杀死所有ray、vllm、env_service进程
+# 建议开始前杀死所有ray、vllm、env_service进程 ( python launcher.py --kill="python|ray|vllm" )
 python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='verl'
 ```
 

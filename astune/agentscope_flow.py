@@ -70,11 +70,11 @@ class AgentScopeWorkflow(BaseAgentFlow):
             should_interrupt_fn=should_interrupt_fn,
             generated_token_callback_fn=generated_token_callback_fn,
         )
-        beyondagent_proxy = asyncio.run(
-            agentscope_protocol.agentscope_execute(init_messages, beyondagent_proxy, self.config)
-        )
-        beyondagent_proxy.update_judge_input_dictionary(env=env)
+
+        beyondagent_proxy.update_agentscope_input_dictionary(task_core_arg=task_core_arg)
+        beyondagent_proxy = asyncio.run(agentscope_protocol.agentscope_execute(init_messages, beyondagent_proxy, self.config))
         beyondagent_proxy.update_judge_input_dictionary(task_core_arg=task_core_arg)
+        beyondagent_proxy.update_judge_input_dictionary(env=env)
         beyondagent_proxy.update_judge_input_dictionary(grouped_steps=beyondagent_proxy.grouped_steps)
 
         raw_reward, is_success = beyondagent_proxy.get_judge().compute_reward(
