@@ -5,9 +5,10 @@ AgentScope Tune, or **ASTune**, is an advanced agent training framework for tuni
 
 ## Installation
 
-You can choose between `Trinity training backbone` and `Verl training backbone`. We recommend using `uv` to setup the dependencies and `conda` also works.
+You can choose between `Trinity training backbone` and `Verl training backbone`. We recommend using `uv` to setup the dependencies, and `conda` can also do the job.
 
-1. Trinity backbone (Option 1)
+<details>
+<summary>1. 🔧Trinity backbone: Click to read trinity backbone installation (Option 1)</summary>
 
 ```bash
 # Create virtual environment
@@ -23,9 +24,11 @@ uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --
 # Install flash attention (must be installed last)
 uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
 ```
+</details>
 
+<details>
+<summary>2. 🌟VERL Backbone: Click to read VERL backbone installation (Option 2)</summary>
 
-2. VERL Backbone (Option 2)
 
 ```bash
 # Create virtual environment
@@ -41,15 +44,23 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 # Install flash attention (must be installed last)
 uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
 ```
+</details>
 
-注意：二者不能同时安装
+
+<details>
+<summary>3. 🔄Switch Verl/Trinity backbone: cannot install both backbone at the same time, run the following command to toggle.</summary>
+
 ```bash
 # verl -> trinity
 cd external/verl && uv pip uninstall . && cd ../..
+
 # trinity -> verl
 uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
 ```
+</details>
 
+<br/>
+<br/>
 <div align="center">
   <img src="project-diagram.png" alt="项目架构图">
 </div>
@@ -60,7 +71,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
 项目提供一个多功能launcher用于调试和训练，借助launcher，只需要修改一个`--backbone`参数，就选择任意训练框架启动训练 or 调试。
 
-1. 使用launcher进行全链路调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试
+1. 使用launcher进行全链路调试（--backbone='debug'）：脱离trinity和verl，只与vllm（自动创建）连接，进行调试：
     ```bash
     # （训练math agent demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
@@ -70,10 +81,10 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
     clear && \
     python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
     ```
-备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置见文档最后
+    备注：当`--backbone=debug`时，程序**不再使用ray**，这意味着您可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置见本文档最后。
 
 
-2. 使用launcher进行训练：使用trinity进行训练
+2. 使用launcher启动训练：使用trinity进行训练：
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
@@ -81,10 +92,10 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
     python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --with-ray --backbone='trinity'
     ```
-备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)
+    备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)
 
 
-3. 使用launcher进行训练：使用verl进行训练
+3. 使用launcher启动训练：使用verl进行训练：
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
@@ -92,7 +103,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
     python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='verl'
     ```
-备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG4|TAG5|TAG6' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG4")` 即可。
+    备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG4|TAG5|TAG6' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG4")` 即可。
 
 
 # 简要架构
@@ -163,3 +174,17 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
     ]
 }
 ```
+
+
+# Develop
+
+- [ ] 设计 Judge&Reward 系统
+- [ ] 小财场景 Demo
+- [ ] 寻找更通用的 tool -> token 兼容方法
+- [ ] 设计 数据增广 系统
+- [ ] 设计 AgentScopeLearn Protocol V2.0 (以狼人杀为例)
+- [ ] 集成 AgentScope Runtime
+- [ ] Trinity Display Infer Progress, e.g. token per second
+- [ ] Trinity: SFT support
+- [ ] AgentScope Studio Intergration
+- [ ] AgentScope
