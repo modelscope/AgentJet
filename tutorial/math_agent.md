@@ -93,17 +93,17 @@ Judge的返回值： raw_reward, is_success
 
 ```yaml
 astune:
-task_reader:
-    type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
-task_judge:
-    # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
-model:
-    # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
-rollout:
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ 编写并选择Agent
+    task_reader:
+        type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
+    task_judge:
+        # ✨✨✨✨ 编写并选择评价函数
+        judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+    model:
+        # ✨✨✨✨ 设置待训练的模型
+        path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    rollout:
+        use_agentscope_protocol: True
+        agentscope_learn_protocol: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ 编写并选择Agent
 ```
 
 
