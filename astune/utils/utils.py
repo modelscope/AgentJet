@@ -15,7 +15,7 @@ def convert_tool_to_user_message(tool_message, tokenizer, format="qwen"):
         }
 
 
-def run_async_coro__no_matter_what_the_fuck(coro):
+def run_async_coro__no_matter_what(coro):
     try:
         asyncio.get_running_loop()
         in_loop = True

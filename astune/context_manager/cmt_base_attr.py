@@ -46,6 +46,8 @@ class ExtendedMessage:
             tokenizer=None,
             token_generator="manual",
             build_from_uuid="",
+            tools=[],
+            tool_calls=[],
             token_logprob_arr=[],
         ):
         self.author = author
@@ -60,6 +62,8 @@ class ExtendedMessage:
         self._content_for_future = ""
         self._info = ""
         self.clip = clip
+        self.tools = tools
+        self.tool_calls = tool_calls
         self.uuid = uuid.uuid4().hex
         self.build_from_uuid = build_from_uuid
 
@@ -82,7 +86,10 @@ class ExtendedMessage:
 
     @property
     def content_for_future(self):
-        if self._content_for_future == "": raise ValueError("content_for_future is not set, or previous llm output is empty!")
+        if self._content_for_future == "":
+            if not self.tool_calls:
+                # from vsdb import bp; bp("H1")
+                raise ValueError("content_for_future is not set, or previous llm output is empty!")
         return self._content_for_future
 
 

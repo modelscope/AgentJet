@@ -5,9 +5,12 @@ from datetime import datetime
 from astune.schema.trajectory import Reward, Trajectory
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from agentscope.model import DashScopeChatModel, ChatResponse
+from agentscope.message import TextBlock, ToolUseBlock, ThinkingBlock
+from typing import Dict, Tuple
+from typing import Any, AsyncGenerator, Generator, Union, TYPE_CHECKING, List, Literal, Type
+from pydantic import BaseModel
 from astune.context_manager.cmt_linear import replace_token_ids, CMTLinear
 from astune.schema.trajectory import Sample, Reward
-from typing import Any, Dict, List, Union, Tuple
 from beast_logger import register_logger, print_dict, print_nested, NestedJsonItem, SeqItem
 from astune.utils.compute_madness import compute_string_madness
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
@@ -250,26 +253,36 @@ class BeyondAgentContextTemplate(CMTLinear):
 
 class BeyondAgentLmProxy(BeyondAgentContextTemplate):
 
-    async def execute_model_proxy(self, messages: List[dict], tools: List[dict]=[], tool_choice: str = "auto", **kwargs) -> dict:
+    async def execute_model_proxy(self, messages: List[dict], tools: List[dict]=[], tool_choice: str = "auto", structured_model=None, **kwargs) -> dict:
         # load messages into `self.full_context`
         self.full_context = []
 
         for i, msg in enumerate(messages):
+            if msg['role'] not in ['user', 'assistant', 'system', 'tool']:
+                continue
             if not isinstance(msg['content'], str):
-                continue
-            if msg['role'] not in ['user', 'assistant', 'system']:
-                continue
+                author = 'env'
+                msg['content'] = str(msg['content'])    # TODO: better handling for non-str content
             if msg['role'] == 'system':
                 author = 'initialization'
-            else:
-                # mask everything
+            if msg['role'] == 'tool':
                 author = 'env'
+            else:
+                author = 'env'
+
+            is_last_message = (len(messages) == i+1)
+            if is_last_message:
+                _tools = tools
+            else:
+                _tools = []
+
             self.full_context += [
                 ExtendedMessage(
                     author=author,
                     role=msg['role'],
                     content=msg['content'],
                     tokenizer=self.tokenizer,
+                    tools=_tools,
                     token_generator="auto",
                 )
             ]
@@ -286,8 +299,6 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
                 content = [{'type': 'text', 'text': 'beyondagent_proxy:[context_overflow]'}]
             )
 
-        # from vsdb import bp
-        # bp("INF")
         llm_output = self.llm_chat_fn(messages, custom_sampling_params)
 
         # compute_string_madness
@@ -297,16 +308,19 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
 
         # dummy response for now
         token_generator = "manual" if 'tokens' in llm_output else "auto"
+        if llm_output.get("tool_calls", None) is not None:
+            tool_calls = llm_output["tool_calls"]
+        else:
+            tool_calls = []
+
         llm_ext_msg = ExtendedMessage(
             author="llm",
             role="assistant",
             content=llm_output['content'],
             token_generator=token_generator,
+            tool_calls=tool_calls,
             tokenizer=self.tokenizer,
         )
-
-        from vsdb import bp
-        bp("LOG")
 
         if token_generator == "manual":
             input_msg_ref = copy.deepcopy(messages)
@@ -321,17 +335,79 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
             self.full_context += [
                 llm_ext_msg
             ]
-            prompt_text = self.tokenizer.apply_chat_template(self.to_role_content(self.full_context), tokenize=False, add_generation_prompt=True)
+            prompt_text = self.tokenizer.apply_chat_template(
+                self.to_role_content(self.full_context),
+                tokenize=False,
+                add_generation_prompt=True
+            )
             length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
             if length >= self.config.astune.rollout.max_model_len:
                 raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, before gen info {info}, generated token length {len(llm_ext_msg.token_arr)}")
-
             self.grouped_steps += [copy.deepcopy(self.full_context)]
         # return response
-        return ChatResponse(
-            content = [{'type': 'text', 'text': llm_ext_msg.content_for_future}]
+        return await self._parse_dashscope_generation_response(llm_output, structured_model=structured_model)
+
+    async def _parse_dashscope_generation_response(
+        self,
+        message,
+        structured_model: Type[BaseModel] | None = None,
+    ) -> ChatResponse:
+
+
+        content_blocks: List[TextBlock | ToolUseBlock] = []
+        content = message.get("content")
+        metadata: dict | None = None
+
+        if content not in [
+            None,
+            "",
+            [],
+        ]:
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and "text" in item:
+                        content_blocks.append(
+                            TextBlock(
+                                type="text",
+                                text=item["text"],
+                            ),
+                        )
+            else:
+                content_blocks.append(
+                    TextBlock(
+                        type="text",
+                        text=content,
+                    ),
+                )
+
+        if message.get("tool_calls"):
+            for tool_call in message["tool_calls"]:
+                input_ = _json_loads_with_repair(
+                    tool_call["function"].get(
+                        "arguments",
+                        "{}",
+                    )
+                    or "{}",
+                )
+                content_blocks.append(
+                    ToolUseBlock(
+                        type="tool_use",
+                        name=tool_call["function"]["name"],
+                        input=input_,
+                        id=tool_call["id"],
+                    ),
+                )
+
+                if structured_model:
+                    metadata = input_
+
+
+        parsed_response = ChatResponse(
+            content=content_blocks,
+            metadata=metadata,
         )
 
+        return parsed_response
 
 
 class BeyondAgentProxy(BeyondAgentLmProxy):
@@ -401,6 +477,7 @@ class BeyondAgentProxy(BeyondAgentLmProxy):
 
         response = await self.execute_model_proxy(
             api_key=self.dscm_ref.api_key,
+            structured_model=structured_model,
             **kwargs,
         )
         return response
