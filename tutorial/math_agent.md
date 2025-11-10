@@ -80,7 +80,7 @@ Judge的返回值： raw_reward, is_success
 ### 4. 测试
 
 
-4.1 复制并修改 launcher/math_agent/git-math-agentscope.yaml 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
+4.1 复制并修改 [launcher/math_agent/git-math-agentscope.yaml](../launcher/math_agent/git-math-agentscope.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
 1. 读取task（对应配置字段 astune.task_reader）
 2. 定义 AgentScopeWorkflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
@@ -91,6 +91,20 @@ Judge的返回值： raw_reward, is_success
     - 则填写 astune.task_judge.judge_protocol=`astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge`
 4. 指定模型（对应配置字段 astune.model.path ）
 
+```yaml
+astune:
+task_reader:
+    type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
+task_judge:
+    # ✨✨✨✨ 编写并选择评价函数
+    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+model:
+    # ✨✨✨✨ 设置待训练的模型
+    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+rollout:
+    use_agentscope_protocol: True
+    agentscope_learn_protocol: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ 编写并选择Agent
+```
 
 
 4.2 全链路调试（脱离ray快速调试:--backbone='debug'）
