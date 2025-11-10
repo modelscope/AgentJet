@@ -142,8 +142,6 @@ class TaskReaderHuggingFace(TaskReaderBase):
 
         tasks = []
         for idx, example in enumerate(dataset):
-            # /mnt/data_cpfs/qingxu.fu/astune
-
             # Create Task object
             task = Task(
                 main_query=example['question'],
