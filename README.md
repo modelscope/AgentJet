@@ -81,7 +81,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
     python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --with-ray --backbone='trinity'
     ```
-备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`，并在代码中需要断点的地方标记一行特殊代码 ``
+备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)
 
 
 3. 使用launcher进行训练：使用verl进行训练
@@ -92,7 +92,7 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
 
     python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='verl'
     ```
-备注：如果需要断点调试，请添加参数 `python launcher.py --db=TAG1|TAG2|TAG3 --conf=...`
+备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG4|TAG5|TAG6' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG4")` 即可。
 
 
 # 简要架构
