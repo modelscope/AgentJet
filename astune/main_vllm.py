@@ -141,6 +141,8 @@ def main(config):
                 f"--max-model-len", f"{max_model_len}",
                 f"--load-format", "auto",
                 f"--enable-chunked-prefill",
+                f"--enable-auto-tool-choice",
+                f"--tool-call-parser", "hermes",
                 f"--enable-prefix-caching",
                 f"--seed", f"{seed}",
                 f"--port", f"{vllm_port}",

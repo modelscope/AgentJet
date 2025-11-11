@@ -139,11 +139,9 @@ def prepare_experiment_config(yaml_path, args):
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
     exp_name = config.get('astune').get('experiment_name')
-    print('C1', exp_name)
     if exp_name is None or exp_name == 'read_yaml_name':
         if exp_name is not None: exp_name = exp_name.replace('|', '-')
         exp_name = os.path.basename(yaml_path).replace('.yaml', '')
-        print('C2', yaml_path, exp_name)
     else:
         exp_name = exp_name.replace('|', '-')
 
