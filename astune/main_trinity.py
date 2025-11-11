@@ -174,7 +174,7 @@ def run(config_path: str, dlc: bool = False, plugin_dir: str = None):
         from dotenv import load_dotenv
         load_dotenv(".env")
 
-    atexit.register(lambda: send_train_message("Trinity Exit"))
+    atexit.register(lambda: send_train_message("0000"))
 
     if plugin_dir:
         os.environ[PLUGIN_DIRS_ENV_VAR] = plugin_dir
