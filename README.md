@@ -105,6 +105,12 @@ uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-
     ```
     备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG4|TAG5|TAG6' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG4")` 即可。
 
+## Feature
+
+- 当程序退出时，给自己发短信
+    ```bash
+    PHONE_NUMBERS="18812341234" python launcher.py ...
+    ```
 
 # 简要架构
 
