@@ -78,7 +78,7 @@ def run_ppo(config) -> None:
             num_cpus=config.ray_init.num_cpus,
         )
 
-    atexit.register(lambda: send_train_message("Verl Exit"))
+    atexit.register(lambda: send_train_message("0000"))
     atexit.register(lambda: ray.shutdown())  # ray shutdown on exit
 
     # Create a remote instance of the TaskRunner class, and

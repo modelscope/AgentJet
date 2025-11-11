@@ -136,5 +136,5 @@ def main(config):
     run(config)
 
 if __name__ == "__main__":
-    atexit.register(send_train_message, "Debug Exit")
+    atexit.register(lambda: send_train_message("0000"))
     main()
