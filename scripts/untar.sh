@@ -1,1 +1,1 @@
-rm -rf BeyondAgent && tar -xzvf BeyondAgent.tar.gz
+rm -rf ASTune && tar -xzvf ASTune.tar.gz

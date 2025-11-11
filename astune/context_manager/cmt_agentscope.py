@@ -54,7 +54,7 @@ def adjust_color_hsl(base_color, logprob):
     return f"#{int(r_adjusted*255):02x}{int(g_adjusted*255):02x}{int(b_adjusted*255):02x}"
 
 
-class BeyondAgentContextTemplate(CMTLinear):
+class ASTuneContextTemplate(CMTLinear):
 
     def __init__(self, llm_chat_fn, tokenizer, config, env_step_fn, should_interrupt_fn, generated_token_callback_fn, **kwargs):
         super().__init__(config, tokenizer)
@@ -251,7 +251,7 @@ class BeyondAgentContextTemplate(CMTLinear):
             return False, "token_overflow"
 
 
-class BeyondAgentLmProxy(BeyondAgentContextTemplate):
+class ASTuneLmProxy(ASTuneContextTemplate):
 
     async def execute_model_proxy(self, messages: List[dict], tools: List[dict]=[], tool_choice: str = "auto", structured_model=None, **kwargs) -> dict:
         # load messages into `self.full_context`
@@ -296,7 +296,7 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
             logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
             self.context_overflow = True
             return ChatResponse(
-                content = [{'type': 'text', 'text': 'beyondagent_proxy:[context_overflow]'}]
+                content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
             )
 
         llm_output = self.llm_chat_fn(messages, custom_sampling_params)
@@ -410,7 +410,7 @@ class BeyondAgentLmProxy(BeyondAgentContextTemplate):
         return parsed_response
 
 
-class BeyondAgentProxy(BeyondAgentLmProxy):
+class ASTuneProxy(ASTuneLmProxy):
     """
     A proxy class that bridge:
     - environment
