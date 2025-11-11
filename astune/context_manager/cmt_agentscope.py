@@ -91,10 +91,9 @@ class BeyondAgentContextTemplate(CMTLinear):
     def generate_log(self, task_id = None, global_step="NA"):
         task_id = self.task_id
         nested_items_print_buffer = {}
-        for index, ext_steps in enumerate(self.grouped_steps):
-            from vsdb import bp
-            bp("LLL")
+        step_reward = 0.0
 
+        for index, ext_steps in enumerate(self.grouped_steps):
             cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=index, total_steps=len(self.grouped_steps))
             text_arr = [self.tokenizer.decode(t) for t in cmt_tokenized["input_ids"]]
             input_id_arr = [str(t) for t in cmt_tokenized["input_ids"]]
@@ -145,6 +144,7 @@ class BeyondAgentContextTemplate(CMTLinear):
                     color = buffer['loss_mask_color_arr']   # 颜色
                 )
             )
+
         print_nested(nested_items_print_buffer,
             main_content="This is the main content of the nested JSON",
             header=f"[{global_step}] Task {task_id} (Reward {float(step_reward):.3f})", # type: ignore

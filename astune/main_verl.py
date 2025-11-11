@@ -15,19 +15,12 @@
 Note that we don't combine the main with ray_trainer as ray_trainer is used by other main.
 """
 
-
-def send_train_message(message: str):
-    import requests, os     # 发送短信汇报训练进程
-    assert len(message) < 64, f"Message too long: {(message)}"
-    if os.getenv("ALIYUN_SMS_SERVICE") and os.getenv("SMS"):
-        print("尝试发送短信:", message)
-        try: requests.post(json={"phone_numbers": "18810508767", "server_code": "DLC", "error": message, "error_level": "无"}, url=os.getenv("ALIYUN_SMS_SERVICE", "http://localhost:8000/send-sms"), headers={"Content-Type": "application/json"})
-        except Exception as e: print(f"Failed to send sms: {e}")
-
 import os
 import socket
 import hydra
 import ray
+import atexit
+from astune.utils.sms_agent import send_train_message
 from omegaconf import OmegaConf
 from verl.experimental.dataset.sampler import AbstractSampler
 from verl.trainer.constants_ppo import get_ppo_ray_runtime_env
@@ -84,8 +77,8 @@ def run_ppo(config) -> None:
             runtime_env=runtime_env,
             num_cpus=config.ray_init.num_cpus,
         )
-    import atexit
-    atexit.register(lambda: send_train_message("注意：训练结束"))  # 如果环境变量存在，则在程序结束时发送短信
+
+    atexit.register(lambda: send_train_message("Verl Exit"))
     atexit.register(lambda: ray.shutdown())  # ray shutdown on exit
 
     # Create a remote instance of the TaskRunner class, and
