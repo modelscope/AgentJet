@@ -125,7 +125,7 @@ actor_rollout_ref:
     enforce_eager: True
     log_prob_micro_batch_size_per_gpu: 4
     multi_turn:
-      completion_callback: beyondagent.module.trainer.simple_completion_callback.SimpleCompletionCallback
+      completion_callback: astune.module.trainer.simple_completion_callback.SimpleCompletionCallback
       enable: True
       format: llama3_json
       max_steps: 30

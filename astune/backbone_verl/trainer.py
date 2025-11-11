@@ -458,7 +458,7 @@ def compute_advantage(
     return data
 
 
-class BeyondAgentRayPPOTrainer:
+class ASTuneRayPPOTrainer:
     """Distributed PPO trainer using Ray for scalable reinforcement learning.
 
     This trainer orchestrates distributed PPO training across multiple nodes and GPUs,

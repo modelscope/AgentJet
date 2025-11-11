@@ -1,7 +1,7 @@
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from typing import Callable, List
-try: from astune.agentscope_flow import BeyondAgentProxy
+try: from astune.agentscope_flow import ASTuneProxy
 except ImportError: pass
 
 class AgentScopeLearnProtocol(BaseModel):
@@ -21,6 +21,6 @@ class AgentScopeLearnProtocol(BaseModel):
     # Other settings
     multiturn_token_consolidation: bool = Field(default=True)
 
-    async def agentscope_execute(self, init_messages, beyondagent_proxy: "BeyondAgentProxy", config)->"BeyondAgentProxy":
+    async def agentscope_execute(self, init_messages, astune_proxy: "ASTuneProxy", config)->"ASTuneProxy":
         raise NotImplementedError
 
