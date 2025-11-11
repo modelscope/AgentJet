@@ -69,6 +69,7 @@ astune:
     multi_turn:
       max_sample_per_task: 30
       max_steps: 30
+      enable: True
     step_skip_action: 0 # skip action generation every N steps, 0 means never skip
     submit_oversample_multiplier: 1.5
     enable_oversample: True

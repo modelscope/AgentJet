@@ -1,12 +1,13 @@
 import os
 import sys
 import hydra
-
+import atexit
 from openai import OpenAI
 from types import SimpleNamespace
 from astune.schema.task import Task
 from beast_logger import register_logger
 from astune.parallel_env import ParallelEnvManager
+from astune.utils.sms_agent import send_train_message
 
 class TokenAndProb:
     def __init__(self, t):
@@ -135,4 +136,5 @@ def main(config):
     run(config)
 
 if __name__ == "__main__":
+    atexit.register(lambda: send_train_message("Debug Exit"))
     main()
