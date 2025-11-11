@@ -9,30 +9,14 @@ from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.context_manager.cmt_linear_think import LinearThinkCMT
 from astune.context_manager.cmt_context_clip import SelfContextClipCMT
 from astune.context_manager.cmt_sliding_window import SlidingWindowCMT
+from astune.workflow_controller.basic_agentflow import BaseAgentFlow
 from typing import Any, Dict, List, Union, Callable
 from beast_logger import print_listofdict
 import threading
 
 log_generate_lock = threading.Lock()
 
-class BaseAgentFlow(object):
 
-    def __init__(self,
-                 llm_chat_fn: Callable,
-                 tokenizer: Any,
-                 config,
-                 **kwargs):
-        self.tokenizer = tokenizer
-        self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
-        self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
-        self.cmt: Union[CMTLinear, LinearThinkCMT, Any, None] = None
-        self.alien_llm_chat_fn: Union[Callable, None] = None
-        self.llm_chat_fn: Callable = llm_chat_fn
-        self.config = config
-        # self.console_debug_mode: bool = False
-        self.max_steps: int = self.config.astune.rollout.multi_turn.max_steps
-        self.max_model_len: int = self.config.astune.rollout.max_model_len
-        self.max_env_len: int = self.config.astune.rollout.max_env_len
 
 class AgentFlow(BaseAgentFlow):
 
