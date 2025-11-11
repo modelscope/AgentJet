@@ -1,8 +1,7 @@
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from typing import Callable, List
-try: from astune.agentscope_flow import ASTuneProxy
-except ImportError: pass
+from astune.workflow_controller.agentscope_flow import ASTuneProxy
 
 class AgentScopeLearnProtocol(BaseModel):
     model_config = {"extra": "allow"}

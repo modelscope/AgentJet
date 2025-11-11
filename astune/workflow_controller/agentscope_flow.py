@@ -4,7 +4,7 @@ import torch
 import copy
 import asyncio
 from astune.env_service_client.env_client import EnvClient
-from astune.agent_flow import BaseAgentFlow
+from astune.workflow_controller.basic_agentflow import BaseAgentFlow
 from astune.schema.trajectory import Reward, Trajectory
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol

@@ -1,4 +1,4 @@
-from astune.agentscope_flow import ASTuneProxy
+from astune.workflow_controller.agentscope_flow import ASTuneProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
