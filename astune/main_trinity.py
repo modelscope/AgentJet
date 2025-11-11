@@ -7,11 +7,11 @@ import asyncio
 import os
 import sys
 import traceback
+import ray
+import atexit
 from pathlib import Path
 from pprint import pprint
-
-import ray
-
+from astune.utils.sms_agent import send_train_message
 from trinity.buffer.pipelines.task_pipeline import check_and_run_task_pipeline
 from trinity.common.config import Config, load_config
 from trinity.common.constants import DEBUG_NAMESPACE, PLUGIN_DIRS_ENV_VAR
@@ -169,11 +169,17 @@ def run_stage(config: Config) -> None:
 
 
 def run(config_path: str, dlc: bool = False, plugin_dir: str = None):
+
     if os.path.exists(".env"):
         from dotenv import load_dotenv
         load_dotenv(".env")
+
+    atexit.register(lambda: send_train_message("Trinity Exit"))
+
     if plugin_dir:
         os.environ[PLUGIN_DIRS_ENV_VAR] = plugin_dir
+
+
     load_plugins()
     config = load_config(config_path)
 
