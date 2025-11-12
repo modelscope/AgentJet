@@ -1,0 +1,34 @@
+{
+    "astune.trainer_common.val_before_train": "trainer.val_before_train",
+    "astune.trainer_common.n_gpus_per_node": "trainer.n_gpus_per_node",
+    "astune.trainer_common.nnodes": "trainer.nnodes",
+    "astune.trainer_common.logger": "trainer.logger",
+    "astune.trainer_common.algorithm.task_norm_patch": "algorithm.task_norm_patch",
+    "astune.trainer_common.algorithm.adv_estimator": "algorithm.adv_estimator",
+    "astune.trainer_common.algorithm.use_kl_in_reward": "algorithm.use_kl_in_reward",
+    "astune.trainer_common.mini_batch_num": "actor_rollout_ref.actor.override_ppo_mini_batch_num",
+    "astune.trainer_common.fsdp_config": "actor_rollout_ref.actor.fsdp_config",
+    "astune.trainer_common.optim": "actor_rollout_ref.actor.optim",
+    "astune.trainer_common.use_kl_loss": "actor_rollout_ref.actor.use_kl_loss",
+    "astune.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
+    "astune.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
+
+    "astune.data.max_prompt_length": "data.max_prompt_length",
+    "astune.data.max_response_length": "data.max_response_length",
+    "astune.data.train_batch_size": "data.train_batch_size",
+
+    "astune.rollout.max_model_len": [
+        "actor_rollout_ref.rollout.max_model_len",
+        "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu",
+        "actor_rollout_ref.actor.ppo_max_token_len_per_gpu",
+        "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu"
+    ],
+
+    "astune.rollout.mode": "actor_rollout_ref.rollout.mode",
+    "astune.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
+    "astune.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
+
+    "astune.model.path": "actor_rollout_ref.model.path",
+    "astune.project_name": "trainer.project_name",
+    "astune.experiment_name": "trainer.experiment_name"
+}

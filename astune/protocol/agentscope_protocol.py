@@ -1,7 +1,9 @@
-from agentscope.message import Msg
 from pydantic import BaseModel, Field
-from typing import Callable, List
-from astune.workflow_controller.agentscope_flow import ASTuneProxy
+from typing import Callable, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agentscope.message import Msg
+    from astune.workflow_controller.agentscope_flow import ASTuneProxy
 
 class AgentScopeLearnProtocol(BaseModel):
     model_config = {"extra": "allow"}
@@ -22,4 +24,3 @@ class AgentScopeLearnProtocol(BaseModel):
 
     async def agentscope_execute(self, init_messages, astune_proxy: "ASTuneProxy", config)->"ASTuneProxy":
         raise NotImplementedError
-
