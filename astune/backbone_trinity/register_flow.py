@@ -28,6 +28,7 @@ from astune.parallel_env import DynamicRollout
 from astune.schema.logprob import TokenAndProb
 from astune.schema.task import Task
 from astune.schema.trajectory import Sample
+from astune.utils.config_utils import read_astune_config
 from omegaconf import OmegaConf
 
 class TrinityCompatWorkflow(DynamicRollout):
@@ -104,19 +105,6 @@ class TrinityCompatWorkflow(DynamicRollout):
         return result_holder.get("result", None)
 
 
-def read_astune_config(yaml_fp):
-    from hydra import initialize, compose
-    from omegaconf import DictConfig
-
-    def load_hydra_config(config_path: str, config_name: str) -> DictConfig:
-        with initialize(config_path=config_path, version_base=None):
-            cfg = compose(config_name=config_name, overrides=[])
-            return cfg
-
-    dir_path = os.path.dirname(yaml_fp)
-    file_name = os.path.basename(yaml_fp)
-    return load_hydra_config(config_path=dir_path, config_name=file_name)
-
 
 @WORKFLOWS.register_module("astune_workflow")
 class astunetWorkflowWrap(Workflow):
@@ -158,7 +146,7 @@ class astunetWorkflowWrap(Workflow):
             task=self.task,
             llm_handle=self.model_client,
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
-            config=read_astune_config(os.path.relpath(yaml_path, os.path.dirname(__file__))),
+            config=read_astune_config(yaml_path),
         ).run_in_new_thread()
 
         sample_final = []

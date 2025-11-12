@@ -1,5 +1,0 @@
-{
-    "astune.model.path": "actor_rollout_ref.model.path",
-    "astune.project_name": "trainer.project_name",
-    "astune.experiment_name": "trainer.experiment_name"
-}

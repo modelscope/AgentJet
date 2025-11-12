@@ -782,35 +782,24 @@ class ASTuneRayPPOTrainer:
         # Lists to collect samples for the table
         sample_inputs = []
         sample_outputs = []
-        sample_gts = []
         sample_scores = []
         sample_turns = []
 
         for test_data in self.val_dataloader:
+            test_data['index'] = torch.tensor([i for i in range(len(test_data['task_id']))], dtype=torch.long)
             test_batch = DataProto.from_single_dict(test_data)
 
             # repeat test batch
             test_batch = test_batch.repeat(
-                repeat_times=self.config.astune.rollout.val_kwargs.n, interleave=True
+                repeat_times=self.config.astune.rollout.val_kwargs.num_repeat, interleave=True
             )
 
             # we only do validation on rule-based rm
             if self.config.reward_model.enable and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model":
                 return {}
 
-            # Store original inputs
-            input_ids = test_batch.batch["input_ids"]
-            # TODO: Can we keep special tokens except for padding tokens?
-            input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
-            # sample_inputs.extend(input_texts)
-
-            ground_truths = [
-                item.non_tensor_batch.get("reward_model", {}).get("ground_truth", None) for item in test_batch
-            ]
-            sample_gts.extend(ground_truths)
-
-            batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
-            non_tensor_batch_keys_to_pop = ["raw_prompt_ids"]
+            batch_keys_to_pop = ['index']
+            non_tensor_batch_keys_to_pop = ['task_id', 'main_query', 'env_type', 'metadata', 'init_messages']
             if "multi_modal_data" in test_batch.non_tensor_batch:
                 non_tensor_batch_keys_to_pop.append("multi_modal_data")
             if "raw_prompt" in test_batch.non_tensor_batch:
@@ -1226,8 +1215,7 @@ class ASTuneRayPPOTrainer:
                         else curr_step_profile
                     )
 
-                # from vsdb import bp
-                # bp("YYY")
+
                 batch_dict['index'] = torch.tensor([i for i in range(len(batch_dict['task_id']))], dtype=torch.long)
 
                 batch: DataProto = DataProto.from_single_dict(batch_dict)
@@ -1414,33 +1402,6 @@ class ASTuneRayPPOTrainer:
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
                         metrics.update(actor_output_metrics)
 
-                    # Log rollout generations if enabled
-                    rollout_data_dir = self.config.trainer.get("rollout_data_dir", None)
-                    if rollout_data_dir:
-                        with marked_timer("dump_rollout_generations", timing_raw, color="green"):
-                            inputs = self.tokenizer.batch_decode(batch.batch["prompts"], skip_special_tokens=True)
-                            outputs = self.tokenizer.batch_decode(batch.batch["responses"], skip_special_tokens=True)
-                            scores = batch.batch["token_level_scores"].sum(-1).cpu().tolist()
-                            sample_gts = [
-                                item.non_tensor_batch.get("reward_model", {}).get("ground_truth", None)
-                                for item in batch
-                            ]
-
-                            if "request_id" in batch.non_tensor_batch:
-                                reward_extra_infos_dict.setdefault(
-                                    "request_id",
-                                    batch.non_tensor_batch["request_id"].tolist(),
-                                )
-
-                            self._dump_generations(
-                                inputs=inputs,
-                                outputs=outputs,
-                                gts=sample_gts,
-                                scores=scores,
-                                reward_extra_infos_dict=reward_extra_infos_dict,
-                                dump_path=rollout_data_dir,
-                            )
-
                     # validate
                     if (
                         self.val_reward_fn is not None
@@ -1540,7 +1501,7 @@ class ASTuneRayPPOTrainer:
         Returns:
             Tuple of (cmts, tasks) containing trajectory results and task definitions
         """
-        pass_n = self.config.trainer.eval_pass_n
+        pass_n = self.config.astune.trainer_common.val_pass_n
         # if pass_n == 1:
         #     return self.eval_dataset_legacy(target_dataset, target_dataset_name, mode, epoch)
 
