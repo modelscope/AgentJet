@@ -28,7 +28,7 @@ git clone https://github.com/binary-husky/verl.git external/verl
 
 # Install dependencies
 uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
-uv pip install -r requirements_verl.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
+uv pip install -r scripts/requirements_verl.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
 uv pip install -e external/verl -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
 
 # Install flash attention (must be installed last)

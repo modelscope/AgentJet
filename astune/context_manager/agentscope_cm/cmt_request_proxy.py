@@ -79,17 +79,17 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             return ChatResponse(
                 content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
             )
-        print_listofdict(converted_message, header='converted proxy messages')
+        print_listofdict(converted_message, header='proxy messages')
         # print_listofdict(messages, header='proxy messages')
         assert self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools)
         llm_output = self.llm_chat_fn(messages, custom_sampling_params, tools)
-        print_dict(remove_fields(llm_output, fields=['request_id', 'tokens', 'tool_call_id']), header='response')
+        # print_dict(remove_fields(llm_output, fields=['request_id', 'tokens', 'tool_call_id']), header='response')
 
-        print('-----------------------------------------')
-        print('-----------------------------------------')
-        print('-----------------------------------------')
-        print('-----------------------------------------')
-        time.sleep(10)
+        # print('-----------------------------------------')
+        # print('-----------------------------------------')
+        # print('-----------------------------------------')
+        # print('-----------------------------------------')
+        # time.sleep(10)
         # compute_string_madness
         if not self.already_mad_flag:
             if compute_string_madness(completion=llm_output['content'], checklist=self.config.astune.rollout.compute_madness_checklist) < 0.0:
