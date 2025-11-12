@@ -2,7 +2,7 @@ import copy
 from textwrap import dedent
 from typing import List, Tuple
 from astune.schema.trajectory import Sample, Reward
-from astune.context_manager.cmt_linear import ExtendedMessage, CMTLinear
+from astune.context_manager.agentflow_cm.cmt_linear import ExtendedMessage, CMTLinear
 from beast_logger import register_logger, print_dict, print_nested, NestedJsonItem, SeqItem
 
 class MultiSampleCMT(CMTLinear):

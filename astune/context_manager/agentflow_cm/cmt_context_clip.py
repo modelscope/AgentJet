@@ -5,8 +5,8 @@ import random
 import time
 from typing import List, Callable
 from beast_logger import print_dict, print_listofdict
-from astune.context_manager.cmt_linear_think import ExtendedMessage, CMTLinear, LinearThinkCMT
-from astune.context_manager.cmt_foreign_llm import construct_alien_llm_chat_fn
+from astune.context_manager.agentflow_cm.cmt_linear_think import ExtendedMessage, CMTLinear, LinearThinkCMT
+from astune.context_manager.agentflow_cm.cmt_foreign_llm import construct_alien_llm_chat_fn
 from textwrap import dedent
 from openai import OpenAI
 from loguru import logger
