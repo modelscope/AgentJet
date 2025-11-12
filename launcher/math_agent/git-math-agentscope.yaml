@@ -23,6 +23,9 @@ astune:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
 
+trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
+    train_batch_size: 256
+
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
