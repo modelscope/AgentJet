@@ -3,24 +3,24 @@
   "include": [
     "astune/**/*.py",
     "external/trinity/**/*.py",
-    ".venv/lib/python3.10/site-packages/**/*.py",
+    // ".venv/lib/python3.10/site-packages/**/*.py",
     ".venv/lib/python3.10/site-packages/agentscope/**/*.py"
   ],
   "exclude": [
-    // "node_modules",
-    // "build",
-    // "checkpoints",
-    // "experiments",
-    // "launcher",
-    // "logs",
-    // "launcher",
-    // "outputs",
-    // "wanlog",
-    // "wandb",
-    // "dist",
+    "node_modules",
+    "build",
+    "checkpoints",
+    "experiments",
+    "launcher",
+    "logs",
+    "launcher",
+    "outputs",
+    "wanlog",
+    "wandb",
+    "dist",
     // "**/.vscode-server",
     // "**/__pycache__",
     // "**/*.log",
-    // "**/*"
+    "**/*"
   ]
 }

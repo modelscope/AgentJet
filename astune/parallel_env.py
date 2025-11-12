@@ -19,7 +19,7 @@ from astune.workflow_controller.classic_agentflow import BaseAgentFlow
 from astune.task_rollout.env_worker import EnvWorker
 from astune.schema.task import Task, TaskLaunchCoreArgument
 from astune.schema.trajectory import Sample
-from astune.context_manager.agentflow_cm.cmt_linear import CMTLinear, CMTBaseAttr
+from astune.context_manager.cmt_linear import CMTLinear, CMTBaseAttr
 from astune.workflow_controller.agentscope_flow import AgentScopeWorkflow
 from astune.utils.utils import run_async_coro__no_matter_what
 from astune.schema.logprob import TokenAndProb

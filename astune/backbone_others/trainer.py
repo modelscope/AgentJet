@@ -68,7 +68,7 @@ from astune.schema.task import Task
 from astune.schema.trajectory import Trajectory
 from astune.utils.message import send_train_message
 from beast_logger import register_logger, print_dict
-from astune.context_manager.agentflow_cm.cmt_linear import CMTLinear
+from astune.context_manager.cmt_linear import CMTLinear
 import os
 import json
 from typing import List, Dict, Union, Type

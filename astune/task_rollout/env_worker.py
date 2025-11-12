@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from astune.workflow_controller.classic_agentflow import AgentFlow
 from astune.workflow_controller.classic_agentflow import BaseAgentFlow
 from astune.workflow_controller.agentscope_flow import AgentScopeWorkflow
-from astune.context_manager.agentflow_cm.cmt_linear import CMTLinear
+from astune.context_manager.cmt_linear import CMTLinear
 from astune.env_service_client.env_client_ng import EnvClient as EnvClientNg
 
 class EnvWorker(object):
