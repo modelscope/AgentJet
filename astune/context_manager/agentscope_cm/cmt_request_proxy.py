@@ -79,18 +79,18 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             return ChatResponse(
                 content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
             )
-        # print_listofdict(converted_message, header='converted proxy messages')
-        # print_listofdict(messages, header='proxy messages')
-        try:
-            if self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools):
-                logger.warning("Tokenization between original messages and converted messages mismatch!")
-                print_listofdict(converted_message, mod='exception', header='[exception] proxy converted_message')
-                print_listofdict(messages, mod='exception', header='[exception] proxy messages')
-        except Exception as e:
-            print_listofdict(converted_message, mod='exception', header='proxy converted_message')
-            print_listofdict(messages, mod='exception', header='proxy messages')
-            logger.error(f"Tokenization check failed due to error: {e}")
-            from vsdb import bp;bp("OH")
+
+        # try:
+        #     if self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools):
+        #         logger.warning("Tokenization between original messages and converted messages mismatch!")
+        #         # print_listofdict(converted_message, mod='exception', header='[exception] proxy converted_message')
+        #         # print_listofdict(messages, mod='exception', header='[exception] proxy messages')
+        # except Exception as e:
+        #     # print_listofdict(converted_message, mod='exception', header='proxy converted_message')
+        #     # print_listofdict(messages, mod='exception', header='proxy messages')
+        #     logger.error(f"Tokenization check failed due to error: {e}")
+        #     from vsdb import bp;bp("OH")
+
         llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
         # print_dict(remove_fields(llm_output, fields=['request_id', 'tokens', 'tool_call_id']), header='response')
 
@@ -132,7 +132,7 @@ class ASTuneLmProxy(ASTuneContextTemplate):
         if is_safe:
             self.full_context += [ llm_ext_msg ]
             is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
-            if not is_safe:
+            if length > self.config.astune.rollout.max_model_len:
                 raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, before gen info {info}, generated token length {len(llm_ext_msg.token_arr)}")
             self.grouped_steps += [copy.deepcopy(self.full_context)]
 
