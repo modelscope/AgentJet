@@ -10,7 +10,12 @@ astune:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ 编写并选择Agent
+    use_agentscope_protocol: True
     agentscope_learn_protocol: tutorial.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_disable_toolcalls: True
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
 
 # ------------------ 不需要修改 ------------------
 hydra:

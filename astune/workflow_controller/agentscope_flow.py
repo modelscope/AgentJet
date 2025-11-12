@@ -6,12 +6,12 @@ import asyncio
 from astune.env_service_client.env_client import EnvClient
 from astune.workflow_controller.basic_agentflow import BaseAgentFlow
 from astune.schema.trajectory import Reward, Trajectory
-from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
-from astune.context_manager.cmt_linear import replace_token_ids, CMTLinear
+from astune.context_manager.agentflow_cm.cmt_linear import CMTLinear, ExtendedMessage
+from astune.context_manager.agentflow_cm.cmt_linear import replace_token_ids, CMTLinear
 from astune.schema.trajectory import Sample, Reward
 from typing import Any, Dict, List, Union, Tuple
-from astune.context_manager.cmt_agentscope import ASTuneProxy
+from astune.context_manager.agentscope_cm.cmt_agentscope import ASTuneProxy
 from astune.schema.task import Task, TaskLaunchCoreArgument
 
 log_generate_lock = threading.Lock()
