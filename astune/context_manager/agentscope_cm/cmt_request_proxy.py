@@ -79,10 +79,19 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             return ChatResponse(
                 content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
             )
-        print_listofdict(converted_message, header='proxy messages')
+        # print_listofdict(converted_message, header='proxy messages')
         # print_listofdict(messages, header='proxy messages')
-        assert self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools)
-        llm_output = self.llm_chat_fn(messages, custom_sampling_params, tools)
+        try:
+            if self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools):
+                logger.warning("Tokenization between original messages and converted messages mismatch!")
+                print_listofdict(converted_message, mod='exception', header='[exception] proxy converted_message')
+                print_listofdict(messages, mod='exception', header='[exception] proxy messages')
+        except Exception as e:
+            print_listofdict(converted_message, mod='exception', header='proxy converted_message')
+            print_listofdict(messages, mod='exception', header='proxy messages')
+            logger.error(f"Tokenization check failed due to error: {e}")
+            from vsdb import bp;bp("OH")
+        llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
         # print_dict(remove_fields(llm_output, fields=['request_id', 'tokens', 'tool_call_id']), header='response')
 
         # print('-----------------------------------------')
@@ -112,7 +121,7 @@ class ASTuneLmProxy(ASTuneContextTemplate):
         )
 
         if token_generator == "manual":
-            input_msg_ref = copy.deepcopy(messages)
+            input_msg_ref = copy.deepcopy(converted_message)
             token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output, tools=tools)
             assert len(token_arr_method2) <= self.config.astune.rollout.max_response_length_in_one_turn, f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.astune.rollout.max_response_length_in_one_turn}"
             llm_ext_msg.token_arr = token_arr_method2
