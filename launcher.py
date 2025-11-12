@@ -350,7 +350,7 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
     # let's begin the training process
     if args.backbone == "trinity":
         # replace boot yaml
-        trinity_boot_yaml = "astune/default_config/trinity_launch.yaml" # THIS ONE IS READ ONLY, and ALWAYS FIXED
+        trinity_boot_yaml = "astune/default_config/trinity/trinity_launch.yaml" # THIS ONE IS READ ONLY, and ALWAYS FIXED
         align_parameters(yaml_backup_dst, trinity_boot_yaml, 'astune/default_config/trinity/config_auto_convertion_trinity.json')
         cmd = [
             sys.executable,
