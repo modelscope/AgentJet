@@ -5,9 +5,9 @@ from collections import defaultdict
 from typing import List, Union, Tuple, Optional
 from astune.schema.trajectory import Sample, Reward
 from astune.utils.compute_madness import compute_string_madness
-from astune.context_manager.agentflow_cm.cmt_base_attr import CMTBaseAttr
-from astune.context_manager.agentflow_cm.cmt_base_attr import ExtendedMessage
-from astune.context_manager.agentflow_cm.cmt_base_attr import replace_token_ids
+from astune.context_manager.cmt_base_attr import CMTBaseAttr
+from astune.context_manager.cmt_base_attr import ExtendedMessage
+from astune.context_manager.cmt_base_attr import replace_token_ids
 from beast_logger import register_logger, print_dict, print_listofdict, print_nested, NestedJsonItem, SeqItem
 
 

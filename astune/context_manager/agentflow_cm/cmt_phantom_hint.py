@@ -1,5 +1,5 @@
 from typing import List
-from astune.context_manager.agentflow_cm.cmt_linear import ExtendedMessage, CMTLinear
+from astune.context_manager.cmt_linear import ExtendedMessage, CMTLinear
 
 
 class LinearThinkCMT(CMTLinear):

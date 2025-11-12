@@ -1,4 +1,4 @@
-from astune.context_manager.agentflow_cm.cmt_linear import CMTLinear, ExtendedMessage
+from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.context_manager.agentflow_cm.cmt_linear_think import LinearThinkCMT
 from typing import Any, Dict, List, Union, Callable
 
