@@ -306,7 +306,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg):
                 sub_config = sub_config[key]
             sub_config[keys[-1]] = value
             logger.success(f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]")
-            time.sleep(0.33)
+            time.sleep(0.1)
 
     logger.success("----------------------------------------------------")
 

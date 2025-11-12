@@ -1,9 +1,10 @@
 import copy
-import importlib
+import time
 from loguru import logger
 from pydantic import BaseModel
-from beast_logger import print_dict
+from beast_logger import print_dict, print_listofdict
 
+from transformers.tokenization_utils import PreTrainedTokenizer
 from agentscope.model import ChatResponse
 from agentscope.message import TextBlock, ToolUseBlock
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
@@ -13,10 +14,15 @@ from astune.context_manager.agentscope_cm.cmt_multi_sample import ASTuneContextT
 
 from typing import Any, List, Type, Dict
 
+def remove_fields(d: Dict, fields: List[str]) -> Dict:
+    d = copy.deepcopy(d)
+    for field in fields:
+        d.pop(field.strip(), None)
+    return d
 
 class ASTuneLmProxy(ASTuneContextTemplate):
 
-    async def execute_model_proxy(self, messages: List[dict], tools: List[dict]=[], tool_choice: str = "auto", structured_model=None, **kwargs) -> dict:
+    async def execute_model_proxy(self, messages: List[dict], tools: List=[], tool_choice: str = "auto", structured_model=None, **kwargs) -> dict:
         # load messages into `self.full_context`
         self.full_context = []
 
@@ -35,8 +41,8 @@ class ASTuneLmProxy(ASTuneContextTemplate):
                 ignore = False
                 str_content = ""
                 for item in msg['content']:
-                    if item['type'] != 'text':
-                        logger.warning(f"Non-text content in message content detected: {item['type']}. Ignoring.")
+                    if 'text' not in item:
+                        logger.warning(f"Non-text content in message content detected: {item}. Ignoring.")
                         ignore = True
                         break
                     str_content += str(item['text'])
@@ -51,25 +57,21 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             else:
                 author = 'env'
 
-            is_last_message = (len(messages) == i+1)
-            if is_last_message and (not disable_toolcalls):
-                _tools = tools
-            else:
-                _tools = []
-
             self.full_context += [
                 ExtendedMessage(
                     author=author,
                     role=msg['role'],
                     content=msg['content'],
                     tokenizer=self.tokenizer,
-                    tools=_tools,
+                    tools=tools,
+                    tool_calls=msg['tool_calls'] if 'tool_calls' in msg else [],
                     token_generator="auto",
                 )
             ]
 
-        # 4. ⚠️ check token overflow
-        is_safe, info = self.check_context_token_num_safe(messages)
+        # check token overflow
+        converted_message = self.to_role_content(self.full_context)
+        is_safe, info = self.check_context_token_num_safe(converted_message, tools)
         custom_sampling_params = {}
         if not is_safe:
             logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
@@ -77,11 +79,17 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             return ChatResponse(
                 content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
             )
+        print_listofdict(converted_message, header='converted proxy messages')
+        # print_listofdict(messages, header='proxy messages')
+        assert self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools)
+        llm_output = self.llm_chat_fn(messages, custom_sampling_params, tools)
+        print_dict(remove_fields(llm_output, fields=['request_id', 'tokens', 'tool_call_id']), header='response')
 
-        print_dict(messages, header='proxy messages')
-        llm_output = self.llm_chat_fn(messages, custom_sampling_params)
-        print_dict(llm_output, header='proxy response')
-
+        print('-----------------------------------------')
+        print('-----------------------------------------')
+        print('-----------------------------------------')
+        print('-----------------------------------------')
+        time.sleep(10)
         # compute_string_madness
         if not self.already_mad_flag:
             if compute_string_madness(completion=llm_output['content'], checklist=self.config.astune.rollout.compute_madness_checklist) < 0.0:
@@ -105,7 +113,7 @@ class ASTuneLmProxy(ASTuneContextTemplate):
 
         if token_generator == "manual":
             input_msg_ref = copy.deepcopy(messages)
-            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output)
+            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output, tools=tools)
             assert len(token_arr_method2) <= self.config.astune.rollout.max_response_length_in_one_turn, f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.astune.rollout.max_response_length_in_one_turn}"
             llm_ext_msg.token_arr = token_arr_method2
             llm_ext_msg.token_logprob_arr = token_logprob_arr
@@ -113,18 +121,12 @@ class ASTuneLmProxy(ASTuneContextTemplate):
 
         # take snapshot of current timeline
         if is_safe:
-            self.full_context += [
-                llm_ext_msg
-            ]
-            prompt_text = self.tokenizer.apply_chat_template(
-                self.to_role_content(self.full_context),    # todo
-                tokenize=False,
-                add_generation_prompt=True
-            )
-            length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
-            if length >= self.config.astune.rollout.max_model_len:
+            self.full_context += [ llm_ext_msg ]
+            is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
+            if not is_safe:
                 raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, before gen info {info}, generated token length {len(llm_ext_msg.token_arr)}")
             self.grouped_steps += [copy.deepcopy(self.full_context)]
+
         # return response
         return await self._parse_dashscope_generation_response(llm_output, structured_model=structured_model)
 

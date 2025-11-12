@@ -66,9 +66,14 @@ class CMTLinear(CMTBaseAttr):
             raise ValueError(f"Unknown mod {mod} in prepare_previous_context, only support 'future' and 'raw'")
 
 
-    def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
+    def check_context_token_num_safe(self, messages: List[dict], tools: List[dict] = []) -> Tuple[bool, str]:
         def get_seq_length(messages):
-            prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            prompt_text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                tools=tools
+            )
             return len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
@@ -120,7 +125,7 @@ class CMTLinear(CMTBaseAttr):
         return self.prepare_previous_context(mod='future')
 
 
-    def save_init_input(self, init_input_arr:list, add_nothink: bool=False):
+    def save_init_input(self, init_input_arr:list, add_nothink: bool=False, tools: List[dict]=[]):
         """
         Save and process the initial input messages to the context.
 
@@ -150,7 +155,7 @@ class CMTLinear(CMTBaseAttr):
         # compute token array for each message
         token_ids_acc = []
         for llm_msg, ext_msg, index in zip(init_input_arr, self.full_context, range(len(init_input_arr))):
-            text_with_chat_template = self.tokenizer.apply_chat_template(init_input_arr[:(index+1)], tokenize=False)
+            text_with_chat_template = self.tokenizer.apply_chat_template(init_input_arr[:(index+1)], tokenize=False, tools=tools)
             tokenizer_output = self.tokenizer(text_with_chat_template, return_tensors="pt", padding=False)
             input_ids = tokenizer_output["input_ids"][0].tolist()
             # attention_mask = outputs["attention_mask"][0].tolist()
@@ -202,17 +207,15 @@ class CMTLinear(CMTBaseAttr):
         return ext_msg
 
     # generate token
-    def get_token_inc_from_vllm_response(self, input_msg_ref, llm_output) -> Tuple[List[int], List[int]]:
+    def get_token_inc_from_vllm_response(self, input_msg_ref, llm_output, tools: List[dict]=[]) -> Tuple[List[int], List[int]]:
         generation_prompt_token, msg = self.get_inc(
-            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=False),
-            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=True),
+            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=False, tools=tools),
+            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=True, tools=tools),
         )
         # completion_token_arr will contain generation_prompt header
         completion_token_arr, msg2 = self.get_inc(
-            # ... <|im_end|>
-            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False),
-            # ... <|im_end|><|im_start|>...<|im_end|>
-            self.tokenizer.apply_chat_template(input_msg_ref + [ {"role": llm_output['role'],  "content": llm_output['content']} ], tokenize=False),
+            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, tools=tools),
+            self.tokenizer.apply_chat_template(input_msg_ref + [ {"role": llm_output['role'],  "content": llm_output['content']} ], tokenize=False, tools=tools),
         )
         vllm_output_raw_token = [t.token_id for t in llm_output['tokens']]
         vllm_output_raw_logprob = [t.logprob for t in llm_output['tokens']]
@@ -263,11 +266,16 @@ class CMTLinear(CMTBaseAttr):
         return
 
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List[dict]:
-        return [
-            {"role": ext_msg.role, "content": ext_msg.content_for_future} if not ext_msg.tools else
-            {"role": ext_msg.role, "content": ext_msg.content_for_future, "tools": ext_msg.tools}
-            for ext_msg in ext_msg_array
-        ]
+        result = []
+        for ext_msg in ext_msg_array:
+            d = {
+                "role": ext_msg.role,
+                "content": ext_msg.content_for_future,
+            }
+            if ext_msg.tool_calls:
+                raise RuntimeError("Not expected, contact developer")
+            result.append(d)
+        return result
 
     def prepare_world_interaction(self) -> str:
         """
