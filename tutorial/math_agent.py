@@ -44,11 +44,7 @@ class ExampleMathLearn(AgentScopeLearnProtocol):
         from agentscope.memory import InMemoryMemory
         from agentscope.tool import Toolkit, execute_python_code
 
-        if len(init_messages) >= 2: first_msg, init_messages = init_messages[0], init_messages[1:]
-        else: first_msg = {"content": "You're a helpful assistant."}
-        interaction_message = []
-        for msg in init_messages:
-            interaction_message.append(Msg(name=msg.get("name", "user"), content=msg.get("content", ""), role=msg.get("role", "user")))
+        query = init_messages[-1]['content']
 
         self.toolkit = Toolkit()
         self.toolkit.register_tool_function(execute_python_code)
@@ -60,7 +56,7 @@ class ExampleMathLearn(AgentScopeLearnProtocol):
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
         )
-        msg = Msg("user", init_messages[0]['content'], role="user")
+        msg = Msg("user", query, role="user")
         result = await self.agent.reply(msg, structured_model=FinalResult)
         final_answer = extract_final_answer(result)
         astune_proxy.update_judge_input_dictionary(final_answer=final_answer)

@@ -32,7 +32,7 @@ class ChatCompletionScheduler():
             completion_callback=SimpleNamespace(tokenizer=self.tokenizer),
         )
 
-    def submit_chat_completions(self, messages, sampling_params, request_id):
+    def submit_chat_completions(self, messages, sampling_params, request_id, tools=[]):
         client = OpenAI(
             base_url=self.url,
             api_key="token-abc123",
@@ -40,23 +40,18 @@ class ChatCompletionScheduler():
         sampling_params = dict(
             n=1,
             max_completion_tokens=self.config.astune.rollout.max_response_length_in_one_turn,
-            temperature=self.config.astune.rollout.temperature,
-            top_p=self.config.astune.rollout.top_p
         )
         sampling_params["temperature"] = self.config.astune.rollout.val_kwargs.temperature
         sampling_params["top_k"] = self.config.astune.rollout.val_kwargs.top_k
         sampling_params["top_p"] = self.config.astune.rollout.val_kwargs.top_p
+
         sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
 
-        tools = messages[-1].get("tools", None)
-        for msg in messages: msg.pop("tools", None)
-
-        if tools is not None:
+        if tools:
             completion = client.chat.completions.create(
                 model=self.config.astune.model.path,
                 messages=messages,
                 tools=tools,
-                tool_choice="required",
                 extra_body=sampling_params
             )
         else:

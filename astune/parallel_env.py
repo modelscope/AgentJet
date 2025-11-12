@@ -23,6 +23,7 @@ from astune.context_manager.cmt_linear import CMTLinear, CMTBaseAttr
 from astune.workflow_controller.agentscope_flow import AgentScopeWorkflow
 from astune.utils.utils import run_async_coro__no_matter_what
 from astune.schema.logprob import TokenAndProb
+from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.task_rollout.async_llm_bridge import AsyncLlmBridge
 
 def init_logger(experiment_name):
@@ -39,8 +40,16 @@ def init_logger(experiment_name):
 
 class StepPrinter(AsyncLlmBridge):
 
-    def __init__(self, config: DictConfig, async_rollout_manager, max_parallel: int,
-                 max_llm_retries: int = 3, tokenizer: "AutoTokenizer"=None, llm_mode= "local", **kwargs):
+    def __init__(
+        self,
+        config: DictConfig,
+        async_rollout_manager,
+        max_parallel: int,
+        max_llm_retries: int = 3,
+        tokenizer: PreTrainedTokenizer = None,  # type: ignore
+        llm_mode="local",
+        **kwargs
+    ):
 
         init_logger(experiment_name=config.astune.experiment_name)
         self.llm_mode = llm_mode

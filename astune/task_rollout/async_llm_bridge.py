@@ -29,14 +29,13 @@ class AsyncLlmBridge(object):
 
 
     def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:
-        def llm_chat(messages: List[Dict[str, str]],
-                     custom_sampling_params: dict = {},
-                     request_id: str = "") -> dict:
-            """
-            input messages: [{"role": "system", "value": "..."}, {"role": "user", "value": "..."}]
-            output messages: [{"role": "assistant", "value": "..."}]
-            """
-            # TODO: sending sampling_params to rollout server
+        def llm_chat(
+            messages: List[Dict[str, str]],
+            custom_sampling_params: dict = {},
+            tools = [],
+            request_id: str = ""
+        ) -> dict:
+
             updated_sampling_params = {}
             if sampling_params:
                 updated_sampling_params.update(sampling_params)
@@ -46,7 +45,6 @@ class AsyncLlmBridge(object):
             tools = messages[-1].get("tools", None)
             for msg in messages: msg.pop("tools", None)
 
-            # updated_sampling_params.update({"logprobs": 1, "prompt_logprobs": 1})
             input_messages = copy.deepcopy(messages)
             request_id = uuid.uuid4().hex
             if tools is not None:
@@ -67,17 +65,10 @@ class AsyncLlmBridge(object):
                 token_array = final_res
 
             decoded_text = self.tokenizer.decode(token_array) # type: ignore
-            # decoded_text = "Let's start by finding which API we need to use to interact with Simple Note.\n\nCode:
-            # ```python\nprint(apis.api_docs.show_api_descriptions(app_name='simple_note'))\n```<|im_end|>"
+
             if decoded_text.endswith('<|im_end|>'):
                 decoded_text = decoded_text[:-len('<|im_end|>')]
-            # assert prompt_ids == final_res.prompt_token_ids
-            # assert final_res.outputs[0].text == decoded_text
-            # a = self.tokenizer.apply_chat_template(
-            #   input_messages + [{"role": "assistant", "content": decoded_text}],
-            #   add_generation_prompt=False, tokenize=True)
-            # b = prompt_ids + token_array
-            # assert all([aa==bb for aa,bb in zip(a,b)])
+
             return {
                 "role": "assistant",
                 "request_id": request_id,
@@ -92,9 +83,12 @@ class AsyncLlmBridge(object):
                 ]
             }
 
-        def llm_chat_remote(messages: List[Dict[str, str]],
-                     custom_sampling_params: dict = {},
-                     request_id: str = "") -> dict:
+        def llm_chat_remote(
+            messages: List[Dict[str, str]],
+            custom_sampling_params: dict = {},
+            tools = [],
+            request_id: str = ""
+        ) -> dict:
             """
             input messages: [{"role": "system", "value": "..."}, {"role": "user", "value": "..."}]
             output messages: [{"role": "assistant", "value": "..."}]
@@ -108,18 +102,27 @@ class AsyncLlmBridge(object):
             input_messages = copy.deepcopy(messages)
             for i in range(self.max_llm_retries):
                 try:
-                    output_message = self.async_rollout_manager.submit_chat_completions(messages=input_messages,
-                                                                       sampling_params=updated_sampling_params,
-                                                                       request_id=request_id)
+                    # this function is defined in `astune/main_vllm.py`
+                    output_message = self.async_rollout_manager.submit_chat_completions(
+                        messages=input_messages,
+                        sampling_params=updated_sampling_params,
+                        tools=tools,
+                        request_id=request_id
+                    )
                     break
                 except Exception as e:
                     logger.bind(exception=True).exception(f"rollout_server.{i} error: {e.args}")
                     time.sleep(i + 1)
             return output_message[-1]   # type: ignore
 
-        def llm_chat_trinity(messages: List[Dict[str, str]],
-                            custom_sampling_params: dict = {},
-                            request_id: str = "") -> dict:
+
+
+        def llm_chat_trinity(
+            messages: List[Dict[str, str]],
+            custom_sampling_params: dict = {},
+            tools = [],
+            request_id: str = ""
+        ) -> dict:
             """
             input messages: [{"role": "system", "value": "..."}, {"role": "user", "value": "..."}]
             output messages: [{"role": "assistant", "value": "..."}]
@@ -132,17 +135,23 @@ class AsyncLlmBridge(object):
                     updated_sampling_params.update(custom_sampling_params)
                 updated_sampling_params.pop('min_tokens')
 
-                tools = messages[-1].get("tools", None)
-                for msg in messages: msg.pop("tools", None)
-
-                response = await model_client.chat.completions.create(
-                    model=model_client.model_path,
-                    messages=messages,
-                    logprobs=True,
-                    tools=tools,
-                    top_logprobs=0,
-                    **updated_sampling_params
-                )
+                if tools:
+                    response = await model_client.chat.completions.create(
+                        model=model_client.model_path,
+                        messages=messages,
+                        logprobs=True,
+                        tools=tools,
+                        top_logprobs=0,
+                        **updated_sampling_params
+                    )
+                else:
+                    response = await model_client.chat.completions.create(
+                        model=model_client.model_path,
+                        messages=messages,
+                        logprobs=True,
+                        top_logprobs=0,
+                        **updated_sampling_params
+                    )
                 return response
 
             assert hasattr(self, 'trinity_llm_model_client'), "trinity_llm_model_client is not set in AsyncLlmBridge"
@@ -150,9 +159,10 @@ class AsyncLlmBridge(object):
 
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
+
             if content is None:
-                # from vsdb import bp; bp("H2")
                 content = ""
+
             return {
                 "role": "assistant",
                 "request_id": response.id,

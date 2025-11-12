@@ -80,13 +80,13 @@ class SlidingWindowCMT(MultiSampleCMT):
         return dict_context, latest_llm_interaction_socket
 
 
-    def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
+    def check_context_token_num_safe(self, messages: List[dict], tools=[]) -> Tuple[bool, str]:
         """Always be safe because we already check in `prepare_next_llm_context`
         """
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
 
-        assert self._get_seq_length(messages) < self.max_seq_length
+        assert self._get_seq_length(messages, tools) < self.max_seq_length
 
         if self.prompt_part_token_overflow:
             return False, "prompt_part_token_overflow"

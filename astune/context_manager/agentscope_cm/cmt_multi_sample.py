@@ -2,17 +2,27 @@ from loguru import logger
 
 from agentscope.model import DashScopeChatModel
 from astune.schema.trajectory import Reward
+from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage, replace_token_ids
 from astune.utils.color_hsl import adjust_color_hsl
 from astune.utils.compute_madness import compute_string_madness
 from astune.context_manager.cmt_base_attr import INVALID_LOG_PROB_VALUE
 
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Union
 from beast_logger import print_nested, NestedJsonItem, SeqItem
 
 class ASTuneContextTemplate(CMTLinear):
 
-    def __init__(self, llm_chat_fn, tokenizer, config, env_step_fn, should_interrupt_fn, generated_token_callback_fn, **kwargs):
+    def __init__(
+            self,
+            llm_chat_fn,
+            tokenizer:PreTrainedTokenizer,
+            config,
+            env_step_fn,
+            should_interrupt_fn,
+            generated_token_callback_fn,
+            **kwargs
+        ):
         super().__init__(config, tokenizer)
         self.task_batch_index = kwargs.pop("task_batch_index")
         self.task_tag = kwargs.pop("task_tag")
@@ -96,7 +106,7 @@ class ASTuneContextTemplate(CMTLinear):
                 content=SeqItem(
                     text = buffer['text_arr'],  # 文本
                     title = buffer['logprob_arr'], # 鼠标悬浮文本
-                    count = buffer['input_id_arr'], # 高亮文本
+                    count = buffer['input_id_arr'], # 高亮文本 # type: ignore
                     color = buffer['loss_mask_color_arr']   # 颜色
                 )
             )
@@ -177,11 +187,11 @@ class ASTuneContextTemplate(CMTLinear):
         Get the incremental token array from text_frag_from to text_frag_to.
         """
         tokenizer_output = self.tokenizer(text_frag_from, return_tensors="pt", padding=False)
-        tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist()
+        tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist() # type: ignore
         token_ids_acc = tokenizer_input_ids
 
         tokenizer_output = self.tokenizer(text_frag_to, return_tensors="pt", padding=False)
-        input_ids = tokenizer_output["input_ids"][0].tolist()
+        input_ids = tokenizer_output["input_ids"][0].tolist() # type: ignore
         input_id_increment = input_ids[len(token_ids_acc):]  # get the new tokens added in this step
         overlap_length = 0
         for i in range(len(token_ids_acc)):
@@ -191,17 +201,52 @@ class ASTuneContextTemplate(CMTLinear):
         # print(msg)
         return input_id_increment, msg
 
-    def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
-        prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
+    def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:   # type: ignore
+        dict_messages = self.to_role_content(ext_messages)
+
+        prompt_text = self.tokenizer.apply_chat_template(dict_messages, tokenize=False, add_generation_prompt=True, tools=tools)
+        length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]) # type: ignore
         max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.astune.rollout.max_model_len
-        self.max_seq_length: int = max_model_len - max_response_length
-        if self.should_interrupt_fn():
-            return False, "externally_interrupted"
-        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
-            return False, "already_mad"
-        if length < self.max_seq_length:
-            return True, f"safe[{length} < {max_model_len} - {max_response_length}]"
+        max_seq_length: int = max_model_len - max_response_length
+
+        if length < max_seq_length:
+            ret = [True, length]
         else:
-            return False, "token_overflow"
+            ret = [False, length]
+        return tuple(ret)
+
+    def check_context_token_num_safe(self, messages: List, tools: List = []) -> Tuple[bool, str]:
+        prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, tools=tools)
+        length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]) # type: ignore
+        max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
+        max_model_len: int = self.config.astune.rollout.max_model_len
+        max_seq_length: int = max_model_len - max_response_length
+        if self.should_interrupt_fn():
+            ret = [False, "externally_interrupted"]
+        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
+            ret = [False, "already_mad"]
+        if length < max_seq_length:
+            ret = [True, f"safe[{length} < {max_model_len} - {max_response_length}]"]
+        else:
+            ret = [False, "token_overflow"]
+        return tuple(ret)
+
+    def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
+        result = []
+        for ext_msg in ext_msg_array:
+            d = {
+                "role": ext_msg.role,
+                "content": ext_msg.content_for_future,
+            }
+            if ext_msg.tool_calls:
+                d.update({
+                    "tool_calls": ext_msg.tool_calls
+                })
+            result.append(d)
+        return result
+
+    def apply_chat_template_for_ext_messages(self, ext_messages: List[ExtendedMessage], tools: List = []) -> str:
+        dict_messages = self.to_role_content(ext_messages)
+        prompt_text = self.tokenizer.apply_chat_template(dict_messages, tokenize=False, add_generation_prompt=True, tools=tools)
+        return prompt_text  # type: ignore
