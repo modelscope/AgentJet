@@ -79,7 +79,7 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             return ChatResponse(
                 content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
             )
-        print_listofdict(converted_message, header='converted proxy messages')
+        # print_listofdict(converted_message, header='converted proxy messages')
         # print_listofdict(messages, header='proxy messages')
         assert self.tokenizer.apply_chat_template(converted_message, tokenize=False, add_generation_prompt=True, tools=tools) == self.tokenizer.apply_chat_template(messages,tokenize=False, add_generation_prompt=True,tools=tools)
         llm_output = self.llm_chat_fn(messages, custom_sampling_params, tools)
