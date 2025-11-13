@@ -1,3 +1,19 @@
+"""Parallel environment rollout utilities.
+
+This module contains classes that manage parallel LLM-based environment rollouts
+for tasks. Core responsibilities include:
+
+1. Submitting and monitoring multiple environment worker threads.
+2. Dynamically oversampling rollouts and performing early termination when
+    sufficient statistical confidence is reached.
+3. Aggregating and converting collected trajectories into sample objects and
+    finally into a `DataProto` batch ready for training.
+4. Providing progress instrumentation (token generation rate, step buckets).
+
+None of the implementation logic is modified here; only documentation and
+English translations for previously non‑English comments are added.
+"""
+
 import os
 import copy
 import time
@@ -40,6 +56,12 @@ def init_logger(experiment_name):
 
 
 class StepPrinter(AsyncLlmBridge):
+    """Utility mixin providing periodic progress / throughput printing.
+
+    Tracks token generation speed and thread step distribution. Intended to be
+    composed with rollout manager classes that maintain an observation window
+    (`obs_window`) containing per-thread step, token and stop flags.
+    """
 
     def __init__(
         self,
@@ -51,6 +73,25 @@ class StepPrinter(AsyncLlmBridge):
         llm_mode="local",
         **kwargs
     ):
+        """Initialize the step printer.
+
+        Parameters
+        ----------
+        config : DictConfig
+            Configuration object containing rollout and experiment settings.
+        async_rollout_manager : Any
+            Manager responsible for async LLM interactions.
+        max_parallel : int
+            Maximum number of parallel environment worker threads.
+        max_llm_retries : int, optional
+            Maximum retries for LLM calls, by default 3.
+        tokenizer : PreTrainedTokenizer, optional
+            Tokenizer used for padding and ID conversions.
+        llm_mode : str, optional
+            Indicates backend mode (e.g., 'local', 'remote'), default 'local'.
+        **kwargs : Any
+            Additional parameters passed through for future extensions.
+        """
 
         init_logger(experiment_name=config.astune.experiment_name)
         self.llm_mode = llm_mode
@@ -66,7 +107,19 @@ class StepPrinter(AsyncLlmBridge):
 
 
     def step_status_printer(self, obs_window):
-        # histgram: obs_window['step'] 0~10 / 10~20 / 20~30 / 30~40 / ......
+        """Print aggregated rollout progress.
+
+        Buckets thread steps into 5-step ranges and shows how many threads are
+        currently within each bucket plus finished threads. Also reports token
+        generation speed.
+
+        Parameters
+        ----------
+        obs_window : dict
+            Shared state tracking 'step', 'token', and 'stop' arrays for each
+            active (or finished) thread.
+        """
+        # Histogram buckets: obs_window['step'] 0~5 / 5~10 / 10~15 / ...
         step_counter = {}
         current_token = sum(obs_window['token'])
         current_time = time.time()
@@ -98,19 +151,49 @@ class StepPrinter(AsyncLlmBridge):
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
 
 class StaticRollout(StepPrinter, AsyncLlmBridge):
+    """Static (non-dynamic) rollout manager.
+
+    Submits a fixed number of rollout threads per task and waits for all to
+    finish before collecting results. Provides retry logic for environment
+    worker execution and aggregates success metrics.
+    """
 
     def rollout_env_worker(self, task: Task, task_batch_index: int, task_tag: str, mode: Literal["sample", "validate"],
                            task_thread_index: int, obs_window: dict, **kwargs) -> CMTLinear:
-        """
-        Process a single prompt in a thread-safe way.
+        """Execute one environment rollout worker.
+
+        Handles environment initialization, LLM sampling parameter construction
+        (with validation overrides), and robust retry on transient failures.
+
+        Parameters
+        ----------
+        task : Task
+            The task object to roll out.
+        task_batch_index : int
+            Index of the task within the provided batch.
+        task_tag : str
+            Human-readable tag identifying task and rollout repetition.
+        mode : Literal['sample','validate']
+            Rollout mode selecting sampling hyperparameters.
+        task_thread_index : int
+            Global thread index for obs_window bookkeeping.
+        obs_window : dict
+            Shared progress structure updated by the worker.
+        **kwargs : Any
+            Forwarded for future extensibility.
+
+        Returns
+        -------
+        CMTLinear
+            Collected trajectory container for this rollout.
         """
         def get_sample_params():
-            response_length_eps = 6 # 减少几个token给lm_start等special token的后续处理留余地
+            response_length_eps = 6 # Reserve a few tokens for later handling of special tokens like lm_start.
             if self.config.astune.rollout.name == 'vllm':
                 sampling_params = dict(
                     n=1,
                     max_tokens=self.config.astune.rollout.max_response_length_in_one_turn - response_length_eps,
-                    min_tokens=1,   # 必须至少输出1个token
+                    min_tokens=1,   # Must output at least 1 token.
                     temperature=self.config.astune.rollout.temperature,
                     top_p=self.config.astune.rollout.top_p
                 )
@@ -161,9 +244,25 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
 
 
     def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
-        # 1. if enable_oversample
+        """Run static rollout over a batch of tasks.
+
+        Parameters
+        ----------
+        tasks : List[Task]
+            Tasks to execute.
+        mode : Literal['sample','validate']
+            Sampling mode; validation forces deterministic-ish params.
+        epoch : str
+            Epoch identifier for logging.
+
+        Returns
+        -------
+        List[CMTLinear]
+            List of collected trajectory containers.
+        """
+        # Step 1: if enable_oversample (handled by DynamicRollout override)
         self.current_token_count_time = time.time()
-        # 2. otherwise, use legacy rollout method
+        # Step 2: otherwise, use legacy rollout method
         cmt_array: List[CMTLinear] = []
         rollout_n = 1 if mode=="validate" else self.rollout_n
         obs_window = {
@@ -201,14 +300,41 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
 
 
 class DynamicRollout(StaticRollout):
+    """Dynamic rollout supporting oversampling and early termination.
+
+    Extends the static rollout by launching an oversampled set of threads per
+    task, continuously monitoring reward variance and convergence conditions to
+    decide when to truncate further sampling. Implements greedy selection to
+    maximize reward dispersion (std) for training diversity.
+    """
 
     def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
+        """Dispatch to dynamic or static rollout depending on configuration."""
         if mode=="sample" and (self.rollout_n!=1) and self.config.astune.rollout.enable_oversample:
             return self.rollout_dynamic(tasks, mode, epoch)
         else:
             return super().rollout(tasks, mode, epoch)
 
     def greedy_max_std_selection(self, samples: List[CMTLinear], n):
+        """Select samples promoting maximum reward spread.
+
+        Strategy: Group by unique reward values in order, take extremes from
+        both ends when partial groups would exceed quota, optionally duplicate
+        selections if fewer unique samples than required, then return sorted by
+        absolute reward magnitude.
+
+        Parameters
+        ----------
+        samples : List[CMTLinear]
+            Candidate samples.
+        n : int
+            Number of samples to select.
+
+        Returns
+        -------
+        List[CMTLinear]
+            Selected subset with high reward variance.
+        """
         if len(samples) < n:
             additional_n = n - len(samples)
             n = len(samples)
@@ -233,7 +359,7 @@ class DynamicRollout(StaticRollout):
 
             elif len(selected_value) + len(macro_selected_value) > n:
                 preserve_n = n - len(macro_selected_value)
-                # 从 selected_value 和 selected_index 两端选择 preserve_n 个样本
+                # Select preserve_n samples from both ends of selected_value and selected_index.
                 pick_left = preserve_n // 2
                 pick_right = preserve_n - pick_left
                 macro_selected_value += selected_value[:pick_left] + selected_value[-pick_right:]
@@ -250,8 +376,31 @@ class DynamicRollout(StaticRollout):
 
 
     def rollout_dynamic(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str, allow_sample_num_change=True, allow_force_stop=True) -> List[CMTLinear]:
-        """
-        Rollout more
+        """Perform dynamic oversampled rollout with adaptive early stopping.
+
+        Launches an oversampled number of rollout threads per task, periodically
+        evaluates termination conditions (all finished, sufficient diversity,
+        or confirmation of homogeneity), and force-stops remaining threads by
+        setting shared stop flags when appropriate.
+
+        Parameters
+        ----------
+        tasks : List[Task]
+            Tasks to roll out.
+        mode : Literal['sample','validate']
+            Must be 'sample'; 'validate' is delegated to static logic.
+        epoch : str
+            Epoch identifier used for logging scope.
+        allow_sample_num_change : bool, optional
+            Whether final sample count may change to fit hardware divisibility.
+        allow_force_stop : bool, optional
+            Whether unfinished threads can be signaled to halt once criteria
+            are met.
+
+        Returns
+        -------
+        List[CMTLinear]
+            Selected trajectories after variance-based filtering / amendment.
         """
         cmt_array: List[CMTLinear] = []
         assert mode != "validate"
@@ -270,7 +419,7 @@ class DynamicRollout(StaticRollout):
         }
 
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
-            # 提交线程
+            # Submit threads
             futures = []
             for task_batch_index, task in enumerate(tasks):
                 task_future_array = []
@@ -287,7 +436,7 @@ class DynamicRollout(StaticRollout):
                 futures += [task_future_array]
 
             tic = -1
-            # 记录已完成线程的结果
+            # Record results of completed threads
             while True:
                 tic += 1
                 can_terminate = [False for _ in futures]
@@ -319,7 +468,7 @@ class DynamicRollout(StaticRollout):
                             # finish condition 3: if more than rollout_n_confirm tasks are finished, we can confirm this task is hopeless (or successful for certainty)
                             can_terminate[j] = True
                             terminate_status[j] = f'confirm_dummy({len(completed_results)}/{reward_std:.2f})'
-                            # take actions to stop future rollout
+                            # Take actions to stop future rollout
                             if allow_force_stop:
                                 for k in range(j*rollout_n_oversample, j*rollout_n_oversample + rollout_n_oversample):
                                     obs_window['stop'][k] = True
@@ -336,14 +485,14 @@ class DynamicRollout(StaticRollout):
                         self.step_status_printer(obs_window) # print status every 10*5=50 seconds
                         logger.info(f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}")
                     time.sleep(5)
-            # 等待所有线程完成或者被迫中止
+            # Wait until all threads finish or are forcibly terminated
             tic = -1
             while any(f.running() for task_future_array in futures for f in task_future_array):
                 tic += 1
                 if tic % 10 == 0: logger.info('waiting final sync, this will not take long')
                 time.sleep(5)
 
-            # 检查到底有多少thread完成了预定任务
+            # Check how many threads completed scheduled tasks
             task_ineffective_thread_cnt = []
             task_completed_thread_cnt = []
             task_extra_thread_cnt = []
@@ -355,7 +504,7 @@ class DynamicRollout(StaticRollout):
                 completed_results = [cmt for cmt in completed_results if not cmt.discarded]
                 task_cmd_reward_array = [cmt.reward_structure.performance_reward for cmt in completed_results]
                 all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
-                # 计数
+                # Counting
                 completed_task_cnt = len(completed_results)
                 if all_equal:
                     task_need_amend += 1
@@ -374,9 +523,9 @@ class DynamicRollout(StaticRollout):
             world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
             total_sample = sum(task_completed_thread_cnt)
             if allow_sample_num_change and (total_sample > world_size*2):
-                # 允许样本数量变化，我们只需要返回的样本能够被 显卡数 整除即可
-                # add_count = (world_size - total_sample % world_size)   # 如果采用添加策略，需要添加的样本数
-                add_count = 0  # 如果采用添加策略，需要添加的样本数
+                # Allow sample count changes: we only require divisibility by GPU count.
+                # add_count = (world_size - total_sample % world_size)   # If using an addition strategy, number of samples to add.
+                add_count = 0  # If using an addition strategy, number of samples to add.
                 num_task_to_amend = len(futures)    # num_task
                 logger.info(f"allow_sample_num_change policy: world_size: {world_size}, total_sample {total_sample}, add_count: {add_count}, ")
                 # 选择 extra 最少的task进行补偿
@@ -390,7 +539,7 @@ class DynamicRollout(StaticRollout):
                 logger.info(f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}")
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
             else:
-                # 不允许样本数量变化，尝试补偿
+                # Sample count change not allowed; attempt compensation.
                 num_task_max_to_amend = sum(task_extra_thread_cnt) // rollout_n
                 num_task_to_amend = min(num_task_max_to_amend, task_need_amend)
                 extra_num_thread_required = num_task_to_amend * rollout_n
@@ -446,10 +595,21 @@ class DynamicRollout(StaticRollout):
 
 
 class ParallelEnvManager(DynamicRollout):
+    """High-level manager orchestrating parallel environment rollouts.
+
+    Adds conversion helpers to transform collected trajectories into
+    `Sample` objects and finally a padded `DataProto` suitable for model
+    training.
+    """
 
     # TODO: define an extra class for trajectory-dataproto converting.
     def to_dataproto(self, cmt_array) -> DataProto:
-        """Convert trajectories to DataProto"""
+        """Convert trajectories to a `DataProto` batch.
+
+        Pipeline:
+        1. Tokenize grouped trajectories into `Sample` objects.
+        2. Pad and batch samples into tensors and auxiliary metadata.
+        """
         # Step 1: Convert trajectories to samples: tokenizing
         samples = self.trajectories_to_samples(cmt_array)
 
@@ -459,7 +619,11 @@ class ParallelEnvManager(DynamicRollout):
         return dataproto
 
     def trajectories_to_samples(self, cmt_array: List[CMTLinear]) -> List[Sample]:
-        """Convert trajectories to samples"""
+        """Convert a list of trajectory containers into flat `Sample` objects.
+
+        Ensures divisibility of sample count by world size (removing random
+        excess) for downstream distributed training alignment.
+        """
         sample_arr_final = []
         CMTLinear.compute_reference_advantage(cmt_array)
         for cmt in cmt_array:
