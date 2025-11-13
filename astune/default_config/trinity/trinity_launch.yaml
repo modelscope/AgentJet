@@ -1,7 +1,7 @@
 algorithm:
   algorithm_type: multi_step_grpo
   optimizer:
-    lr: 1e-6
+    lr: 1.0e-06
   repeat_times: 6
 buffer:
   batch_size: 8
@@ -50,7 +50,7 @@ explorer:
 model:
   max_model_len: 21000
   max_response_tokens: 16000
-  model_path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+  model_path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 monitor:
   monitor_type: swanlab
 name: git-math-agentscope

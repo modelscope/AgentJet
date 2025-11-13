@@ -4,14 +4,13 @@ import torch
 import copy
 import asyncio
 from astune.env_service_client.env_client import EnvClient
-from astune.agent_flow import BaseAgentFlow
+from astune.workflow_controller.basic_agentflow import BaseAgentFlow
 from astune.schema.trajectory import Reward, Trajectory
-from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
-from astune.context_manager.cmt_linear import replace_token_ids, CMTLinear
+from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage, replace_token_ids, CMTLinear
 from astune.schema.trajectory import Sample, Reward
 from typing import Any, Dict, List, Union, Tuple
-from astune.context_manager.cmt_agentscope import BeyondAgentProxy
+from astune.context_manager.agentscope_cm.cmt_agentscope import ASTuneProxy
 from astune.schema.task import Task, TaskLaunchCoreArgument
 
 log_generate_lock = threading.Lock()
@@ -57,11 +56,11 @@ class AgentScopeWorkflow(BaseAgentFlow):
             with log_generate_lock:
                 obs_window['token'][task_thread_index] += len(token_array)
 
-        beyondagent_proxy = BeyondAgentProxy(
+        astune_proxy = ASTuneProxy(
             llm_chat_fn=self.llm_chat_fn,
             tokenizer=self.tokenizer,
             config=self.config,
-            model_name='beyondagent-proxy',
+            model_name='astune-proxy',
             api_key='dummy-api-key',
             task_batch_index=task_batch_index,
             task_tag=task_tag,
@@ -71,14 +70,14 @@ class AgentScopeWorkflow(BaseAgentFlow):
             generated_token_callback_fn=generated_token_callback_fn,
         )
 
-        beyondagent_proxy.update_agentscope_input_dictionary(task_core_arg=task_core_arg)
-        beyondagent_proxy = asyncio.run(agentscope_protocol.agentscope_execute(init_messages, beyondagent_proxy, self.config))
-        beyondagent_proxy.update_judge_input_dictionary(task_core_arg=task_core_arg)
-        beyondagent_proxy.update_judge_input_dictionary(env=env)
-        beyondagent_proxy.update_judge_input_dictionary(grouped_steps=beyondagent_proxy.grouped_steps)
+        astune_proxy.update_agentscope_input_dictionary(task_core_arg=task_core_arg)
+        astune_proxy = asyncio.run(agentscope_protocol.agentscope_execute(init_messages, astune_proxy, self.config))
+        astune_proxy.update_judge_input_dictionary(task_core_arg=task_core_arg)
+        astune_proxy.update_judge_input_dictionary(env=env)
+        astune_proxy.update_judge_input_dictionary(grouped_steps=astune_proxy.grouped_steps)
 
-        raw_reward, is_success = beyondagent_proxy.get_judge().compute_reward(
-            beyondagent_proxy.get_judge_input_dictionary()
+        raw_reward, is_success = astune_proxy.get_judge().compute_reward(
+            astune_proxy.get_judge_input_dictionary()
         )
 
         # evaluate
@@ -89,14 +88,14 @@ class AgentScopeWorkflow(BaseAgentFlow):
             madness=0,
             description=""
         )
-        beyondagent_proxy.process_reward(reward)
+        astune_proxy.process_reward(reward)
 
         # generate token before merging
-        beyondagent_proxy.remove_last_context()
-        beyondagent_proxy.task_id = task_id
-        beyondagent_proxy.task_tag = task_tag
-        beyondagent_proxy.group_merge()
-        beyondagent_proxy.process_reward(reward)
-        return beyondagent_proxy
+        astune_proxy.remove_last_context()
+        astune_proxy.task_id = task_id
+        astune_proxy.task_tag = task_tag
+        astune_proxy.group_merge()
+        astune_proxy.process_reward(reward)
+        return astune_proxy
 
 

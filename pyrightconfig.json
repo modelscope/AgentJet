@@ -3,7 +3,8 @@
   "include": [
     "astune/**/*.py",
     "external/trinity/**/*.py",
-    ".venv/lib/python3.10/site-packages"
+    // ".venv/lib/python3.10/site-packages/**/*.py",
+    ".venv/lib/python3.10/site-packages/agentscope/**/*.py"
   ],
   "exclude": [
     "node_modules",
@@ -17,9 +18,9 @@
     "wanlog",
     "wandb",
     "dist",
-    "**/.vscode-server",
-    "**/__pycache__",
-    "**/*.log",
+    // "**/.vscode-server",
+    // "**/__pycache__",
+    // "**/*.log",
     "**/*"
   ]
 }

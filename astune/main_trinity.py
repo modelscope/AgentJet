@@ -153,7 +153,10 @@ def run_stage(config: Config) -> None:
         address=config.cluster.ray_address,
         ignore_reinit_error=True,
         namespace=config.ray_namespace,
-        runtime_env={"env_vars": config.get_envs()},
+        runtime_env={
+            "env_vars": config.get_envs(),
+            "ASTUNE_CONFIG_REDIRECT": os.environ.get("ASTUNE_CONFIG_REDIRECT"),
+        },
     )
     pprint(config)
     try:
@@ -265,7 +268,10 @@ def debug(
     config.ray_namespace = DEBUG_NAMESPACE
     ray.init(
         namespace=config.ray_namespace,
-        runtime_env={"env_vars": config.get_envs()},
+        runtime_env={
+            "env_vars": config.get_envs(),
+            "ASTUNE_CONFIG_REDIRECT": os.environ.get("ASTUNE_CONFIG_REDIRECT"),
+        },
         ignore_reinit_error=True,
     )
     from trinity.common.models import create_debug_inference_model

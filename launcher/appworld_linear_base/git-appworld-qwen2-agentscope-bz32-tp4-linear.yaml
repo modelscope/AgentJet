@@ -1,173 +1,34 @@
-# ------------------ 选择backbone ------------------
-backbone:
-  type: trinity
-  backbone_config:
-    trinity: astune/default_config/trinity_default.yaml
-    verl: astune/default_config/astune_default.yaml
-
 # ------------------ 主要配置 ------------------
 astune:
   project_name: appworld_astune
-  task_reader:
-    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`
-    env_service:
-      env_type: "appworld"
-      env_url: "http://127.0.0.1:8080"
-      env_action_preference: code # code, text, box
-      training_split: train
-      validation_split: dev
-    dataset_file:
-      training:
-        file_path: "xxxx.jsonl"
-      validation:
-        file_path: "xxxx.jsonl"
-    huggingface_dat_repo:
-      dataset_path: "gsm8k"
-      training_split: "train"
-      validation_split: "validation"
-
-  task_judge:
-    judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
-
   experiment_name: "read_yaml_name"
+  task_judge:
+    # ✨✨✨✨ 编写并选择评价函数
+    judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
   model:
-    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
-  data:
-    max_prompt_length: 3000
-    max_response_length: 15000
-    train_batch_size: 32
+    # ✨✨✨✨ 设置待训练的模型
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
+    # ✨✨✨✨ 编写并选择Agent
     use_agentscope_protocol: True
     agentscope_learn_protocol: tutorial.appworld->ExampleAgentScopeLearnProtocol
-    max_env_worker: 128
-    use_step_reward_from_env: False
-    binary_reward: False
-    force_no_think: False
-    force_think: False
-    mode: async
-    compute_madness_checklist:
-      - "nonsense"
-    gamma: 1.0
-    agent_madness_termination: True # terminate_after_gone_mad
-    agent_madness_reward: -1.0  # customize the reward when agent is detected as gone mad
-    add_special_success_reward: False
-    temperature: 0.9
-    top_p: 1.0
-    max_env_len: 4096
-    max_response_length_in_one_turn: 4096
-    max_model_len: 18000
-    multi_turn:
-      max_sample_per_task: 30
-      max_steps: 30
-      enable: True
-    step_skip_action: 0 # skip action generation every N steps, 0 means never skip
-    submit_oversample_multiplier: 1.5
-    enable_oversample: True
-    num_repeat: 4
-    name: vllm
-    val_kwargs:
-      temperature: 0.0
-      top_k: -1
-      top_p: 1.0
-      do_sample: False
-  context_manager: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
-    context_manager_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    auto_context_cm:
-      train_sp_action: False
-      token_num_trigger_clip: 8000
-    sliding_window_cm:
-      enable_llm_memory_extraction: False
-    linear_think_cm:
-      remove_think_before_submit_as_action: False
-      extract_box_before_submit_as_action: False
-      train_history_infer_token: True
+    agentscope_disable_toolcalls: True
   debug:
-    debug_max_parallel: 16
-    debug_first_n_tasks: 2
-    debug_vllm_port: 18000
-    debug_vllm_seed: 12345
-    debug_tensor_parallel_size: 4
-
-
-# ------------------ 修改trinity训练参数，如果使用verl则忽略该部分 ------------------
-trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
-  algorithm:
-    algorithm_type: multi_step_grpo
-    optimizer:
-      lr: 1e-6
-    repeat_times: 6
-  buffer:
-    batch_size: 8
-    explorer_input:
-      eval_tasksets: []
-      taskset:
-        default_workflow_type: astune_workflow
-        format:
-          prompt_key: question
-          response_key: answer
-        name: gsm8k
-        path: http://localhost:8080
-        rollout_args:
-          temperature: 1.0
-        split: train
-        storage_type: astune
-        subset_name: appworld
-    total_epochs: 1000
-    train_batch_size: 36
-    trainer_input:
-      experience_buffer:
-        max_read_timeout: 18000
-        name: agentscope_gsm8k_buffer
-        storage_type: queue
-  checkpoint_root_dir: ./trinity_checkpoints
-  cluster:
-    gpu_per_node: 8
-    node_num: 1
-  explorer:
-    eval_interval: 999999
-    max_repeat_times_per_runner: 1
-    max_timeout: 7200
-    rollout_model:
-      dtype: bfloat16
-      enable_auto_tool_choice: true
-      enable_history: true
-      enable_openai_api: true
-      enable_prefix_caching: false
-      enable_thinking: false
-      enforce_eager: true
-      engine_num: 2
-      seed: 42
-      tensor_parallel_size: 1
-      tool_call_parser: hermes
-    runner_per_model: 12
-  model:
-    max_model_len: 21000
-    max_response_tokens: 16000
-  monitor:
-    monitor_type: swanlab
-  synchronizer:
-    sync_interval: 2
-    sync_method: nccl
-    sync_style: dynamic_by_explorer
-    sync_timeout: 1200
-  trainer:
-    grad_clip: 1.0
-    max_token_len_per_gpu: 24576
-    save_interval: 100
-    ulysses_sequence_parallel_size: 2
-    use_dynamic_bsz: true
-
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
 
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://external/verl/verl/trainer/config  # verl only
     - file://astune/default_config
+    - file://astune/default_config/verl         # verl only
+    - file://external/verl/verl/trainer/config  # verl only
+    - file://astune/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
-  - ppo_trainer
-  - default
+  - ppo_trainer # verl inherit 1/2
+  - verl_default # verl inherit 2/2
+  - trinity_default # trinity inherit 1/1
+  - astune_default
   - _self_

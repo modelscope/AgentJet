@@ -188,7 +188,7 @@ class TaskRunner:
         else:
             raise NotImplementedError
 
-        from astune.backbone_verl.trainer import ResourcePoolManager, Role
+        from astune.backbone_others.trainer import ResourcePoolManager, Role
 
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
@@ -247,9 +247,9 @@ class TaskRunner:
         train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
-        from astune.backbone_verl.trainer import BeyondAgentRayPPOTrainer
+        from astune.backbone_others.trainer import ASTuneRayPPOTrainer
         # Initialize the PPO trainer.
-        trainer = BeyondAgentRayPPOTrainer(
+        trainer = ASTuneRayPPOTrainer(
             config=config,
             tokenizer=tokenizer,
             processor=processor,

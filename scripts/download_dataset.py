@@ -6,7 +6,7 @@ from huggingface_hub import snapshot_download
 
 parser = argparse.ArgumentParser(description='download Hugging Face dataset')
 parser.add_argument('--target', default='openai/gsm8k', type=str, help='要下载的数据集仓库名称')
-parser.add_argument('--path', default='/mnt/data/qingxu.fu/dataset/openai/gsm8k', type=str, help='路径到下载的本地目录')
+parser.add_argument('--path', default='/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k', type=str, help='路径到下载的本地目录')
 args = parser.parse_args()
 
 snapshot_download(repo_id=args.target, repo_type="dataset", local_dir=args.path, resume_download=True)

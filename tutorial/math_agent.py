@@ -1,4 +1,4 @@
-from astune.agentscope_flow import BeyondAgentProxy
+from astune.workflow_controller.agentscope_flow import ASTuneProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
@@ -36,7 +36,7 @@ class ExampleMathLearn(AgentScopeLearnProtocol):
 
     trainer: str = Field(default="agentscorpion-trinity")
 
-    async def agentscope_execute(self, init_messages, beyondagent_proxy: BeyondAgentProxy, config):
+    async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config):
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
@@ -44,26 +44,22 @@ class ExampleMathLearn(AgentScopeLearnProtocol):
         from agentscope.memory import InMemoryMemory
         from agentscope.tool import Toolkit, execute_python_code
 
-        if len(init_messages) >= 2: first_msg, init_messages = init_messages[0], init_messages[1:]
-        else: first_msg = {"content": "You're a helpful assistant."}
-        interaction_message = []
-        for msg in init_messages:
-            interaction_message.append(Msg(name=msg.get("name", "user"), content=msg.get("content", ""), role=msg.get("role", "user")))
+        query = init_messages[-1]['content']
 
         self.toolkit = Toolkit()
         self.toolkit.register_tool_function(execute_python_code)
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=beyondagent_proxy,  # type: ignore
+            model=astune_proxy,  # type: ignore
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
         )
-        msg = Msg("user", init_messages[0]['content'], role="user")
+        msg = Msg("user", query, role="user")
         result = await self.agent.reply(msg, structured_model=FinalResult)
         final_answer = extract_final_answer(result)
-        beyondagent_proxy.update_judge_input_dictionary(final_answer=final_answer)
+        astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
 
-        return beyondagent_proxy
+        return astune_proxy
 

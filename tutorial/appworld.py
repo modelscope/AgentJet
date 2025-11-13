@@ -1,4 +1,4 @@
-from astune.agentscope_flow import BeyondAgentProxy
+from astune.workflow_controller.agentscope_flow import ASTuneProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
@@ -7,7 +7,7 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
 
     trainer: str = Field(default="agentscorpion-trinity")
 
-    async def agentscope_execute(self, init_messages, beyondagent_proxy: BeyondAgentProxy, config):
+    async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config):
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
@@ -21,8 +21,8 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
         agent = ReActAgent(
             name="Qwen",
             sys_prompt=first_msg['content'],
-            model=beyondagent_proxy,  # type: ignore
-            # model=beyondagent_proxy: use beyondagent_proxy as model
+            model=astune_proxy,  # type: ignore
+            # model=astune_proxy: use astune_proxy as model
             formatter=DashScopeChatFormatter(),
             memory=InMemoryMemory(),
             toolkit=None,
@@ -34,12 +34,12 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol
-            obs, _, terminate, _ = beyondagent_proxy.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
+            obs, _, terminate, _ = astune_proxy.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
             # generate new message from env output
             interaction_message = Msg(name="env", content=obs, role="user")
             # is terminated?
             if terminate: break
-            if beyondagent_proxy.context_overflow: break
+            if astune_proxy.context_overflow: break
 
-        return beyondagent_proxy
+        return astune_proxy
 
