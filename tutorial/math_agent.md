@@ -169,3 +169,8 @@ INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 - 蓝色 Token 代表参与loss计算的 Token，黄色反之
 
 - 鼠标悬浮在 Token 上面可以查看 Token 的 **logprob** (暂时仅限trinity backbone)
+
+
+### 6. 参考训练曲线
+
+https://swanlab.cn/@binaryhusky/public/runs/96arcunrxlezdmcvmcdob/chart
