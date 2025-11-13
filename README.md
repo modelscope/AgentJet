@@ -7,17 +7,17 @@ AgentScope Tune, or **ASTune**, is an advanced agent training framework for tuni
 
 We recommend using `uv` to setup the dependencies, and `conda` can also do the job.
 
-1. clone the repo and trinity module:
+1. Clone the repo and trinity module:
     ```bash
     git clone https://github.com/..../agentscope-tune.git astune
     git clone https://github.com/binary-husky/Trinity-RFT astune/external/trinity
     cd astune
     ```
 
-2. Install trinity training backbone
-    <details>
+2. Install trinity training backbone:
+    <!-- <details>
 
-    <summary>Click to read trinity backbone installation</summary>
+    <summary>Click to read trinity backbone installation</summary> -->
 
     ```bash
     # Create virtual environment
@@ -33,23 +33,26 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     # Install flash attention (must be installed at last)
     uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
     ```
-    <details>
+    <!-- <details>
     <summary>Click to read other backbone installation</summary>
     Please refer to documents/backbone.md.
     </details>
 
-    </details>
+    </details> -->
 
 
 
+## Get Started (Public)
 
-<br/>
-<br/>
-<div align="center">
-  <img src="project-diagram.png" alt="项目架构图">
-</div>
+We provide a rich library of examples and they are good guides to get started!
+Let see:
 
-## Get Started
+- How to build an Agent specialized at gsm8k math problems, and [how to train it 🚀](tutorial/math_agent.md).
+- How to build an Appworld agent using AgentScope, and [how to train it 🪐](tutorial/appworld.md).
+
+
+
+## Get Started (Department)
 
 本节仅内部沟通使用，后期重写。
 
@@ -157,6 +160,12 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 
 
 # Develop
+
+<br/>
+<br/>
+<div align="center">
+  <img src="project-diagram.png" alt="项目架构图">
+</div>
 
 - [ ] 设计 Judge&Reward 系统
 - [ ] 小财场景 Demo
