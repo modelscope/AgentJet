@@ -7,9 +7,10 @@ from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage, replac
 from astune.utils.color_hsl import adjust_color_hsl
 from astune.utils.compute_madness import compute_string_madness
 from astune.context_manager.cmt_base_attr import INVALID_LOG_PROB_VALUE
+from astune.context_manager.agentscope_cm.timeline_merging import can_merge_steps
 
 from typing import Any, List, Tuple, Union
-from beast_logger import print_nested, NestedJsonItem, SeqItem
+from beast_logger import print_nested, print_listofdict, NestedJsonItem, SeqItem
 
 class ASTuneContextTemplate(CMTLinear):
 
@@ -120,28 +121,6 @@ class ASTuneContextTemplate(CMTLinear):
         )
 
     def group_merge(self):
-        def can_merge_steps(source_step: List[ExtendedMessage], target_step: List[ExtendedMessage]) -> bool:
-            # if `source_step` has more messages than `target_step`
-            # and if `source_step` and `target_step` share same token_arr in [0:len(target_step)]
-            # even if the authors are different, we can still merge them
-            can_merge = False
-            # compare_level = 'token' # 严格按照token对比
-            compare_level = 'text' # 对比文本，这样子会导致有些token不一样但是文本一样的情况也能merge，更宽松一些，收益很大，代价未知
-            if len(source_step) >= len(target_step):
-                all_msg_match = True
-                for i in range(len(target_step)):
-                    if compare_level == 'text':
-                        same = source_step[i].content_for_future == target_step[i].content_for_future
-                    elif compare_level == 'token':
-                        same = source_step[i].token_arr == target_step[i].token_arr
-                    else:
-                        raise NotImplementedError
-                    if not same:
-                        all_msg_match = False
-                        break
-                if all_msg_match:
-                    can_merge = True
-            return can_merge
 
         def toggle_author(source_step: List[ExtendedMessage], target_step: List[ExtendedMessage]) -> List[ExtendedMessage]:
             # if any message in `target_step` is author == 'llm', but same-index message in `source_step` is author != 'llm'
