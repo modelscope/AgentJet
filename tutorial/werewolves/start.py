@@ -15,6 +15,8 @@ from astune.workflow_controller.agentscope_flow import ASTuneProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
+# astune/utils/robust_dashscope.py
+from astune.utils.robust_dashscope import RobustDashScopeChatModel
 
 def get_official_agents(name: str, role: str, train_which_role: str, astune_proxy: ASTuneProxy) -> ReActAgent:
     """Get the official werewolves game agents."""
@@ -72,9 +74,10 @@ Your target is to win the game with your teammates as much as possible.
 - Your response should be specific and concise, provide clear reason and avoid unnecessary elaboration.
 - Generate your one-line response by using the `generate_response` function.
 - Don't repeat the others' speeches.""",
-        model=DashScopeChatModel(
-            api_key=os.environ.get("DASHSCOPE_API_KEY"),
+        model=RobustDashScopeChatModel(
             model_name="qwen3-max",
+            max_try=4,
+            stream=False
         ) if role != train_which_role else astune_proxy,    # type: ignore
         formatter=DashScopeMultiAgentFormatter(),
     )

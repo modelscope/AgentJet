@@ -1,0 +1,47 @@
+# ------------------ 主要配置 ------------------
+astune:
+  task_reader:
+    type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
+
+  task_judge:
+    # ✨✨✨✨ 编写并选择评价函数
+    judge_protocol: null
+
+  model:
+    # ✨✨✨✨ 设置待训练的模型
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    agentscope_learn_protocol: tutorial.werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
+    num_repeat: 1
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+
+  data:
+    max_prompt_length: 15000
+    max_response_length: 3000
+    train_batch_size: 32
+
+# trinity:
+#   algorithm:
+#     repeat_times: 6
+#   buffer:
+#     train_batch_size: 42
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astune/default_config
+    - file://astune/default_config/verl         # verl only
+    - file://external/verl/verl/trainer/config  # verl only
+    - file://astune/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - ppo_trainer # verl inherit 1/2
+  - verl_default # verl inherit 2/2
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_

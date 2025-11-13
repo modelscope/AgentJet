@@ -188,7 +188,7 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
             Collected trajectory container for this rollout.
         """
         def get_sample_params():
-            response_length_eps = 6 # Reserve a few tokens for later handling of special tokens like lm_start.
+            response_length_eps = 16 # Reserve a few tokens for later handling of special tokens like lm_start.
             if self.config.astune.rollout.name == 'vllm':
                 sampling_params = dict(
                     n=1,
