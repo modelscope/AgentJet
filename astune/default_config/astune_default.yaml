@@ -2,6 +2,7 @@
 astune:
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
+  backbone: debug # debug or trinity or verl
 
   task_reader:
     type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`

@@ -84,7 +84,8 @@
 - 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程 ( python launcher.py --kill="python|ray|vllm" )
-    python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='trinity'
+    python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && \
+    python launcher.py --conf launcher/werewolves_agent/git-rpg-agentscope.yaml --backbone='trinity' --with-ray
     ```
 
 

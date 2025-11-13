@@ -6,7 +6,7 @@ from typing import List, Dict, Optional
 from astune.schema.task import Task
 from astune.utils.process_dataset import create_rl_dataset, create_rl_sampler
 from astune.env_service_client.env_client_ng import EnvClient
-from astune.task_reader.task_reader_base import TaskReaderBase
+from astune.task_reader import TaskReaderBase
 
 
 
