@@ -347,6 +347,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
     # )
 
     alive_wolves = players.werewolves
-    good_guy_win = (alive_wolves == 0)
-    logger.warning(f"Good guy win: {good_guy_win}")
+    good_guy_win = (len(alive_wolves) == 0)
+    logger.warning(f"**********************************")
+    logger.warning(f"Good guy win: {good_guy_win}, alive werewolves: {alive_wolves}")
     return good_guy_win
