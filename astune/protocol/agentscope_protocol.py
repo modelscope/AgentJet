@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 class AgentScopeLearnProtocol(BaseModel):
     model_config = {"extra": "allow"}
-    # Trainer to use; default "trinity". Optional: "agentscorpion-trinity".
+    # Trainer to use; default "trinity". Optional: "astune-trinity".
     trainer: str = Field(default="trinity")
     # Experiment name
     agentflow_name: str = Field(default="agent-flow")

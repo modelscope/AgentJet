@@ -1605,7 +1605,7 @@ class ASTuneRayPPOTrainer:
                 if hasattr(self, 'main_val_dataset'):
                     return self.main_val_dataset, None, None
                 else:
-                    from astune.task_reader.task_reader_base import TaskReaderRouter
+                    from astune.task_reader import TaskReaderRouter
                     task_reader = TaskReaderRouter(self.config)
                     tasks = task_reader.get_validation_tasks()
                     self.main_val_dataset = tasks
