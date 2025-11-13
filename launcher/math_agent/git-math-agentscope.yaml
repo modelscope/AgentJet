@@ -10,7 +10,7 @@ astune:
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
 
   model:
     # ✨✨✨✨ 设置待训练的模型
@@ -22,6 +22,7 @@ astune:
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
+
 trinity:
   algorithm:
     repeat_times: 6
