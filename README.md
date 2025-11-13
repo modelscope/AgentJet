@@ -15,10 +15,6 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     ```
 
 2. Install trinity training backbone:
-    <!-- <details>
-
-    <summary>Click to read trinity backbone installation</summary> -->
-
     ```bash
     # Create virtual environment
     uv venv --python=3.10.16
@@ -33,12 +29,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     # Install flash attention (must be installed at last)
     uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
     ```
-    <!-- <details>
-    <summary>Click to read other backbone installation</summary>
-    Please refer to documents/backbone.md.
-    </details>
 
-    </details> -->
 
 
 
