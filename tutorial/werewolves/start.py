@@ -4,6 +4,7 @@
 import asyncio
 import os
 import numpy as np
+from loguru import logger
 import dotenv; dotenv.load_dotenv()
 from tutorial.werewolves.game import werewolves_game
 from agentscope.agent import ReActAgent
@@ -123,7 +124,7 @@ class ExampleWerewolves(AgentScopeLearnProtocol):
         roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
 
         # Set random seed for reproducibility
-        task_core_arg = astune_proxy.get_agentscope_input_dictionary()[task_core_arg]
+        task_core_arg = astune_proxy.get_agentscope_input_dictionary()["task_core_arg"]
         task_id = task_core_arg.task.task_id
 
         np.random.seed(int(task_id))
@@ -133,6 +134,7 @@ class ExampleWerewolves(AgentScopeLearnProtocol):
 
         good_guy_win = await werewolves_game(players, roles)
         raw_reward = 1 if (good_guy_win and train_which_role != "werewolf") or (not good_guy_win and train_which_role == "werewolf") else 0
+        logger.warning(f"Raw reward: {raw_reward}")
         astune_proxy.update_judge_input_dictionary(raw_reward = raw_reward)
         astune_proxy.update_judge_input_dictionary(is_success = (raw_reward == 1))
         return astune_proxy

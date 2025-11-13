@@ -23,7 +23,7 @@ from tutorial.werewolves.structured_model import (
 
 # Uncomment the following line to use Chinese prompts
 from tutorial.werewolves.prompt import ChinesePrompts as Prompts
-
+from loguru import logger
 
 from agentscope.agent import ReActAgent
 from agentscope.pipeline import (
@@ -340,12 +340,13 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
         # The day ends
         first_day = False
 
-    # Game over, each player reflects
-    await fanout_pipeline(
-        agents=agents,
-        msg=await moderator(Prompts.to_all_reflect),
-    )
+    # # Game over, each player reflects
+    # await fanout_pipeline(
+    #     agents=agents,
+    #     msg=await moderator(Prompts.to_all_reflect),
+    # )
 
-    alive_wolves = len( [p for p in players.current_alive if p.role == "werewolf"] )
+    alive_wolves = players.werewolves
     good_guy_win = (alive_wolves == 0)
+    logger.warning(f"Good guy win: {good_guy_win}")
     return good_guy_win
