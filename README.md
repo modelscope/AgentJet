@@ -76,7 +76,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
 
     clear && python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --with-ray --backbone='trinity'
     ```
-    备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)。此外，也可以使用BeyondAgent后端训练（--backbone='verl'）
+    备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)。此外，也可以使用BeyondAgent后端训练（--backbone='verl'），但目前verl训练后端正在维护中。
 
 
 ## Feature
