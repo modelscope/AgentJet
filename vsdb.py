@@ -1,78 +1,70 @@
+# Copyright 2025 Ablibaba Ltd. and/or its affiliates
+
+
 import os
+import pickle
 
 """
-Ray Distributed Debugger VSCode Extension (Recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-1. Starting with Ray 2.39, Anyscale has introduced the `Ray Distributed Debugger <https://docs.ray.io/en/latest/ray-observability/ray-distributed-debugger.html>`_ VSCode extension. Follow the extension’s installation instructions, then add your cluster using the dashboard URL you obtained earlier.
-
-   .. image:: https://github.com/eric-haibin-lin/verl-community/blob/main/docs/ray/debugger.png?raw=true
-      :alt: Ray Distributed Debugger VSCode extension screenshot
-
-2. Prerequisites.
-
-   Ensure the following are installed (see the extension README for more detail):
-
-   - Visual Studio Code
-   - `ray[default]` >= 2.9.1
-   - `debugpy` >= 1.8.0
-
-   .. image:: https://github.com/aoshen524/verl/blob/main/docs/start/c7098b755ff689859837773a916c857.png?raw=true
-      :alt: VSCode with Ray prerequisites
-
-3. Environment Variables.
-
-   To enable post‑mortem debugging, set:
-
-   .. code-block:: bash
-
-      export RAY_DEBUG_POST_MORTEM=1
-
-   .. admonition:: Note
-      :class: important
-
-      Be sure to remove any legacy flags before starting Ray:
-
-      - `RAY_DEBUG=legacy`
-      - `--ray-debugger-external`
-
-4. Configuring BreakpointsSet up breakpoint() in your code, and submit job to cluster. Then the extension will show the breakpoint information.
-
-
-   1. Insert `breakpoint()` calls into your remote functions.
-   2. Submit your job to the cluster.
-
-   The extension will detect active breakpoints and display them in VSCode.
-
-   .. image:: https://github.com/aoshen524/verl/blob/main/docs/start/4ddad74395c79a1402331c0ce73316f.png?raw=true
-      :alt: Detected breakpoint in VSCode
-
-   **Note:** Breakpoints are only supported inside functions decorated with `@ray.remote`.
-
-5. Launching the Debugger.
-
-   Run your job directly from the command line (do not use a `launch.json`):
-
-   .. code-block:: bash
-
-      python job.py
-
-6. Attaching to a Breakpoint.
-
- Once the process hits the first `breakpoint()`, click the Ray Distributed Debugger icon in the VSCode sidebar to attach the debugger.
-
-   .. image:: https://github.com/aoshen524/verl/blob/main/docs/start/4ddad74395c79a1402331c0ce73316f.png?raw=true
-      :alt: Attaching VSCode debugger to Ray process
-
-7. Debugging With Multiple breakpoint().
-
-   For each subsequent task, first disconnect the current debugger session, then click the extension icon again to attach to the next breakpoint.
-
-   .. image:: https://github.com/aoshen524/verl/blob/main/docs/start/6e83c910a62c82fecb89c6619e001cd.png?raw=true
-      :alt: Disconnecting and reconnecting the debugger
+This debug util works together with the Ray Distributed Debugger VSCode Extension.
+For more details, please refer to:
+   https://docs.ray.io/en/latest/ray-observability/ray-distributed-debugger.html
 """
 
 def vscode_conditional_breakpoint(tag=None, once=True):
+   """
+   Conditionally set a breakpoint for VSCode debugging with Ray distributed systems.
+
+   This function provides a smart breakpoint mechanism that respects environment
+   variables and can be configured to trigger only once or multiple times based on
+   debug tags. It's designed to work with Ray's post-mortem debugging feature.
+
+   Args:
+       tag (str, optional): A debug tag to conditionally trigger the breakpoint.
+           If provided, the breakpoint will only trigger if this tag is present
+           in the DEBUG_TAGS environment variable (pipe-separated list).
+           If None, the breakpoint behavior depends only on the `once` parameter.
+           Defaults to None.
+
+       once (bool, optional): Whether the breakpoint should only trigger once
+           per tag/session. If True, uses environment variables to track if
+           the breakpoint has already been hit. If False, the breakpoint will
+           trigger every time the function is called (subject to other conditions).
+           Defaults to True.
+
+   Returns:
+       None: This function doesn't return any value. It either triggers a
+       breakpoint or returns silently.
+
+   Environment Variables:
+       RAY_DEBUG_POST_MORTEM: Must be set to enable any breakpoint functionality.
+           If not set, the function returns immediately without doing anything.
+
+       DEBUG_TAGS: Pipe-separated list of debug tags (e.g., "tag1|tag2|tag3").
+           Only required when using the `tag` parameter. The breakpoint will
+           only trigger if the provided tag is found in this list.
+
+       HIT_BREAKPOINT_REC_{tag}: Automatically created environment variables
+           to track whether a specific tagged breakpoint has already been hit
+           when `once=True`. These are internal tracking variables.
+
+   Examples:
+       # Simple breakpoint that triggers once
+       vscode_conditional_breakpoint(tag="training")
+
+       # Breakpoint that triggers every time
+       vscode_conditional_breakpoint(tag="training", once=False)
+
+       # Tagged breakpoint (requires DEBUG_TAGS="training|validation")
+       vscode_conditional_breakpoint(tag="training")
+
+       # Tagged breakpoint that can trigger multiple times
+       vscode_conditional_breakpoint(tag="validation", once=False)
+
+   Note:
+       This function is designed to work with Ray's distributed debugging
+       capabilities and the VSCode Ray Distributed Debugger extension.
+       Make sure RAY_DEBUG_POST_MORTEM=1 is set in your environment.
+   """
 
    env_tag = f'HIT_BREAKPOINT_REC_{tag}'
    if not os.getenv('RAY_DEBUG_POST_MORTEM'): return
@@ -97,12 +89,12 @@ def vscode_conditional_breakpoint(tag=None, once=True):
             breakpoint()
             return
 
-import pickle
 
 def objdump(obj, file="objdump.tmp"):
    with open(file, "wb+") as f:
       pickle.dump(obj, f)
    return
+
 
 def objload(file="objdump.tmp"):
    import os
@@ -110,5 +102,6 @@ def objload(file="objdump.tmp"):
       return
    with open(file, "rb") as f:
       return pickle.load(f)
+
 
 bp = vscode_conditional_breakpoint

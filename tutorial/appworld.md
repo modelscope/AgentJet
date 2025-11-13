@@ -40,12 +40,6 @@ for _ in range(config.astune.rollout.multi_turn.max_steps):
     - `astune_proxy.env_step_fn` 模拟gym接口，输入动作，输出 observation, reward, terminate_flag, info 四元组
     - `astune_proxy.context_overflow` 查询当前的context窗口是否token溢出
 
-- 在 AgentScope Workflow 中，注册评价函数需要的任意关键数据
-```python
-astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
-```
-
-
 ### 3. 准备Judge (奖励模块)
 
 在 `astune/task_judge/env_service_as_judge.py` 中，我们直接向 env_service 发送http请求，读取奖励。
