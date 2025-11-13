@@ -11,6 +11,7 @@ from agentscope._utils._common import _json_loads_with_repair, _create_tool_from
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.utils.compute_madness import compute_string_madness
 from astune.context_manager.agentscope_cm.cmt_multi_sample import ASTuneContextTemplate
+from astune.context_manager.agentscope_cm.timeline_merging import can_merge_steps
 
 from typing import Any, List, Type, Dict
 
@@ -45,7 +46,10 @@ class ASTuneLmProxy(ASTuneContextTemplate):
                         logger.warning(f"Non-text content in message content detected: {item}. Ignoring.")
                         ignore = True
                         break
-                    str_content += str(item['text'])
+                    if isinstance(item['text'], str):
+                        str_content += str(item['text'])
+                    else:
+                        str_content = ""
                     msg['content'] = str_content
                 if ignore:
                     continue
@@ -135,6 +139,10 @@ class ASTuneLmProxy(ASTuneContextTemplate):
             if length > self.config.astune.rollout.max_model_len:
                 raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, before gen info {info}, generated token length {len(llm_ext_msg.token_arr)}")
             self.grouped_steps += [copy.deepcopy(self.full_context)]
+
+            DEBUG = True
+            if DEBUG and len(self.grouped_steps) >= 2 and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2])):
+                print(f"General Warning: merge failure discovered.")
 
         # return response
         return await self._parse_dashscope_generation_response(llm_output, structured_model=structured_model)
