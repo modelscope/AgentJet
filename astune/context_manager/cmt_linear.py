@@ -50,21 +50,22 @@ class CMTLinear(CMTBaseAttr):
         """
         if mod=='future':
             message_arr = [
-                {"role": c.role, "content": c.content_for_future}
+                {"role": c.role, "content": c.content_for_future, "tool_calls": c.tool_calls}
                 for c in self.full_context
             ]
-            return message_arr
-
         elif mod=='raw':
             message_arr = [
-                {"role": c.role, "content": c.content}
+                {"role": c.role, "content": c.content, "tool_calls": c.tool_calls}
                 for c in self.full_context
             ]
-            return message_arr
-
         else:
             raise ValueError(f"Unknown mod {mod} in prepare_previous_context, only support 'future' and 'raw'")
 
+        # remove tool_calls from messages if empty
+        for i in range(len(message_arr)):
+            if not message_arr[i]["tool_calls"]:
+                message_arr[i].pop("tool_calls")
+        return message_arr
 
     def check_context_token_num_safe(self, messages: List[dict], tools: List[dict] = []) -> Tuple[bool, str]:
         def get_seq_length(messages):
