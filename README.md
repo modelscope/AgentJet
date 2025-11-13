@@ -30,7 +30,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     uv pip install -r scripts/requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
     uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
 
-    # Install flash attention (must be installed last)
+    # Install flash attention (must be installed at last)
     uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
     ```
     <details>
