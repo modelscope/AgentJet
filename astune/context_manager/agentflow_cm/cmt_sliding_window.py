@@ -1,6 +1,6 @@
 from typing import List, Callable, Tuple
 from beast_logger import print_listofdict
-from astune.context_manager.cmt_linear_think import ExtendedMessage, MultiSampleCMT
+from astune.context_manager.agentflow_cm.cmt_linear_think import ExtendedMessage, MultiSampleCMT
 from loguru import logger
 
 """
@@ -80,13 +80,13 @@ class SlidingWindowCMT(MultiSampleCMT):
         return dict_context, latest_llm_interaction_socket
 
 
-    def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
+    def check_context_token_num_safe(self, messages: List[dict], tools=[]) -> Tuple[bool, str]:
         """Always be safe because we already check in `prepare_next_llm_context`
         """
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
 
-        assert self._get_seq_length(messages) < self.max_seq_length
+        assert self._get_seq_length(messages, tools) < self.max_seq_length
 
         if self.prompt_part_token_overflow:
             return False, "prompt_part_token_overflow"
@@ -181,7 +181,7 @@ class SlidingWindowCMT(MultiSampleCMT):
     def llm_memory_extraction(self, msg_list: List[ExtendedMessage]) -> str:
         """Use LLM to extract memory from previous messages.
         """
-        from astune.context_manager.cmt_foreign_llm import construct_alien_llm_chat_fn
+        from astune.context_manager.agentflow_cm.cmt_foreign_llm import construct_alien_llm_chat_fn
         from textwrap import dedent
         self.alien_llm_chat_fn: Callable = construct_alien_llm_chat_fn(self.config, self.config.actor_rollout_ref.rollout)
         messages = self.to_role_content(msg_list)

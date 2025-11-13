@@ -1,7 +1,7 @@
 import copy
 from typing import List
 from beast_logger import print_listofdict
-from astune.context_manager.cmt_linear_think import ExtendedMessage, CMTLinear, LinearThinkCMT
+from astune.context_manager.agentflow_cm.cmt_linear_think import ExtendedMessage, CMTLinear, LinearThinkCMT
 from beast_logger import print_dict, print_nested, NestedJsonItem, SeqItem
 
 

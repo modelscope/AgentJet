@@ -45,7 +45,7 @@ self.toolkit.register_tool_function(execute_python_code)
 self.agent = ReActAgent(
     name="math_react_agent",
     sys_prompt=system_prompt,
-    model=beyondagent_proxy,  # type: ignore
+    model=astune_proxy,  # type: ignore
     formatter=DashScopeChatFormatter(),
     toolkit=self.toolkit,
     memory=InMemoryMemory(),
@@ -57,7 +57,7 @@ result = await self.agent.reply(msg, structured_model=FinalResult)
 
 - 在 AgentScope Workflow 中，注册评价函数需要的任意关键数据
 ```python
-beyondagent_proxy.update_judge_input_dictionary(final_answer=final_answer)
+astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
 ```
 
 
@@ -71,7 +71,7 @@ Judge的输入参数包含：
 judge_input_dictionary['env']: env_service 外部环境 （如果使用了env_service）
 judge_input_dictionary['task_core_arg']: 任务信息（如果里面包含了参考答案，可以从中取出）
 judge_input_dictionary['grouped_steps']: LLM的每一次历史对话记录（如果中间过程比较重要，可以从中取出）
-judge_input_dictionary['final_answer']: 默认没有final_answer，需要在agentscope workflow中手动调用 beyondagent_proxy.update_judge_input_dictionary(final_answer=final_answer) 注册
+judge_input_dictionary['final_answer']: 默认没有final_answer，需要在agentscope workflow中手动调用 astune_proxy.update_judge_input_dictionary(final_answer=final_answer) 注册
 ```
 
 Judge的返回值： raw_reward, is_success

@@ -1,7 +1,9 @@
 from typing import List, Union, Tuple
+from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.schema.trajectory import Reward
 import uuid
 
+INVALID_LOG_PROB_VALUE = 0.0
 
 def find_sublist_indices(large_list, small_list, reverse=False):
     small_len = len(small_list)
@@ -14,7 +16,6 @@ def find_sublist_indices(large_list, small_list, reverse=False):
             return i
     return -1
 
-INVALID_LOG_PROB_VALUE = 0.0
 
 def replace_token_ids(place_holder, replace_with, begin, end, raw_logprob) -> Tuple[List[int], List[int]]:
     _begin_index = find_sublist_indices(place_holder, begin) + len(begin)
@@ -43,7 +44,7 @@ class ExtendedMessage:
             token_end_index=-1,
             clip=False,
             clip_token_limit=8192,
-            tokenizer=None,
+            tokenizer: PreTrainedTokenizer=None,  # type: ignore
             token_generator="manual",
             build_from_uuid="",
             tools=[],
@@ -75,11 +76,19 @@ class ExtendedMessage:
         if token_generator == 'auto':
             dummy_msg = [ {"role": "assistant",  "content": "dummy text"} ]
             try:
-                text_frag_to = tokenizer.apply_chat_template(dummy_msg + [ {"role": self.role,  "content": self.content_for_future} ], tokenize=False)
+                text_frag_to = tokenizer.apply_chat_template(
+                    dummy_msg + [ {"role": self.role,  "content": self.content_for_future} ],
+                    tokenize=False,
+                    tools=tools
+                )
             except Exception as e:
                 raise ValueError(f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}")
             self.token_arr, _ = self.get_inc_simple(
-               text_frag_from=tokenizer.apply_chat_template(dummy_msg, tokenize=False),
+               text_frag_from=tokenizer.apply_chat_template(
+                   dummy_msg,
+                   tokenize=False,
+                   tools=tools
+                ),
                text_frag_to=text_frag_to,
                tokenizer=tokenizer
             )

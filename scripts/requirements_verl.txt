@@ -30,7 +30,7 @@ certifi==2025.10.5
 cffi==2.0.0
 cfgv==3.4.0
 charset-normalizer==3.4.4
-click==8.3.0
+click==8.2.1
 cloudpickle==3.1.1
 codetiming==1.4.0
 colorful==0.5.7

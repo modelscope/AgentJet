@@ -12,7 +12,7 @@ class MathAnswerAsJudge(JudgeBase):
         # judge_input_dictionary['grouped_steps']: LLM的每一次历史对话记录（如果中间过程比较重要，可以从中取出）
 
         raw_reward = 0
-        final_answer = judge_input_dictionary['final_answer']   # 默认没有final_answer，需要在workflow中手动调用 beyondagent_proxy.update_judge_input_dictionary(final_answer=final_answer) 注册
+        final_answer = judge_input_dictionary['final_answer']   # 默认没有final_answer，需要在workflow中手动调用 astune_proxy.update_judge_input_dictionary(final_answer=final_answer) 注册
         task_core_arg = judge_input_dictionary['task_core_arg']
         reference_answer = task_core_arg.task.metadata['answer']
         reference_answer = reference_answer.split('####')[-1].strip()
@@ -41,7 +41,7 @@ class MathAnswerAndLlmAsJudge(JudgeBase):
         task_core_arg = judge_input_dictionary['task_core_arg']
         reference_answer = task_core_arg.task.metadata['answer']
 
-        from astune.context_manager.cmt_foreign_llm import construct_alien_llm_chat_fn
+        from astune.context_manager.agentflow_cm.cmt_foreign_llm import construct_alien_llm_chat_fn
         alien_llm_chat_fn = construct_alien_llm_chat_fn(self.config)
         messages = [
             {

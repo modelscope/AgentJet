@@ -60,14 +60,14 @@ class MultiSampleCMT(CMTLinear):
             # think_hint_for_qwen2 =
             self.think_hint: str = force_think_prompt
 
-    def _get_seq_length(self, messages: List[dict]) -> int:
-        prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    def _get_seq_length(self, messages: List[dict], tools=[]) -> int:
+        prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, tools=tools)
         return len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
 
-    def check_context_token_num_safe(self, messages: List[dict]) -> Tuple[bool, str]:
+    def check_context_token_num_safe(self, messages: List[dict], tools: List[dict] = []) -> Tuple[bool, str]:
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
-        if self._get_seq_length(messages) < self.max_seq_length:   # self.config.env_engine.max_seq_length = 20480
+        if self._get_seq_length(messages, tools=tools) < self.max_seq_length:   # self.config.env_engine.max_seq_length = 20480
             return True, "safe"
         else:
             return False, "token_overflow"
