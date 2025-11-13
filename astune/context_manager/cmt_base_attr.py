@@ -76,8 +76,12 @@ class ExtendedMessage:
         if token_generator == 'auto':
             dummy_msg = [ {"role": "assistant",  "content": "dummy text"} ]
             try:
+                # completion_token_arr will contain generation_prompt header
+                auto_tokenize_target = { "role": self.role, "content": self.content_for_future }
+                if self.tool_calls:
+                    auto_tokenize_target.update({ "tool_calls": self.tool_calls })
                 text_frag_to = tokenizer.apply_chat_template(
-                    dummy_msg + [ {"role": self.role,  "content": self.content_for_future} ],
+                    dummy_msg + [ auto_tokenize_target ],
                     tokenize=False,
                     tools=tools
                 )
