@@ -241,7 +241,7 @@ class TaskRunner:
         from astune.utils.process_dataset import create_rl_sampler
 
         # Create training and validation datasets.
-        from astune.task_reader.task_reader_base import TaskReaderRouter, task_to_standard_dataset
+        from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
         task_reader = TaskReaderRouter(config)
         val_dataset = task_to_standard_dataset(task_reader.get_validation_tasks())
         train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
