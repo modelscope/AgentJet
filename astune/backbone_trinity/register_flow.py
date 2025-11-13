@@ -186,7 +186,8 @@ class astunetWorkflowWrap(Workflow):
             if not isinstance(reward, (float, int)): # if reward is still not a float or int, set it to 0.0
                 reward = cmt.reward_structure.raw_reward
 
-            if len(response_ids) + len(prompt_ids) == len(input_ids) and len(logprobs) == len(response_ids) and len(logprobs) > 0:
+            if len(response_ids) + len(prompt_ids) == len(input_ids) and \
+                len(logprobs) == len(response_ids) and len(logprobs) > 0:
                 exp = Experience(
                     # eid=uuid.uuid4().hex,
                     tokens = input_ids,     # [seq_length] prompt + response
@@ -213,6 +214,5 @@ class astunetWorkflowWrap(Workflow):
                 )
                 exps += [exp]
             else:
-                from vsdb import bp
-                bp("BUGX")
+                logger.exception(f"Data length mismatch when converting sample to experience.")
         return exps

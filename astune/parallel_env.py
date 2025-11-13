@@ -638,15 +638,16 @@ class ParallelEnvManager(DynamicRollout):
             sample_arr_final += sample_arr
 
         # Step 2: Calculate how many samples need to be removed
-        world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
-        remainder = len(sample_arr_final) % world_size
-        if remainder != 0:
-            import random
-            remove_indices = random.sample(range(len(sample_arr_final)), remainder)
-            # Sort in reverse order to avoid index shifting during removal
-            remove_indices.sort(reverse=True)
-            for idx in remove_indices:
-                sample_arr_final.pop(idx)
+        if self.config.astune.backbone in ['verl']:
+            world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
+            remainder = len(sample_arr_final) % world_size
+            if remainder != 0:
+                import random
+                remove_indices = random.sample(range(len(sample_arr_final)), remainder)
+                # Sort in reverse order to avoid index shifting during removal
+                remove_indices.sort(reverse=True)
+                for idx in remove_indices:
+                    sample_arr_final.pop(idx)
 
         # random remove some samples, so that the number of samples is divisible by 8
         return sample_arr_final

@@ -2,5 +2,5 @@
     "astune.model.path": "model.model_path",
     "astune.project_name": "project",
     "astune.experiment_name": "name",
-    "astune.rollout.num_repeat": "algorithm,repeat_times"
+    "astune.rollout.num_repeat": "algorithm.repeat_times"
 }

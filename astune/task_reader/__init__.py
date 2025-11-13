@@ -11,7 +11,7 @@ from astune.env_service_client.env_client_ng import EnvClient
 from astune.task_reader.env_service_reader import TaskReaderEnvService
 from astune.task_reader.hf_dataset_reader import TaskReaderHuggingFace
 from astune.task_reader.jsonl_reader import TaskReaderJsonl
-from astune.task_reader.task_reader_base import TaskReaderBase
+from astune.task_reader import TaskReaderBase
 
 class RandomDummyGenerator(TaskReaderBase):
 
