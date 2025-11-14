@@ -213,9 +213,13 @@ class CMTLinear(CMTBaseAttr):
             self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=True, tools=tools),
         )
         # completion_token_arr will contain generation_prompt header
+        llm_output_role_content = { "role": llm_output['role'], "content": llm_output['content'] }
+        if not llm_output.get('tool_calls', None):
+            llm_output_role_content.update({ "tool_calls": llm_output.get('tool_calls', []) })
+
         completion_token_arr, msg2 = self.get_inc(
             self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, tools=tools),
-            self.tokenizer.apply_chat_template(input_msg_ref + [ {"role": llm_output['role'],  "content": llm_output['content']} ], tokenize=False, tools=tools),
+            self.tokenizer.apply_chat_template(input_msg_ref + [ llm_output_role_content ], tokenize=False, tools=tools),
         )
         vllm_output_raw_token = [t.token_id for t in llm_output['tokens']]
         vllm_output_raw_logprob = [t.logprob for t in llm_output['tokens']]
