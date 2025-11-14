@@ -114,3 +114,10 @@ INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 - 蓝色 Token 代表参与loss计算的 Token，黄色反之
 
 - 鼠标悬浮在 Token 上面可以查看 Token 的 **logprob** (暂时仅限trinity backbone)
+
+
+#### 4. 训练参考曲线
+
+<div align="center">
+  <img src="tutorial/figure/werewolves_train_witch.png" alt="日志界面">
+</div>

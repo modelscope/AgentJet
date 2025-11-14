@@ -32,7 +32,7 @@ class RandomDummyGenerator(TaskReaderBase):
                 init_messages=[],
                 task_id=str(idx),
                 env_type=f"no_env",
-                metadata={},
+                metadata={'random_number': idx},
             )
             tasks.append(task)
         # Restore the original random state

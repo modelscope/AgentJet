@@ -173,4 +173,5 @@ INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 
 ### 6. 参考训练曲线
 
+点击链接打开训练曲线：
 https://swanlab.cn/@binaryhusky/public/runs/96arcunrxlezdmcvmcdob/chart
