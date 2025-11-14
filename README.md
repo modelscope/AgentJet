@@ -40,6 +40,7 @@ Let see:
 
 - How to build an Agent specialized at gsm8k math problems, and [how to train it 🚀](tutorial/math_agent.md).
 - How to build an Appworld agent using AgentScope, and [how to train it 🪐](tutorial/appworld.md).
+- How to build a Werewolves RPG agent using AgentScope, and [how to train it 🚀](tutorial/werewolves/werewolves.md)
 
 
 
