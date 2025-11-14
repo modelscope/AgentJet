@@ -128,7 +128,7 @@ class ExampleWerewolves(AgentScopeLearnProtocol):
 
         # Set random seed for reproducibility
         task_core_arg = astune_proxy.get_agentscope_input_dictionary()["task_core_arg"]
-        task_id = task_core_arg.task.task_id
+        task_id = task_core_arg.task.metadata['random_number']
 
         np.random.seed(int(task_id))
         np.random.shuffle(roles)
@@ -141,3 +141,4 @@ class ExampleWerewolves(AgentScopeLearnProtocol):
         astune_proxy.update_judge_input_dictionary(raw_reward = raw_reward)
         astune_proxy.update_judge_input_dictionary(is_success = (raw_reward == 1))
         return astune_proxy
+

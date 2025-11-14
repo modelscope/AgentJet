@@ -22,7 +22,6 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
             name="Qwen",
             sys_prompt=first_msg['content'],
             model=astune_proxy,  # type: ignore
-            # model=astune_proxy: use astune_proxy as model
             formatter=DashScopeChatFormatter(),
             memory=InMemoryMemory(),
             toolkit=None,
