@@ -5,7 +5,7 @@ from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
 
 class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
 
-    trainer: str = Field(default="agentscorpion-trinity")
+    trainer: str = Field(default="astune-trinity")
 
     async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config):
         from agentscope.agent import ReActAgent
@@ -22,7 +22,6 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
             name="Qwen",
             sys_prompt=first_msg['content'],
             model=astune_proxy,  # type: ignore
-            # model=astune_proxy: use astune_proxy as model
             formatter=DashScopeChatFormatter(),
             memory=InMemoryMemory(),
             toolkit=None,

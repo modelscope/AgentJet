@@ -183,6 +183,7 @@ def prepare_experiment_config(yaml_path, args):
     with open(yaml_path, 'r') as file:
         config = yaml.safe_load(file)
     config['astune']['experiment_name'] = exp_name
+    config['astune']['backbone'] = args.backbone
 
     # remove extra config of verl for trinity
     if args.backbone == "debug":
@@ -402,7 +403,7 @@ def main():
 
     # Initialize variables with default values to avoid "possibly unbound" errors
     backbone_target = "astune.main_trinity"  # Default to trinity
-    yaml_backup_dst = None
+    main_yaml_fp = None
     exe_exp_base = None
     exe_yaml_path = None
     exp_name = None
@@ -418,7 +419,7 @@ def main():
     exp_config = None
     if args.conf:
         yaml_path = args.conf
-        yaml_backup_dst, exe_exp_base, exe_yaml_path, exp_name, exp_config = prepare_experiment_config(yaml_path, args)
+        main_yaml_fp, exe_exp_base, exe_yaml_path, exp_name, exp_config = prepare_experiment_config(yaml_path, args)
 
     if args.db:
         env["RAY_DEBUG_POST_MORTEM"] = "1"
@@ -429,7 +430,7 @@ def main():
         logger.warning("Debug mode is OFF")
 
     if args.backbone == "trinity":
-        env['ASTUNE_CONFIG_REDIRECT'] = yaml_backup_dst # type: ignore
+        env['ASTUNE_CONFIG_REDIRECT'] = main_yaml_fp # type: ignore
     if args.backbone == "debug":
         env['ASTUNE_DEBUG'] = '1'  # type: ignore
 
@@ -454,8 +455,8 @@ def main():
     if args.with_logview:
         launch_logview(exp_name)
 
-    if args.conf and yaml_backup_dst and exe_exp_base and exe_yaml_path:
-        execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_base, exe_yaml_path, env, exp_config)
+    if args.conf and main_yaml_fp and exe_exp_base and exe_yaml_path:
+        execute_training_process(args, backbone_target, main_yaml_fp, exe_exp_base, exe_yaml_path, env, exp_config)
 
 if __name__ == "__main__":
     check_debugpy_version()

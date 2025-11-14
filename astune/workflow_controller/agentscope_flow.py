@@ -75,10 +75,14 @@ class AgentScopeWorkflow(BaseAgentFlow):
         astune_proxy.update_judge_input_dictionary(task_core_arg=task_core_arg)
         astune_proxy.update_judge_input_dictionary(env=env)
         astune_proxy.update_judge_input_dictionary(grouped_steps=astune_proxy.grouped_steps)
+        judge_input_dictionary = astune_proxy.get_judge_input_dictionary()
 
-        raw_reward, is_success = astune_proxy.get_judge().compute_reward(
-            astune_proxy.get_judge_input_dictionary()
-        )
+        # get reward
+        if 'raw_reward' in judge_input_dictionary and 'is_success' in judge_input_dictionary:
+            raw_reward = judge_input_dictionary['raw_reward']
+            is_success = judge_input_dictionary['is_success']
+        else:
+            raw_reward, is_success = astune_proxy.get_judge().compute_reward(judge_input_dictionary)
 
         # evaluate
         reward = Reward(
