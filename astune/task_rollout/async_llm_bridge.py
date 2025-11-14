@@ -89,10 +89,7 @@ class AsyncLlmBridge(object):
             tools = [],
             request_id: str = ""
         ) -> dict:
-            """
-            input messages: [{"role": "system", "value": "..."}, {"role": "user", "value": "..."}]
-            output messages: [{"role": "assistant", "value": "..."}]
-            """
+
             updated_sampling_params = {}
             if sampling_params:
                 updated_sampling_params.update(sampling_params)
@@ -123,10 +120,7 @@ class AsyncLlmBridge(object):
             tools = [],
             request_id: str = ""
         ) -> dict:
-            """
-            input messages: [{"role": "system", "value": "..."}, {"role": "user", "value": "..."}]
-            output messages: [{"role": "assistant", "value": "..."}]
-            """
+
             async def main(model_client):
                 updated_sampling_params = {}
                 if sampling_params:

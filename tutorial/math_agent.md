@@ -140,7 +140,7 @@ python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbon
 4.3 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
 ```bash
 # 建议开始前杀死所有ray、vllm、env_service进程 ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='trinity'
+python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='trinity' --with-ray
 ```
 
 
@@ -173,4 +173,5 @@ INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 
 ### 6. 参考训练曲线
 
+点击链接打开训练曲线：
 https://swanlab.cn/@binaryhusky/public/runs/96arcunrxlezdmcvmcdob/chart

@@ -93,7 +93,7 @@ def run(config):
         tokenizer=async_rollout_manager.tokenizer
     )
 
-    from astune.task_reader.task_reader_base import TaskReaderRouter
+    from astune.task_reader import TaskReaderRouter
     task_reader = TaskReaderRouter(config)
     tasks = task_reader.get_validation_tasks()
     print(tasks[:2])

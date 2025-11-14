@@ -34,7 +34,7 @@ You are an agent specialized in solving math problems with tools. Please solve t
 
 class ExampleMathLearn(AgentScopeLearnProtocol):
 
-    trainer: str = Field(default="agentscorpion-trinity")
+    trainer: str = Field(default="astune-trinity")
 
     async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config):
         from agentscope.agent import ReActAgent
