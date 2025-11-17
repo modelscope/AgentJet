@@ -20,11 +20,13 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     uv venv --python=3.10.16
     source .venv/bin/activate
     git clone https://github.com/binary-husky/Trinity-RFT external/trinity
+    git clone https://github.com/binary-husky/agentscope external/agentscope
 
     # Install dependencies
     uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
     uv pip install -r scripts/requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
     uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
+    uv pip install -e external/agentscope -i https://mirrors.aliyun.com/pypi/simple/
 
     # Install flash attention (must be installed at last)
     uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation

@@ -1,6 +1,7 @@
 from typing import List, Union, Tuple
 from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.schema.trajectory import Reward
+from loguru import logger
 import uuid
 
 INVALID_LOG_PROB_VALUE = 0.0
@@ -102,7 +103,8 @@ class ExtendedMessage:
         if self._content_for_future == "":
             if not self.tool_calls:
                 # from vsdb import bp; bp("H1")
-                raise ValueError("content_for_future is not set, or previous llm output is empty!")
+                logger.exception("content_for_future is not set, or previous llm output is empty!")
+                self._content_for_future
         return self._content_for_future
 
 
