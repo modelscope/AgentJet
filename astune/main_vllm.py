@@ -6,7 +6,7 @@ from openai import OpenAI
 from types import SimpleNamespace
 from astune.schema.task import Task
 from beast_logger import register_logger
-from astune.parallel_env import ParallelEnvManager
+from astune.task_rollout.native_parallel_worker import ParallelEnvManager
 from astune.utils.sms_agent import send_train_message
 
 class TokenAndProb:
