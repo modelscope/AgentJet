@@ -8,6 +8,22 @@ astune:
       dataset_path: '/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main'
       training_split: "train"
       validation_split: "test"
+    
+    # example
+    tracing:
+      base_url: http://phoenix:port
+      train_output_path: /path/to/tasks.jsonl
+      filters:
+        - type: llm_evaluate
+          enabled: true
+          params:
+            custom_rubrics: "1. 如果 answer 声称将答案写入了文件，请判定为有实质性的回答。"
+            temperature: 0.5
+            max_tokens: 2048
+            print_reason: false
+
+    
+
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
