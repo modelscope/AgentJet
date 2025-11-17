@@ -188,7 +188,7 @@ class ASTunetWorkflowWrap(Workflow):
                     response_text = "", # optional
                     prompt_text = "", # optional
                     #### for multi-turn experiences
-                    action_mask = response_loss_mask,  # 1 是训练
+                    action_mask = response_loss_mask,  # 1 stands for training, 0 stands for ignoring
                     messages=sample.messages,    #
                     # tools,
                     #### for dpo experiences
