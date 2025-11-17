@@ -12,7 +12,7 @@ from astune.context_manager.agentscope_cm.timeline_merging import can_merge_step
 from typing import Any, List, Tuple, Union
 from beast_logger import print_nested, print_listofdict, NestedJsonItem, SeqItem
 
-class ASTuneContextTemplate(CMTLinear):
+class ASTuneContextTracking(CMTLinear):
 
     def __init__(
             self,

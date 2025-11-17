@@ -10,7 +10,7 @@ from agentscope.message import TextBlock, ToolUseBlock
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
 from astune.utils.compute_madness import compute_string_madness
-from astune.context_manager.agentscope_cm.cmt_multi_sample import ASTuneContextTemplate
+from astune.context_manager.agentscope_cm.cmt_multi_sample import ASTuneContextTracking
 from astune.context_manager.agentscope_cm.timeline_merging import can_merge_steps
 
 from typing import Any, List, Type, Dict
@@ -21,7 +21,7 @@ def remove_fields(d: Dict, fields: List[str]) -> Dict:
         d.pop(field.strip(), None)
     return d
 
-class ASTuneLmProxy(ASTuneContextTemplate):
+class ASTuneLmProxy(ASTuneContextTracking):
 
     async def execute_model_proxy(self, messages: List[dict], tools: List=[], tool_choice: str = "auto", structured_model=None, **kwargs) -> dict:
         # load messages into `self.full_context`
