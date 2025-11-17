@@ -136,7 +136,7 @@ class MultiSampleCMT(CMTLinear):
 
 
     def process_reward(self, reward_structure: Reward):
-        # lienar 模式有多条轨迹
+        # linear mode has multiple trajectories
         use_step_reward_from_env = self.config.astune.rollout.get("use_step_reward_from_env", False)
         if not use_step_reward_from_env:
             self.reward_structure = reward_structure

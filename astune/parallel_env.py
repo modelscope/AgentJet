@@ -528,7 +528,7 @@ class DynamicRollout(StaticRollout):
                 add_count = 0  # If using an addition strategy, number of samples to add.
                 num_task_to_amend = len(futures)    # num_task
                 logger.info(f"allow_sample_num_change policy: world_size: {world_size}, total_sample {total_sample}, add_count: {add_count}, ")
-                # 选择 extra 最少的task进行补偿
+                # Select the task with the fewest extras for compensation
                 while add_count != 0:
                     _task_completed_thread_cnt_find_nonzero_min = [float('inf') if x <=0 else x for x in task_completed_thread_cnt]
                     min_extra_index = _task_completed_thread_cnt_find_nonzero_min.index(min(_task_completed_thread_cnt_find_nonzero_min))
@@ -546,7 +546,7 @@ class DynamicRollout(StaticRollout):
                 remove_count = sum(task_extra_thread_cnt) - extra_num_thread_required
                 logger.info(f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, ")
 
-                # 选择 extra 最多的task进行约束
+                # Select the task with the most extras to constrain
                 while remove_count != 0:
                     max_extra_index = task_extra_thread_cnt.index(max(task_extra_thread_cnt))
                     assert task_extra_thread_cnt[max_extra_index] > 0, "task_extra_thread_cnt should be greater than 0"
@@ -556,7 +556,7 @@ class DynamicRollout(StaticRollout):
                 logger.info(f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}")
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
 
-            # 筛选出方差最高的样本
+            # Select samples with the highest variance
             cmt_array = []
             print_buffer = ""
             task_success_rate = []

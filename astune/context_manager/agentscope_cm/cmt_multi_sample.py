@@ -6,7 +6,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage, replace_token_ids
 from astune.utils.color_hsl import adjust_color_hsl
 from astune.utils.compute_madness import compute_string_madness
-from astune.context_manager.cmt_base_attr import INVALID_LOG_PROB_VALUE
+from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from astune.context_manager.agentscope_cm.timeline_merging import can_merge_steps
 
 from typing import Any, List, Tuple, Union
@@ -45,7 +45,7 @@ class ASTuneContextTemplate(CMTLinear):
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
         ext_steps = self.full_context
-        # # lienar 模式只有一条轨迹
+        # # linear mode has only one trajectory
         # self.reward_structure.step_reward = [
         #     self.compute_step_level_reward(ext_steps=ext_steps, index=0, total_steps=1)
         # ]
@@ -66,7 +66,7 @@ class ASTuneContextTemplate(CMTLinear):
             input_id_arr = [str(t) for t in cmt_tokenized["input_ids"]]
             # loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in cmt_tokenized["loss_mask"]]
             logprobs = [INVALID_LOG_PROB_VALUE] * len(cmt_tokenized["prompt_ids"]) + cmt_tokenized["response_logprobs"]
-            # 创建调整后的颜色数组
+            # Create adjusted color array
             loss_mask_color_abl_arr = [
                 adjust_color_hsl("#09ABCF", logprob) if mask == 1
                 else adjust_color_hsl("#D98510", logprob)

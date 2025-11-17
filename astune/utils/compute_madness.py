@@ -1,13 +1,13 @@
 import re
 from functools import cache
 
-# 各白名单类别对应正则片段
+# Regex fragments for each whitelist category
 WHITE_LIST_REGEX_PARTS = {
-    # 常见符号
+    # Common symbols
     'common_symbols': '‘’“”–—…•™©®°±µ′″℉℃·×',
-    # 中文标点
+    # Chinese punctuation
     'chinese_punct': '，。！？、；：“”‘’（）【】《》（）——……「」『』',
-    # emoji 范围
+    # Emoji ranges
     'emoji': (
         '\U0001F300-\U0001F5FF'
         '\U0001F600-\U0001F64F'
@@ -21,7 +21,7 @@ WHITE_LIST_REGEX_PARTS = {
         '\u2702-\u27B0'
         '\u24C2-\U0001F251'
     ),
-    # 中文字符
+    # Chinese characters
     'chinese': (
         '\u4E00-\u9FFF'
         '\u3400-\u4DBF'
@@ -37,14 +37,14 @@ WHITE_LIST_REGEX_PARTS = {
 
 @cache
 def build_pattern(white_list):
-    """根据白名单类别构造正则"""
-    allowed_parts = ['\x00-\x7F']  # 所有 ASCII
+    """Build a regex based on the provided whitelist categories."""
+    allowed_parts = ['\x00-\x7F']  # All ASCII
     for name in white_list:
         if name in WHITE_LIST_REGEX_PARTS:
             allowed_parts.append(WHITE_LIST_REGEX_PARTS[name])
-    # 把允许的范围合并为一个字符类，并用反向类匹配“不被允许的字符”
+    # Merge allowed ranges into one character class, then use a negated class to match disallowed characters
     allowed_class = ''.join(allowed_parts)
-    pattern = f'[^{allowed_class}]'  # 匹配 不允许 的字符
+    pattern = f'[^{{allowed_class}}]'  # Match disallowed characters
     return re.compile(pattern)
 
 def has_non_ascii(text, white_list=('common_symbols', 'emoji', 'chinese', 'chinese_punct')):
@@ -89,7 +89,7 @@ def compute_string_madness_format(completion, format_type)->float:
         ```
 
         """
-        # 检查 <think> 和 </think> 标签是否成对出现，且只出现一次
+        # Check that <think> and </think> appear exactly once and in order
         if not completion.strip().startswith(r"<think>"):
             # print("not start with <think>")
             return -1.0
@@ -102,7 +102,7 @@ def compute_string_madness_format(completion, format_type)->float:
         # remove think part
         think_part = completion[completion.index(r"<think>"):completion.index(r"</think>")+len(r"</think>")]
         rest_part = completion.replace(think_part, "")
-        # 检查 ```python 和 ``` 是否成对出现，且只出现一次
+        # Check that ```python and ``` appear exactly once and in order
         if not rest_part.strip().startswith(r"```python"):
             # print("not start with ```python")
             return -1.0
@@ -162,11 +162,11 @@ def repetition_penalty_reward_scalar_debug(completion):
     return ""
 
 if __name__ == "__main__":
-    # 测试示例
+    # Test examples
     # print(compute_string_madness("Hello world!"))  # 0
     # print(compute_string_madness("Hello world! 😄"))  # 0
     # print(compute_string_madness("Hello world! Hello world!"))  # -1.0
-    # print(compute_string_madness("你好，世界！"))  # -1.0
+    # print(compute_string_madness("Chinese characters here"))  # -1.0
     # print(compute_string_madness("Hello <|im_start|> world!"))  # -1.0
     assert compute_string_madness("""
         playlist_songs` API to get the list of songs in a playlist.
