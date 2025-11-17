@@ -237,19 +237,19 @@ class EnvClient:
             action_name="release_instance"
         )
 
-# 使用示例
+# Usage example
 def main():
     client = EnvClient()
     env_type = "appworld"
 
-    # 获取任务列表
+    # Get the task list
     task_ids = client.get_env_profile(env_type)
     print(f"Available tasks: {task_ids}")
 
-    # 创建实例
+    # Create an instance
     task_id = task_ids[0] if task_ids else None
     if not task_id:
-        print("任务列表为空，无法创建实例！")
+        print("Task list is empty; cannot create an instance!")
         return
     init_response = client.create_instance(env_type, task_id)
     print("init state", init_response)
@@ -257,16 +257,16 @@ def main():
     query = init_response.get("state", [])
     print(f"Created instance {instance_id} with query: {query}")
 
-    # 执行动作
+    # Execute an action
     action = {"role": "assistant", "content": "print('hello appworld!!')"}
     result = client.step(instance_id, action)
     print(f"Step result: {result}")
 
-    # 评估
+    # Evaluate
     score = client.evaluate(instance_id)
     print(f"Evaluation score: {score}")
 
-    # 释放实例
+    # Release the instance
     success = client.release_instance(instance_id)
     print(f"Instance released: {success}")
 

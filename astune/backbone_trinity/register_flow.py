@@ -6,14 +6,13 @@ import numpy as np
 import asyncio, uuid, copy
 import threading
 
-from typing import Dict, List, Optional, Union
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
 from trinity.common.workflows.workflow import WORKFLOWS, Task, Workflow
 from trinity.common.workflows.agentscope.react.templates import TEMPLATE_MAP
 from transformers import AutoTokenizer
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Literal, Callable, Union
+from typing import Dict, List, Literal, Callable, Union, Optional
 from loguru import logger
 from omegaconf import DictConfig
 from tensordict import TensorDict
@@ -30,6 +29,7 @@ from astune.schema.task import Task
 from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
 from omegaconf import OmegaConf
+from astune.context_manager.cmt_base_attr import CMTBaseAttr
 
 class TrinityCompatWorkflow(DynamicRollout):
 
@@ -82,7 +82,7 @@ class TrinityCompatWorkflow(DynamicRollout):
             obs_window=obs_window
         )
 
-    def run_in_new_thread(self):
+    def run_in_new_thread(self) -> CMTBaseAttr:
         # begin self.thread_worker in a new thread
         # then wait for it to finish, and get the result
 
@@ -102,12 +102,13 @@ class TrinityCompatWorkflow(DynamicRollout):
         if "exc" in exc_holder:
             raise exc_holder["exc"]
 
-        return result_holder.get("result", None)
+        thread_conclusion: CMTBaseAttr = result_holder.get("result", None)  # type: ignore
+        return thread_conclusion
 
 
 
 @WORKFLOWS.register_module("astune_workflow")
-class astunetWorkflowWrap(Workflow):
+class ASTunetWorkflowWrap(Workflow):
     is_async: bool = True
     def __init__(
         self,

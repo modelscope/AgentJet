@@ -406,8 +406,8 @@ class CMTLinear(CMTBaseAttr):
         raw_reward = self.reward_structure.raw_reward
         step_reward = self.reward_structure.step_reward[0]
         try:
-            step_advantage = self.reward_structure.step_advantage[index]
-            step_advantage_simple = self.reward_structure.step_advantage_simple[index]
+            step_advantage = self.reward_structure.step_advantage[0]
+            step_advantage_simple = self.reward_structure.step_advantage_simple[0]
         except:
             step_advantage = 0.0
             step_advantage_simple = 0.0
@@ -441,7 +441,7 @@ class CMTLinear(CMTBaseAttr):
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
         ext_steps = self.full_context
-        # lienar 模式只有一条轨迹
+        # linear mode has only one trajectory
         self.reward_structure.step_reward = [
             self.compute_step_level_reward(ext_steps=ext_steps, index=0, total_steps=1)
         ]
