@@ -14,6 +14,7 @@ astune:
   rollout:
     agentscope_learn_protocol: tutorial.werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
     num_repeat: 6
+    agent_madness_reward: 0.0
 
   debug:
     debug_max_parallel: 1

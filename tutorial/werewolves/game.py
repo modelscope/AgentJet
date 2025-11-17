@@ -19,10 +19,10 @@ from tutorial.werewolves.structured_model import (
     get_seer_model,
     get_hunter_model,
 )
-# from tutorial.werewolves.prompt import EnglishPrompts as Prompts
+from tutorial.werewolves.prompt import EnglishPrompts as Prompts
 
 # Uncomment the following line to use Chinese prompts
-from tutorial.werewolves.prompt import ChinesePrompts as Prompts
+# from tutorial.werewolves.prompt import ChinesePrompts as Prompts
 from loguru import logger
 
 from agentscope.agent import ReActAgent
