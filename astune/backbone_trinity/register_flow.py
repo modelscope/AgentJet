@@ -1,45 +1,37 @@
 import os
 import uuid
-import hydra
 import openai
-import numpy as np
-import asyncio, uuid, copy
 import threading
 
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
 from trinity.common.workflows.workflow import WORKFLOWS, Task, Workflow
-from trinity.common.workflows.agentscope.react.templates import TEMPLATE_MAP
-from transformers import AutoTokenizer
-from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Literal, Callable, Union, Optional
+from typing import List, Literal, Optional
 from loguru import logger
-from omegaconf import DictConfig
-from tensordict import TensorDict
-from torch.nn.utils.rnn import pad_sequence
-from tqdm import tqdm
-from verl import DataProto
-from verl.utils.torch_functional import pad_sequence_to_length
-from beast_logger import register_logger, print_dict, print_listofdict
 from astune.schema.task import Task
-from astune.utils.utils import run_async_coro__no_matter_what
+from transformers import AutoTokenizer
 from astune.parallel_env import DynamicRollout
-from astune.schema.logprob import TokenAndProb
-from astune.schema.task import Task
 from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
-from omegaconf import OmegaConf
 from astune.context_manager.cmt_base_attr import CMTBaseAttr
 
 class TrinityCompatWorkflow(DynamicRollout):
 
-    def __init__(self, task, llm_handle, tokenizer, config, llm_mode="trinity", **kwargs):
+    def __init__(
+        self,
+        task,
+        llm_handle,
+        tokenizer,
+        config,
+        llm_mode: Literal['local', 'remote', 'trinity'] = "trinity",
+        **kwargs
+    ):
 
         self.task = task
         self.trinity_llm_model_client = llm_handle
         self.tokenizer = tokenizer
         self.config = config
-        self.llm_mode = "trinity"
+        self.llm_mode = llm_mode
 
         super().__init__(
             config=self.config,
@@ -83,9 +75,6 @@ class TrinityCompatWorkflow(DynamicRollout):
         )
 
     def run_in_new_thread(self) -> CMTBaseAttr:
-        # begin self.thread_worker in a new thread
-        # then wait for it to finish, and get the result
-
         result_holder = {}
         exc_holder = {}
 
@@ -125,9 +114,7 @@ class ASTunetWorkflowWrap(Workflow):
         self.config = config
         self.task = task
 
-        # 模拟openai的异步客户端
         self.model_client = model.get_openai_async_client()
-        # task_type 用于获取奖励函数
         # extract the query and the answer from the task
         self.query = task.raw_task.get(task.format_args.prompt_key)  # type: ignore [index]
         self.answer = task.raw_task.get(task.format_args.response_key)  # type: ignore [index]

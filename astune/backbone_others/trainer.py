@@ -1602,7 +1602,6 @@ class ASTuneRayPPOTrainer:
 
 
     def get_eval_dataset(self):
-        from astune.utils.process_dataset import create_rl_dataset
         if self.config.astune.task_reader.type == 'env_service':
             if self.config.astune.task_reader.env_service.env_type == "appworld":
                 if hasattr(self, 'main_val_dataset'):
@@ -1613,30 +1612,5 @@ class ASTuneRayPPOTrainer:
                     tasks = task_reader.get_validation_tasks()
                     self.main_val_dataset = tasks
                     return self.main_val_dataset, None, None
-
-            # elif self.config.env_service.env_type == "webshop":
-            #     if hasattr(self, 'main_val_dataset'):
-            #         return self.main_val_dataset, None, None
-            #     else:
-            #         config = self.config
-            #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-            #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-            #         if config.data.fast_eval: # 使用一个小测试集
-            #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(100))   # limit to 100 samples
-            #             return self.main_val_dataset, None, None
-            #         else:
-            #             self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(500))   # limit to 100 samples
-            #             return self.main_val_dataset, None, None
-
-            # elif self.config.env_service.env_type == "crafters":
-            #     if hasattr(self, 'main_val_dataset'):
-            #         return self.main_val_dataset, None, None
-            #     else:
-            #         config = self.config
-            #         self.main_val_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-            #         # self.test_normal_dataset = create_rl_dataset(config.data.val_files, config.data, self.tokenizer, processor=None, is_train=False, env_config=config.env_service)
-            #         self.main_val_dataset.dataframe = self.main_val_dataset.dataframe.shuffle(seed=42).select(range(10))   # limit to 100 samples
-            #         return self.main_val_dataset, None, None
-
         else:
             raise NotImplementedError
