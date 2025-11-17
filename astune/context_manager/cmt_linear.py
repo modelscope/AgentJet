@@ -383,7 +383,7 @@ class CMTLinear(CMTBaseAttr):
         if len(sample_arr) > max_num_group:
             print(f"Warning: allow {max_num_group} groups, but got {len(sample_arr)} groups")
             import random
-            sample_arr = random.sample(sample_arr, max_num_group)  # 随机保留 max_num_group 个组
+            sample_arr = random.sample(sample_arr, max_num_group)  # preserve max_num_group groups
 
         return sample_arr
 
@@ -424,10 +424,10 @@ class CMTLinear(CMTBaseAttr):
             step_advantage=f"{float(step_advantage):.3f}",  # type: ignore
             step_advantage_simple=f"{float(step_advantage_simple):.3f}",    # type: ignore
             content=SeqItem(
-                text = buffer['text_arr'],  # 文本
-                title = buffer['text_arr'], # 鼠标悬浮文本
-                count = buffer['input_id_arr'], # 高亮文本
-                color = buffer['loss_mask_color_arr']   # 颜色
+                text = buffer['text_arr'],  # text content
+                title = buffer['text_arr'], # mouse hover text
+                count = buffer['input_id_arr'], # h highlight text
+                color = buffer['loss_mask_color_arr']   # color
             )
         )
         print_nested(nested_items_print_buffer,
@@ -620,7 +620,7 @@ class CMTLinear(CMTBaseAttr):
         for task_id, cmt_list in task2cmt.items():
             cmt_reward = []
 
-            # 计算组内平均和标准差
+            # compute in-group mean and std
             for cmt in cmt_list:
                 cmt_reward += [np.mean(cmt.reward_structure.step_reward)]
 
@@ -635,7 +635,7 @@ class CMTLinear(CMTBaseAttr):
 
             # logger.bind(exception=True).info(f"task id {task_id}")
             # logger.bind(exception=True).info(f"reward_mean {reward_mean}, reward_std {reward_std}, cmt_reward {cmt_reward}")
-            # 计算 advantage
+            # compute advantage
             for cmt in cmt_list:
                 cmt.reward_structure.step_advantage = []
                 for i in range(len(cmt.reward_structure.step_reward)):
@@ -645,7 +645,7 @@ class CMTLinear(CMTBaseAttr):
                 # logger.bind(exception=True).info(f"step reward {cmt.reward_structure.step_reward}")
                 # logger.bind(exception=True).info(f"step advantage {cmt.reward_structure.step_advantage}")
 
-        # 计算简单advantage （不均衡rollout sample数量）
+        # compute simple advantage (uneven rollout sample count)
         for task_id, cmt_list in task2cmt.items():
             cmt_reward = []
             for cmt in cmt_list:

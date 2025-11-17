@@ -105,10 +105,10 @@ class ASTuneContextTracking(CMTLinear):
                 step_advantage=f"{float(step_advantage):.3f}",  # type: ignore
                 step_advantage_simple=f"{float(step_advantage_simple):.3f}",    # type: ignore
                 content=SeqItem(
-                    text = buffer['text_arr'],  # 文本
-                    title = buffer['logprob_arr'], # 鼠标悬浮文本
-                    count = buffer['input_id_arr'], # 高亮文本 # type: ignore
-                    color = buffer['loss_mask_color_arr']   # 颜色
+                    text = buffer['text_arr'],  # text content
+                    title = buffer['logprob_arr'], # mouse hover text
+                    count = buffer['input_id_arr'], # highlight text # type: ignore
+                    color = buffer['loss_mask_color_arr']   # color
                 )
             )
 
