@@ -29,7 +29,7 @@ trinity:
   algorithm:
     repeat_times: 6
   buffer:
-    train_batch_size: 42
+    train_batch_size: 84
 
 # ------------------ 不需要修改 ------------------
 hydra:

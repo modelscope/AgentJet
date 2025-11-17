@@ -132,7 +132,7 @@ class ExampleWerewolves(AgentScopeLearnProtocol):
 
     async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config) -> ASTuneProxy:
 
-        train_which_role = "witch"
+        train_which_role = "werewolf"
 
         roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
 

@@ -137,7 +137,7 @@ class AsyncLlmBridge(object):
             request_id: str = ""
         ) -> dict:
 
-            async def main(model_client):
+            async def main():
                 updated_sampling_params = {}
                 if sampling_params:
                     updated_sampling_params.update(sampling_params)
@@ -146,8 +146,8 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.pop('min_tokens')
 
                 if tools:
-                    response = await model_client.chat.completions.create(
-                        model=model_client.model_path,
+                    response = await self.async_rollout_manager.chat.completions.create(
+                        model=self.async_rollout_manager.model_path,
                         messages=messages,
                         logprobs=True,
                         tools=tools,
@@ -155,8 +155,8 @@ class AsyncLlmBridge(object):
                         **updated_sampling_params
                     )
                 else:
-                    response = await model_client.chat.completions.create(
-                        model=model_client.model_path,
+                    response = await self.async_rollout_manager.chat.completions.create(
+                        model=self.async_rollout_manager.model_path,
                         messages=messages,
                         logprobs=True,
                         top_logprobs=0,
@@ -164,8 +164,7 @@ class AsyncLlmBridge(object):
                     )
                 return response
 
-            assert hasattr(self, 'trinity_llm_model_client'), "trinity_llm_model_client is not set in AsyncLlmBridge"
-            response = run_async_coro__no_matter_what(main(self.trinity_llm_model_client)) # type: ignore
+            response = run_async_coro__no_matter_what(main()) # type: ignore
 
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
