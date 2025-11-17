@@ -181,7 +181,7 @@ class SlidingWindowCMT(MultiSampleCMT):
     def llm_memory_extraction(self, msg_list: List[ExtendedMessage]) -> str:
         """Use LLM to extract memory from previous messages.
         """
-        from astune.context_manager.agentflow_cm.cmt_foreign_llm import construct_alien_llm_chat_fn
+        from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
         from textwrap import dedent
         self.alien_llm_chat_fn: Callable = construct_alien_llm_chat_fn(self.config, self.config.actor_rollout_ref.rollout)
         messages = self.to_role_content(msg_list)

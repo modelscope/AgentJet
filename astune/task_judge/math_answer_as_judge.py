@@ -1,5 +1,6 @@
-from astune.task_judge.judge_base import JudgeBase
 import re
+from astune.task_judge.judge_base import JudgeBase
+from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 
 class MathAnswerAsJudge(JudgeBase):
 
@@ -41,7 +42,6 @@ class MathAnswerAndLlmAsJudge(JudgeBase):
         task_core_arg = judge_input_dictionary['task_core_arg']
         reference_answer = task_core_arg.task.metadata['answer']
 
-        from astune.context_manager.agentflow_cm.cmt_foreign_llm import construct_alien_llm_chat_fn
         alien_llm_chat_fn = construct_alien_llm_chat_fn(self.config)
         messages = [
             {
