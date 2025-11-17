@@ -28,14 +28,13 @@ class TrinityCompatWorkflow(DynamicRollout):
     ):
 
         self.task = task
-        self.trinity_llm_model_client = llm_handle
         self.tokenizer = tokenizer
         self.config = config
         self.llm_mode = llm_mode
 
         super().__init__(
             config=self.config,
-            async_rollout_manager=None,
+            async_rollout_manager=llm_handle,
             max_parallel=1,
             max_llm_retries = 1,
             tokenizer=tokenizer,
