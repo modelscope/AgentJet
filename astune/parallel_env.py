@@ -43,7 +43,7 @@ from astune.schema.logprob import TokenAndProb
 from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.task_rollout.async_llm_bridge import AsyncLlmBridge
 
-def init_logger(experiment_name):
+def init_parallel_rollout_logger(experiment_name):
     """Initialize the logger with the given configuration."""
     from beast_logger import register_logger
     if 'BEST_LOGGER_INIT' in os.environ: return # prevent re-initialization in ray environment
@@ -55,13 +55,7 @@ def init_logger(experiment_name):
     register_logger(mods=["evaluation", "exception"], non_console_mods=non_console_mods, auto_clean_mods=[], base_log_path=final_log_path, debug=False)
 
 
-class StepPrinter(AsyncLlmBridge):
-    """Utility mixin providing periodic progress / throughput printing.
-
-    Tracks token generation speed and thread step distribution. Intended to be
-    composed with rollout manager classes that maintain an observation window
-    (`obs_window`) containing per-thread step, token and stop flags.
-    """
+class BaseParallelEnv(object):
 
     def __init__(
         self,
@@ -70,7 +64,7 @@ class StepPrinter(AsyncLlmBridge):
         max_parallel: int,
         max_llm_retries: int = 3,
         tokenizer: PreTrainedTokenizer = None,  # type: ignore
-        llm_mode="local",
+        llm_mode: Literal["local", "remote", "trinity"] = "local",
         **kwargs
     ):
         """Initialize the step printer.
@@ -87,14 +81,14 @@ class StepPrinter(AsyncLlmBridge):
             Maximum retries for LLM calls, by default 3.
         tokenizer : PreTrainedTokenizer, optional
             Tokenizer used for padding and ID conversions.
-        llm_mode : str, optional
+        llm_mode : Literal["local", "remote", "trinity"], optional
             Indicates backend mode (e.g., 'local', 'remote'), default 'local'.
         **kwargs : Any
             Additional parameters passed through for future extensions.
         """
 
-        init_logger(experiment_name=config.astune.experiment_name)
-        self.llm_mode = llm_mode
+        init_parallel_rollout_logger(experiment_name=config.astune.experiment_name)
+        self.llm_mode: Literal["local", "remote", "trinity"] = llm_mode
         self.config: DictConfig = config
         self.async_rollout_manager = async_rollout_manager
         self.max_parallel: int = max_parallel
@@ -104,7 +98,22 @@ class StepPrinter(AsyncLlmBridge):
         self.pad_token_id = self.tokenizer.pad_token_id
         self.current_token = 0
         self.current_global_steps = "NA"
+        self.async_llm_bridge = AsyncLlmBridge(
+            config=config,
+            async_rollout_manager=async_rollout_manager,
+            tokenizer=tokenizer,
+            llm_mode=llm_mode,
+            max_llm_retries=max_llm_retries
+        )
 
+
+class StepPrinter(BaseParallelEnv):
+    """Utility mixin providing periodic progress / throughput printing.
+
+    Tracks token generation speed and thread step distribution. Intended to be
+    composed with rollout manager classes that maintain an observation window
+    (`obs_window`) containing per-thread step, token and stop flags.
+    """
 
     def step_status_printer(self, obs_window):
         """Print aggregated rollout progress.
@@ -150,7 +159,7 @@ class StepPrinter(AsyncLlmBridge):
                 print_buf += [f"[finished]:{count} threads"]
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
 
-class StaticRollout(StepPrinter, AsyncLlmBridge):
+class StaticRollout(StepPrinter):
     """Static (non-dynamic) rollout manager.
 
     Submits a fixed number of rollout threads per task and waits for all to
@@ -215,7 +224,7 @@ class StaticRollout(StepPrinter, AsyncLlmBridge):
         max_retry = 3
         for retry in range(max_retry):
             try:
-                llm_chat_fn = self.get_llm_chat_fn(get_sample_params())
+                llm_chat_fn = self.async_llm_bridge.get_llm_chat_fn(get_sample_params())
                 cmt: CMTBaseAttr = EnvWorker(
                     task_core_arg=TaskLaunchCoreArgument(
                         env_type=task.env_type,

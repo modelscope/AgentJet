@@ -16,6 +16,7 @@
 import json
 import os
 import uuid
+import hydra
 import warnings
 from collections import defaultdict
 from copy import deepcopy
@@ -597,9 +598,11 @@ class ASTuneRayPPOTrainer:
                     )
 
         # Actor validation done in ActorConfig.__post_init__ and validate()
-        actor_config = omega_conf_to_dataclass(config.actor_rollout_ref.actor)
-        actor_config.validate(n_gpus, config.astune.data.train_batch_size, config.actor_rollout_ref.model)
-
+        try:
+            actor_config = omega_conf_to_dataclass(config.actor_rollout_ref.actor)
+            actor_config.validate(n_gpus, config.astune.data.train_batch_size, config.actor_rollout_ref.model)
+        except hydra.errors.InstantiationException as e:
+            raise ValueError(f"You are using an unsupported VERL version. Please read `documents/backbones.md`")
         if not config.actor_rollout_ref.actor.use_dynamic_bsz:
             if self.use_reference_policy:
                 # reference: log_prob_micro_batch_size vs. log_prob_micro_batch_size_per_gpu
