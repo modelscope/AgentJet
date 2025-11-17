@@ -10,7 +10,7 @@ from typing import List, Literal, Optional
 from loguru import logger
 from astune.schema.task import Task
 from transformers import AutoTokenizer
-from astune.parallel_env import DynamicRollout
+from astune.task_rollout.native_parallel_worker import DynamicRollout
 from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
 from astune.context_manager.cmt_base_attr import CMTBaseAttr

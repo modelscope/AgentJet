@@ -59,7 +59,7 @@ from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 
 
-from astune.parallel_env import ParallelEnvManager
+from astune.task_rollout.native_parallel_worker import ParallelEnvManager
 from astune.schema.task import Task
 from astune.schema.trajectory import Trajectory
 from astune.utils.message import send_train_message
