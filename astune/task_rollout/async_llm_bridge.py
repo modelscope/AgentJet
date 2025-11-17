@@ -27,6 +27,19 @@ from astune.schema.logprob import TokenAndProb
 
 class AsyncLlmBridge(object):
 
+    def __init__(
+        self,
+        config: DictConfig,
+        async_rollout_manager: Any,
+        tokenizer: Any,
+        llm_mode: Literal["local", "remote", "trinity"] = "local",
+        max_llm_retries: int = 3
+    ):
+        self.config = config
+        self.async_rollout_manager = async_rollout_manager
+        self.tokenizer = tokenizer
+        self.llm_mode = llm_mode
+        self.max_llm_retries = max_llm_retries
 
     def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:
         def llm_chat(
@@ -51,6 +64,9 @@ class AsyncLlmBridge(object):
                 prompt_ids = self.tokenizer.apply_chat_template(input_messages, add_generation_prompt=True, tokenize=True, tools=tools)
             else:
                 prompt_ids = self.tokenizer.apply_chat_template(input_messages, add_generation_prompt=True, tokenize=True)
+
+            from vsdb import bp
+            bp("TT")
 
             final_res = run_async_coro__no_matter_what(self.async_rollout_manager.generate(
                     request_id=request_id,

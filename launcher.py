@@ -272,7 +272,7 @@ def start_ray_service(args, env):
 
 import yaml
 
-def align_parameters(from_config_fp, to_config_fp, convertion_json_fg):
+def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone):
     # read yaml files
     with open(from_config_fp, 'r') as file:
         from_config = yaml.safe_load(file)
@@ -311,7 +311,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg):
 
     logger.success("----------------------------------------------------")
 
-    if 'trinity' in from_config:
+    if ('trinity' in from_config) and backbone == "trinity":
         trinity_config = from_config['trinity']
         def recursive_copy(src_dict, dst_dict, parent_key=""):
             for key, value in src_dict.items():
@@ -351,17 +351,17 @@ def execute_training_process(args, backbone_target, yaml_backup_dst, exe_exp_bas
     # let's begin the training process
     if args.backbone == "trinity":
         # replace boot yaml
-        trinity_boot_yaml = "astune/default_config/trinity/trinity_launch.yaml" # THIS ONE IS READ ONLY, and ALWAYS FIXED
+        TRINITY_BOOT_YAML = "astune/default_config/trinity/trinity_launch.yaml" # THIS FILE IS READ ONLY, and ALWAYS FIXED
         redirect_trinity_boot_yaml = os.path.dirname(yaml_backup_dst) + '/trinity_launch.yaml'
-        shutil.copyfile(trinity_boot_yaml, redirect_trinity_boot_yaml)
-        align_parameters(yaml_backup_dst, redirect_trinity_boot_yaml, 'astune/default_config/trinity/config_auto_convertion_trinity.json')
+        shutil.copyfile(TRINITY_BOOT_YAML, redirect_trinity_boot_yaml)
+        align_parameters(yaml_backup_dst, redirect_trinity_boot_yaml, 'astune/default_config/trinity/config_auto_convertion_trinity.json', args.backbone)
         cmd = [
             sys.executable,
             '-m', backbone_target,
             'run', '--config', redirect_trinity_boot_yaml
         ]
     else:
-        align_parameters(yaml_backup_dst, yaml_backup_dst, 'astune/default_config/verl/config_auto_convertion_verl.json')
+        align_parameters(yaml_backup_dst, yaml_backup_dst, 'astune/default_config/verl/config_auto_convertion_verl.json', args.backbone)
         cmd = [
             sys.executable,
             '-m', backbone_target,
