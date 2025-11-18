@@ -70,8 +70,8 @@ astune:
       do_sample: False
       num_repeat: 1
 
-  context_manager: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
-    context_manager_type: "linear"
+  context_tracker: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
+    context_tracker_type: "linear"
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
     auto_context_cm:

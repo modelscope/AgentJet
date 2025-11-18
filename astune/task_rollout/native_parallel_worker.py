@@ -15,7 +15,7 @@ from tqdm import tqdm
 from verl import DataProto
 from verl.utils.torch_functional import pad_sequence_to_length
 
-from astune.context_manager.cmt_linear import CMTLinear
+from astune.context_tracker.basic_tracker import BasicContextTracker
 from astune.schema.task import Task
 from astune.schema.trajectory import Sample
 from astune.task_rollout.single_worker import BaseParallelEnv
@@ -60,9 +60,9 @@ class StepPrinter(BaseParallelEnv):
 class StaticRollout(StepPrinter):
     """Static (non-dynamic) rollout manager."""
 
-    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
+    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[BasicContextTracker]:
         self.current_token_count_time = time.time()
-        cmt_array: List[CMTLinear] = []
+        cmt_array: List[BasicContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
         obs_window = {
             'step': [0 for _ in range(len(tasks) * rollout_n)],
@@ -103,13 +103,13 @@ class StaticRollout(StepPrinter):
 class DynamicRollout(StaticRollout):
     """Dynamic rollout supporting oversampling and early termination."""
 
-    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[CMTLinear]:
+    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[BasicContextTracker]:
         if mode == "sample" and (self.rollout_n != 1) and self.config.astune.rollout.enable_oversample:
             return self.rollout_dynamic(tasks, mode, epoch)
         else:
             return super().rollout(tasks, mode, epoch)
 
-    def greedy_max_std_selection(self, samples: List[CMTLinear], n):
+    def greedy_max_std_selection(self, samples: List[BasicContextTracker], n):
         if len(samples) < n:
             additional_n = n - len(samples)
             n = len(samples)
@@ -147,8 +147,8 @@ class DynamicRollout(StaticRollout):
         sorted_selected_samples = sorted(selected_samples, key=lambda cmt: abs(cmt.reward_structure.performance_reward))
         return sorted_selected_samples
 
-    def rollout_dynamic(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str, allow_sample_num_change=True, allow_force_stop=True) -> List[CMTLinear]:
-        cmt_array: List[CMTLinear] = []
+    def rollout_dynamic(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str, allow_sample_num_change=True, allow_force_stop=True) -> List[BasicContextTracker]:
+        cmt_array: List[BasicContextTracker] = []
         assert mode != "validate"
         rollout_n = self.rollout_n
         self.current_token_count_time = time.time()
@@ -325,9 +325,9 @@ class ParallelEnvManager(DynamicRollout):
         dataproto = self.samples_to_dataproto(samples)
         return dataproto
 
-    def trajectories_to_samples(self, cmt_array: List[CMTLinear]) -> List[Sample]:
+    def trajectories_to_samples(self, cmt_array: List[BasicContextTracker]) -> List[Sample]:
         sample_arr_final = []
-        CMTLinear.compute_reference_advantage(cmt_array)
+        BasicContextTracker.compute_reference_advantage(cmt_array)
         for cmt in cmt_array:
             try:
                 sample_arr = cmt.group_tokenize()

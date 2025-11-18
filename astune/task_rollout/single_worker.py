@@ -3,28 +3,26 @@
 import os
 import time
 import uuid
-from typing import Any, Literal
+from functools import wraps
+from typing import Any, Callable, Literal, Optional, TypeVar, List, Union
 
 from loguru import logger
 from omegaconf import DictConfig
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from astune.context_manager.cmt_linear import CMTLinear, CMTBaseAttr
-from astune.schema.task import Task, TaskLaunchCoreArgument
+from astune.context_tracker.basic_tracker import BasicContextTracker, TrackerAttr
+from astune.schema.task import Task, WorkflowTask
 from astune.task_rollout.async_llm_bridge import AsyncLlmBridge
-from astune.task_rollout.env_worker import EnvWorker
-
-
-def init_parallel_rollout_logger(experiment_name):
-    """Initialize the logger with the given configuration."""
-    from beast_logger import register_logger
-    if 'BEST_LOGGER_INIT' in os.environ: return  # prevent re-initialization in ray environment
-    os.environ['BEST_LOGGER_INIT'] = '1'
-    from datetime import datetime
-    final_log_path = os.path.join("launcher_record", experiment_name, datetime.now().strftime("%Y_%m_%d_%H_%M"))
-    os.environ['BEST_LOGGER_PATH'] = final_log_path
-    non_console_mods = ["rollout", "token_clip", "bad_case", "env_clip"]
-    register_logger(mods=["evaluation", "exception"], non_console_mods=non_console_mods, auto_clean_mods=[], base_log_path=final_log_path, debug=False)
+from astune.task_rollout.resource_keeper import ResourceKeeper
+from astune.utils.logger import init_parallel_rollout_logger
+from astune.utils.sample import get_sample_params
+from loguru import logger
+from omegaconf import DictConfig
+from astune.task_runner.classic_runner import AgentRunner, BaseAgentRunner
+from astune.task_runner.agentscope_runner import AgentScopeRunner
+from astune.context_tracker.basic_tracker import BasicContextTracker
+from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
+from astune.utils.retry import retry_with_backoff
 
 
 class BaseParallelEnv:
@@ -78,85 +76,41 @@ class BaseParallelEnv:
             max_llm_retries=max_llm_retries
         )
 
+
+    @retry_with_backoff(max_retry_attr="max_llm_retries")
     def rollout_env_worker(self, task: Task, task_batch_index: int, task_tag: str, mode: Literal["sample", "validate"],
-                           task_thread_index: int, obs_window: dict, **kwargs) -> CMTLinear:
+                           task_thread_index: int, obs_window: dict, **kwargs) -> BasicContextTracker:
         """Execute one environment rollout worker.
 
         Handles environment initialization, LLM sampling parameter construction
         (with validation overrides), and robust retry on transient failures.
-
-        Parameters
-        ----------
-        task : Task
-            The task object to roll out.
-        task_batch_index : int
-            Index of the task within the provided batch.
-        task_tag : str
-            Human-readable tag identifying task and rollout repetition.
-        mode : Literal['sample','validate']
-            Rollout mode selecting sampling hyperparameters.
-        task_thread_index : int
-            Global thread index for obs_window bookkeeping.
-        obs_window : dict
-            Shared progress structure updated by the worker.
-        **kwargs : Any
-            Forwarded for future extensibility.
-
-        Returns
-        -------
-        CMTLinear
-            Collected trajectory container for this rollout.
         """
-        def get_sample_params():
-            response_length_eps = 16  # Reserve a few tokens for later handling of special tokens like lm_start.
-            if self.config.astune.rollout.name == 'vllm':
-                sampling_params = dict(
-                    n=1,
-                    max_tokens=self.config.astune.rollout.max_response_length_in_one_turn - response_length_eps,
-                    min_tokens=1,   # Must output at least 1 token.
-                    temperature=self.config.astune.rollout.temperature,
-                    top_p=self.config.astune.rollout.top_p
-                )
-            else:
-                sampling_params = dict(
-                    n=1,
-                    max_new_tokens=self.config.astune.rollout.max_response_length_in_one_turn,
-                    temperature=self.config.astune.rollout.temperature,
-                    top_p=self.config.astune.rollout.top_p
-                )
+        sampling_params = get_sample_params(mode, self.config)
+        llm_chat_fn = self.async_llm_bridge.get_llm_chat_fn(sampling_params=sampling_params)
 
-            if mode == "validate":
-                sampling_params["temperature"] = self.config.astune.rollout.val_kwargs.temperature
-                sampling_params["top_k"] = self.config.astune.rollout.val_kwargs.top_k
-                sampling_params["top_p"] = self.config.astune.rollout.val_kwargs.top_p
-            return sampling_params
+        task_core_arg=WorkflowTask(
+            env_type=task.env_type,
+            task_id=task.task_id,
+            task_thread_index=task_thread_index,
+            task_batch_index=task_batch_index,
+            task_env_uuid=uuid.uuid4().hex,
+            task_tag=task_tag,
+            obs_window=obs_window,
+            llm_chat_fn=llm_chat_fn,
+            tokenizer=self.tokenizer,
+            task=task
+        )
 
-        max_retry = 3
-        for retry in range(max_retry):
+        with ResourceKeeper(task_core_arg, config=self.config) as resource_keeper:
             try:
-                llm_chat_fn = self.async_llm_bridge.get_llm_chat_fn(get_sample_params())
-                cmt: CMTBaseAttr = EnvWorker(
-                    task_core_arg=TaskLaunchCoreArgument(
-                        env_type=task.env_type,
-                        task_id=task.task_id,
-                        task_thread_index=task_thread_index,
-                        task_batch_index=task_batch_index,
-                        task_env_uuid=uuid.uuid4().hex,
-                        task_tag=task_tag,
-                        obs_window=obs_window,
-                        llm_chat_fn=llm_chat_fn,
-                        tokenizer=self.tokenizer,
-                        task=task
-                    ),
-                    config=self.config
-                ).execute()
-                break
+                Runner = AgentScopeRunner if self.config.astune.rollout.use_agentscope_protocol else AgentRunner
+                agent_runner: BaseAgentRunner = Runner(llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config)
+                cmt = agent_runner.execute(
+                    env=resource_keeper.env,   # type:ignore || self.env: Union[EnvClient, EnvClientNg]
+                    task_core_arg=task_core_arg
+                )
             except Exception as e:
-                if retry < max_retry - 1:
-                    logger.bind(exception=True).exception(f"rollout_env_worker error: {e.args}, retrying {retry + 1}/{max_retry}")
-                    time.sleep(2 ** retry)
-                else:
-                    logger.bind(exception=True).exception(f"rollout_env_worker failed after {max_retry} retries: {e.args}")
-                    raise e
+                logger.bind(exception=True).exception(f"encounter exception in env_worker.agent_flow error={e.args}")
+                raise e
 
-        return cmt  # type: ignore
+        return cmt

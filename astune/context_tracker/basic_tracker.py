@@ -5,13 +5,13 @@ from collections import defaultdict
 from typing import List, Union, Tuple, Optional
 from astune.schema.trajectory import Sample, Reward
 from astune.utils.compute_madness import compute_string_madness
-from astune.context_manager.cmt_base_attr import CMTBaseAttr
-from astune.context_manager.cmt_base_attr import ExtendedMessage
-from astune.context_manager.cmt_base_attr import replace_token_ids
+from astune.context_tracker.tracker_base_attr import TrackerAttr
+from astune.context_tracker.tracker_base_attr import ExtendedMessage
+from astune.context_tracker.tracker_base_attr import replace_token_ids
 from beast_logger import register_logger, print_dict, print_listofdict, print_nested, NestedJsonItem, SeqItem
 
 
-class CMTLinear(CMTBaseAttr):
+class BasicContextTracker(TrackerAttr):
     """
     A linear context manager template that handles the conversation flow between LLM and environment.
     This class manages the context window, tokenization, and message history in a linear fashion.
@@ -235,7 +235,7 @@ class CMTLinear(CMTBaseAttr):
         return final_token_arr, token_logprob_arr
 
     def save_llm_output_do_not_register_full_context(self, llm_output, input_msg_ref):
-        return CMTLinear.save_llm_output(self, llm_output, input_msg_ref, auto_register_full_context=False)
+        return BasicContextTracker.save_llm_output(self, llm_output, input_msg_ref, auto_register_full_context=False)
 
 
     def save_env_output(self, env_output:dict, input_msg_ref:Optional[List[dict]]=None, add_nothink=False):
@@ -468,40 +468,6 @@ class CMTLinear(CMTBaseAttr):
 
         return step_reward
 
-
-    # def compute_step_level_reward(self, ext_steps: List[ExtendedMessage], index: int, total_steps:int)->float:
-    #     assert self.reward_structure is not None
-    #     # --------------- global level reward ---------------
-    #     global_reward = self.reward_structure.raw_reward
-    #     # here we assume global reward is given at the end of the trajectory
-    #     gamma = self.config.astune.rollout.gamma
-    #     step_reward_base = global_reward * (gamma ** (total_steps - index - 1))
-    #     # when index=0, total_steps=1, step_reward = global_reward * (gamma ** 0) = global_reward
-    #     # when index=0, total_steps=2, step_reward = global_reward * (gamma ** 1) = global_reward * 0.95
-    #     # when index=0, total_steps=3, step_reward = global_reward * (gamma ** 2) = global_reward * 0.9025
-
-    #     # --------------- compute step level reward ---------------
-    #     step_reward = step_reward_base
-    #     # # get all ext_step that need to be trained
-    #     # trainable_ext_steps = [ ext_msg for ext_msg in ext_steps if ext_msg.need_training ]
-
-    #     # # --------------- compute step level reward: response madness ---------------
-    #     # # in some cases, a step may contain multiple messages that need training, therefore we define mini_step
-    #     # mini_step_reward = []
-    #     # for ext_msg in trainable_ext_steps:
-    #     #     assert ext_msg.need_training, "trainable_ext_steps should only contain messages that need training"
-    #     #     mini_step_reward += [compute_string_madness(completion=ext_msg.content_for_future)]
-
-    #     # if any([r < 0 for r in mini_step_reward]):
-    #     #     self.reward_structure.madness = -1.0
-    #     #     step_reward = self.config.astune.rollout.agent_madness_reward
-    #     # else:
-    #     #     pass
-    #     if self.already_mad_flag:
-    #         step_reward = self.config.astune.rollout.agent_madness_reward
-    #         self.reward_structure.madness = -1.0
-
-    #     return step_reward
 
 
     def tokenize_steps(self, ext_steps: List[ExtendedMessage], index:int, total_steps:int) -> dict:

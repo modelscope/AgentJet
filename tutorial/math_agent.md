@@ -83,7 +83,7 @@ Judge的返回值： raw_reward, is_success
 4.1 复制并修改 [launcher/math_agent/git-math-agentscope.yaml](../launcher/math_agent/git-math-agentscope.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
 1. 读取task（对应配置字段 astune.task_reader）
-2. 定义 AgentScopeWorkflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
+2. 定义 Workflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
     - 举例如果 agentscope workflow 定义在 `tutorial/math_agent.py` 的`ExampleMathLear` 类
     - 则填写 astune.rollout.agentscope_learn_protocol=`tutorial.math_agent->ExampleMathLearn`
 3. 定义评分函数（对应配置字段 astune.task_judge.judge_protocol ）

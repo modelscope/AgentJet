@@ -1,18 +1,19 @@
+import copy
 from loguru import logger
 
 from agentscope.model import DashScopeChatModel
 from astune.schema.trajectory import Reward
 from transformers.tokenization_utils import PreTrainedTokenizer
-from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage, replace_token_ids
+from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage, replace_token_ids
 from astune.utils.color_hsl import adjust_color_hsl
 from astune.utils.compute_madness import compute_string_madness
 from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
-from astune.context_manager.agentscope_cm.timeline_merging import can_merge_steps
+from astune.context_tracker.agentscope_tracker.timeline_merging import can_merge_steps
 
 from typing import Any, List, Tuple, Union
 from beast_logger import print_nested, print_listofdict, NestedJsonItem, SeqItem
 
-class ASTuneContextTracking(CMTLinear):
+class MultiAgentContextTracking(BasicContextTracker):
 
     def __init__(
             self,
@@ -24,11 +25,10 @@ class ASTuneContextTracking(CMTLinear):
             generated_token_callback_fn,
             **kwargs
         ):
-        super().__init__(config, tokenizer)
+        super().__init__(config, tokenizer, **kwargs)
         self.task_batch_index = kwargs.pop("task_batch_index")
         self.task_tag = kwargs.pop("task_tag")
         self.task_id = kwargs.pop("task_id")
-        self.dscm_ref = DashScopeChatModel(**kwargs)
         self.full_context: List[ExtendedMessage] = []
         self.llm_chat_fn = llm_chat_fn
         self.tokenizer = tokenizer
@@ -42,16 +42,117 @@ class ASTuneContextTracking(CMTLinear):
         self.output_kwargs = {}
         self.input_kwargs = {}
 
+
+    def step_prepare(self, messages: List[dict], tools: List=[]):
+        self.full_context = []
+        consider_roles = ['user', 'assistant', 'system', 'tool']
+        disable_toolcalls = self.config.astune.rollout.agentscope_disable_toolcalls
+        if disable_toolcalls:
+            consider_roles.remove('tool')
+
+        for i, msg in enumerate(messages):
+            if (disable_toolcalls) and (not isinstance(msg['content'], str)):
+                continue
+            if msg['role'] not in consider_roles:
+                continue
+            if not isinstance(msg['content'], str):
+                author = 'env'
+                ignore = False
+                str_content = ""
+                for item in msg['content']:
+                    if 'text' not in item:
+                        logger.warning(f"Non-text content in message content detected: {item}. Ignoring.")
+                        ignore = True
+                        break
+                    if isinstance(item['text'], str):
+                        str_content += str(item['text'])
+                    else:
+                        str_content = ""
+                    msg['content'] = str_content
+                if ignore:
+                    continue
+                msg['content'] = str(msg['content'])    # TODO: better handling mm data
+            if msg['role'] == 'system':
+                author = 'initialization'
+            if msg['role'] == 'tool':
+                author = 'env'
+            else:
+                author = 'env'
+
+            self.full_context += [
+                ExtendedMessage(
+                    author=author,
+                    role=msg['role'],
+                    content=msg['content'],
+                    tokenizer=self.tokenizer,
+                    tools=tools,
+                    tool_calls=msg['tool_calls'] if 'tool_calls' in msg else [],
+                    token_generator="auto",
+                )
+            ]
+
+        # check token overflow
+        converted_message = self.to_role_content(self.full_context)
+        context_safe, info = self.check_context_token_num_safe(converted_message, tools)
+        custom_sampling_params = {}
+        if not context_safe:
+            self.context_overflow = True
+
+        return context_safe, info, converted_message, custom_sampling_params
+
+    def step_track(self, llm_output, context_safe, converted_message: List[dict], tools: List=[]):
+        if not self.already_mad_flag:
+            if compute_string_madness(
+                completion=llm_output['content'],
+                checklist=self.config.astune.rollout.compute_madness_checklist
+            ) < 0.0:
+                self.already_mad_flag = True
+
+        # dummy response for now
+        token_generator = "manual"
+        if llm_output.get("tool_calls", None) is not None:
+            tool_calls = llm_output["tool_calls"]
+        else:
+            tool_calls = []
+
+        llm_ext_msg = ExtendedMessage(
+            author="llm",
+            role="assistant",
+            content=llm_output['content'],
+            token_generator=token_generator,
+            tool_calls=tool_calls,
+            tokenizer=self.tokenizer,
+        )
+
+        if token_generator == "manual":
+            input_msg_ref = copy.deepcopy(converted_message)
+            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output, tools=tools)
+            assert len(token_arr_method2) <= self.config.astune.rollout.max_response_length_in_one_turn, \
+                f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.astune.rollout.max_response_length_in_one_turn}"
+            llm_ext_msg.token_arr = token_arr_method2
+            llm_ext_msg.token_logprob_arr = token_logprob_arr
+            self.generated_token_callback_fn(llm_ext_msg.token_arr)
+
+        # take snapshot of current timeline
+        if context_safe:
+            self.full_context += [ llm_ext_msg ]
+            is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
+            if length > self.config.astune.rollout.max_model_len:
+                raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, generated token length {len(llm_ext_msg.token_arr)}")
+            self.grouped_steps += [copy.deepcopy(self.full_context)]
+
+            DEBUG = True
+            if DEBUG and len(self.grouped_steps) >= 2 and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2])):
+                print(f"General Warning: merge failure discovered.")
+
+        return None
+
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
         ext_steps = self.full_context
-        # # linear mode has only one trajectory
-        # self.reward_structure.step_reward = [
-        #     self.compute_step_level_reward(ext_steps=ext_steps, index=0, total_steps=1)
-        # ]
-        # print('warning: debugging')
         self.reward_structure.step_reward = [
-            self.compute_step_level_reward(ext_steps=ext_steps, index=i, total_steps=len(self.grouped_steps)) for i in range(len(self.grouped_steps))
+            self.compute_step_level_reward(ext_steps=ext_steps, index=i, total_steps=len(self.grouped_steps))
+            for i in range(len(self.grouped_steps))
         ]
 
 

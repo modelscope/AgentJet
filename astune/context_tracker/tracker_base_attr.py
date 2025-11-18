@@ -23,12 +23,12 @@ def replace_token_ids(place_holder, replace_with, begin, end, raw_logprob) -> Tu
     return final, final_logprob
 
 
-class CMTBaseAttr(object):
+class TrackerAttr(object):
 
-    def __init__(self, config, tokenizer):
-        self.task_batch_index = 'undefined'
-        self.task_tag = 'undefined'
-        self.task_id = 'undefined'
+    def __init__(self, config, tokenizer, **kwargs):
+        self.task_batch_index = kwargs.get("task_batch_index", "undefined")
+        self.task_tag = kwargs.get("task_tag", "undefined")
+        self.task_id = kwargs.get("task_id", "undefined")
         self.config = config
         self.tokenizer = tokenizer
         self.full_context: List[ExtendedMessage] = []

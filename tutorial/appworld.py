@@ -1,17 +1,17 @@
-from astune.workflow_controller.agentscope_flow import ASTuneProxy
+from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
-from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
 
-class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
+class ExampleAgentScopeLearnProtocol(Workflow):
 
     trainer: str = Field(default="astune-trinity")
 
-    async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config):
+    async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
 
+        init_messages = task.task.init_messages
         if len(init_messages) >= 2: first_msg, init_messages = init_messages[0], init_messages[1:]
         else: first_msg = {"content": "You're a helpful assistant."}
         interaction_message = []
@@ -21,7 +21,7 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
         agent = ReActAgent(
             name="Qwen",
             sys_prompt=first_msg['content'],
-            model=astune_proxy,  # type: ignore
+            model=model_tuner,
             formatter=DashScopeChatFormatter(),
             memory=InMemoryMemory(),
             toolkit=None,
@@ -29,16 +29,18 @@ class ExampleAgentScopeLearnProtocol(AgentScopeLearnProtocol):
         )
         agent.set_console_output_enabled(False)
 
-        for _ in range(config.astune.rollout.multi_turn.max_steps):
+
+        step = 0
+        for step in range(model_tuner.config.astune.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol
-            obs, _, terminate, _ = astune_proxy.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
+            obs, _, terminate, _ = env.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
             # generate new message from env output
             interaction_message = Msg(name="env", content=obs, role="user")
             # is terminated?
             if terminate: break
-            if astune_proxy.context_overflow: break
+            if model_tuner.get_context_tracker().context_overflow: break
 
-        return astune_proxy
+        return WorkflowOutput(reward=None, metadata={"total_step": step})
 

@@ -1,0 +1,154 @@
+from litellm import Type
+from loguru import logger
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+from astune.utils.dynamic_import import dynamic_import
+from astune.context_tracker.agentscope_tracker.request_proxy import ASTuneLlmProxy
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
+from typing import AsyncGenerator, Literal, Optional, Any, List, Dict
+from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
+from agentscope.types import JSONSerializableObject
+from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
+
+
+class Agent2Proxy(BaseModel):
+    def __init__(self, name: str, proxy, default_model: ChatModelBase):
+        self.name = name
+        self.default_model = default_model
+        self.proxy = proxy
+
+    def __call__(self, *args, **kwargs):
+        if self.name not in self.proxy.get_trainable_targets():
+            # [DO-NOT-TRAIN] if `trainable_targets` is non-empty, and self.name is not in it, use default model
+            return self.default_model(*args, **kwargs)
+        else:
+            # [TRAIN]
+            return self.proxy(*args, **kwargs)
+
+
+class ModelTuner(DashScopeChatModel):
+
+    def __init__(self, config, context_tracker, **kwargs) -> None:
+        self.config = config
+        self.context_tracker = context_tracker
+        self.agent2proxy_registry: dict[str, Agent2Proxy] = {}
+        self.astuner_proxy = ASTuneLlmProxy(context_tracker=context_tracker, **kwargs)
+        super().__init__(
+            model_name='astune',
+            api_key='dummy-api-key'
+        )
+
+    def get_astune_proxy(self) -> ASTuneLlmProxy:
+        """Get the ASTuneLlmProxy instance.
+        Returns:
+            ASTuneLlmProxy:
+                The ASTuneLlmProxy instance used by the ModelTuner.
+        """
+        return self.astuner_proxy
+
+
+    def get_context_tracker(self) -> MultiAgentContextTracking:
+        """Get the context tracker instance.
+        Returns:
+            ASTuneLlmProxy:
+                The context tracker instance used by the ModelTuner.
+        """
+        return self.context_tracker
+
+
+    def register_model(self, name: str, model: ChatModelBase) -> Agent2Proxy:
+        """Register an agent type.
+        Args:
+            name (`str`):
+                The name to register the agent type under.
+            model (`Agent2Proxy`):
+                The agent type instance to register.
+        Returns:
+            Agent2Proxy:
+                The agent type instance corresponding to the provided name.
+        """
+        self.agent2proxy_registry[name] = Agent2Proxy(name, self, model)
+        return self.get_model(name)
+
+
+    def get_model(self, name: str) -> Agent2Proxy:
+        """Get the proxy instance by name.
+        Args:
+            name (`str`):
+                The name of the agent proxy to retrieve.
+        Returns:
+            Agent2Proxy:
+                The agent proxy corresponding to the provided name.
+        """
+        if name not in self.agent2proxy_registry:
+            raise ValueError(f"Agent proxy '{name}' is not registered.")
+        else:
+            return self.agent2proxy_registry[name]
+
+
+    async def __call__(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict] | None = None,
+        tool_choice: Literal["auto", "none", "any", "required"]
+        | str
+        | None = None,
+        structured_model: Type[BaseModel] | None = None,
+        **kwargs: Any,
+    ) -> ChatResponse:
+
+        # For qvq and qwen-vl models, the content field cannot be `None` or
+        # `[{"text": None}]`, so we need to convert it to an empty list.
+        if self.model_name.startswith("qvq") or "-vl" in self.model_name:
+            raise NotImplementedError("Not implemented for qvq and qwen-vl models yet.")
+
+        kwargs = {
+            "messages": messages,
+            "model": self.model_name,
+            "stream": self.stream,
+            **self.generate_kwargs,
+            **kwargs,
+            "result_format": "message",
+            # In agentscope, the `incremental_output` must be `True` when
+            # `self.stream` is True
+            "incremental_output": self.stream,
+        }
+
+        if tools:
+            kwargs["tools"] = self._format_tools_json_schemas(tools)
+
+        if tool_choice:
+            self._validate_tool_choice(tool_choice, tools)
+            kwargs["tool_choice"] = self._format_tool_choice(tool_choice)
+
+        if (
+            self.enable_thinking is not None
+            and "enable_thinking" not in kwargs
+        ):
+            kwargs["enable_thinking"] = self.enable_thinking
+
+        if structured_model:
+            if tools or tool_choice:
+                logger.warning(
+                    "structured_model is provided. Both 'tools' and "
+                    "'tool_choice' parameters will be overridden and "
+                    "ignored. The model will only perform structured output "
+                    "generation without calling any other tools.",
+                )
+            format_tool = _create_tool_from_base_model(structured_model)
+            kwargs["tools"] = self._format_tools_json_schemas(
+                [format_tool],
+            )
+            kwargs["tool_choice"] = self._format_tool_choice(
+                format_tool["function"]["name"],
+            )
+
+        # Get the AsyncGenerator from execute_model_proxy
+        response_gen = await self.astuner_proxy.execute_model_proxy(
+            api_key=self.api_key,
+            structured_model=structured_model,
+            **kwargs,
+        )
+
+        # Return the AsyncGenerator directly
+        return response_gen

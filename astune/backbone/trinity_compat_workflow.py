@@ -13,7 +13,7 @@ from transformers import AutoTokenizer
 from astune.task_rollout.native_parallel_worker import DynamicRollout
 from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
-from astune.context_manager.cmt_base_attr import CMTBaseAttr
+from astune.context_tracker.tracker_base_attr import TrackerAttr
 
 class TrinityCompatWorkflow(DynamicRollout):
 
@@ -73,7 +73,7 @@ class TrinityCompatWorkflow(DynamicRollout):
             obs_window=obs_window
         )
 
-    def run_in_new_thread(self) -> CMTBaseAttr:
+    def run_in_new_thread(self) -> TrackerAttr:
         result_holder = {}
         exc_holder = {}
 
@@ -90,7 +90,7 @@ class TrinityCompatWorkflow(DynamicRollout):
         if "exc" in exc_holder:
             raise exc_holder["exc"]
 
-        thread_conclusion: CMTBaseAttr = result_holder.get("result", None)  # type: ignore
+        thread_conclusion: TrackerAttr = result_holder.get("result", None)  # type: ignore
         return thread_conclusion
 
 

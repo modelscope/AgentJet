@@ -3,17 +3,17 @@ import time
 import threading
 
 from loguru import logger
-from astune.env_service_client.env_client import EnvClient
+from astune.utils.env_service_client.env_client import EnvClient
 from astune.utils.utils import convert_tool_to_user_message
 from astune.schema.trajectory import Reward
-from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
-from astune.workflow_controller.basic_agentflow import BaseAgentFlow
+from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage
+from astune.task_runner import BaseAgentRunner
 from typing import Any, Dict, List, Union, Callable
 from beast_logger import print_listofdict
 
 
 
-class AgentFlow(BaseAgentFlow):
+class AgentRunner(BaseAgentRunner):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -21,21 +21,22 @@ class AgentFlow(BaseAgentFlow):
         self.step_reward = []
 
 
-    def execute(self, init_messages: List[dict], env: EnvClient, task_core_arg) -> CMTLinear:
+    def execute(self, env: EnvClient, task_core_arg) -> BasicContextTracker:
         obs_window = task_core_arg.obs_window
         task_thread_index = task_core_arg.task_thread_index
+        init_messages = task_core_arg.init_messages
 
         # 1. 🚀 Initialize messages
-        if self.config.astune.context_manager.context_manager_type == "linear":
-            self.cmt = CMTLinear(self.config, self.tokenizer)
-        # elif self.config.astune.context_manager.context_manager_type == "linear_think":
+        if self.config.astune.context_tracker.context_tracker_type == "linear":
+            self.cmt = BasicContextTracker(self.config, self.tokenizer)
+        # elif self.config.astune.context_tracker.context_tracker_type == "linear_think":
         #     self.cmt = LinearThinkCMT(self.config, self.tokenizer)
-        # elif self.config.astune.context_manager.context_manager_type == "context_selfclip":
+        # elif self.config.astune.context_tracker.context_tracker_type == "context_selfclip":
         #     self.cmt = SelfContextClipCMT(self.config, self.tokenizer, self.llm_chat_fn)
-        # elif self.config.astune.context_manager.context_manager_type == "sliding_window":
+        # elif self.config.astune.context_tracker.context_tracker_type == "sliding_window":
         #     self.cmt = SlidingWindowCMT(self.config, self.tokenizer, self.llm_chat_fn)
         else:
-            raise ValueError(f"Unsupported context template: {self.config.astune.context_manager.context_manager_type}")
+            raise ValueError(f"Unsupported context template: {self.config.astune.context_tracker.context_tracker_type}")
 
         assert not (self.config.astune.rollout.force_think and self.config.astune.rollout.force_no_think), "Cannot force both think and no_think"
         add_nothink = self.config.astune.rollout.force_no_think
@@ -102,8 +103,8 @@ class AgentFlow(BaseAgentFlow):
 
             # 8. 📥 save environment output
             state = env_output["state"]
-            state.pop('tool_calls', None)
-            self.cmt.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink)
+            state.pop('tool_calls', None) # type: ignore
+            self.cmt.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink) # type: ignore
             self.cmt.round_cnt += 1
             if self.use_step_reward_from_env:
                 self.step_reward += [env_output["reward"]]

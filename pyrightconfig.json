@@ -1,10 +1,11 @@
 {
-  "logLevel": "Trace",
+  "logLevel": "Debug",
   "include": [
     "astune/**/*.py",
     "external/trinity/**/*.py",
+    "external/verl/**/*.py",
     // ".venv/lib/python3.10/site-packages/**/*.py",
-    ".venv/lib/python3.10/site-packages/agentscope/**/*.py"
+    // ".venv/lib/python3.10/site-packages/agentscope/**/*.py"
   ],
   "exclude": [
     "node_modules",
@@ -17,10 +18,10 @@
     "outputs",
     "wanlog",
     "wandb",
-    "dist",
+    "dist"
     // "**/.vscode-server",
     // "**/__pycache__",
     // "**/*.log",
-    "**/*"
+    // "**/*"
   ]
 }
