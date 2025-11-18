@@ -11,8 +11,6 @@ from astune.workflow_controller.basic_agentflow import BaseAgentFlow
 from typing import Any, Dict, List, Union, Callable
 from beast_logger import print_listofdict
 
-log_generate_lock = threading.Lock()
-
 
 
 class AgentFlow(BaseAgentFlow):
