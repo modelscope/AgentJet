@@ -53,7 +53,7 @@ Judge的返回值： raw_reward, is_success
 4.1 复制并修改 [launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml](../launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
 1. 读取task（对应配置字段 astune.task_reader）
-2. 定义 AgentScopeWorkflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
+2. 定义 Workflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
     - 举例如果 agentscope workflow 定义在 `tutorial/appworld.py` 的`ExampleAgentScopeLearnProtocol` 类
     - 则填写 astune.rollout.agentscope_learn_protocol=`tutorial.appworld->ExampleAgentScopeLearnProtocol`
 3. 定义评分函数（对应配置字段 astune.task_judge.judge_protocol ）

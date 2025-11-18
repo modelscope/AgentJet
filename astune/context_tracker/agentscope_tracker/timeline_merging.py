@@ -1,15 +1,12 @@
 from typing import List, Type
-from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage, replace_token_ids
+from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage, replace_token_ids
 from beast_logger import print_nested, print_listofdict, NestedJsonItem, SeqItem
 
 
 
 def can_merge_steps(source_step: List[ExtendedMessage], target_step: List[ExtendedMessage], debug=False) -> bool:
-    # if `source_step` has more messages than `target_step`
-    # and if `source_step` and `target_step` share same token_arr in [0:len(target_step)]
-    # even if the authors are different, we can still merge them
+
     can_merge = False
-    # compare_level = 'token' # strict compare with token ids
     compare_level = 'text' # relaxed compare with text, more easier to match, at very little cost
     if len(source_step) >= len(target_step):
         all_msg_match = True

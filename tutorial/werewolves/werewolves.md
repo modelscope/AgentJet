@@ -9,7 +9,7 @@
     ```python
     class ExampleWerewolves(AgentScopeLearnProtocol):
         trainer: str = Field(default="astune-trinity")
-        async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config) -> ASTuneProxy:
+        async def agentscope_execute(self, init_messages, astune_proxy: AgentScopeTuneProxy, config) -> AgentScopeTuneProxy:
 
             train_which_role = "witch"
             roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]

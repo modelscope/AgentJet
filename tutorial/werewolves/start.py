@@ -12,14 +12,14 @@ from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
 from agentscope.model import DashScopeChatModel, OpenAIChatModel
 from agentscope.session import JSONSession
-from astune.workflow_controller.agentscope_flow import ASTuneProxy
+from astune.task_runner.agentscope_runner import AgentScopeTuneProxy
 from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from astune.protocol.agentscope_protocol import AgentScopeLearnProtocol
 # astune/utils/robust_dashscope.py
 from astune.utils.robust_dashscope import RobustDashScopeChatModel
 
-def get_official_agents(name: str, role: str, train_which_role: str, astune_proxy: ASTuneProxy) -> ReActAgent:
+def get_official_agents(name: str, role: str, train_which_role: str, astune_proxy: AgentScopeTuneProxy) -> ReActAgent:
     """Get the official werewolves game agents."""
     model = OpenAIChatModel(
         model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
@@ -130,7 +130,7 @@ class ExampleWerewolves(AgentScopeLearnProtocol):
 
     trainer: str = Field(default="astune-trinity")
 
-    async def agentscope_execute(self, init_messages, astune_proxy: ASTuneProxy, config) -> ASTuneProxy:
+    async def agentscope_execute(self, init_messages, astune_proxy: AgentScopeTuneProxy, config) -> AgentScopeTuneProxy:
 
         train_which_role = "werewolf"
 

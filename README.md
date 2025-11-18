@@ -91,7 +91,7 @@ Let see:
         - class::TaskReaderJsonl
         - class::TaskReaderHuggingFace
 
-2. 定义 AgentScopeWorkflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
+2. 定义 Workflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
     - tutorial/appworld.py
     - tutorial/math_agent.py
 
@@ -114,7 +114,7 @@ Let see:
         - astune/default_config/config_auto_convertion_trinity.json
 
 6. ASTune 和 AgentScope 交互系统 V0.5
-    - astune/context_manager/cmt_agentscope.py 负责
+    - astune/context_tracker/agentscope.py 负责
         - 处理AgentScope生成的Token
         - 缓存judge给出评分需要的各种数据（包括但不限于所有对话message，env_service句柄，从astune.task_reader读取的task metadata等）
         - 提供LLM的桥接
@@ -171,3 +171,8 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 - [ ] Trinity: SFT support
 - [ ] AgentScope Studio Intergration
 - [ ] AgentScope
+
+
+# Future
+
+- [ ] Generative Adversarial Distillation: https://www.alphaxiv.org/abs/2511.10643

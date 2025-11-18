@@ -64,7 +64,7 @@ from astune.schema.task import Task
 from astune.schema.trajectory import Trajectory
 from astune.utils.message import send_train_message
 from beast_logger import register_logger, print_dict
-from astune.context_manager.cmt_linear import CMTLinear
+from astune.context_tracker.basic_tracker import BasicContextTracker
 import os
 import json
 from typing import List, Dict, Union, Type
@@ -1257,7 +1257,7 @@ class ASTuneRayPPOTrainer:
                         print([gen_batch.non_tensor_batch["task_id"][i] for i in range(len(gen_batch))])
                         print("=" * 10 + "start fit rollout" + "=" * 10)
                         self.parallel_env.current_global_steps = self.global_steps
-                        trajectories: List[CMTLinear] = self.parallel_env.rollout(tasks, mode="sample", epoch=f"train.{epoch}")
+                        trajectories: List[BasicContextTracker] = self.parallel_env.rollout(tasks, mode="sample", epoch=f"train.{epoch}")
                         print("=" * 10 + "end fit rollout" + "=" * 10)
                         print("begin to convert trajectories to dataproto")
                         gen_batch_output = self.parallel_env.to_dataproto(trajectories)
