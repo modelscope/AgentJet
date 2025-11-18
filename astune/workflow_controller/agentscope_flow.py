@@ -13,8 +13,6 @@ from typing import Any, Dict, List, Union, Tuple
 from astune.context_manager.agentscope_cm.cmt_agentscope import ASTuneProxy
 from astune.schema.task import Task, TaskLaunchCoreArgument
 
-log_generate_lock = threading.Lock()
-
 class AgentScopeWorkflow(BaseAgentFlow):
 
     def execute(self, init_messages: List[dict], env: EnvClient, task_core_arg: TaskLaunchCoreArgument) -> CMTLinear:
@@ -53,8 +51,7 @@ class AgentScopeWorkflow(BaseAgentFlow):
                 return True
             return False
         def generated_token_callback_fn(token_array):
-            with log_generate_lock:
-                obs_window['token'][task_thread_index] += len(token_array)
+            obs_window['token'][task_thread_index] += len(token_array)
 
         astune_proxy = ASTuneProxy(
             llm_chat_fn=self.llm_chat_fn,
