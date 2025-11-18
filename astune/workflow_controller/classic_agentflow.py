@@ -7,9 +7,6 @@ from astune.env_service_client.env_client import EnvClient
 from astune.utils.utils import convert_tool_to_user_message
 from astune.schema.trajectory import Reward
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
-from astune.context_manager.agentflow_cm.cmt_linear_think import LinearThinkCMT
-from astune.context_manager.agentflow_cm.cmt_context_clip import SelfContextClipCMT
-from astune.context_manager.agentflow_cm.cmt_sliding_window import SlidingWindowCMT
 from astune.workflow_controller.basic_agentflow import BaseAgentFlow
 from typing import Any, Dict, List, Union, Callable
 from beast_logger import print_listofdict
@@ -33,12 +30,12 @@ class AgentFlow(BaseAgentFlow):
         # 1. 🚀 Initialize messages
         if self.config.astune.context_manager.context_manager_type == "linear":
             self.cmt = CMTLinear(self.config, self.tokenizer)
-        elif self.config.astune.context_manager.context_manager_type == "linear_think":
-            self.cmt = LinearThinkCMT(self.config, self.tokenizer)
-        elif self.config.astune.context_manager.context_manager_type == "context_selfclip":
-            self.cmt = SelfContextClipCMT(self.config, self.tokenizer, self.llm_chat_fn)
-        elif self.config.astune.context_manager.context_manager_type == "sliding_window":
-            self.cmt = SlidingWindowCMT(self.config, self.tokenizer, self.llm_chat_fn)
+        # elif self.config.astune.context_manager.context_manager_type == "linear_think":
+        #     self.cmt = LinearThinkCMT(self.config, self.tokenizer)
+        # elif self.config.astune.context_manager.context_manager_type == "context_selfclip":
+        #     self.cmt = SelfContextClipCMT(self.config, self.tokenizer, self.llm_chat_fn)
+        # elif self.config.astune.context_manager.context_manager_type == "sliding_window":
+        #     self.cmt = SlidingWindowCMT(self.config, self.tokenizer, self.llm_chat_fn)
         else:
             raise ValueError(f"Unsupported context template: {self.config.astune.context_manager.context_manager_type}")
 

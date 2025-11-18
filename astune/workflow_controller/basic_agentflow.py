@@ -1,5 +1,4 @@
 from astune.context_manager.cmt_linear import CMTLinear, ExtendedMessage
-from astune.context_manager.agentflow_cm.cmt_linear_think import LinearThinkCMT
 from typing import Any, Dict, List, Union, Callable
 
 class BaseAgentFlow(object):
@@ -12,7 +11,7 @@ class BaseAgentFlow(object):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
-        self.cmt: Union[CMTLinear, LinearThinkCMT, Any, None] = None
+        self.cmt: Union[CMTLinear, Any, None] = None
         self.alien_llm_chat_fn: Union[Callable, None] = None
         self.llm_chat_fn: Callable = llm_chat_fn
         self.config = config
