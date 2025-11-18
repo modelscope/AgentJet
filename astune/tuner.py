@@ -11,7 +11,7 @@ from agentscope.types import JSONSerializableObject
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
 
 
-class Agent2Proxy(BaseModel):
+class Agent2Proxy(DashScopeChatModel):
     def __init__(self, name: str, proxy, default_model: ChatModelBase):
         self.name = name
         self.default_model = default_model
@@ -31,7 +31,7 @@ class ModelTuner(DashScopeChatModel):
     def __init__(self, config, context_tracker, **kwargs) -> None:
         self.config = config
         self.context_tracker = context_tracker
-        self.agent2proxy_registry: dict[str, Agent2Proxy] = {}
+        self.target2proxy_registry: dict[str, Agent2Proxy] = {}
         self.astuner_proxy = ASTuneLlmProxy(context_tracker=context_tracker, **kwargs)
         super().__init__(
             model_name='astune',
@@ -56,34 +56,36 @@ class ModelTuner(DashScopeChatModel):
         return self.context_tracker
 
 
-    def register_model(self, name: str, model: ChatModelBase) -> Agent2Proxy:
+    def register_model(self, target_name: str, default_model: ChatModelBase) -> Agent2Proxy:
         """Register an agent type.
         Args:
-            name (`str`):
+            target_name (`str`):
                 The name to register the agent type under.
-            model (`Agent2Proxy`):
-                The agent type instance to register.
+            default_model (`ChatModelBase`):
+                The model to use when you are NOT training this agent type.
         Returns:
             Agent2Proxy:
                 The agent type instance corresponding to the provided name.
         """
-        self.agent2proxy_registry[name] = Agent2Proxy(name, self, model)
-        return self.get_model(name)
+        if target_name in self.target2proxy_registry:
+            logger.warning(f"Agent proxy `{target_name}` is already registered. Overwriting `default_model`.")
+        self.target2proxy_registry[target_name] = Agent2Proxy(target_name, self, default_model)
+        return self.get_model(target_name)
 
 
-    def get_model(self, name: str) -> Agent2Proxy:
-        """Get the proxy instance by name.
+    def get_model(self, target_name: str) -> Agent2Proxy:
+        """Get the proxy instance by target_name.
         Args:
-            name (`str`):
+            target_name (`str`):
                 The name of the agent proxy to retrieve.
         Returns:
             Agent2Proxy:
-                The agent proxy corresponding to the provided name.
+                The agent proxy corresponding to the provided target_name.
         """
-        if name not in self.agent2proxy_registry:
-            raise ValueError(f"Agent proxy '{name}' is not registered.")
+        if target_name not in self.target2proxy_registry:
+            raise ValueError(f"Agent proxy '{target_name}' is not registered.")
         else:
-            return self.agent2proxy_registry[name]
+            return self.target2proxy_registry[target_name]
 
 
     async def __call__(
