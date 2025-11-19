@@ -56,11 +56,11 @@ class LlmEvaluateFilter(Filter):
             description=EVALUATE_PROMPT.format(custom_rubrics=custom_rubrics),
             llm_client=self._llm,
             input_schema={
-                "query": "用户提问/任务",
-                "answer": "助手回复",
+                "query": "user query/task",
+                "answer": "assistant answer",
             },
             output_schema={
-                "reason": "判断理由，简明说明理由",
+                "reason": "judgment reason, briefly explain the reason",
                 "result": "GOOD/BAD",
             },
             sampling_params={"temperature": temperature, "max_tokens": max_tokens},
