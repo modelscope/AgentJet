@@ -38,23 +38,6 @@ class ModelTuner(DashScopeChatModel):
             api_key='dummy-api-key'
         )
 
-    def get_astune_proxy(self) -> ASTuneLlmProxy:
-        """Get the ASTuneLlmProxy instance.
-        Returns:
-            ASTuneLlmProxy:
-                The ASTuneLlmProxy instance used by the ModelTuner.
-        """
-        return self.astuner_proxy
-
-
-    def get_context_tracker(self) -> MultiAgentContextTracking:
-        """Get the context tracker instance.
-        Returns:
-            ASTuneLlmProxy:
-                The context tracker instance used by the ModelTuner.
-        """
-        return self.context_tracker
-
 
     def register_model(self, target_name: str, default_model: ChatModelBase) -> Agent2Proxy:
         """Register an agent type.
@@ -86,6 +69,24 @@ class ModelTuner(DashScopeChatModel):
             raise ValueError(f"Agent proxy '{target_name}' is not registered.")
         else:
             return self.target2proxy_registry[target_name]
+
+
+    def get_astune_proxy(self) -> ASTuneLlmProxy:
+        """Get the ASTuneLlmProxy instance.
+        Returns:
+            ASTuneLlmProxy:
+                The ASTuneLlmProxy instance used by the ModelTuner.
+        """
+        return self.astuner_proxy
+
+
+    def get_context_tracker(self) -> MultiAgentContextTracking:
+        """Get the context tracker instance.
+        Returns:
+            ASTuneLlmProxy:
+                The context tracker instance used by the ModelTuner.
+        """
+        return self.context_tracker
 
 
     async def __call__(
