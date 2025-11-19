@@ -7,24 +7,33 @@ from ..llm_client import DashScopeClient
 from .base import Filter
 
 
-EVALUATE_PROMPT = """你现在扮演一个**严格的 QA 质量审查员**。给你一条数据样本，包含一个“query”（用户提问/任务）和一个“answer”（助手回复）。请只依据文本本身进行静态评估，不要编造事实或外部检索。
+EVALUATE_PROMPT = """You are now acting as a **strict QA quality reviewer**. You will be given a data sample containing a “query” (user question/task) and an “answer” (assistant reply). Evaluate it **only based on the text itself**, without inventing facts or performing external retrieval.
 
-一、判定目标
-判定该「query–answer」是否为**高质量数据（GOOD）**，并给出分数与理由。若不满足标准，则标为**BAD**。
+---
 
-二、判断标准（任一命中即 BAD）
-1. **缺失项**：query 为空、answer 为空、或两者皆空。
-2. **非答复**：answer 只有“收到/明白/请提供更多信息/占位寒暄”，没有实质回答或行动结果。
-3. **牛头不对马嘴**：answer 与 query 主题明显不相关。
-4. **流程借口**：answer 主要描述“无法搜索/被限流/遇到验证码/换设备”等流程困难，却**没有**给出替代性信息、总结、或可执行的下一步。
-5. **明显自相矛盾或逻辑不通**：同一回答内部互相打架（如先说能做又说不能做）。
-6. **安全/合规红线**：含违法、仇恨、个人隐私泄露等明显不当内容。
-7. **语言极不匹配**：query 的语言与 answer 完全不匹配，影响理解（如中文提问，answer 用不通顺的法语且与内容无关）。
+## 1. Evaluation Goal
+Determine whether the given “query-answer” pair is **high-quality data (GOOD)** and provide a score and justification.  
+If it does not meet the criteria, label it as **BAD**.
 
-三、特殊情况与其他标准
+---
+
+## 2. BAD Criteria (if any are met → BAD)
+1. **Missing elements**: The query is empty, the answer is empty, or both are empty.  
+2. **Non-answer**: The answer contains only acknowledgments such as “Received / OK / Please provide more information,” without substantive content or actionable results.  
+3. **Irrelevant**: The answer is clearly unrelated to the query.  
+4. **Process excuses**: The answer mainly describes process issues (“cannot search / rate-limited / captcha / try another device”), **without** providing alternative information, summaries, or next steps.  
+5. **Self-contradiction or illogical**: The answer contradicts itself or contains major logical inconsistencies.  
+6. **Safety or compliance violations**: Includes illegal content, hate speech, personal privacy leaks, or other clearly inappropriate material.  
+7. **Severe language mismatch**: The answer is in a completely different language from the query in a way that breaks comprehension (e.g., Chinese query but irrelevant and incoherent French reply).
+
+---
+
+## 3. Special Cases & Additional Rules
 {custom_rubrics}
 
-以上信息有任何一个命中，最终结果即为BAD，否则是GOOD。
+---
+
+If **any** of the above conditions are triggered, the final result must be **BAD**. Otherwise, it is **GOOD**.
 """
 
 
