@@ -112,3 +112,19 @@ astune:
     use_kl_loss: True
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
+
+  # the tracing config
+  tracing:
+    base_url: http://phoenix:port
+    train_output_path: /path/to/tasks.jsonl
+    filters:
+      - type: llm_evaluate
+        enabled: true
+        params:
+          custom_rubrics: "1. 如果 answer 声称将答案写入了文件，请判定为有实质性的回答。"
+          temperature: 0.5
+          max_tokens: 2048
+          print_reason: false
+
+
+
