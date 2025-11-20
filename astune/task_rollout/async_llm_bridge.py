@@ -189,7 +189,12 @@ class AsyncLlmBridge(object):
 
 
 
-class ASTuneLlmProxy(object):
+class LlmProxyForAgentScope(object):
+    """
+    An essential wrapper to connect AsyncLlmBridge with AgentScope
+
+    User_Agentscope_Workflow <-> AsyncLlmBridge <-> Context Tracker.
+    """
 
     def __init__(
         self,
@@ -204,7 +209,7 @@ class ASTuneLlmProxy(object):
         self.config = config
 
 
-    async def execute_model_proxy(
+    async def __call__(
             self,
             messages: List[dict],
             tools: List=[],
@@ -233,7 +238,7 @@ class ASTuneLlmProxy(object):
         response = await self._parse_dashscope_generation_response(llm_output, structured_model=structured_model)
         return response
 
-
+    # copied from AgentScope's DashScopeChatModule
     async def _parse_dashscope_generation_response(
         self,
         message,

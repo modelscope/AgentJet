@@ -1,4 +1,3 @@
-from .tuner import ModelTuner
-from .workflow import Workflow
-from .workflow import WorkflowOutput
+from astune.tuner import ModelTuner
+from astune.workflow import Workflow
 from astune.schema.task import WorkflowTask, WorkflowOutput

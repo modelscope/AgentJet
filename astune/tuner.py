@@ -3,7 +3,7 @@ from loguru import logger
 from typing import Literal, Any
 from pydantic import BaseModel, Field
 from astune.utils.dynamic_import import dynamic_import
-from astune.task_rollout.async_llm_bridge import ASTuneLlmProxy
+from astune.task_rollout.async_llm_bridge import LlmProxyForAgentScope
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
 from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
@@ -31,7 +31,7 @@ class ModelTuner(DashScopeChatModel):
         self.config = config
         self.context_tracker = context_tracker
         self.target2proxy_registry: dict[str, Agent2Proxy] = {}
-        self.astuner_proxy = ASTuneLlmProxy(context_tracker=context_tracker, **kwargs)
+        self.llm_proxy = LlmProxyForAgentScope(context_tracker=context_tracker, **kwargs)
         super().__init__(
             model_name='astune',
             api_key='dummy-api-key'
@@ -70,19 +70,19 @@ class ModelTuner(DashScopeChatModel):
             return self.target2proxy_registry[target_name]
 
 
-    def get_astune_proxy(self) -> ASTuneLlmProxy:
-        """Get the ASTuneLlmProxy instance.
+    def get_llm_proxy(self) -> LlmProxyForAgentScope:
+        """Get the LlmProxyForAgentScope instance.
         Returns:
-            ASTuneLlmProxy:
-                The ASTuneLlmProxy instance used by the ModelTuner.
+            LlmProxyForAgentScope:
+                The LlmProxyForAgentScope instance used by the ModelTuner.
         """
-        return self.astuner_proxy
+        return self.llm_proxy
 
 
     def get_context_tracker(self) -> MultiAgentContextTracking:
         """Get the context tracker instance.
         Returns:
-            ASTuneLlmProxy:
+            LlmProxyForAgentScope:
                 The context tracker instance used by the ModelTuner.
         """
         return self.context_tracker
@@ -145,8 +145,8 @@ class ModelTuner(DashScopeChatModel):
                 format_tool["function"]["name"],
             )
 
-        # Get the AsyncGenerator from execute_model_proxy
-        response_gen = await self.astuner_proxy.execute_model_proxy(
+        # call llm model
+        response_gen = await self.llm_proxy(
             api_key=self.api_key,
             structured_model=structured_model,
             **kwargs,
