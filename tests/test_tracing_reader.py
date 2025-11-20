@@ -43,7 +43,7 @@ def _make_task(query: str, answer: str, qa_hash: str | None) -> Task:
 @pytest.fixture
 def config(tmp_path: Path) -> dict:
     return {
-        "base_url": "http://example.com",
+        "base_url": ".trash/database.sqlite",
         "train_output_path": str(tmp_path / "tasks.jsonl"),
     }
 

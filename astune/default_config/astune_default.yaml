@@ -119,6 +119,8 @@ astune:
   tracing:
     base_url: http://phoenix:port
     train_output_path: /path/to/tasks.jsonl
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
     filters:
       - type: llm_evaluate
         enabled: true

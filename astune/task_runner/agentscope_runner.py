@@ -11,7 +11,7 @@ from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiA
 from astune.schema.trajectory import Reward, Trajectory
 from astune.schema.trajectory import Sample, Reward
 from astune.schema.task import Task, WorkflowTask
-from astnue.task_judge.judge_base import JudgeBase
+from astune.task_judge.judge_base import JudgeBase
 from astune.utils.dynamic_import import dynamic_import
 from typing import Any, Dict, List, Union, Tuple
 
