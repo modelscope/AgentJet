@@ -80,7 +80,7 @@ Judge的返回值： raw_reward, is_success
 ### 4. 测试
 
 
-4.1 复制并修改 [launcher/math_agent/git-math-agentscope.yaml](../launcher/math_agent/git-math-agentscope.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
+4.1 复制并修改 [tutorial/example_math_agent/math_agent.yaml](../tutorial/example_math_agent/math_agent.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
 1. 读取task（对应配置字段 astune.task_reader）
 2. 定义 Workflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
@@ -111,7 +111,7 @@ astune:
 ```bash
 # （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( python launcher.py --kill="python|ray" )
 clear && \
-python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='debug' --with-logview
+python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置:
 ```json
@@ -140,7 +140,7 @@ python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbon
 4.3 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
 ```bash
 # 建议开始前杀死所有ray、vllm、env_service进程 ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='trinity' --with-ray
+python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 

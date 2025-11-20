@@ -37,7 +37,7 @@ astune:
 
   rollout:
     use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     agentscope_disable_toolcalls: False
     max_env_worker: 128
     use_step_reward_from_env: False

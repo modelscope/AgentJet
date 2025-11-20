@@ -56,11 +56,11 @@ Let see:
     ```bash
     # （训练math agent demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
-    python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='debug' --with-logview
+    python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 
     # （训练appworld demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
-    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
+    python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
     ```
     备注：当`--backbone=debug`时，程序**不再使用ray**，这意味着您可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置见本文档最后。
 
@@ -69,9 +69,9 @@ Let see:
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
-    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
+    python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --with-ray --backbone='trinity'
 
-    clear && python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --with-ray --backbone='trinity'
+    clear && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='trinity'
     ```
     备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)。此外，也可以使用BeyondAgent后端训练（--backbone='verl'），但目前verl训练后端正在维护中。
 
@@ -124,9 +124,9 @@ Let see:
 
 FlashInfer?
 
-clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --with-ray --backbone='verl'
 
-clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --with-ray --backbone='verl'
 
 
 - `launche.json` for vscode debugging
