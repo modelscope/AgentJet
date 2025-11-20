@@ -11,11 +11,12 @@ from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiA
 from astune.schema.trajectory import Reward, Trajectory
 from astune.schema.trajectory import Sample, Reward
 from astune.schema.task import Task, WorkflowTask
+from astnue.task_judge.judge_base import JudgeBase
 from astune.utils.dynamic_import import dynamic_import
 from typing import Any, Dict, List, Union, Tuple
 
 
-class RunnerWithHooks(BaseAgentRunner):
+class RunnerWithCallback(BaseAgentRunner):
 
     def agentscope_runner_hooks(self, obs_window, task_thread_index, task_core_arg, env):
 
@@ -53,12 +54,12 @@ class RunnerWithHooks(BaseAgentRunner):
         }
 
 
-    def get_judge(self):
+    def get_judge(self) -> JudgeBase:
         judge_protocol = self.config.astune.task_judge.judge_protocol
         return dynamic_import(judge_protocol)(self.config)  # type: ignore
 
 
-class AgentScopeRunner(RunnerWithHooks):
+class AgentScopeRunner(RunnerWithCallback):
 
     def execute(self, env: EnvClient, task_core_arg: WorkflowTask) -> BasicContextTracker:
         obs_window = task_core_arg.obs_window
@@ -69,7 +70,7 @@ class AgentScopeRunner(RunnerWithHooks):
 
         workflow_import = self.config.astune.rollout.agentscope_learn_protocol
         workflow_cls = dynamic_import(workflow_import)()
-        agentscope_protocol: Workflow = workflow_cls(trainer='astune-trinity', AgentRunner_name='appworld')
+        agentscope_workflow: Workflow = workflow_cls(trainer='astune-trinity', AgentRunner_name='appworld')
 
         context_tracker = MultiAgentContextTracking(
             llm_chat_fn=self.llm_chat_fn,
@@ -89,10 +90,11 @@ class AgentScopeRunner(RunnerWithHooks):
             context_tracker=context_tracker,
             llm_chat_fn=self.llm_chat_fn,
             tokenizer=self.tokenizer,
+            agentscope_workflow=agentscope_workflow,
             config=self.config,
         )
 
-        workflow_output: WorkflowOutput = asyncio.run(agentscope_protocol.agentscope_execute(task_core_arg, astune_proxy))
+        workflow_output: WorkflowOutput = asyncio.run(agentscope_workflow.agentscope_execute(task_core_arg, astune_proxy))
         if workflow_output.reward is not None:
             raw_reward, is_success = workflow_output.reward, workflow_output.is_success
         else:
