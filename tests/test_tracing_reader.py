@@ -42,7 +42,7 @@ def _make_task(query: str, answer: str, qa_hash: str | None) -> Task:
 # @pytest.fixture
 # def config(tmp_path: Path) -> dict:
 #     from astune.utils.config_utils import read_astune_config
-#     return read_astune_config('launcher/math_agent/git-math-agentscope.yaml')   # type: ignore
+#     return read_astune_config('tutorial/example_math_agent/math_agent.yaml')   # type: ignore
 
 
 # def test_get_training_tasks_new_file(config: dict):

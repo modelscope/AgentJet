@@ -1,21 +1,35 @@
 # ------------------ 主要配置 ------------------
 astune:
-  project_name: appworld_astune
-  experiment_name: "read_yaml_name"
+  task_reader:
+    type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
+
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: null
+
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
   rollout:
-    # ✨✨✨✨ 编写并选择Agent
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.appworld->ExampleAgentScopeLearnProtocol
-    agentscope_disable_toolcalls: True
+    agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
+    num_repeat: 6
+    agent_madness_reward: 0.0
+
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
+
+  data:
+    max_prompt_length: 15000
+    max_response_length: 3000
+    train_batch_size: 32
+
+trinity:
+  algorithm:
+    repeat_times: 6
+  buffer:
+    train_batch_size: 84
 
 # ------------------ 不需要修改 ------------------
 hydra:

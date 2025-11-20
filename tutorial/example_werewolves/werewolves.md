@@ -35,7 +35,7 @@
 ### 2. 测试
 
 
-- 复制并修改 [launcher/werewolves_agent/git-rpg-agentscope.yaml](../launcher/werewolves_agent/git-rpg-agentscope.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
+- 复制并修改 [tutorial/example_werewolves/werewolves.yaml](../tutorial/example_werewolves/werewolves.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
     ```yaml
     astune:
     task_reader:
@@ -47,14 +47,14 @@
         # ✨✨✨✨ 设置待训练的模型
         path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
     rollout:
-        agentscope_learn_protocol: tutorial.werewolves.start->ExampleWerewolvesLearn # ✨✨✨✨ 编写并选择Agent
+        agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
     ```
 
 
 - 全链路调试（脱离ray快速调试:--backbone='debug'）
     ```bash
     # （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( python launcher.py --kill="python|ray" )
-    python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --conf launcher/werewolves_agent/git-rpg-agentscope.yaml --backbone='debug' --with-logview
+    python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
 
     ```
     备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置:
@@ -71,7 +71,7 @@
                 "console": "integratedTerminal",
                 "args": [
                     "--backbone",  "debug",
-                    "--conf", "launcher/werewolves_agent/git-rpg-agentscope.yaml"
+                    "--conf", "tutorial/example_werewolves/werewolves.yaml"
                 ],
                 "env": {
                 }
@@ -85,7 +85,7 @@
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程 ( python launcher.py --kill="python|ray|vllm" )
     python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && \
-    python launcher.py --conf launcher/werewolves_agent/git-rpg-agentscope.yaml --backbone='trinity' --with-ray
+    python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
     ```
 
 

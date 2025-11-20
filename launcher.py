@@ -70,6 +70,12 @@ def parse_args():
         default=False,
         help="Launch Crafters Env Simulation",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Skip launching services and training (test/smoke mode)",
+    )
     parser.add_argument("--reboot", action="store_true", default=False, help="reboot flag")
     parser.add_argument(
         "--kill",
@@ -158,18 +164,20 @@ def prepare_experiment_config(yaml_path, args):
     logger.info(f"Experiment Backup Dir: {backup_dir}")
     logger.info(f"Experiment Yaml Dir: {yaml_backup_dst}")
     logger.info("----------------------------------------")
-    time.sleep(2)
+    if not os.environ.get("ASTUNE_TEST_MODE"):
+        time.sleep(2)
 
     ## 1. check exp_base/backup exist
     if not os.path.exists(backup_dir):
         os.makedirs(backup_dir)
     else:
-        total_seconds = 5
-        for i in range(total_seconds):
-            logger.warning(
-                f"Warning: backup directory already exists, we will automatically ignore this after {total_seconds - i} seconds..."
-            )
-            time.sleep(1)
+        if not os.environ.get("ASTUNE_TEST_MODE"):
+            total_seconds = 5
+            for i in range(total_seconds):
+                logger.warning(
+                    f"Warning: backup directory already exists, we will automatically ignore this after {total_seconds - i} seconds..."
+                )
+                time.sleep(1)
 
     ## 2. copy files to backup
     BACK_TARGETS = os.environ.get("BACK_TARGETS", "").split(",")
@@ -508,15 +516,90 @@ def main():
         launch_logview(exp_name)
 
     if args.conf and main_yaml_fp and exe_exp_base and exe_yaml_path:
-        execute_training_process(
-            args,
-            backbone_target,
-            main_yaml_fp,
-            exe_exp_base,
-            exe_yaml_path,
-            env,
-            exp_config,
+        if args.dry_run:
+            logger.info("Dry-run enabled: skipping training process launch.")
+            return {
+                "yaml": main_yaml_fp,
+                "exp_base": exe_exp_base,
+                "exp_yaml_name": os.path.basename(exe_yaml_path),
+                "exp_name": exp_config.get("astune", {}).get("experiment_name"),
+            }
+        else:
+            execute_training_process(
+                args,
+                backbone_target,
+                main_yaml_fp,
+                exe_exp_base,
+                exe_yaml_path,
+                env,
+                exp_config,
+            )
+
+
+def run_for_test(
+    conf: str, backbone: str = "verl", with_appworld: bool = False, dry_run: bool = True
+):
+    """Helper for tests to exercise launcher logic without heavy side-effects.
+
+    Returns a dict with important derived paths and names.
+    """
+    os.environ["ASTUNE_TEST_MODE"] = "1"
+    # Build a lightweight args namespace similar to parse_args output
+    args = argparse.Namespace(
+        backbone=backbone,
+        conf=conf,
+        db="",
+        with_exp_maker=False,
+        with_ray=False,
+        with_appworld=with_appworld,
+        with_webshop=False,
+        with_bfcl=False,
+        with_logview=False,
+        with_crafters=False,
+        reboot=False,
+        kill="",
+        dry_run=dry_run,
+    )
+
+    # mimic part of main() logic
+    if args.backbone == "verl":
+        backbone_target = "astune.main_verl"
+    elif args.backbone == "debug":
+        backbone_target = "astune.main_vllm"
+    else:
+        backbone_target = "astune.main_trinity"
+
+    exp_config = None
+    if args.conf:
+        main_yaml_fp, exe_exp_base, exe_yaml_path, exp_name, exp_config = prepare_experiment_config(
+            args.conf, args
         )
+
+    if args.dry_run:
+        logger.info("run_for_test: dry-run active, not spawning services or training.")
+        return {
+            "yaml": main_yaml_fp,
+            "exp_base": exe_exp_base,
+            "exp_yaml_name": os.path.basename(exe_yaml_path),
+            "exp_name": exp_config.get("astune", {}).get("experiment_name"),
+        }
+
+    # If not dry run, invoke full training process (avoid in most tests)
+    execute_training_process(
+        args,
+        backbone_target,
+        main_yaml_fp,
+        exe_exp_base,
+        exe_yaml_path,
+        os.environ.copy(),
+        exp_config,
+    )
+    return {
+        "yaml": main_yaml_fp,
+        "exp_base": exe_exp_base,
+        "exp_yaml_name": os.path.basename(exe_yaml_path),
+        "exp_name": exp_config.get("astune", {}).get("experiment_name"),
+    }
 
 
 if __name__ == "__main__":
