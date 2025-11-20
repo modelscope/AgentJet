@@ -13,7 +13,7 @@ from astune.task_reader.tracing_reader.filters.llm_evaluate_filter import (
     LlmEvaluateFilter,
 )
 from ..task_reader_base import TaskReaderBase
-from .connector import PhoneixConnector
+from .connector import LocalSqliteConnectorV1, PhoenixConnector
 
 
 
@@ -36,7 +36,7 @@ class TracingReader(TaskReaderBase):
         # config patch
         self.config = config.astune.tracing
 
-        self._connector = PhoneixConnector(self.config.get("base_url"))
+        self._connector = LocalSqliteConnectorV1(self.config.get("base_url"))
         filters_config = self.config.get("filters")
         built_filters = build_filters(filters_config)
         self._filters: List[Filter] = built_filters
