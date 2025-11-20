@@ -32,7 +32,6 @@ class MultiAgentContextTracking(BasicContextTracker):
         self.should_interrupt_fn = should_interrupt_fn
         self.generated_token_callback_fn = generated_token_callback_fn
         self.context_overflow = False
-        self.model_name = kwargs['model_name']
         self.output_kwargs = {}
         self.input_kwargs = {}
 
