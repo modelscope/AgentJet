@@ -216,7 +216,8 @@ class MultiAgentContextTracking(BasicContextTracker):
         )
 
     def group_merge(self) -> List[List[ExtendedMessage]]:
-        return self.grouped_steps = merge_tracker_timelines(self.grouped_steps)
+        self.grouped_steps = merge_tracker_timelines(self.grouped_steps)
+        return self.grouped_steps
 
     def group_tokenize(self):
         return self.group_tokenize_multi_group()
