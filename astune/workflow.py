@@ -10,10 +10,11 @@ class Workflow(BaseModel):
     name: str = Field(default="default_workflow", description="Name of the workflow.")
     trainable_targets: List[str] = Field(default=[], description="List of agents to be fine-tuned.")
 
-    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(
+        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
+    ) -> WorkflowOutput:
         """Run the workflow on a given task."""
         raise NotImplementedError
-
 
 
 """

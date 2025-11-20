@@ -8,7 +8,14 @@ from astune.utils.compute_madness import compute_string_madness
 from astune.context_tracker.tracker_base_attr import TrackerAttr
 from astune.context_tracker.tracker_base_attr import ExtendedMessage
 from astune.context_tracker.tracker_base_attr import replace_token_ids
-from beast_logger import register_logger, print_dict, print_listofdict, print_nested, NestedJsonItem, SeqItem
+from beast_logger import (
+    register_logger,
+    print_dict,
+    print_listofdict,
+    print_nested,
+    NestedJsonItem,
+    SeqItem,
+)
 
 
 class BasicContextTracker(TrackerAttr):
@@ -38,9 +45,7 @@ class BasicContextTracker(TrackerAttr):
     9. group_tokenize
     """
 
-
-
-    def prepare_previous_context(self, mod='future'):
+    def prepare_previous_context(self, mod="future"):
         """
         Prepare the input context for future LLM call.
 
@@ -48,18 +53,28 @@ class BasicContextTracker(TrackerAttr):
             list: Array of message dictionaries containing role and content_for_future,
                  formatted for LLM input.
         """
-        if mod=='future':
+        if mod == "future":
             message_arr = [
-                {"role": c.role, "content": c.content_for_future, "tool_calls": c.tool_calls}
+                {
+                    "role": c.role,
+                    "content": c.content_for_future,
+                    "tool_calls": c.tool_calls,
+                }
                 for c in self.full_context
             ]
-        elif mod=='raw':
+        elif mod == "raw":
             message_arr = [
-                {"role": c.role, "content": c.content, "tool_calls": c.tool_calls}
+                {
+                    "role": c.role,
+                    "content": c.content,
+                    "tool_calls": c.tool_calls,
+                }
                 for c in self.full_context
             ]
         else:
-            raise ValueError(f"Unknown mod {mod} in prepare_previous_context, only support 'future' and 'raw'")
+            raise ValueError(
+                f"Unknown mod {mod} in prepare_previous_context, only support 'future' and 'raw'"
+            )
 
         # remove tool_calls from messages if empty
         for i in range(len(message_arr)):
@@ -67,23 +82,29 @@ class BasicContextTracker(TrackerAttr):
                 message_arr[i].pop("tool_calls")
         return message_arr
 
-    def check_context_token_num_safe(self, messages: List[dict], tools: List[dict] = []) -> Tuple[bool, str]:
+    def check_context_token_num_safe(
+        self, messages: List[dict], tools: List[dict] = []
+    ) -> Tuple[bool, str]:
         def get_seq_length(messages):
             prompt_text = self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
-                tools=tools
+                tools=tools,
             )
-            return len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])
+            return len(
+                self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]
+            )
+
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, "already_mad"
         messages = self.prepare_previous_context(mod="raw")
-        if get_seq_length(messages) < self.max_seq_length:   # self.config.env_engine.max_seq_length = 20480
+        if (
+            get_seq_length(messages) < self.max_seq_length
+        ):  # self.config.env_engine.max_seq_length = 20480
             return True, "safe"
         else:
             return False, "token_overflow"
-
 
     def get_inc(self, text_frag_from, text_frag_to):
         """
@@ -95,11 +116,15 @@ class BasicContextTracker(TrackerAttr):
 
         tokenizer_output = self.tokenizer(text_frag_to, return_tensors="pt", padding=False)
         input_ids = tokenizer_output["input_ids"][0].tolist()
-        input_id_increment = input_ids[len(token_ids_acc):]  # get the new tokens added in this step
+        input_id_increment = input_ids[
+            len(token_ids_acc) :
+        ]  # get the new tokens added in this step
         overlap_length = 0
         for i in range(len(token_ids_acc)):
-            if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]: overlap_length += 1
-            else: break
+            if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
+                overlap_length += 1
+            else:
+                break
         msg = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
         # print(msg)
         return input_id_increment, msg
@@ -109,23 +134,25 @@ class BasicContextTracker(TrackerAttr):
             if self.full_context[-1].author != "llm":
                 self.full_context.pop(-1)
 
-    def remove_last_non_llm_msg(self, ext_msg_list:List[ExtendedMessage]):
+    def remove_last_non_llm_msg(self, ext_msg_list: List[ExtendedMessage]):
         if len(ext_msg_list) > 0:
             if ext_msg_list[-1].author != "llm":
                 ext_msg_list.pop(-1)
         return ext_msg_list
 
-
     @property
     def steps(self):
-        return self.prepare_previous_context(mod='future')
-
+        return self.prepare_previous_context(mod="future")
 
     def prepare_next_llm_context(self):
-        return self.prepare_previous_context(mod='future')
+        return self.prepare_previous_context(mod="future")
 
-
-    def save_init_input(self, init_input_arr:list, add_nothink: bool=False, tools: List[dict]=[]):
+    def save_init_input(
+        self,
+        init_input_arr: list,
+        add_nothink: bool = False,
+        tools: List[dict] = [],
+    ):
         """
         Save and process the initial input messages to the context.
 
@@ -142,11 +169,11 @@ class BasicContextTracker(TrackerAttr):
         assert len(self.full_context) == 0, "full_context should be empty when saving init input"
         for index, llm_msg in enumerate(init_input_arr):
             if (index == len(init_input_arr) - 1) and add_nothink:
-                llm_msg['content'] += "\n/no_think"
+                llm_msg["content"] += "\n/no_think"
             ext_msg = ExtendedMessage(
                 author="initialization",
-                role=llm_msg['role'],
-                content=llm_msg['content'],
+                role=llm_msg["role"],
+                content=llm_msg["content"],
                 token_generator="manual",
                 tokenizer=self.tokenizer,
             )
@@ -154,16 +181,26 @@ class BasicContextTracker(TrackerAttr):
 
         # compute token array for each message
         token_ids_acc = []
-        for llm_msg, ext_msg, index in zip(init_input_arr, self.full_context, range(len(init_input_arr))):
-            text_with_chat_template = self.tokenizer.apply_chat_template(init_input_arr[:(index+1)], tokenize=False, tools=tools)
-            tokenizer_output = self.tokenizer(text_with_chat_template, return_tensors="pt", padding=False)
+        for llm_msg, ext_msg, index in zip(
+            init_input_arr, self.full_context, range(len(init_input_arr))
+        ):
+            text_with_chat_template = self.tokenizer.apply_chat_template(
+                init_input_arr[: (index + 1)], tokenize=False, tools=tools
+            )
+            tokenizer_output = self.tokenizer(
+                text_with_chat_template, return_tensors="pt", padding=False
+            )
             input_ids = tokenizer_output["input_ids"][0].tolist()
             # attention_mask = outputs["attention_mask"][0].tolist()
-            input_id_increment = input_ids[len(token_ids_acc):]  # get the new tokens added in this step
+            input_id_increment = input_ids[
+                len(token_ids_acc) :
+            ]  # get the new tokens added in this step
             overlap_length = 0
             for i in range(len(token_ids_acc)):
-                if (i < len(token_ids_acc)) and (input_ids[i] == token_ids_acc[i]): overlap_length += 1
-                else: break
+                if (i < len(token_ids_acc)) and (input_ids[i] == token_ids_acc[i]):
+                    overlap_length += 1
+                else:
+                    break
             ext_msg._info = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
             ext_msg.token_arr = input_id_increment
             token_ids_acc += input_ids
@@ -185,44 +222,71 @@ class BasicContextTracker(TrackerAttr):
         """
         # save basic
         assert isinstance(llm_output, dict)
-        token_generator = "manual" if 'tokens' in llm_output else "auto"
+        token_generator = "manual" if "tokens" in llm_output else "auto"
         ext_msg = ExtendedMessage(
             author="llm",
-            role=llm_output['role'],
-            content=llm_output['content'],
+            role=llm_output["role"],
+            content=llm_output["content"],
             token_generator=token_generator,
             tokenizer=self.tokenizer,
         )
         if auto_register_full_context:
             self.full_context += [ext_msg]
             if not self.already_mad_flag:
-                if compute_string_madness(completion=llm_output['content'], checklist=self.config.astune.rollout.compute_madness_checklist) < 0.0:
+                if (
+                    compute_string_madness(
+                        completion=llm_output["content"],
+                        checklist=self.config.astune.rollout.compute_madness_checklist,
+                    )
+                    < 0.0
+                ):
                     self.already_mad_flag = True
 
         if token_generator == "manual":
-            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output)
+            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(
+                input_msg_ref, llm_output
+            )
             ext_msg.token_arr = token_arr_method2
             ext_msg.token_logprob_arr = token_logprob_arr
 
         return ext_msg
 
     # generate token
-    def get_token_inc_from_vllm_response(self, input_msg_ref, llm_output, tools: List[dict]=[]) -> Tuple[List[int], List[int]]:
+    def get_token_inc_from_vllm_response(
+        self, input_msg_ref, llm_output, tools: List[dict] = []
+    ) -> Tuple[List[int], List[int]]:
         generation_prompt_token, msg = self.get_inc(
-            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=False, tools=tools),
-            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, add_generation_prompt=True, tools=tools),
+            self.tokenizer.apply_chat_template(
+                input_msg_ref,
+                tokenize=False,
+                add_generation_prompt=False,
+                tools=tools,
+            ),
+            self.tokenizer.apply_chat_template(
+                input_msg_ref,
+                tokenize=False,
+                add_generation_prompt=True,
+                tools=tools,
+            ),
         )
         # completion_token_arr will contain generation_prompt header
-        llm_output_role_content = { "role": llm_output['role'], "content": llm_output['content'] }
-        if not llm_output.get('tool_calls', None):
-            llm_output_role_content.update({ "tool_calls": llm_output.get('tool_calls', []) })
+        llm_output_role_content = {
+            "role": llm_output["role"],
+            "content": llm_output["content"],
+        }
+        if not llm_output.get("tool_calls", None):
+            llm_output_role_content.update({"tool_calls": llm_output.get("tool_calls", [])})
 
         completion_token_arr, msg2 = self.get_inc(
             self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, tools=tools),
-            self.tokenizer.apply_chat_template(input_msg_ref + [ llm_output_role_content ], tokenize=False, tools=tools),
+            self.tokenizer.apply_chat_template(
+                input_msg_ref + [llm_output_role_content],
+                tokenize=False,
+                tools=tools,
+            ),
         )
-        vllm_output_raw_token = [t.token_id for t in llm_output['tokens']]
-        vllm_output_raw_logprob = [t.logprob for t in llm_output['tokens']]
+        vllm_output_raw_token = [t.token_id for t in llm_output["tokens"]]
+        vllm_output_raw_logprob = [t.logprob for t in llm_output["tokens"]]
         self.generated_token_cnt += len(vllm_output_raw_token)
         final_token_arr, token_logprob_arr = replace_token_ids(
             place_holder=completion_token_arr,
@@ -234,10 +298,16 @@ class BasicContextTracker(TrackerAttr):
         return final_token_arr, token_logprob_arr
 
     def save_llm_output_do_not_register_full_context(self, llm_output, input_msg_ref):
-        return BasicContextTracker.save_llm_output(self, llm_output, input_msg_ref, auto_register_full_context=False)
+        return BasicContextTracker.save_llm_output(
+            self, llm_output, input_msg_ref, auto_register_full_context=False
+        )
 
-
-    def save_env_output(self, env_output:dict, input_msg_ref:Optional[List[dict]]=None, add_nothink=False):
+    def save_env_output(
+        self,
+        env_output: dict,
+        input_msg_ref: Optional[List[dict]] = None,
+        add_nothink=False,
+    ):
         """
         Save and process environment output to the context.
 
@@ -251,16 +321,18 @@ class BasicContextTracker(TrackerAttr):
             - Computes and stores token arrays for the environment response
         """
         assert isinstance(env_output, dict)
-        if ('content' not in env_output) and ('error' in env_output):
-            env_output['content'] = f"[Error from environment: {env_output['error']}]"
-        elif ('content' not in env_output) or (not env_output['content']):
-            env_output['content'] = 'Warning: the environment does not provide any feedback, please provide valid inpu and try again.'
+        if ("content" not in env_output) and ("error" in env_output):
+            env_output["content"] = f"[Error from environment: {env_output['error']}]"
+        elif ("content" not in env_output) or (not env_output["content"]):
+            env_output["content"] = (
+                "Warning: the environment does not provide any feedback, please provide valid inpu and try again."
+            )
         if add_nothink:
-            env_output['content'] += " /no_think"
+            env_output["content"] += " /no_think"
         ext_msg = ExtendedMessage(
             author="env",
             role="user",
-            content=env_output['content'],
+            content=env_output["content"],
             clip=True,
             clip_token_limit=self.max_env_output_length,
             token_generator="auto",
@@ -297,25 +369,30 @@ class BasicContextTracker(TrackerAttr):
         return latest_content
 
     def filter_context_via_author(self, author: str) -> List[ExtendedMessage]:
-        return copy.deepcopy([ c for c in self.full_context if c.author == author ])
+        return copy.deepcopy([c for c in self.full_context if c.author == author])
 
     def filter_context_via_authors(self, authors: List[str]) -> List[ExtendedMessage]:
-        return copy.deepcopy([ c for c in self.full_context if c.author in authors ])
+        return copy.deepcopy([c for c in self.full_context if c.author in authors])
 
-    def filter_context_via_authors_with_limit(self, authors: List[str], limit: dict) -> List[ExtendedMessage]:
+    def filter_context_via_authors_with_limit(
+        self, authors: List[str], limit: dict
+    ) -> List[ExtendedMessage]:
         """
         limit = {
             "llm": "keep_last@2"
             "env": "keep_first@2"
         }
         """
-        filtered_via_authors = copy.deepcopy([ c for c in self.full_context if c.author in authors ])
+        filtered_via_authors = copy.deepcopy([c for c in self.full_context if c.author in authors])
         for limit_author, limit_item in limit.items():
-            limit_item_command, limit_item_value = limit_item.split('@')
+            limit_item_command, limit_item_value = limit_item.split("@")
             if limit_item_command == "keep_last":
                 limit_item_value = int(limit_item_value)
                 # remove all message whose author is `llm_author` except the last `limit_item_value` messages
-                num_need_rm = len([ c for c in filtered_via_authors if c.author == limit_author ]) - limit_item_value
+                num_need_rm = (
+                    len([c for c in filtered_via_authors if c.author == limit_author])
+                    - limit_item_value
+                )
                 if num_need_rm > 0:
                     num_already_rm = 0
                     filtered_via_authors_new = []
@@ -330,7 +407,10 @@ class BasicContextTracker(TrackerAttr):
             elif limit_item_command == "keep_first":
                 limit_item_value = int(limit_item_value)
                 # remove all message whose author is `llm_author` except the first `limit_item_value` messages
-                num_need_keep = len([ c for c in filtered_via_authors if c.author == limit_author ]) - limit_item_value
+                num_need_keep = (
+                    len([c for c in filtered_via_authors if c.author == limit_author])
+                    - limit_item_value
+                )
                 if num_need_keep > 0:
                     num_already_keep = 0
                     filtered_via_authors_new = []
@@ -343,7 +423,9 @@ class BasicContextTracker(TrackerAttr):
                     filtered_via_authors = filtered_via_authors_new
 
             else:
-                raise ValueError(f"Unknown limit_item_command {limit_item_command} in filter_context_via_authors_with_limit")
+                raise ValueError(
+                    f"Unknown limit_item_command {limit_item_command} in filter_context_via_authors_with_limit"
+                )
         return filtered_via_authors
 
     def group_tokenize(self):
@@ -351,10 +433,9 @@ class BasicContextTracker(TrackerAttr):
         ext_steps = self.full_context
         cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
         sample = Sample(
-            cmt_tokenized = cmt_tokenized,
+            cmt_tokenized=cmt_tokenized,
             messages=self.to_role_content(ext_steps),
             config=self.config,
-
             task_batch_index=self.task_batch_index,
             task_tag=self.task_tag,
             task_id=self.task_id,
@@ -367,12 +448,15 @@ class BasicContextTracker(TrackerAttr):
         sample_arr = []
         max_num_group = self.config.astune.rollout.multi_turn.max_sample_per_task
         for index, ext_steps in enumerate(self.grouped_steps):
-            cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=index, total_steps=len(self.grouped_steps))
+            cmt_tokenized = self.tokenize_steps(
+                ext_steps=ext_steps,
+                index=index,
+                total_steps=len(self.grouped_steps),
+            )
             sample = Sample(
-                cmt_tokenized = cmt_tokenized,
+                cmt_tokenized=cmt_tokenized,
                 messages=self.to_role_content(ext_steps),
                 config=self.config,
-
                 task_batch_index=self.task_batch_index,
                 task_tag=self.task_tag,
                 task_id=self.task_id,
@@ -382,6 +466,7 @@ class BasicContextTracker(TrackerAttr):
         if len(sample_arr) > max_num_group:
             print(f"Warning: allow {max_num_group} groups, but got {len(sample_arr)} groups")
             import random
+
             sample_arr = random.sample(sample_arr, max_num_group)  # preserve max_num_group groups
 
         return sample_arr
@@ -389,11 +474,13 @@ class BasicContextTracker(TrackerAttr):
     def generate_log(self, task_id=None, global_step="NA"):
         task_id = self.task_id
         nested_items_print_buffer = {}
-        ext_steps=self.full_context
+        ext_steps = self.full_context
         cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
         text_arr = [self.tokenizer.decode(t) for t in cmt_tokenized["input_ids"]]
         input_id_arr = [str(t) for t in cmt_tokenized["input_ids"]]
-        loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in cmt_tokenized["loss_mask"]]
+        loss_mask_color_arr = [
+            "#09ABCF" if mask == 1 else "#D98510" for mask in cmt_tokenized["loss_mask"]
+        ]
         buffer = {
             "text_arr": text_arr,
             "input_id_arr": input_id_arr,
@@ -413,29 +500,29 @@ class BasicContextTracker(TrackerAttr):
         task_outcome = str(self.reward_structure.success_rate)
         selectors = [task_id, task_outcome]
         nested_items_print_buffer[f".".join(selectors)] = NestedJsonItem(
-            item_id=f"item",    # type: ignore
-            outcome=task_outcome,   # type: ignore
+            item_id=f"item",  # type: ignore
+            outcome=task_outcome,  # type: ignore
             len_prompt_ids=len_prompt_ids,  # type: ignore
             len_response_ids=len_response_ids,  # type: ignore
-            len_input_ids=len_input_ids,    # type: ignore
+            len_input_ids=len_input_ids,  # type: ignore
             raw_reward=f"{float(raw_reward):.3f}",  # type: ignore
-            step_reward=f"{float(step_reward):.3f}",    # type: ignore
+            step_reward=f"{float(step_reward):.3f}",  # type: ignore
             step_advantage=f"{float(step_advantage):.3f}",  # type: ignore
-            step_advantage_simple=f"{float(step_advantage_simple):.3f}",    # type: ignore
+            step_advantage_simple=f"{float(step_advantage_simple):.3f}",  # type: ignore
             content=SeqItem(
-                text = buffer['text_arr'],  # text content
-                title = buffer['text_arr'], # mouse hover text
-                count = buffer['input_id_arr'], # h highlight text
-                color = buffer['loss_mask_color_arr']   # color
-            )
+                text=buffer["text_arr"],  # text content
+                title=buffer["text_arr"],  # mouse hover text
+                count=buffer["input_id_arr"],  # h highlight text
+                color=buffer["loss_mask_color_arr"],  # color
+            ),
         )
-        print_nested(nested_items_print_buffer,
+        print_nested(
+            nested_items_print_buffer,
             main_content="This is the main content of the nested JSON",
             header=f"[{global_step}] Task {task_id} (Reward {float(step_reward):.3f})",
             mod="rollout",
-            narrow=False
+            narrow=False,
         )
-
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
@@ -445,13 +532,13 @@ class BasicContextTracker(TrackerAttr):
             self.compute_step_level_reward(ext_steps=ext_steps, index=0, total_steps=1)
         ]
 
-
     def ensure_terminate_rollout_stage(self):
-        """Nothing need to be done for basic linear cmt at `ensure_terminate_rollout_stage`
-        """
+        """Nothing need to be done for basic linear cmt at `ensure_terminate_rollout_stage`"""
         pass
 
-    def compute_step_level_reward(self, ext_steps: List[ExtendedMessage], index: int, total_steps:int)->float:
+    def compute_step_level_reward(
+        self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
+    ) -> float:
         assert self.reward_structure is not None
 
         # --------------- global level reward ---------------
@@ -467,9 +554,9 @@ class BasicContextTracker(TrackerAttr):
 
         return step_reward
 
-
-
-    def tokenize_steps(self, ext_steps: List[ExtendedMessage], index:int, total_steps:int) -> dict:
+    def tokenize_steps(
+        self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
+    ) -> dict:
         """
         Create an Experience object from the current conversation context.
 
@@ -484,11 +571,14 @@ class BasicContextTracker(TrackerAttr):
             - Truncates output IDs as needed
         """
         from verl.utils.model import compute_position_id_with_mask
+
         ext_steps = self.remove_last_non_llm_msg(ext_steps)
 
         # check reward structure
-        self.reward_structure: Reward   # type: ignore
-        assert self.reward_structure.step_reward is not None, "must call `process_reward` before tokenize_steps"
+        self.reward_structure: Reward  # type: ignore
+        assert (
+            self.reward_structure.step_reward is not None
+        ), "must call `process_reward` before tokenize_steps"
         assert len(self.reward_structure.step_reward) == total_steps
 
         # mapping
@@ -506,9 +596,13 @@ class BasicContextTracker(TrackerAttr):
             if (split_prompt_reponse_index == -1) and (ext_msg.need_training):
                 split_prompt_reponse_index = len(input_ids)
                 split_point_message_left_index = i - 1
-                assert split_point_message_left_index >= 0, "There should be at least one message before the first training message"
+                assert (
+                    split_point_message_left_index >= 0
+                ), "There should be at least one message before the first training message"
                 assert split_prompt_reponse_index == input_ids_len[split_point_message_left_index]
-                assert ext_msg.author == 'llm', "The first message after initialization should be from LLM, not from env or user"
+                assert (
+                    ext_msg.author == "llm"
+                ), "The first message after initialization should be from LLM, not from env or user"
 
             # cat all tokens
             input_ids += ext_msg.token_arr
@@ -524,49 +618,62 @@ class BasicContextTracker(TrackerAttr):
                 # should we begin split point early?
                 if input_ids_len[-1] > self.config.astune.data.max_prompt_length:
                     message_dict = self.to_role_content(ext_steps)
-                    logger.error(f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix...")
-                    logger.bind(exception=True).exception(f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix...\n\n" + str(message_dict))
-                    assert i >= 1, "There should be at least one message before exceeding max_prompt_length"
-                    assert input_ids_len[-2] <= self.config.astune.data.max_prompt_length, "The previous message should be within max_prompt_length, something is wrong"
+                    logger.error(
+                        f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix..."
+                    )
+                    logger.bind(exception=True).exception(
+                        f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix...\n\n"
+                        + str(message_dict)
+                    )
+                    assert (
+                        i >= 1
+                    ), "There should be at least one message before exceeding max_prompt_length"
+                    assert (
+                        input_ids_len[-2] <= self.config.astune.data.max_prompt_length
+                    ), "The previous message should be within max_prompt_length, something is wrong"
                     split_point_message_left_index = i - 1
                     assert split_point_message_left_index == (len(input_ids_len) - 2), "what?"
                     split_prompt_reponse_index = input_ids_len[split_point_message_left_index]
 
         # check
-        assert len(ext_steps) == len(input_ids_len), "length of ext_steps and input_ids_len should be equal"
-        assert split_prompt_reponse_index != -1, "split_prompt_reponse_index should not be -1, at least one message should be in the context"
+        assert len(ext_steps) == len(
+            input_ids_len
+        ), "length of ext_steps and input_ids_len should be equal"
+        assert (
+            split_prompt_reponse_index != -1
+        ), "split_prompt_reponse_index should not be -1, at least one message should be in the context"
         position_ids = compute_position_id_with_mask(torch.tensor(attention_mask)).tolist()
 
         # sperate prompt and response
-        prompt_ids =            input_ids[:split_prompt_reponse_index]
+        prompt_ids = input_ids[:split_prompt_reponse_index]
         prompt_attention_mask = attention_mask[:split_prompt_reponse_index]
-        prompt_position_ids =   position_ids[:split_prompt_reponse_index]
-        prompt_loss_mask =      loss_mask[:split_prompt_reponse_index]
-        prompt_logprobs =       input_logprobs[:split_prompt_reponse_index]
+        prompt_position_ids = position_ids[:split_prompt_reponse_index]
+        prompt_loss_mask = loss_mask[:split_prompt_reponse_index]
+        prompt_logprobs = input_logprobs[:split_prompt_reponse_index]
 
-        response_ids =              input_ids[split_prompt_reponse_index:]
-        response_attention_mask =   attention_mask[split_prompt_reponse_index:]
-        response_position_ids =     position_ids[split_prompt_reponse_index:]
-        response_loss_mask =        loss_mask[split_prompt_reponse_index:]
-        response_logprobs =         input_logprobs[split_prompt_reponse_index:]
+        response_ids = input_ids[split_prompt_reponse_index:]
+        response_attention_mask = attention_mask[split_prompt_reponse_index:]
+        response_position_ids = position_ids[split_prompt_reponse_index:]
+        response_loss_mask = loss_mask[split_prompt_reponse_index:]
+        response_logprobs = input_logprobs[split_prompt_reponse_index:]
 
         cmt_tokenized = {}
-        cmt_tokenized["input_ids"]                  = input_ids
-        cmt_tokenized["prompt_ids"]                 = prompt_ids
-        cmt_tokenized["response_ids"]               = response_ids
-        cmt_tokenized["attention_mask"]             = attention_mask
-        cmt_tokenized["logprobs"]                   = input_logprobs
-        cmt_tokenized["prompt_attention_mask"]      = prompt_attention_mask
-        cmt_tokenized["response_attention_mask"]    = response_attention_mask
-        cmt_tokenized["loss_mask"]                  = loss_mask
-        cmt_tokenized["prompt_loss_mask"]           = prompt_loss_mask
-        cmt_tokenized["response_loss_mask"]         = response_loss_mask
-        cmt_tokenized["position_ids"]               = position_ids
-        cmt_tokenized["prompt_position_ids"]        = prompt_position_ids
-        cmt_tokenized["response_position_ids"]      = response_position_ids
-        cmt_tokenized["step_reward"]                = self.reward_structure.step_reward[index]
-        cmt_tokenized["response_logprobs"]          = response_logprobs
-        cmt_tokenized["prompt_logprobs"]            = prompt_logprobs
+        cmt_tokenized["input_ids"] = input_ids
+        cmt_tokenized["prompt_ids"] = prompt_ids
+        cmt_tokenized["response_ids"] = response_ids
+        cmt_tokenized["attention_mask"] = attention_mask
+        cmt_tokenized["logprobs"] = input_logprobs
+        cmt_tokenized["prompt_attention_mask"] = prompt_attention_mask
+        cmt_tokenized["response_attention_mask"] = response_attention_mask
+        cmt_tokenized["loss_mask"] = loss_mask
+        cmt_tokenized["prompt_loss_mask"] = prompt_loss_mask
+        cmt_tokenized["response_loss_mask"] = response_loss_mask
+        cmt_tokenized["position_ids"] = position_ids
+        cmt_tokenized["prompt_position_ids"] = prompt_position_ids
+        cmt_tokenized["response_position_ids"] = response_position_ids
+        cmt_tokenized["step_reward"] = self.reward_structure.step_reward[index]
+        cmt_tokenized["response_logprobs"] = response_logprobs
+        cmt_tokenized["prompt_logprobs"] = prompt_logprobs
         try:
             cmt_tokenized["reference_advantage"] = self.reward_structure.step_advantage[index]
         except:

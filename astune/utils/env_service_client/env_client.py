@@ -46,9 +46,7 @@ class EnvClient:
         )
         return response["data"]
 
-    def get_tools_info(
-        self, instance_id: str, messages: Dict = {}, params: Dict = {}
-    ) -> float:
+    def get_tools_info(self, instance_id: str, messages: Dict = {}, params: Dict = {}) -> float:
         """获取环境信息"""
         response = self._make_request(
             endpoint="get_info",
@@ -59,7 +57,11 @@ class EnvClient:
         return response["data"]
 
     def create_instance(
-        self, env_type: str, task_id: str, instance_id: str = None, params: Dict = None
+        self,
+        env_type: str,
+        task_id: str,
+        instance_id: str = None,
+        params: Dict = None,
     ) -> dict:
         """创建环境实例"""
         response = self._make_request(
@@ -74,13 +76,14 @@ class EnvClient:
     def step(self, instance_id: str, action: Dict = {}, params: Dict = {}) -> dict:
         """执行环境步骤"""
         response = self._make_request(
-            endpoint="step", instance_id=instance_id, messages=action, params=params
+            endpoint="step",
+            instance_id=instance_id,
+            messages=action,
+            params=params,
         )
         return response["data"]
 
-    def evaluate(
-        self, instance_id: str, messages: Dict = {}, params: Dict = {}
-    ) -> float:
+    def evaluate(self, instance_id: str, messages: Dict = {}, params: Dict = {}) -> float:
         """评估环境实例"""
         response = self._make_request(
             endpoint="evaluate",

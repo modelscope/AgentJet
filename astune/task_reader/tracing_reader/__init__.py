@@ -1,5 +1,3 @@
-
-
 from typing import Any, List, Mapping, MutableMapping, Sequence, TypedDict
 
 import json
@@ -14,7 +12,6 @@ from astune.task_reader.tracing_reader.filters.llm_evaluate_filter import (
 )
 from ..task_reader_base import TaskReaderBase
 from .connector import LocalSqliteConnectorV1, PhoenixConnector
-
 
 
 class Config(TypedDict):
@@ -34,7 +31,7 @@ class TracingReader(TaskReaderBase):
     ) -> None:
         super().__init__(config)
         # config patch
-        print('*********', config, '**********')
+        # print("*********", config, "**********")
         self.config = config.astune.tracing
 
         self._connector = LocalSqliteConnectorV1(self.config.get("base_url"))

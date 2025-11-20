@@ -9,7 +9,10 @@ from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 class HttpClient(BaseModel):
     url: str = Field(default="")
-    keep_alive: bool = Field(default=False, description="if true, use session to keep long connection")
+    keep_alive: bool = Field(
+        default=False,
+        description="if true, use session to keep long connection",
+    )
     timeout: int = Field(default=300, description="request timeout, second")
     return_default_if_error: bool = Field(default=True)
 
@@ -38,28 +41,34 @@ class HttpClient(BaseModel):
         if isinstance(self._client, requests.Session):
             self._client.close()
 
-    def _request(self,
-                 data: str = None,
-                 json_data: dict = None,
-                 headers: dict = None,
-                 stream: bool = False,
-                 http_enum: str = "post"):
+    def _request(
+        self,
+        data: str = None,
+        json_data: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        http_enum: str = "post",
+    ):
 
         if http_enum == "post":
-            response: requests.Response = self._client.post(url=self.url,
-                                                            data=data,
-                                                            json=json_data,
-                                                            headers=headers,
-                                                            stream=stream,
-                                                            timeout=self.timeout)
+            response: requests.Response = self._client.post(
+                url=self.url,
+                data=data,
+                json=json_data,
+                headers=headers,
+                stream=stream,
+                timeout=self.timeout,
+            )
 
         elif http_enum == "get":
-            response: requests.Response = self._client.get(url=self.url,
-                                                           data=data,
-                                                           json=json_data,
-                                                           headers=headers,
-                                                           stream=stream,
-                                                           timeout=self.timeout)
+            response: requests.Response = self._client.get(
+                url=self.url,
+                data=data,
+                json=json_data,
+                headers=headers,
+                stream=stream,
+                timeout=self.timeout,
+            )
 
         else:
             raise NotImplementedError
@@ -75,27 +84,38 @@ class HttpClient(BaseModel):
     def return_default(self, **kwargs):
         return None
 
-    def request(self,
-                data: str | Any = None,
-                json_data: dict = None,
-                headers: dict = None,
-                http_enum: str = "post",
-                **kwargs):
+    def request(
+        self,
+        data: str | Any = None,
+        json_data: dict = None,
+        headers: dict = None,
+        http_enum: str = "post",
+        **kwargs,
+    ):
 
         retry_sleep_time = self.retry_sleep_time
         for i in range(self.retry_max_count):
             try:
-                response = self._request(data=data, json_data=json_data, headers=headers, http_enum=http_enum)
-                result = self.parse_result(response=response,
-                                           data=data,
-                                           json_data=json_data,
-                                           headers=headers,
-                                           http_enum=http_enum,
-                                           **kwargs)
+                response = self._request(
+                    data=data,
+                    json_data=json_data,
+                    headers=headers,
+                    http_enum=http_enum,
+                )
+                result = self.parse_result(
+                    response=response,
+                    data=data,
+                    json_data=json_data,
+                    headers=headers,
+                    http_enum=http_enum,
+                    **kwargs,
+                )
                 return result
 
             except Exception as e:
-                logger.exception(f"{self.__class__.__name__} {i}th request failed with args={e.args}")
+                logger.exception(
+                    f"{self.__class__.__name__} {i}th request failed with args={e.args}"
+                )
 
                 if i == self.retry_max_count - 1:
                     if self.return_default_if_error:
@@ -108,36 +128,44 @@ class HttpClient(BaseModel):
 
         return None
 
-    def request_stream(self,
-                       data: str = None,
-                       json_data: dict = None,
-                       headers: dict = None,
-                       http_enum: str = "post",
-                       **kwargs):
+    def request_stream(
+        self,
+        data: str = None,
+        json_data: dict = None,
+        headers: dict = None,
+        http_enum: str = "post",
+        **kwargs,
+    ):
 
         retry_sleep_time = self.retry_sleep_time
         for i in range(self.retry_max_count):
             try:
-                response = self._request(data=data,
-                                         json_data=json_data,
-                                         headers=headers,
-                                         stream=True,
-                                         http_enum=http_enum)
+                response = self._request(
+                    data=data,
+                    json_data=json_data,
+                    headers=headers,
+                    stream=True,
+                    http_enum=http_enum,
+                )
                 request_context = {}
                 for iter_idx, line in enumerate(response.iter_lines()):
-                    yield self.parse_result(line=line,
-                                            request_context=request_context,
-                                            index=iter_idx,
-                                            data=data,
-                                            json_data=json_data,
-                                            headers=headers,
-                                            http_enum=http_enum,
-                                            **kwargs)
+                    yield self.parse_result(
+                        line=line,
+                        request_context=request_context,
+                        index=iter_idx,
+                        data=data,
+                        json_data=json_data,
+                        headers=headers,
+                        http_enum=http_enum,
+                        **kwargs,
+                    )
 
                 return None
 
             except Exception as e:
-                logger.exception(f"{self.__class__.__name__} {i}th request failed with args={e.args}")
+                logger.exception(
+                    f"{self.__class__.__name__} {i}th request failed with args={e.args}"
+                )
 
                 if i == self.retry_max_count - 1:
                     if self.return_default_if_error:

@@ -4,7 +4,9 @@
 """The main entry point for the werewolf game."""
 
 import numpy as np
-import dotenv; dotenv.load_dotenv()
+import dotenv
+
+dotenv.load_dotenv()
 from textwrap import dedent
 from loguru import logger
 from tutorial.werewolves.game import werewolves_game
@@ -16,7 +18,8 @@ from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 
 
 def get_official_agent_prompt(name) -> str:
-    system_prompt = dedent(f"""
+    system_prompt = dedent(
+        f"""
         You're a werewolf game player named {name}.
 
         # YOUR TARGET
@@ -76,9 +79,13 @@ def get_official_agent_prompt(name) -> str:
 class ExampleWerewolves(Workflow):
 
     trainer: str = Field(default="astune-trinity")
-    trainable_targets: list = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
+    trainable_targets: list = Field(
+        default=["werewolf"], description="List of agents to be fine-tuned."
+    )
 
-    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(
+        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
+    ) -> WorkflowOutput:
 
         # ensure trainable targets is legal
         if "werewolf" in self.trainable_targets:
@@ -88,7 +95,7 @@ class ExampleWerewolves(Workflow):
 
         # make and shuffle roles (fix random seed for reproducibility)
         roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
-        task_id = workflow_task.task.metadata['random_number']
+        task_id = workflow_task.task.metadata["random_number"]
         np.random.seed(int(task_id))
         np.random.shuffle(roles)
 
@@ -97,7 +104,9 @@ class ExampleWerewolves(Workflow):
         for i, role in enumerate(roles):
             default_model = OpenAIChatModel(
                 model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
-                stream=False, client_args = { "base_url": "http://22.16.118.255:2888/v1" }, api_key="1234",
+                stream=False,
+                client_args={"base_url": "http://22.16.118.255:2888/v1"},
+                api_key="1234",
             )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
@@ -112,8 +121,9 @@ class ExampleWerewolves(Workflow):
         good_guy_win = await werewolves_game(players, roles)
         raw_reward = 0
         is_success = False
-        if (good_guy_win and self.trainable_targets[0] != "werewolf") or \
-            (not good_guy_win and self.trainable_targets[0] == "werewolf"):
+        if (good_guy_win and self.trainable_targets[0] != "werewolf") or (
+            not good_guy_win and self.trainable_targets[0] == "werewolf"
+        ):
             raw_reward = 1
             is_success = True
 

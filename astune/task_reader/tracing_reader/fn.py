@@ -8,13 +8,15 @@ class Fn:
     It uses LlmClient to execute the task and parses the result using markdown-kv format.
     """
 
-    def __init__(self,
-                 name: str,
-                 description: str,
-                 alien_llm_chat_fn: Any,
-                 input_schema: Dict[str, str],
-                 output_schema: Dict[str, str],
-                 sampling_params: Dict[str, Any] = {}):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        alien_llm_chat_fn: Any,
+        input_schema: Dict[str, str],
+        output_schema: Dict[str, str],
+        sampling_params: Dict[str, Any] = {},
+    ):
         """
         Initialize the Fn class.
 
@@ -76,7 +78,9 @@ class Fn:
         prompt_parts.append("")
 
         # Multiple records instruction
-        prompt_parts.append("If there are multiple results, use separate records with increasing indices:")
+        prompt_parts.append(
+            "If there are multiple results, use separate records with increasing indices:"
+        )
         prompt_parts.append("```markdown")
         prompt_parts.append("## record 0")
         prompt_parts.append("name=first_result")
@@ -107,11 +111,11 @@ class Fn:
             Union[Dict[str, str], List[Dict[str, str]]]: Parsed result as dict or list of dicts
         """
         # Remove code block markers if present
-        text = re.sub(r'```.*?\n', '', text, flags=re.DOTALL)
-        text = re.sub(r'```', '', text)
+        text = re.sub(r"```.*?\n", "", text, flags=re.DOTALL)
+        text = re.sub(r"```", "", text)
 
         # Split by record headers
-        record_pattern = r'## record \d+'
+        record_pattern = r"## record \d+"
         record_sections = re.split(record_pattern, text)
 
         # Remove empty sections
@@ -121,10 +125,10 @@ class Fn:
         for section in record_sections:
             # Parse key-value pairs
             kv_dict = {}
-            lines = section.strip().split('\n')
+            lines = section.strip().split("\n")
             for line in lines:
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     kv_dict[key.strip()] = value.strip()
             if kv_dict:  # Only add non-empty dictionaries
                 results.append(kv_dict)
@@ -134,7 +138,9 @@ class Fn:
             return results[0]
         return results
 
-    def _format_input_parameters(self, input_data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> str:
+    def _format_input_parameters(
+        self, input_data: Union[Dict[str, Any], List[Dict[str, Any]]]
+    ) -> str:
         """
         Format input parameters for the user prompt.
 
@@ -165,7 +171,9 @@ class Fn:
         else:
             return f"Input parameters: {input_data}"
 
-    def __call__(self, input_data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> Union[Dict[str, str], List[Dict[str, str]]]:
+    def __call__(
+        self, input_data: Union[Dict[str, Any], List[Dict[str, Any]]]
+    ) -> Union[Dict[str, str], List[Dict[str, str]]]:
         """
         Execute the task with the given parameters.
 
@@ -181,7 +189,7 @@ class Fn:
         # Build messages for LLM
         messages = [
             {"role": "system", "content": self._build_system_prompt()},
-            {"role": "user", "content": user_prompt}
+            {"role": "user", "content": user_prompt},
         ]
 
         # Call LLM

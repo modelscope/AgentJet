@@ -18,15 +18,19 @@ class TaskReaderEnvService(TaskReaderBase):
         env_service_client = EnvClient(base_url=env_url)
         task_id_array = env_service_client.get_env_profile(env_type, split=split)
         if len(task_id_array) == 0:
-            raise ValueError(f"No task_id found for env_type: {env_type}, split: {split}, Please check connection to {env_url}")
+            raise ValueError(
+                f"No task_id found for env_type: {env_type}, split: {split}, Please check connection to {env_url}"
+            )
         tasks = [
             Task(
-                main_query='[not defined]',
+                main_query="[not defined]",
                 init_messages=[],
                 task_id=str(task_id),
                 env_type=env_type,
                 metadata={},
-            ) for task_id in task_id_array]
+            )
+            for task_id in task_id_array
+        ]
         return tasks
 
     def get_validation_tasks(self):

@@ -11,6 +11,7 @@ from astune.task_reader.hf_dataset_reader import TaskReaderHuggingFace
 from astune.task_reader.jsonl_reader import TaskReaderJsonl
 from astune.task_reader.task_reader_base import TaskReaderBase
 
+
 class RandomDummyGenerator(TaskReaderBase):
 
     def __init__(self, config):
@@ -21,16 +22,16 @@ class RandomDummyGenerator(TaskReaderBase):
         # Save the current random state
         original_state = np.random.get_state()
         np.random.seed(42)
-        random_number = [ x for x in range(1000) ]
+        random_number = [x for x in range(1000)]
         # shuffle
         np.random.shuffle(random_number)
         for idx in random_number:
             task = Task(
-                main_query=f'[dummy task @ {idx}]',
+                main_query=f"[dummy task @ {idx}]",
                 init_messages=[],
                 task_id=str(idx),
                 env_type=f"no_env",
-                metadata={'random_number': idx},
+                metadata={"random_number": idx},
             )
             tasks.append(task)
         # Restore the original random state
@@ -38,23 +39,23 @@ class RandomDummyGenerator(TaskReaderBase):
         return tasks
 
     def get_training_tasks(self) -> List[Task]:
-        return self._load_dataset_split('dataset_name', 'split')
+        return self._load_dataset_split("dataset_name", "split")
 
     def get_validation_tasks(self) -> List[Task]:
-        return self._load_dataset_split('dataset_name', 'split')
+        return self._load_dataset_split("dataset_name", "split")
 
 
 class TaskReaderRouter(TaskReaderBase):
     def __init__(self, config):
         super().__init__(config)
         self.task_reader_type = self.config.astune.task_reader.type
-        if self.task_reader_type == 'env_service':
+        if self.task_reader_type == "env_service":
             self.task_reader = TaskReaderEnvService(config)
-        elif self.task_reader_type == 'dataset_file':
+        elif self.task_reader_type == "dataset_file":
             self.task_reader = TaskReaderJsonl(config)
-        elif self.task_reader_type == 'huggingface_dat_repo':
+        elif self.task_reader_type == "huggingface_dat_repo":
             self.task_reader = TaskReaderHuggingFace(config)
-        elif self.task_reader_type == 'random_dummy':
+        elif self.task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(config)
         else:
             raise ValueError(f"Unsupported task reader type: {self.task_reader_type}")
@@ -77,18 +78,18 @@ def task_to_standard_dataset(tasks: List[Task]) -> datasets.Dataset:
         datasets.Dataset: Hugging Face Dataset containing the tasks.
     """
     data = {
-        'task_id': [],
-        'main_query': [],
-        'init_messages': [],
-        'env_type': [],
-        'metadata': [],
+        "task_id": [],
+        "main_query": [],
+        "init_messages": [],
+        "env_type": [],
+        "metadata": [],
     }
 
     for task in tasks:
-        data['task_id'].append(task.task_id)
-        data['main_query'].append(task.main_query)
-        data['init_messages'].append(task.init_messages)
-        data['env_type'].append(task.env_type)
-        data['metadata'].append(task.metadata)
+        data["task_id"].append(task.task_id)
+        data["main_query"].append(task.main_query)
+        data["init_messages"].append(task.init_messages)
+        data["env_type"].append(task.env_type)
+        data["metadata"].append(task.metadata)
 
     return datasets.Dataset.from_dict(data)

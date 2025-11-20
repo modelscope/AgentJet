@@ -5,8 +5,12 @@ from loguru import logger
 
 T = TypeVar("T")
 
-def retry_with_backoff(max_retry: int = 3, backoff_fn: Optional[Callable[[int], float]] = None,
-                       max_retry_attr: Optional[str] = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
+
+def retry_with_backoff(
+    max_retry: int = 3,
+    backoff_fn: Optional[Callable[[int], float]] = None,
+    max_retry_attr: Optional[str] = None,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Retry decorator with exponential backoff and structured logging."""
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
@@ -28,7 +32,7 @@ def retry_with_backoff(max_retry: int = 3, backoff_fn: Optional[Callable[[int], 
                         logger.bind(exception=True).exception(
                             f"{func.__name__} error: {exc.args}, retrying {attempt + 1}/{target_max_retry}"
                         )
-                        sleep_seconds = backoff_fn(attempt) if backoff_fn else 2 ** attempt
+                        sleep_seconds = backoff_fn(attempt) if backoff_fn else 2**attempt
                         time.sleep(sleep_seconds)
                     else:
                         logger.bind(exception=True).exception(

@@ -1,7 +1,12 @@
 def read_markdown_and_extract_sections(
     markdown_text,
-    expected_sections=["current step", "previous instruction code", "relevant environment feedback", "next-step instruction code"],
-    default_placeholder="❌ not available."
+    expected_sections=[
+        "current step",
+        "previous instruction code",
+        "relevant environment feedback",
+        "next-step instruction code",
+    ],
+    default_placeholder="❌ not available.",
 ):
     sections = {}
     # if not isinstance(markdown_text, str):
@@ -34,5 +39,8 @@ def read_markdown_and_extract_sections(
         else:
             find_no_expected_sections = False
 
-
-    return section_to_return, find_all_expected_sections, find_no_expected_sections
+    return (
+        section_to_return,
+        find_all_expected_sections,
+        find_no_expected_sections,
+    )

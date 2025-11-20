@@ -124,18 +124,12 @@ class Players:
             dead_players (`list[ReActAgent]`):
                 A list of dead players to be removed.
         """
-        self.werewolves = [
-            _ for _ in self.werewolves if _.name not in dead_players
-        ]
-        self.villagers = [
-            _ for _ in self.villagers if _.name not in dead_players
-        ]
+        self.werewolves = [_ for _ in self.werewolves if _.name not in dead_players]
+        self.villagers = [_ for _ in self.villagers if _.name not in dead_players]
         self.seer = [_ for _ in self.seer if _.name not in dead_players]
         self.hunter = [_ for _ in self.hunter if _.name not in dead_players]
         self.witch = [_ for _ in self.witch if _.name not in dead_players]
-        self.current_alive = [
-            _ for _ in self.current_alive if _.name not in dead_players
-        ]
+        self.current_alive = [_ for _ in self.current_alive if _.name not in dead_players]
 
     def print_roles(self) -> None:
         """Print the roles of all players."""

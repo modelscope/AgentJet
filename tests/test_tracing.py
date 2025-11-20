@@ -7,17 +7,18 @@ import pytest
 from astune.task_reader.tracing_reader import TracingReader
 from astune.schema.task import Task
 
+
 @pytest.fixture
 def config(tmp_path: Path) -> dict:
     return {
-        "astune":{
+        "astune": {
             "base_url": ".trash/database.sqlite",
             "train_output_path": str(tmp_path / "tasks.jsonl"),
         }
     }
 
 
-reader = TracingReader(config) # type: ignore
+reader = TracingReader(config)  # type: ignore
 reader._connector = connector  # type: ignore[attr-defined]
 reader._filters = [flt]  # type: ignore[attr-defined]
 

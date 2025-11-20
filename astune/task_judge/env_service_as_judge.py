@@ -7,7 +7,7 @@ class EnvServiceJudge(JudgeBase):
     def __init__(self, config):
         self.config = config
 
-    def compute_reward(self, workflow_task:WorkflowTask, workflow_output:WorkflowOutput) -> tuple:
+    def compute_reward(self, workflow_task: WorkflowTask, workflow_output: WorkflowOutput) -> tuple:
         raw_reward = 0
 
         env = workflow_task.gym_env

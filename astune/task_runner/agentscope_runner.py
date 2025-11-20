@@ -6,60 +6,23 @@ import asyncio
 from astune import ModelTuner, Workflow, WorkflowOutput
 from astune.utils.env_service_client.env_client import EnvClient
 from astune.task_runner import BaseAgentRunner
-from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage, replace_token_ids, BasicContextTracker
-from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
+from astune.context_tracker.basic_tracker import (
+    BasicContextTracker,
+    ExtendedMessage,
+    replace_token_ids,
+    BasicContextTracker,
+)
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
+    MultiAgentContextTracking,
+)
 from astune.schema.trajectory import Reward, Trajectory
 from astune.schema.trajectory import Sample, Reward
 from astune.schema.task import Task, WorkflowTask
-from astune.task_judge.judge_base import JudgeBase
 from astune.utils.dynamic_import import dynamic_import
 from typing import Any, Dict, List, Union, Tuple
 
 
-class RunnerWithCallback(BaseAgentRunner):
-
-    def agentscope_runner_hooks(self, obs_window, task_thread_index, workflow_task, env):
-
-        def env_step_fn(action: dict) -> Tuple[str, float, bool, dict]:
-            obs_window['step'][task_thread_index] += 1
-            env_output = env.step(
-                instance_id=workflow_task.task_env_uuid,
-                action=action,
-            )
-            obs = ""
-            assert isinstance(env_output, dict)
-            if ('content' not in env_output["state"]) and ('error' in env_output["state"]):
-                obs = f"[Error from environment: {env_output['error']}]"
-            elif (env_output["state"]['content']==""):
-                obs = 'Warning: the environment does not provide any feedback, please provide valid inpu and try again.'
-            else:
-                obs = env_output["state"]['content']
-            reward = 0
-            info = {}
-            terminate = env_output["is_terminated"]
-            return obs, reward, terminate, info
-
-        def should_interrupt_fn() -> bool:
-            if (obs_window['stop'] is not None) and obs_window['stop'][task_thread_index]: # Check if the thread should stop (because other threads have completed, making this thread useless)
-                return True
-            return False
-
-        def generated_token_callback_fn(token_array):
-            obs_window['token'][task_thread_index] += len(token_array)
-
-        return {
-            "env_step_fn":env_step_fn,
-            "should_interrupt_fn":should_interrupt_fn,
-            "generated_token_callback_fn":generated_token_callback_fn
-        }
-
-
-    def get_judge(self) -> JudgeBase:
-        judge_protocol = self.config.astune.task_judge.judge_protocol
-        return dynamic_import(judge_protocol)(self.config)  # type: ignore
-
-
-class AgentScopeRunner(RunnerWithCallback):
+class AgentScopeRunner(BaseAgentRunner):
 
     def execute(self, env: EnvClient, workflow_task: WorkflowTask) -> BasicContextTracker:
         obs_window = workflow_task.obs_window
@@ -67,12 +30,17 @@ class AgentScopeRunner(RunnerWithCallback):
         task_batch_index = workflow_task.task_batch_index
         task_tag = workflow_task.task_tag
         task_id = workflow_task.task_id
-        workflow_task.gym_env = env
 
         workflow_import = self.config.astune.rollout.agentscope_learn_protocol
         workflow_cls = dynamic_import(workflow_import)
-        agentscope_workflow: Workflow = workflow_cls(name='astune-trinity')
+        agentscope_workflow: Workflow = workflow_cls(name="astune-trinity")
 
+        hooks = self.agentscope_runner_hooks(
+            obs_window=obs_window,
+            task_thread_index=task_thread_index,
+            workflow_task=workflow_task,
+            env=env,
+        )
         context_tracker = MultiAgentContextTracking(
             llm_chat_fn=self.llm_chat_fn,
             tokenizer=self.tokenizer,
@@ -80,12 +48,7 @@ class AgentScopeRunner(RunnerWithCallback):
             task_batch_index=task_batch_index,
             task_tag=task_tag,
             task_id=task_id,
-            **self.agentscope_runner_hooks(
-                obs_window=obs_window,
-                task_thread_index=task_thread_index,
-                workflow_task=workflow_task,
-                env=env
-            )
+            **hooks
         )
         m_tuner = ModelTuner(
             context_tracker=context_tracker,
@@ -94,15 +57,25 @@ class AgentScopeRunner(RunnerWithCallback):
             agentscope_workflow=agentscope_workflow,
             config=self.config,
         )
+        workflow_task.gym_env = self.generate_gym_env(
+            env, workflow_task.task_env_uuid, task_thread_index, obs_window
+        )
 
-        workflow_output: WorkflowOutput = asyncio.run(agentscope_workflow.agentscope_execute(workflow_task, m_tuner))
+        workflow_output: WorkflowOutput = asyncio.run(
+            agentscope_workflow.agentscope_execute(workflow_task, m_tuner)
+        )
         if workflow_output.reward is not None:
-            raw_reward, is_success = workflow_output.reward, workflow_output.is_success
+            raw_reward, is_success = (
+                workflow_output.reward,
+                workflow_output.is_success,
+            )
         else:
             raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
-        workflow_task.gym_env = None    # clear gym env client reference to avoid serialization issue
+        workflow_task.gym_env = None  # clear gym env client reference to avoid serialization issue
 
-        assert not isinstance(raw_reward, list), "ASTune will support step reward in future versions."
+        assert not isinstance(
+            raw_reward, list
+        ), "ASTune will support step reward in future versions."
 
         # register reward
         reward = Reward(
@@ -110,7 +83,7 @@ class AgentScopeRunner(RunnerWithCallback):
             raw_step_reward=None,
             success_rate=1.0 if is_success else 0.0,
             madness=0,
-            description=""
+            description="",
         )
         context_tracker.process_reward(reward)
         # generate token before merging

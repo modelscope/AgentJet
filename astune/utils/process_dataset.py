@@ -25,8 +25,7 @@ from typing import List, Optional, Union, Dict, Any
 
 
 def create_rl_sampler(
-    data_config: DictConfig,
-    dataset: TorchDataset
+    data_config: DictConfig, dataset: TorchDataset
 ) -> Union[RandomSampler, SequentialSampler, AbstractSampler]:
     """Create a sampler for the dataset.
 

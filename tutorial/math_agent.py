@@ -3,6 +3,7 @@ from agentscope.message import Msg
 from pydantic import BaseModel, Field
 from loguru import logger
 
+
 def extract_final_answer(result) -> str:
     """Extract the final answer from the agent's response."""
     try:
@@ -22,7 +23,6 @@ def extract_final_answer(result) -> str:
         return str(result)
 
 
-
 class FinalResult(BaseModel):
     result: str = Field(
         description="Your solution of the given math problem. Put your final answer in boxed format, e.g., \\boxed{42}"
@@ -37,12 +37,13 @@ You should return your final answer within \\boxed{{}}.
 """
 
 
-
 class ExampleMathLearn(Workflow):
 
     name: str = "math_agent_workflow"
 
-    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(
+        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
+    ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory

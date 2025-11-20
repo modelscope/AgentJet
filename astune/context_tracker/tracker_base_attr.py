@@ -7,19 +7,25 @@ from astune.schema.trajectory import Reward
 from loguru import logger
 
 
-def replace_token_ids(place_holder, replace_with, begin, end, raw_logprob) -> Tuple[List[int], List[int]]:
+def replace_token_ids(
+    place_holder, replace_with, begin, end, raw_logprob
+) -> Tuple[List[int], List[int]]:
     _begin_index = find_sublist_indices(place_holder, begin) + len(begin)
     _end_index = find_sublist_indices(place_holder, end, reverse=True)
 
-    if replace_with[-len(end):] == end: # remove end token
-        replace_with = replace_with[:-len(end)]
-        raw_logprob = raw_logprob[:-len(end)]
-    if replace_with[:len(begin)] == begin: # remove begin token
-        replace_with = replace_with[len(begin):]
-        raw_logprob = raw_logprob[len(begin):]
+    if replace_with[-len(end) :] == end:  # remove end token
+        replace_with = replace_with[: -len(end)]
+        raw_logprob = raw_logprob[: -len(end)]
+    if replace_with[: len(begin)] == begin:  # remove begin token
+        replace_with = replace_with[len(begin) :]
+        raw_logprob = raw_logprob[len(begin) :]
 
     final = place_holder[:_begin_index] + replace_with + place_holder[_end_index:]
-    final_logprob = [INVALID_LOG_PROB_VALUE] * _begin_index + raw_logprob + [INVALID_LOG_PROB_VALUE] * (len(place_holder) - _end_index)
+    final_logprob = (
+        [INVALID_LOG_PROB_VALUE] * _begin_index
+        + raw_logprob
+        + [INVALID_LOG_PROB_VALUE] * (len(place_holder) - _end_index)
+    )
     return final, final_logprob
 
 
@@ -46,8 +52,11 @@ class TrackerAttr(object):
         self.reward_structure: Union[Reward, None] = None
         self.context_time_cost = 0
         self.tag = ""
-        self.current_batch_success_rate:float = -1.0
+        self.current_batch_success_rate: float = -1.0
         self.already_mad_flag = False
         self.round_cnt = 0
 
-        assert self.config.astune.data.max_prompt_length + self.config.astune.data.max_response_length <= max_model_len
+        assert (
+            self.config.astune.data.max_prompt_length + self.config.astune.data.max_response_length
+            <= max_model_len
+        )
