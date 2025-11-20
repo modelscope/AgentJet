@@ -39,7 +39,6 @@ class AgentScopeRunner(BaseAgentRunner):
             obs_window=obs_window,
             task_thread_index=task_thread_index,
             workflow_task=workflow_task,
-            env=env,
         )
         context_tracker = MultiAgentContextTracking(
             llm_chat_fn=self.llm_chat_fn,

@@ -24,10 +24,11 @@ class AgentRunner(BaseAgentRunner):
         )
         self.step_reward = []
 
-    def execute(self, env: EnvClient, workflow_task) -> BasicContextTracker:
+    def execute(self, workflow_task) -> BasicContextTracker:
         obs_window = workflow_task.obs_window
         task_thread_index = workflow_task.task_thread_index
         init_messages = workflow_task.init_messages
+        env = workflow_task.gym_env
 
         # 1. 🚀 Initialize messages
         if self.config.astune.context_tracker.context_tracker_type == "linear":
