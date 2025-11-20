@@ -10,8 +10,10 @@ from astune.schema.task import Task
 @pytest.fixture
 def config(tmp_path: Path) -> dict:
     return {
-        "base_url": "http://example.com",
-        "train_output_path": str(tmp_path / "tasks.jsonl"),
+        "astune":{
+            "base_url": ".trash/database.sqlite",
+            "train_output_path": str(tmp_path / "tasks.jsonl"),
+        }
     }
 
 

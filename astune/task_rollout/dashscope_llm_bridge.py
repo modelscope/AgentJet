@@ -6,7 +6,7 @@ from openai import OpenAI
 from loguru import logger
 
 def construct_alien_llm_chat_fn(alien_llm_model, alien_llm_response_length):
-    def alien_llm_chat_fn(messages, request_id=""):
+    def alien_llm_chat_fn(messages, sampling_params_override={}, request_id=""):
         max_try = 4
         alien_model_name = alien_llm_model
         alien_model_response_length = alien_llm_response_length
@@ -47,8 +47,9 @@ def construct_alien_llm_chat_fn(alien_llm_model, alien_llm_response_length):
                 sampling_params = dict(
                     n=1,
                     max_completion_tokens=alien_model_response_length,
+                    temperature=0.0,
                 )
-                sampling_params["temperature"] = 0
+                sampling_params.update(sampling_params_override)
                 completion = client.chat.completions.create(
                     model=alien_model_name,
                     messages=messages,

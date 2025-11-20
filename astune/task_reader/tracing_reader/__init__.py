@@ -34,6 +34,7 @@ class TracingReader(TaskReaderBase):
     ) -> None:
         super().__init__(config)
         # config patch
+        print('*********', config, '**********')
         self.config = config.astune.tracing
 
         self._connector = LocalSqliteConnectorV1(self.config.get("base_url"))
