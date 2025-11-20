@@ -69,8 +69,8 @@ class AgentScopeRunner(RunnerWithCallback):
         task_id = task_core_arg.task_id
 
         workflow_import = self.config.astune.rollout.agentscope_learn_protocol
-        workflow_cls = dynamic_import(workflow_import)()
-        agentscope_workflow: Workflow = workflow_cls(trainer='astune-trinity', AgentRunner_name='appworld')
+        workflow_cls = dynamic_import(workflow_import)
+        agentscope_workflow: Workflow = workflow_cls(name='astune-trinity')
 
         context_tracker = MultiAgentContextTracking(
             llm_chat_fn=self.llm_chat_fn,
