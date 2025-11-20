@@ -28,6 +28,7 @@ class ResourceKeeper(object):
             self.env_type: str = env_type
         else:
             self.env = None
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:

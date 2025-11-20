@@ -1,6 +1,6 @@
 import re
 from typing import Any, Dict, List, Union
-from .llm_client import DashScopeClient
+from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 
 
 class Fn:
@@ -12,7 +12,7 @@ class Fn:
     def __init__(self,
                  name: str,
                  description: str,
-                 llm_client: DashScopeClient,
+                 llm_client: Any,
                  input_schema: Dict[str, str],
                  output_schema: Dict[str, str],
                  sampling_params: Dict[str, Any] = {}):
