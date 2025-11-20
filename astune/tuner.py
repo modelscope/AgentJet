@@ -21,6 +21,12 @@ class Agent2Proxy(DashScopeChatModel):
         self.name = name
         self.tuner = tuner
         self.default_model = default_model
+        super().__init__(
+            model_name='astune',
+            api_key='dummy-api-key',
+            stream=False,
+        )
+
 
     def __call__(self, *args, **kwargs):
         if self.tuner.is_trainable(self.name):
@@ -49,10 +55,11 @@ class ModelTuner(DashScopeChatModel):
         self.context_tracker = context_tracker
         self.agentscope_workflow = agentscope_workflow
         self.target2proxy_registry: dict[str, Agent2Proxy] = {}
-        self.llm_proxy = LlmProxyForAgentScope(context_tracker=context_tracker, **kwargs)
+        self.llm_proxy = LlmProxyForAgentScope(context_tracker=context_tracker, config=config, **kwargs)
         super().__init__(
             model_name='astune',
-            api_key='dummy-api-key'
+            api_key='dummy-api-key',
+            stream=False,
         )
 
 

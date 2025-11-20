@@ -21,10 +21,10 @@ class AgentRunner(BaseAgentRunner):
         self.step_reward = []
 
 
-    def execute(self, env: EnvClient, task_core_arg) -> BasicContextTracker:
-        obs_window = task_core_arg.obs_window
-        task_thread_index = task_core_arg.task_thread_index
-        init_messages = task_core_arg.init_messages
+    def execute(self, env: EnvClient, workflow_task) -> BasicContextTracker:
+        obs_window = workflow_task.obs_window
+        task_thread_index = workflow_task.task_thread_index
+        init_messages = workflow_task.init_messages
 
         # 1. 🚀 Initialize messages
         if self.config.astune.context_tracker.context_tracker_type == "linear":
@@ -78,7 +78,7 @@ class AgentRunner(BaseAgentRunner):
             # 7. 🌍 world interaction
             try:
                 env_output = env.step(
-                    instance_id=task_core_arg.task_env_uuid,
+                    instance_id=workflow_task.task_env_uuid,
                     action={"content": self.cmt.prepare_world_interaction(), "role": "assistant"},
                     params={"step_skip_action": self.config.astune.rollout.step_skip_action}
                 )
@@ -117,7 +117,7 @@ class AgentRunner(BaseAgentRunner):
         self.cmt.ensure_terminate_rollout_stage()
         obs_window['step'][task_thread_index] = -1
         raw_reward = 0
-        raw_reward = env.evaluate(task_core_arg.task_env_uuid, params={"sparse": False})
+        raw_reward = env.evaluate(workflow_task.task_env_uuid, params={"sparse": False})
         if raw_reward >= 1:
             success_rate = 1.0
         else:
