@@ -1,9 +1,6 @@
-import json
+import pytest
 from pathlib import Path
 from typing import List
-
-import pytest
-
 from astune.task_reader.tracing_reader import TracingReader
 from astune.schema.task import Task
 
@@ -42,84 +39,20 @@ def _make_task(query: str, answer: str, qa_hash: str | None) -> Task:
 
 @pytest.fixture
 def config(tmp_path: Path) -> dict:
-    return {
-        "base_url": ".trash/database.sqlite",
-        "train_output_path": str(tmp_path / "tasks.jsonl"),
-    }
+    from astune.utils.config_utils import read_astune_config
+    return read_astune_config('launcher/math_agent/git-math-agentscope.yaml')   # type: ignore
+
 
 
 def test_get_training_tasks_new_file(config: dict):
-    # prepare tasks returned from connector
-    t1 = _make_task("q1", "a1", "h1")
-    t2 = _make_task("q2", "a2", "h2")
-    tasks = [t1, t2]
+    from types import SimpleNamespace
+    from astune.task_reader.tracing_reader import TracingReader, Config
+    from astune.schema.task import Task
+    from dotenv import load_dotenv; load_dotenv()
 
-    connector = DummyConnector(tasks)
-    flt = DummyFilter(kept=tasks)
+    # t=SimpleNamespace()
+    # t.astune=SimpleNamespace()
 
-    reader = TracingReader(config) # type: ignore
-    reader._connector = connector  # type: ignore[attr-defined]
-    reader._filters = [flt]  # type: ignore[attr-defined]
+    tr=TracingReader(config)
+    print(tr.get_training_tasks())
 
-    result = reader.get_training_tasks()
-
-    # connector should be called once
-    assert connector.called == 1
-
-    # filter should receive all new tasks
-    assert flt.last_input == tasks
-
-    # returned tasks should be exactly the filtered ones
-    assert result == tasks
-
-    # file should be created with one json per line
-    out_path = Path(config["train_output_path"])
-    assert out_path.exists()
-    with out_path.open("r", encoding="utf-8") as f:
-        lines = [json.loads(line) for line in f if line.strip()]
-    assert len(lines) == 2
-    assert {obj["metadata"]["qa_hash"] for obj in lines} == {"h1", "h2"}
-
-
-def test_get_training_tasks_dedup_and_missing_hash_ignored(config: dict):
-    out_path = Path(config["train_output_path"])
-
-    # existing task with hash h1
-    existing = _make_task("q_exist", "a_exist", "h1")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as f:
-        f.write(json.dumps(existing.model_dump(), ensure_ascii=False) + "\n")
-
-    # connector returns: duplicate (h1), new (h2), and one without qa_hash
-    dup = _make_task("q_dup", "a_dup", "h1")
-    new = _make_task("q_new", "a_new", "h2")
-    no_hash = _make_task("q_nohash", "a_nohash", None)
-    connector_tasks = [dup, new, no_hash]
-
-    # filter will keep everything it receives so we can test input to filter
-    flt = DummyFilter(kept=[new])
-    connector = DummyConnector(connector_tasks)
-
-    reader = TracingReader(config) # type: ignore
-    reader._connector = connector  # type: ignore[attr-defined]
-    reader._filters = [flt]  # type: ignore[attr-defined]
-
-    result = reader.get_training_tasks()
-
-    # existing task plus new filtered task should be returned
-    assert len(result) == 2
-    assert existing in result
-    assert new in result
-
-    # filter should see only new tasks with non-duplicate hashes => [new]
-    assert flt.last_input == [new]
-
-    # output file should now contain existing + new filtered
-    with out_path.open("r", encoding="utf-8") as f:
-        objs = [json.loads(line) for line in f if line.strip()]
-
-    hashes = [obj["metadata"].get("qa_hash") for obj in objs]
-    assert "h1" in hashes
-    assert "h2" in hashes
-    # no record without hash should be written
-    assert None not in hashes

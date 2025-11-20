@@ -1,6 +1,5 @@
 import re
 from typing import Any, Dict, List, Union
-from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 
 
 class Fn:
@@ -12,7 +11,7 @@ class Fn:
     def __init__(self,
                  name: str,
                  description: str,
-                 llm_client: Any,
+                 alien_llm_chat_fn: Any,
                  input_schema: Dict[str, str],
                  output_schema: Dict[str, str],
                  sampling_params: Dict[str, Any] = {}):
@@ -29,7 +28,7 @@ class Fn:
         """
         self.name = name
         self.description = description
-        self.llm_client = llm_client
+        self.alien_llm_chat_fn = alien_llm_chat_fn
         self.input_schema = input_schema
         self.output_schema = output_schema
         self.sampling_params = sampling_params or {}
@@ -186,7 +185,7 @@ class Fn:
         ]
 
         # Call LLM
-        response = self.llm_client.chat(messages, self.sampling_params)
+        response = self.alien_llm_chat_fn(messages, self.sampling_params)
 
         # Parse and return result
-        return self._parse_markdown_kv(response)
+        return self._parse_markdown_kv(response["content"])
