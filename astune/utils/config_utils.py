@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 import yaml
 from loguru import logger
@@ -164,3 +165,79 @@ def expand_astune_hierarchical_config(config, write_to=None):
             yaml.dump(config_final, file)
 
     return config_final
+
+
+
+def prepare_experiment_config(yaml_path, exp_dir, backbone):
+    """
+    Prepare experiment configuration by reading YAML, setting up backup directories,
+    and copying necessary files for the experiment.
+
+    Args:
+        yaml_path: Path to the YAML configuration file
+        exp_dir: Directory where experiment artifacts and backups should be stored
+        backbone: Backbone identifier that controls config munging
+
+    Returns:
+        tuple: (yaml_backup_dst, exe_exp_base, exp_name, config_final)
+    """
+    assert yaml_path.endswith(".yaml"), "Configuration file must be a YAML file"
+    exp_base = os.path.dirname(yaml_path)
+
+    if not os.path.exists(exp_base):
+        raise FileNotFoundError(f"Configuration file not found: {exp_base}")
+
+    ## 0. read yaml & get experiment_name
+    with open(yaml_path, "r") as file:
+        config = yaml.safe_load(file)
+    exp_name = config.get("astune").get("experiment_name")
+    if exp_name is None or exp_name == "read_yaml_name":
+        if exp_name is not None:
+            exp_name = exp_name.replace("|", "-")
+        exp_name = os.path.basename(yaml_path).replace(".yaml", "")
+    else:
+        exp_name = exp_name.replace("|", "-")
+
+    backup_dir = os.path.join(exp_dir, exp_name, "backup")
+    yaml_backup_dst = os.path.join(exp_dir, exp_name, "yaml_backup.yaml")
+    exe_exp_base = os.path.dirname(yaml_backup_dst)
+    logger.info("----------------------------------------")
+    logger.info(f"Experiment Name: {exp_name}")
+    logger.info(f"Experiment Backup Dir: {backup_dir}")
+    logger.info(f"Experiment Yaml Dir: {yaml_backup_dst}")
+    logger.info("----------------------------------------")
+
+    ## 1. check exp_base/backup exist
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+    else:
+        total_seconds = 5
+        for i in range(total_seconds):
+            logger.warning(
+                f"Warning: backup directory already exists, we will automatically ignore this after {total_seconds - i} seconds..."
+            )
+            time.sleep(1)
+
+    ## 2. copy files to backup
+    BACK_TARGETS = os.environ.get("BACK_TARGETS", "").split(",")
+    BACK_TARGETS = [p for p in BACK_TARGETS if os.path.exists(p)]
+
+    for backup_target in BACK_TARGETS:
+        logger.info(
+            f"Copying {backup_target} to {os.path.join(backup_dir, os.path.basename(backup_target))}"
+        )
+        shutil.copytree(
+            backup_target,
+            os.path.join(backup_dir, os.path.basename(backup_target)),
+            dirs_exist_ok=True,
+        )
+
+    ## 3. copy yaml to backup
+    yaml_backup_src = yaml_path
+    shutil.copyfile(yaml_backup_src, yaml_backup_dst)
+
+    ## 4. edit new yaml
+    config = read_astune_hierarchical_config(yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst)
+    config_final = expand_astune_hierarchical_config(config, write_to=yaml_backup_dst)
+
+    return yaml_backup_dst, exe_exp_base, exp_name, config_final
