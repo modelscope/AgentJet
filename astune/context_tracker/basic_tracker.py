@@ -13,7 +13,7 @@ from beast_logger import register_logger, print_dict, print_listofdict, print_ne
 
 class BasicContextTracker(TrackerAttr):
     """
-    A linear context manager template that handles the conversation flow between LLM and environment.
+    A linear context tracker template that handles the conversation flow between LLM and environment.
     This class manages the context window, tokenization, and message history in a linear fashion.
 
     Attributes:

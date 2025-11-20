@@ -24,6 +24,8 @@ astune:
 
   task_judge:
     judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
 
   model:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -70,19 +72,19 @@ astune:
       do_sample: False
       num_repeat: 1
 
-  context_tracker: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
+  context_tracker: # context tracker protocol is used ONLY when `use_agentscope_protocol=False`
     context_tracker_type: "linear"
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
-    auto_context_cm:
-      train_sp_action: False
-      token_num_trigger_clip: 8000
-    sliding_window_cm:
-      enable_llm_memory_extraction: False
-    linear_think_cm:
-      remove_think_before_submit_as_action: False
-      extract_box_before_submit_as_action: False
-      train_history_infer_token: True
+    # auto_context_cm:
+    #   train_sp_action: False
+    #   token_num_trigger_clip: 8000
+    # sliding_window_cm:
+    #   enable_llm_memory_extraction: False
+    # linear_think_cm:
+    #   remove_think_before_submit_as_action: False
+    #   extract_box_before_submit_as_action: False
+    #   train_history_infer_token: True
 
   debug:
     debug_max_parallel: 16

@@ -42,7 +42,10 @@ class MathAnswerAndLlmAsJudge(JudgeBase):
         task_core_arg = judge_input_dictionary['task_core_arg']
         reference_answer = task_core_arg.task.metadata['answer']
 
-        alien_llm_chat_fn = construct_alien_llm_chat_fn(self.config)
+        alien_llm_chat_fn = construct_alien_llm_chat_fn(
+            alien_llm_model = self.config.astune.task_judge.alien_llm_model,
+            alien_llm_response_length = self.config.astune.task_judge.alien_llm_response_length,
+        )
         messages = [
             {
                 'role':'system',
