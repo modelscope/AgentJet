@@ -42,8 +42,8 @@ class ModelTuner(DashScopeChatModel):
     def __init__(
             self,
             config,
-            context_tracker:MultiAgentContextTracking,
-            agentscope_workflow: Workflow,
+            context_tracker: MultiAgentContextTracking,
+            agentscope_workflow: "Workflow",
             **kwargs
         ) -> None:
         self.config = config
