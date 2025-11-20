@@ -1,17 +1,17 @@
 from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 class ExampleAgentScopeLearnProtocol(Workflow):
 
     trainer: str = Field(default="astune-trinity")
 
-    async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
 
-        init_messages = task.task.init_messages
+        init_messages = workflow_task.task.init_messages
         if len(init_messages) >= 2: first_msg, init_messages = init_messages[0], init_messages[1:]
         else: first_msg = {"content": "You're a helpful assistant."}
         interaction_message = []
@@ -28,14 +28,13 @@ class ExampleAgentScopeLearnProtocol(Workflow):
             print_hint_msg=False,
         )
         agent.set_console_output_enabled(False)
-
-
+        env = workflow_task.gym_env
         step = 0
         for step in range(model_tuner.config.astune.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol
-            obs, _, terminate, _ = env.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
+            obs, _, terminate, _ = env.step(action={"content": reply_message.content, "role": "assistant"})
             # generate new message from env output
             interaction_message = Msg(name="env", content=obs, role="user")
             # is terminated?

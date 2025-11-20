@@ -67,6 +67,7 @@ class AgentScopeRunner(RunnerWithCallback):
         task_batch_index = workflow_task.task_batch_index
         task_tag = workflow_task.task_tag
         task_id = workflow_task.task_id
+        workflow_task.gym_env = env
 
         workflow_import = self.config.astune.rollout.agentscope_learn_protocol
         workflow_cls = dynamic_import(workflow_import)
@@ -99,6 +100,7 @@ class AgentScopeRunner(RunnerWithCallback):
             raw_reward, is_success = workflow_output.reward, workflow_output.is_success
         else:
             raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
+        workflow_task.gym_env = None    # clear gym env client reference to avoid serialization issue
 
         assert not isinstance(raw_reward, list), "ASTune will support step reward in future versions."
 
