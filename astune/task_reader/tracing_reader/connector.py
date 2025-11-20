@@ -124,7 +124,7 @@ def parse_msg_line(line: str):
     return {"role": role, "content": content}
 
 
-class LocalSqliteConnector:
+class LocalSqliteConnectorV1:
     """
     A connector that loads tasks from a SQLite database file.
 
@@ -182,6 +182,65 @@ class LocalSqliteConnector:
             tasks.append(task)
 
         return tasks
+    
+
+class LocalSqliteConnectorV2:
+    """
+    A connector that loads tasks from a SQLite database file in new format.
+    
+    https://github.com/agentscope-ai/agentscope-studio/pull/40/files#diff-12c7e27505a5171e080133021430d8cae2f4929ce2f4c93bd4ea5a389094224a
+
+    Args:
+        db_path (str): Path to the SQLite database file.
+
+    Attributes:
+        _db_path (str): Path to the SQLite database file.
+
+    Methods:
+        load_tasks_from_conversation (self) -> List[Task]:
+            Load tasks from a conversation in the SQLite database file.
+    """
+
+    def __init__(self, db_path: str) -> None:
+        self._db_path = db_path
+        assert os.path.exists(
+            self._db_path), f"DB file {self._db_path} does not exist"
+
+    def load_tasks_from_conversation(self) -> List[Task]:
+        conn = sqlite3.connect(self._db_path)
+        cursor = conn.cursor()
+        rows = cursor.execute(
+            "SELECT attributes FROM span_table where name='ReActAgent.reply'").fetchall()
+
+        qa = []
+        for row in rows:
+            js = json.loads(row[0])
+            inp = json.loads(js["gen_ai"]["input"]["messages"])
+            out = json.loads(js["gen_ai"]["output"]["messages"])
+            if "parts" in inp and "parts" in out:
+                qa.append({
+                    "query": inp["parts"][0]["content"],
+                    "answer": out["parts"][0]["content"],
+                })
+        
+        conn.close()
+
+        tasks: List[Task] = []
+        for item in qa:
+            raw = (item["query"] or "") + "\n" + (item["answer"] or "")
+            qa_hash = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+            task = Task(
+                main_query=item["query"],
+                task_id="no_id",
+                env_type="no_env",
+                metadata={
+                    "answer": item["answer"],
+                    "qa_hash": qa_hash,
+                },
+            )
+            tasks.append(task)
+
+        return tasks
 
 
-__all__ = ["LocalSqliteConnector", "PhoenixConnector"]
+__all__ = ["LocalSqliteConnectorV1", "LocalSqliteConnectorV2", "PhoenixConnector"]
