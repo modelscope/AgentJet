@@ -42,13 +42,13 @@ class ExampleMathLearn(Workflow):
 
     name: str = "math_agent_workflow"
 
-    async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
         from agentscope.tool import Toolkit, execute_python_code
 
-        query = task.task.main_query
+        query = workflow_task.task.main_query
         self.toolkit = Toolkit()
         self.toolkit.register_tool_function(execute_python_code)
         self.agent = ReActAgent(
