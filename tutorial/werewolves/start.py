@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa: E501
+
 """The main entry point for the werewolf game."""
-from textwrap import dedent
+
 import numpy as np
-from loguru import logger
 import dotenv; dotenv.load_dotenv()
+from textwrap import dedent
+from loguru import logger
 from tutorial.werewolves.game import werewolves_game
 from agentscope.agent import ReActAgent
-from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
-from agentscope.model import DashScopeChatModel, OpenAIChatModel
+from agentscope.formatter import OpenAIMultiAgentFormatter
+from agentscope.model import OpenAIChatModel
 from pydantic import BaseModel, Field
 from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 
@@ -76,7 +78,7 @@ class ExampleWerewolves(Workflow):
     trainer: str = Field(default="astune-trinity")
     trainable_targets: list = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
 
-    async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
 
         # ensure trainable targets is legal
         if "werewolf" in self.trainable_targets:
@@ -86,7 +88,7 @@ class ExampleWerewolves(Workflow):
 
         # make and shuffle roles (fix random seed for reproducibility)
         roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
-        task_id = task.task.metadata['random_number']
+        task_id = workflow_task.task.metadata['random_number']
         np.random.seed(int(task_id))
         np.random.shuffle(roles)
 
