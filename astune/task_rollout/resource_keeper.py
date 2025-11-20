@@ -4,13 +4,14 @@ from omegaconf import DictConfig
 from recipe.sppo import config
 from typing import Any, Dict, Tuple, Union, Callable
 from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
+from astune.schema.task import Task, WorkflowTask
 
 class ResourceKeeper(object):
     """
     TODO: integrate with A.S. Runtime
     """
 
-    def __init__(self, workflow_task, config: DictConfig):
+    def __init__(self, workflow_task: WorkflowTask, config: DictConfig):
         self.workflow_task = workflow_task
         self.config = config
 
@@ -50,7 +51,7 @@ class ResourceKeeper(object):
             WorkflowTask: The updated workflow task with initialized environment and messages.
         """
         init_messages = self._initialize_environment_and_messages()
-        self.workflow_task.init_messages = init_messages
+        self.workflow_task.task.init_messages = init_messages
         self.workflow_task.gym_env = self.generate_gym_env(
             self.env,
             self.workflow_task.task_env_uuid,
