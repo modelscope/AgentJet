@@ -1,5 +1,7 @@
 import os
 import pty
+import base64
+
 
 
 def run_command_with_pty(cmd, working_dir, env_dict):
@@ -59,9 +61,6 @@ def run_command_with_pty(cmd, working_dir, env_dict):
         os.environ.update(original_env)
 
 
-import base64
-
-
 # Convert string to Base64
 def string_to_base64(s):
     # First, encode the string to bytes
@@ -95,6 +94,26 @@ def pty_wrapper(
 def pty_wrapper_final(human_cmd, dir, env_dict):
     print("[pty]: ", human_cmd)
     pty_wrapper(["/bin/bash", "-c", human_cmd], dir, env_dict)
+
+
+def pty_launch(service_name: str, success_std_string="Starting server on"):
+    from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+    service_path = os.environ.get(f"{service_name.upper()}_PATH")
+    service_script = os.environ.get(f"{service_name.upper()}_SCRIPT")
+    if service_path is None or service_script is None:
+        raise ValueError(f"Environment variables for {service_name} not properly set.")
+    companion = LaunchCommandWhenAbsent(
+        full_argument_list=[service_script],
+        dir=service_path,
+        tag="appworld_env_service",
+        use_pty=True,
+    )
+    companion.launch(
+        launch_wait_time=1800,
+        success_std_string=success_std_string,
+    )
+
+
 
 
 if __name__ == "__main__":

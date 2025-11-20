@@ -115,19 +115,12 @@ class BaseParallelEnv:
 
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
-                Runner = (
-                    AgentScopeRunner
-                    if self.config.astune.rollout.use_agentscope_protocol
-                    else AgentRunner
-                )
-                agent_runner: BaseAgentRunner = Runner(
-                    llm_chat_fn=llm_chat_fn,
-                    tokenizer=self.tokenizer,
-                    config=self.config,
-                )
+                workflow_task = resource_keeper.prepare()
+                Runner = AgentScopeRunner if self.config.astune.rollout.use_agentscope_protocol else AgentRunner
+                agent_runner: AgentScopeRunner = Runner(llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config) # type:ignore
                 cmt = agent_runner.execute(
-                    env=resource_keeper.env,  # type:ignore || self.env: Union[EnvClient, EnvClientNg]
                     workflow_task=workflow_task,
+                    env=resource_keeper.env,  # type:ignore || self.env: Union[EnvClient, EnvClientNg]
                 )
             except Exception as e:
                 logger.bind(exception=True).exception(
