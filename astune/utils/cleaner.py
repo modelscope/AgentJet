@@ -7,7 +7,7 @@ import os
 import shlex
 
 
-def _fast_kill_by_keyword_bash(
+def fast_kill_by_keyword_bash(
     keyword: str, exclude_substrings=["vscode"], grace_seconds: float = 1.0
 ):
     """Use bash pipelines to kill processes matching keyword quickly.

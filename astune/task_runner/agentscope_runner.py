@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Union, Tuple
 
 class AgentScopeRunner(BaseAgentRunner):
 
-    def execute(self, env: EnvClient, workflow_task: WorkflowTask) -> BasicContextTracker:
+    def execute(self, workflow_task: WorkflowTask) -> BasicContextTracker:
         obs_window = workflow_task.obs_window
         task_thread_index = workflow_task.task_thread_index
         task_batch_index = workflow_task.task_batch_index
@@ -56,9 +56,6 @@ class AgentScopeRunner(BaseAgentRunner):
             tokenizer=self.tokenizer,
             agentscope_workflow=agentscope_workflow,
             config=self.config,
-        )
-        workflow_task.gym_env = self.generate_gym_env(
-            env, workflow_task.task_env_uuid, task_thread_index, obs_window
         )
 
         workflow_output: WorkflowOutput = asyncio.run(
