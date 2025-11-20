@@ -6,20 +6,23 @@ from loguru import logger
 from astune.utils.env_service_client.env_client import EnvClient
 from astune.utils.utils import convert_tool_to_user_message
 from astune.schema.trajectory import Reward
-from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage
+from astune.context_tracker.basic_tracker import (
+    BasicContextTracker,
+    ExtendedMessage,
+)
 from astune.task_runner import BaseAgentRunner
 from typing import Any, Dict, List, Union, Callable
 from beast_logger import print_listofdict
-
 
 
 class AgentRunner(BaseAgentRunner):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.use_step_reward_from_env: bool = self.config.astune.rollout.get("use_step_reward_from_env", False)
+        self.use_step_reward_from_env: bool = self.config.astune.rollout.get(
+            "use_step_reward_from_env", False
+        )
         self.step_reward = []
-
 
     def execute(self, env: EnvClient, workflow_task) -> BasicContextTracker:
         obs_window = workflow_task.obs_window
@@ -36,9 +39,13 @@ class AgentRunner(BaseAgentRunner):
         # elif self.config.astune.context_tracker.context_tracker_type == "sliding_window":
         #     self.cmt = SlidingWindowCMT(self.config, self.tokenizer, self.llm_chat_fn)
         else:
-            raise ValueError(f"Unsupported context template: {self.config.astune.context_tracker.context_tracker_type}")
+            raise ValueError(
+                f"Unsupported context template: {self.config.astune.context_tracker.context_tracker_type}"
+            )
 
-        assert not (self.config.astune.rollout.force_think and self.config.astune.rollout.force_no_think), "Cannot force both think and no_think"
+        assert not (
+            self.config.astune.rollout.force_think and self.config.astune.rollout.force_no_think
+        ), "Cannot force both think and no_think"
         add_nothink = self.config.astune.rollout.force_no_think
 
         self.cmt.save_init_input(init_messages, add_nothink)
@@ -46,8 +53,10 @@ class AgentRunner(BaseAgentRunner):
         request_id: str = ""
         for act_step in range(self.max_steps):
             # 2. 🔄 Update thread progress
-            obs_window['step'][task_thread_index] = act_step
-            if (obs_window['stop'] is not None) and obs_window['stop'][task_thread_index]: # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
+            obs_window["step"][task_thread_index] = act_step
+            if (obs_window["stop"] is not None) and obs_window["stop"][
+                task_thread_index
+            ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
                 self.cmt.discarded = True
                 break
 
@@ -55,35 +64,48 @@ class AgentRunner(BaseAgentRunner):
             try:
                 step_input_message_arr = self.cmt.prepare_next_llm_context()
             except Exception as e:
-                print_listofdict(self.cmt.to_role_content(self.cmt.full_context), mod='exception', header="Before Crash")
+                print_listofdict(
+                    self.cmt.to_role_content(self.cmt.full_context),
+                    mod="exception",
+                    header="Before Crash",
+                )
                 raise e
 
             # 4. ⚠️ check token overflow
             is_safe, info = self.cmt.check_context_token_num_safe(step_input_message_arr)
             if not is_safe:
-                logger.warning(f"[{info}] detected at step {act_step}. Current token count exceeds the limit.")
+                logger.warning(
+                    f"[{info}] detected at step {act_step}. Current token count exceeds the limit."
+                )
                 self.cmt.is_terminated = True
                 break
 
             # 5. 🤖 call llm
             llm_output = self.llm_chat_fn(step_input_message_arr, request_id=request_id)
-            if (obs_window['stop'] is not None) and obs_window['stop'][task_thread_index]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
+            if (obs_window["stop"] is not None) and obs_window["stop"][
+                task_thread_index
+            ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
                 self.cmt.discarded = True
                 break
 
             # 6. 💾 save llm output
             self.cmt.save_llm_output(llm_output, input_msg_ref=step_input_message_arr)
-            obs_window['token'][task_thread_index] += self.cmt.generated_token_cnt
+            obs_window["token"][task_thread_index] += self.cmt.generated_token_cnt
 
             # 7. 🌍 world interaction
             try:
                 env_output = env.step(
                     instance_id=workflow_task.task_env_uuid,
-                    action={"content": self.cmt.prepare_world_interaction(), "role": "assistant"},
-                    params={"step_skip_action": self.config.astune.rollout.step_skip_action}
+                    action={
+                        "content": self.cmt.prepare_world_interaction(),
+                        "role": "assistant",
+                    },
+                    params={"step_skip_action": self.config.astune.rollout.step_skip_action},
                 )
                 if env_output["state"]["role"] == "tool":
-                    env_output["state"] = convert_tool_to_user_message(env_output["state"], self.tokenizer, format="qwen")
+                    env_output["state"] = convert_tool_to_user_message(
+                        env_output["state"], self.tokenizer, format="qwen"
+                    )
                 # if self.console_debug_mode:
                 #     if isinstance(env_output["state"], dict):
                 #         print_listofdict(
@@ -103,8 +125,8 @@ class AgentRunner(BaseAgentRunner):
 
             # 8. 📥 save environment output
             state = env_output["state"]
-            state.pop('tool_calls', None) # type: ignore
-            self.cmt.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink) # type: ignore
+            state.pop("tool_calls", None)  # type: ignore
+            self.cmt.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink)  # type: ignore
             self.cmt.round_cnt += 1
             if self.use_step_reward_from_env:
                 self.step_reward += [env_output["reward"]]
@@ -115,7 +137,7 @@ class AgentRunner(BaseAgentRunner):
                 break
 
         self.cmt.ensure_terminate_rollout_stage()
-        obs_window['step'][task_thread_index] = -1
+        obs_window["step"][task_thread_index] = -1
         raw_reward = 0
         raw_reward = env.evaluate(workflow_task.task_env_uuid, params={"sparse": False})
         if raw_reward >= 1:
@@ -131,22 +153,22 @@ class AgentRunner(BaseAgentRunner):
             if self.config.astune.rollout.binary_reward:
                 raw_reward = success_rate
             self.cmt.process_reward(
-                reward_structure = Reward(
+                reward_structure=Reward(
                     raw_reward=raw_reward,
                     raw_step_reward=None,
                     success_rate=success_rate,
                     madness=0,
-                    description="Success=1, Failure=0"
+                    description="Success=1, Failure=0",
                 )
             )
         else:
             self.cmt.process_reward(
-                reward_structure = Reward(
+                reward_structure=Reward(
                     raw_reward=raw_reward,
                     raw_step_reward=self.step_reward,
                     success_rate=success_rate,
                     madness=0,
-                    description="Step Reward from Environment"
+                    description="Step Reward from Environment",
                 )
             )
 

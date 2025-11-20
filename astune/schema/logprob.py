@@ -4,6 +4,7 @@
 # from openai.types.chat.chat_completion import ChatCompletion
 # from verl import DataProto
 
+
 class TokenAndProb:
     def __init__(self, token_id, logprob, decoded_string):
         self.token_id = token_id

@@ -7,8 +7,6 @@ from astune.schema.task import Task
 from astune.task_reader.task_reader_base import TaskReaderBase
 
 
-
-
 class TaskReaderJsonl(TaskReaderBase):
     def __init__(self, config):
         super().__init__(config)
@@ -25,17 +23,17 @@ class TaskReaderJsonl(TaskReaderBase):
         """
         tasks = []
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 for line in f:
                     if line.strip():  # Skip empty lines
                         task_data = json.loads(line)
                         # Create a Task object from the JSON data
                         task = Task(
-                            main_query=task_data.get('main_query', '[not defined]'),
-                            init_messages=task_data.get('init_messages', []),
-                            task_id=task_data.get('task_id', ''),
-                            env_type=task_data.get('env_type', 'no_env'),
-                            metadata=task_data.get('metadata', {})
+                            main_query=task_data.get("main_query", "[not defined]"),
+                            init_messages=task_data.get("init_messages", []),
+                            task_id=task_data.get("task_id", ""),
+                            env_type=task_data.get("env_type", "no_env"),
+                            metadata=task_data.get("metadata", {}),
                         )
                         tasks.append(task)
         except FileNotFoundError:

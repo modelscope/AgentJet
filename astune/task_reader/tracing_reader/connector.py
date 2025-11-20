@@ -10,6 +10,7 @@ from datetime import datetime
 
 from astune.schema.task import Task
 
+
 class TracingConnector(Protocol):
     def load_tasks_from_conversation(self) -> List[Task]: ...
 
@@ -61,24 +62,24 @@ class PhoenixConnector:
             all_spans.extend(spans)
         return all_spans
 
-    def load_tasks_from_conversation(
-        self
-    ) -> List[Task]:
+    def load_tasks_from_conversation(self) -> List[Task]:
         all_spans = self.load_spans(
-            projects_limit=self._projects_limit, spans_limit=self._spans_limit)
+            projects_limit=self._projects_limit, spans_limit=self._spans_limit
+        )
         all_spans.sort(key=lambda x: datetime.fromisoformat(x["end_time"]))
-        all_spans = list(
-            filter(lambda x: x["name"].startswith("invoke_agent"), all_spans))
+        all_spans = list(filter(lambda x: x["name"].startswith("invoke_agent"), all_spans))
 
         qa: list = []
         for span in all_spans:
             inp = json.loads(span["attributes"]["gen_ai.input.messages"])
             out = json.loads(span["attributes"]["gen_ai.output.messages"])
             if "parts" in inp and "parts" in out:
-                qa.append({
-                    "query": inp["parts"][0]["content"],
-                    "answer": out["parts"][0]["content"],
-                })
+                qa.append(
+                    {
+                        "query": inp["parts"][0]["content"],
+                        "answer": out["parts"][0]["content"],
+                    }
+                )
 
         tasks: List[Task] = []
         for item in qa:
@@ -141,28 +142,32 @@ class LocalSqliteConnectorV1:
 
     def __init__(self, db_path: str) -> None:
         self._db_path = db_path
-        assert os.path.exists(
-            self._db_path), f"DB file {self._db_path} does not exist"
+        assert os.path.exists(self._db_path), f"DB file {self._db_path} does not exist"
 
     def load_tasks_from_conversation(self) -> List[Task]:
         conn = sqlite3.connect(self._db_path)
         cursor = conn.cursor()
         rows = cursor.execute(
-            "SELECT attributes FROM span_table where name='ReActAgent.reply'").fetchall()
+            "SELECT attributes FROM span_table where name='ReActAgent.reply'"
+        ).fetchall()
 
         qa = []
         for row in rows:
             js = json.loads(row[0])
-            query = js['input']['kwargs']['msg']
-            output = js['output'] if 'output' in js else None
+            query = js["input"]["kwargs"]["msg"]
+            output = js["output"] if "output" in js else None
             if query is not None and output is not None:
                 query = parse_msg_line(query)
                 output = parse_msg_line(output)
                 if query is not None and output is not None:
-                    if query['role']=='user' and output['role']=='assistant':
-                        if query['content'] is not None and output['content'] is not None:
+                    if query["role"] == "user" and output["role"] == "assistant":
+                        if query["content"] is not None and output["content"] is not None:
                             qa.append(
-                                {"query": query['content'], "answer": output['content']})
+                                {
+                                    "query": query["content"],
+                                    "answer": output["content"],
+                                }
+                            )
 
         conn.close()
 
@@ -203,14 +208,14 @@ class LocalSqliteConnectorV2:
 
     def __init__(self, db_path: str) -> None:
         self._db_path = db_path
-        assert os.path.exists(
-            self._db_path), f"DB file {self._db_path} does not exist"
+        assert os.path.exists(self._db_path), f"DB file {self._db_path} does not exist"
 
     def load_tasks_from_conversation(self) -> List[Task]:
         conn = sqlite3.connect(self._db_path)
         cursor = conn.cursor()
         rows = cursor.execute(
-            "SELECT attributes FROM span_table where name='ReActAgent.reply'").fetchall()
+            "SELECT attributes FROM span_table where name='ReActAgent.reply'"
+        ).fetchall()
 
         qa = []
         for row in rows:
@@ -218,10 +223,12 @@ class LocalSqliteConnectorV2:
             inp = json.loads(js["gen_ai"]["input"]["messages"])
             out = json.loads(js["gen_ai"]["output"]["messages"])
             if "parts" in inp and "parts" in out:
-                qa.append({
-                    "query": inp["parts"][0]["content"],
-                    "answer": out["parts"][0]["content"],
-                })
+                qa.append(
+                    {
+                        "query": inp["parts"][0]["content"],
+                        "answer": out["parts"][0]["content"],
+                    }
+                )
 
         conn.close()
 
@@ -243,4 +250,8 @@ class LocalSqliteConnectorV2:
         return tasks
 
 
-__all__ = ["LocalSqliteConnectorV1", "LocalSqliteConnectorV2", "PhoenixConnector"]
+__all__ = [
+    "LocalSqliteConnectorV1",
+    "LocalSqliteConnectorV2",
+    "PhoenixConnector",
+]

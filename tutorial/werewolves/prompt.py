@@ -31,13 +31,10 @@ class EnglishPrompts:
     to_wolves_vote = "[WEREWOLVES ONLY] Which player do you vote to kill?"
 
     to_wolves_res = (
-        "[WEREWOLVES ONLY] The voting result is {}. So you have chosen to "
-        "eliminate {}."
+        "[WEREWOLVES ONLY] The voting result is {}. So you have chosen to " "eliminate {}."
     )
 
-    to_all_witch_turn = (
-        "Witch's turn, witch open your eyes and decide your action tonight..."
-    )
+    to_all_witch_turn = "Witch's turn, witch open your eyes and decide your action tonight..."
     to_witch_resurrect = (
         "[WITCH ONLY] {witch_name}, you're the witch, and tonight {dead_name} "
         "is eliminated. You can resurrect him/her by using your healing "
@@ -46,12 +43,8 @@ class EnglishPrompts:
         "resurrect {dead_name}? Give me your reason and decision."
     )
 
-    to_witch_resurrect_no = (
-        "[WITCH ONLY] The witch has chosen not to resurrect the player."
-    )
-    to_witch_resurrect_yes = (
-        "[WITCH ONLY] The witch has chosen to resurrect the player."
-    )
+    to_witch_resurrect_no = "[WITCH ONLY] The witch has chosen not to resurrect the player."
+    to_witch_resurrect_yes = "[WITCH ONLY] The witch has chosen to resurrect the player."
 
     to_witch_poison = (
         "[WITCH ONLY] {witch_name}, as a witch, you have a one-time-use "
@@ -60,8 +53,7 @@ class EnglishPrompts:
     )
 
     to_all_seer_turn = (
-        "Seer's turn, seer open your eyes and check one player's identity "
-        "tonight..."
+        "Seer's turn, seer open your eyes and check one player's identity " "tonight..."
     )
 
     to_seer = (
@@ -69,9 +61,7 @@ class EnglishPrompts:
         "tonight. Who do you want to check? Give me your reason and decision."
     )
 
-    to_seer_result = (
-        "[SEER ONLY] You've checked {agent_name}, and the result is: {role}."
-    )
+    to_seer_result = "[SEER ONLY] You've checked {agent_name}, and the result is: {role}."
 
     to_hunter = (
         "[HUNTER ONLY] {name}, as the hunter you're eliminated tonight. You "
@@ -79,9 +69,7 @@ class EnglishPrompts:
         "not to use this ability. Give me your reason and decision."
     )
 
-    to_all_hunter_shoot = (
-        "The hunter has chosen to shoot {} down with him/herself."
-    )
+    to_all_hunter_shoot = "The hunter has chosen to shoot {} down with him/herself."
 
     to_all_day = (
         "The day is coming, all players open your eyes. Last night, "
@@ -133,7 +121,9 @@ class ChinesePrompts:
 
     to_dead_player = "{}, 你已被淘汰。现在你可以向所有存活玩家发表最后的遗言。"
 
-    to_all_new_game = "新的一局游戏开始，参与玩家包括：{}。现在为每位玩家重新随机分配身份，并私下告知各自身份。"
+    to_all_new_game = (
+        "新的一局游戏开始，参与玩家包括：{}。现在为每位玩家重新随机分配身份，并私下告知各自身份。"
+    )
 
     to_all_night = "天黑了，请所有人闭眼。狼人请睁眼，选择今晚要淘汰的一名玩家..."
 
@@ -156,11 +146,15 @@ class ChinesePrompts:
     to_witch_resurrect_no = "[仅女巫可见] 女巫选择不救该玩家。"
     to_witch_resurrect_yes = "[仅女巫可见] 女巫选择救活该玩家。"
 
-    to_witch_poison = "[仅女巫可见] {witch_name}，你有一瓶一次性毒药，今晚要使用吗？请给出理由和决定。"
+    to_witch_poison = (
+        "[仅女巫可见] {witch_name}，你有一瓶一次性毒药，今晚要使用吗？请给出理由和决定。"
+    )
 
     to_all_seer_turn = "轮到预言家行动，预言家请睁眼并查验一名玩家身份..."
 
-    to_seer = "[仅预言家可见] {}, 你是预言家，今晚可以查验一名玩家身份。你要查谁？请给出理由和决定。"
+    to_seer = (
+        "[仅预言家可见] {}, 你是预言家，今晚可以查验一名玩家身份。你要查谁？请给出理由和决定。"
+    )
 
     to_seer_result = "[仅预言家可见] 你查验了{agent_name}，结果是：{role}。"
 
@@ -184,7 +178,9 @@ class ChinesePrompts:
         "本局所有玩家真实身份为：{true_roles}"
     )
 
-    to_all_village_win = "所有狼人已被淘汰。游戏结束，村民获胜🏘️🎉！本局所有玩家真实身份为：{true_roles}"
+    to_all_village_win = (
+        "所有狼人已被淘汰。游戏结束，村民获胜🏘️🎉！本局所有玩家真实身份为：{true_roles}"
+    )
 
     to_all_continue = "游戏继续。"
 

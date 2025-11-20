@@ -1,6 +1,7 @@
 import os
 import pty
 
+
 def run_command_with_pty(cmd, working_dir, env_dict):
     """
     Run a command in a pseudo-terminal (PTY) and stream output to stdout.
@@ -57,27 +58,31 @@ def run_command_with_pty(cmd, working_dir, env_dict):
         os.environ.clear()
         os.environ.update(original_env)
 
+
 import base64
+
 
 # Convert string to Base64
 def string_to_base64(s):
     # First, encode the string to bytes
-    s_bytes = s.encode('utf-8')
+    s_bytes = s.encode("utf-8")
     # Convert bytes to base64
     base64_bytes = base64.b64encode(s_bytes)
     # Convert base64 bytes back to string
-    base64_string = base64_bytes.decode('utf-8')
+    base64_string = base64_bytes.decode("utf-8")
     return base64_string
+
 
 # Convert Base64 back to string
 def base64_to_string(b):
     # Convert base64 string to bytes
-    base64_bytes = b.encode('utf-8')
+    base64_bytes = b.encode("utf-8")
     # Decode base64 bytes
     message_bytes = base64.b64decode(base64_bytes)
     # Convert bytes back to string
-    message = message_bytes.decode('utf-8')
+    message = message_bytes.decode("utf-8")
     return message
+
 
 def pty_wrapper(
     cmd: list[str],
@@ -85,6 +90,7 @@ def pty_wrapper(
     env_dict: dict = {},
 ):
     run_command_with_pty(cmd, working_dir=dir, env_dict=env_dict)
+
 
 def pty_wrapper_final(human_cmd, dir, env_dict):
     print("[pty]: ", human_cmd)
@@ -95,10 +101,17 @@ if __name__ == "__main__":
     import argparse
     import json
 
-    parser = argparse.ArgumentParser(description="Run a shell command in a PTY with logging and custom env.")
+    parser = argparse.ArgumentParser(
+        description="Run a shell command in a PTY with logging and custom env."
+    )
     parser.add_argument("--human-cmd", type=str, help="Shell command to run (as a string)")
     parser.add_argument("--dir", type=str, default=".", help="Working directory")
-    parser.add_argument("--env", type=str, default="{}", help="Environment variables as JSON string, e.g. '{\"KEY\":\"VAL\"}'")
+    parser.add_argument(
+        "--env",
+        type=str,
+        default="{}",
+        help='Environment variables as JSON string, e.g. \'{"KEY":"VAL"}\'',
+    )
 
     args = parser.parse_args()
 
@@ -107,7 +120,10 @@ if __name__ == "__main__":
         if not isinstance(env_dict, dict):
             raise ValueError
     except Exception:
-        print("--env must be a valid JSON object string, e.g. '{\"KEY\":\"VAL\"}'. But get:", args.env)
+        print(
+            '--env must be a valid JSON object string, e.g. \'{"KEY":"VAL"}\'. But get:',
+            args.env,
+        )
         exit(1)
 
     pty_wrapper_final(base64_to_string(args.human_cmd), args.dir, env_dict)

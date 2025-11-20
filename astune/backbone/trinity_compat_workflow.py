@@ -15,6 +15,7 @@ from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
 from astune.context_tracker.tracker_base_attr import TrackerAttr
 
+
 class TrinityCompatWorkflow(DynamicRollout):
 
     def __init__(
@@ -23,8 +24,8 @@ class TrinityCompatWorkflow(DynamicRollout):
         llm_handle,
         tokenizer,
         config,
-        llm_mode: Literal['local', 'remote', 'trinity'] = "trinity",
-        **kwargs
+        llm_mode: Literal["local", "remote", "trinity"] = "trinity",
+        **kwargs,
     ):
 
         self.task = task
@@ -36,18 +37,18 @@ class TrinityCompatWorkflow(DynamicRollout):
             config=self.config,
             async_rollout_manager=llm_handle,
             max_parallel=1,
-            max_llm_retries = 1,
+            max_llm_retries=1,
             tokenizer=tokenizer,
             llm_mode=llm_mode,
-            **kwargs
+            **kwargs,
         )
 
     def convert_task(self, task):
-        main_query = task.raw_task.get('main_query', "[not defined]")
-        task_id = task.raw_task.get('task_selector', str(uuid.uuid4().hex))
-        env_type = task.raw_task.get('env_type', "[not defined]")
-        metadata = task.raw_task.get('metadata', {})
-        init_messages = task.raw_task.get('init_messages', [])
+        main_query = task.raw_task.get("main_query", "[not defined]")
+        task_id = task.raw_task.get("task_selector", str(uuid.uuid4().hex))
+        env_type = task.raw_task.get("env_type", "[not defined]")
+        metadata = task.raw_task.get("metadata", {})
+        init_messages = task.raw_task.get("init_messages", [])
 
         return Task(
             main_query=main_query,
@@ -59,9 +60,9 @@ class TrinityCompatWorkflow(DynamicRollout):
 
     def thread_worker(self):
         obs_window = {
-            'stop': [False],
-            'step': [0],
-            'token': [0],
+            "stop": [False],
+            "step": [0],
+            "token": [0],
         }
         astune_task = self.convert_task(self.task)
         return self.rollout_env_worker(
@@ -70,7 +71,7 @@ class TrinityCompatWorkflow(DynamicRollout):
             task_tag=f"T{astune_task.task_id}#R?",
             mode="sample",
             task_thread_index=0,
-            obs_window=obs_window
+            obs_window=obs_window,
         )
 
     def run_in_new_thread(self) -> TrackerAttr:
@@ -94,10 +95,10 @@ class TrinityCompatWorkflow(DynamicRollout):
         return thread_conclusion
 
 
-
 @WORKFLOWS.register_module("astune_workflow")
 class ASTunetWorkflowWrap(Workflow):
     is_async: bool = True
+
     def __init__(
         self,
         config,
@@ -125,7 +126,7 @@ class ASTunetWorkflowWrap(Workflow):
 
     async def run_async(self):
 
-        yaml_path = os.environ.get('ASTUNE_CONFIG_REDIRECT', None)
+        yaml_path = os.environ.get("ASTUNE_CONFIG_REDIRECT", None)
         if yaml_path is None:
             raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
 
@@ -144,7 +145,6 @@ class ASTunetWorkflowWrap(Workflow):
             raise e
         cmt.generate_log(global_step=-1)
         sample_final += sample_arr
-
 
         exps = []
         for index, sample in enumerate(sample_final):
@@ -170,26 +170,33 @@ class ASTunetWorkflowWrap(Workflow):
                     reward = reward[0]
             except Exception as e:
                 reward = cmt.reward_structure.raw_reward
-            if not isinstance(reward, (float, int)): # if reward is still not a float or int, set it to 0.0
+            if not isinstance(
+                reward, (float, int)
+            ):  # if reward is still not a float or int, set it to 0.0
                 reward = cmt.reward_structure.raw_reward
 
-            if len(response_ids) + len(prompt_ids) == len(input_ids) and \
-                len(logprobs) == len(response_ids) and len(logprobs) > 0:
+            if (
+                len(response_ids) + len(prompt_ids) == len(input_ids)
+                and len(logprobs) == len(response_ids)
+                and len(logprobs) > 0
+            ):
                 exp = Experience(
                     # eid=uuid.uuid4().hex,
-                    tokens = input_ids,     # [seq_length] prompt + response
-                    prompt_length = len(prompt_ids),  # Length of the prompt in tokens, used for generating attention masks
-                    logprobs = logprobs,   # [resp_length]
-                    reward = reward,  #
+                    tokens=input_ids,  # [seq_length] prompt + response
+                    prompt_length=len(
+                        prompt_ids
+                    ),  # Length of the prompt in tokens, used for generating attention masks
+                    logprobs=logprobs,  # [resp_length]
+                    reward=reward,  #
                     # advantages=None,
                     # returns=None,
-                    info = {},
-                    metrics = {},   # for wandb logging (must be string:float)
-                    response_text = "", # optional
-                    prompt_text = "", # optional
+                    info={},
+                    metrics={},  # for wandb logging (must be string:float)
+                    response_text="",  # optional
+                    prompt_text="",  # optional
                     #### for multi-turn experiences
-                    action_mask = response_loss_mask,  # 1 stands for training, 0 stands for ignoring
-                    messages=sample.messages,    #
+                    action_mask=response_loss_mask,  # 1 stands for training, 0 stands for ignoring
+                    messages=sample.messages,  #
                     # tools,
                     #### for dpo experiences
                     # chosen,

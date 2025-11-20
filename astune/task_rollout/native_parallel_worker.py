@@ -27,18 +27,21 @@ class StepPrinter(BaseParallelEnv):
     def step_status_printer(self, obs_window):
         # Histogram buckets: obs_window['step'] 0~5 / 5~10 / 10~15 / ...
         step_counter = {}
-        current_token = sum(obs_window['token'])
+        current_token = sum(obs_window["token"])
         current_time = time.time()
         delta_token = current_token - self.current_token
-        if delta_token < 0: delta_token = current_token
+        if delta_token < 0:
+            delta_token = current_token
         delta_time = current_time - self.current_token_count_time
         self.current_token = current_token
         self.current_token_count_time = current_time
-        token_gen_per_sec_str = f"{delta_token/delta_time:.2f} tokens/s" if delta_time > 0 else "N/A"
+        token_gen_per_sec_str = (
+            f"{delta_token/delta_time:.2f} tokens/s" if delta_time > 0 else "N/A"
+        )
 
-        for step in obs_window['step']:
+        for step in obs_window["step"]:
             if step == -1:
-                step_counter[(-1, 'terminated')] = step_counter.get((-1, 'terminated'), 0) + 1
+                step_counter[(-1, "terminated")] = step_counter.get((-1, "terminated"), 0) + 1
                 continue
             else:
                 start = (step // 5) * 5
@@ -60,14 +63,19 @@ class StepPrinter(BaseParallelEnv):
 class StaticRollout(StepPrinter):
     """Static (non-dynamic) rollout manager."""
 
-    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[BasicContextTracker]:
+    def rollout(
+        self,
+        tasks: List[Task],
+        mode: Literal["sample", "validate"],
+        epoch: str,
+    ) -> List[BasicContextTracker]:
         self.current_token_count_time = time.time()
         cmt_array: List[BasicContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
         obs_window = {
-            'step': [0 for _ in range(len(tasks) * rollout_n)],
-            'token': [0 for _ in range(len(tasks) * rollout_n)],
-            'stop': [False for _ in range(len(tasks) * rollout_n)],
+            "step": [0 for _ in range(len(tasks) * rollout_n)],
+            "token": [0 for _ in range(len(tasks) * rollout_n)],
+            "stop": [False for _ in range(len(tasks) * rollout_n)],
         }
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
             futures = []
@@ -103,8 +111,17 @@ class StaticRollout(StepPrinter):
 class DynamicRollout(StaticRollout):
     """Dynamic rollout supporting oversampling and early termination."""
 
-    def rollout(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str) -> List[BasicContextTracker]:
-        if mode == "sample" and (self.rollout_n != 1) and self.config.astune.rollout.enable_oversample:
+    def rollout(
+        self,
+        tasks: List[Task],
+        mode: Literal["sample", "validate"],
+        epoch: str,
+    ) -> List[BasicContextTracker]:
+        if (
+            mode == "sample"
+            and (self.rollout_n != 1)
+            and self.config.astune.rollout.enable_oversample
+        ):
             return self.rollout_dynamic(tasks, mode, epoch)
         else:
             return super().rollout(tasks, mode, epoch)
@@ -116,7 +133,10 @@ class DynamicRollout(StaticRollout):
         else:
             additional_n = 0
 
-        sorted_samples = sorted(samples, key=lambda cmt: abs(cmt.reward_structure.performance_reward))
+        sorted_samples = sorted(
+            samples,
+            key=lambda cmt: abs(cmt.reward_structure.performance_reward),
+        )
         value_array = [cmt.reward_structure.performance_reward for cmt in sorted_samples]
         macro_selected_value = []
         macro_selected_index = []
@@ -144,10 +164,20 @@ class DynamicRollout(StaticRollout):
             macro_selected_index += additional_indices.tolist()
 
         selected_samples = [sorted_samples[i] for i in macro_selected_index]
-        sorted_selected_samples = sorted(selected_samples, key=lambda cmt: abs(cmt.reward_structure.performance_reward))
+        sorted_selected_samples = sorted(
+            selected_samples,
+            key=lambda cmt: abs(cmt.reward_structure.performance_reward),
+        )
         return sorted_selected_samples
 
-    def rollout_dynamic(self, tasks: List[Task], mode: Literal["sample", "validate"], epoch: str, allow_sample_num_change=True, allow_force_stop=True) -> List[BasicContextTracker]:
+    def rollout_dynamic(
+        self,
+        tasks: List[Task],
+        mode: Literal["sample", "validate"],
+        epoch: str,
+        allow_sample_num_change=True,
+        allow_force_stop=True,
+    ) -> List[BasicContextTracker]:
         cmt_array: List[BasicContextTracker] = []
         assert mode != "validate"
         rollout_n = self.rollout_n
@@ -155,13 +185,14 @@ class DynamicRollout(StaticRollout):
         submit_oversample_multiplier = self.config.astune.rollout.submit_oversample_multiplier
         rollout_n_oversample = int(rollout_n * submit_oversample_multiplier)
         rollout_n_confirm = int(rollout_n * (1 + submit_oversample_multiplier) / 2)
-        assert rollout_n < rollout_n_confirm < rollout_n_oversample, \
-            f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
+        assert (
+            rollout_n < rollout_n_confirm < rollout_n_oversample
+        ), f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
 
         obs_window = {
-            'step': [0 for _ in range(len(tasks) * rollout_n_oversample)],
-            'stop': [False for _ in range(len(tasks) * rollout_n_oversample)],
-            'token': [0 for _ in range(len(tasks) * rollout_n_oversample)],
+            "step": [0 for _ in range(len(tasks) * rollout_n_oversample)],
+            "stop": [False for _ in range(len(tasks) * rollout_n_oversample)],
+            "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],
         }
 
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
@@ -170,13 +201,15 @@ class DynamicRollout(StaticRollout):
                 task_future_array = []
                 for task_rollout_index in range(rollout_n_oversample):
                     task_thread_index = task_batch_index * rollout_n_oversample + task_rollout_index
-                    future = executor.submit(self.rollout_env_worker,
-                                                task=task,
-                                                task_batch_index=task_batch_index,
-                                                task_tag=f"T{task.task_id}#R{task_rollout_index}",
-                                                mode=mode,
-                                                task_thread_index=task_thread_index,
-                                                obs_window=obs_window)
+                    future = executor.submit(
+                        self.rollout_env_worker,
+                        task=task,
+                        task_batch_index=task_batch_index,
+                        task_tag=f"T{task.task_id}#R{task_rollout_index}",
+                        mode=mode,
+                        task_thread_index=task_thread_index,
+                        obs_window=obs_window,
+                    )
                     task_future_array.append(future)
                 futures += [task_future_array]
 
@@ -184,49 +217,62 @@ class DynamicRollout(StaticRollout):
             while True:
                 tic += 1
                 can_terminate = [False for _ in futures]
-                terminate_status = ['running' for _ in futures]
+                terminate_status = ["running" for _ in futures]
                 for j, task_future_array in enumerate(futures):
                     completed_task_futures = [f for f in task_future_array if f.done()]
                     completed_results = [f.result() for f in completed_task_futures]
                     completed_results = [cmt for cmt in completed_results if not cmt.discarded]
                     reward = [cmt.reward_structure.performance_reward for cmt in completed_results]
                     reward_std = np.std(reward) if reward else 0.0
-                    all_finished = (len(completed_task_futures) == len(task_future_array))
+                    all_finished = len(completed_task_futures) == len(task_future_array)
                     if all_finished:
                         can_terminate[j] = True
-                        terminate_status[j] = f'all_fin({len(completed_results)}/{reward_std:.2f})'
+                        terminate_status[j] = f"all_fin({len(completed_results)}/{reward_std:.2f})"
                     num_finished = len(completed_task_futures)
-                    task_cmd_reward_array = [cmt.reward_structure.performance_reward for cmt in completed_results]
+                    task_cmd_reward_array = [
+                        cmt.reward_structure.performance_reward for cmt in completed_results
+                    ]
                     all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                     if not all_equal:
-                        if (num_finished >= rollout_n):
+                        if num_finished >= rollout_n:
                             can_terminate[j] = True
-                            terminate_status[j] = f'early_end({len(completed_results)}/{reward_std:.2f})'
+                            terminate_status[j] = (
+                                f"early_end({len(completed_results)}/{reward_std:.2f})"
+                            )
                         else:
                             pass
                     else:
                         if num_finished >= rollout_n_confirm:
                             can_terminate[j] = True
-                            terminate_status[j] = f'confirm_dummy({len(completed_results)}/{reward_std:.2f})'
+                            terminate_status[j] = (
+                                f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
+                            )
                             if allow_force_stop:
-                                for k in range(j*rollout_n_oversample, j*rollout_n_oversample + rollout_n_oversample):
-                                    obs_window['stop'][k] = True
+                                for k in range(
+                                    j * rollout_n_oversample,
+                                    j * rollout_n_oversample + rollout_n_oversample,
+                                ):
+                                    obs_window["stop"][k] = True
                         else:
                             pass
-                terminate_status = '/'.join(terminate_status)
+                terminate_status = "/".join(terminate_status)
                 if all(can_terminate):
                     logger.info(f"epoch{epoch}.collect_rollout: all tasks finished, exiting loop")
-                    for i, stop_flag in enumerate(obs_window['stop']): obs_window['stop'][i] = True
+                    for i, stop_flag in enumerate(obs_window["stop"]):
+                        obs_window["stop"][i] = True
                     break
                 else:
                     if tic % 10 == 0:
                         self.step_status_printer(obs_window)
-                        logger.info(f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}")
+                        logger.info(
+                            f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}"
+                        )
                     time.sleep(5)
             tic = -1
             while any(f.running() for task_future_array in futures for f in task_future_array):
                 tic += 1
-                if tic % 10 == 0: logger.info('waiting final sync, this will not take long')
+                if tic % 10 == 0:
+                    logger.info("waiting final sync, this will not take long")
                 time.sleep(5)
 
             task_ineffective_thread_cnt = []
@@ -237,7 +283,9 @@ class DynamicRollout(StaticRollout):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
                 completed_results = [cmt for cmt in completed_results if not cmt.discarded]
-                task_cmd_reward_array = [cmt.reward_structure.performance_reward for cmt in completed_results]
+                task_cmd_reward_array = [
+                    cmt.reward_structure.performance_reward for cmt in completed_results
+                ]
                 all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                 completed_task_cnt = len(completed_results)
                 if all_equal:
@@ -256,43 +304,63 @@ class DynamicRollout(StaticRollout):
 
             world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
             total_sample = sum(task_completed_thread_cnt)
-            if allow_sample_num_change and (total_sample > world_size*2):
+            if allow_sample_num_change and (total_sample > world_size * 2):
                 add_count = 0
                 num_task_to_amend = len(futures)
-                logger.info(f"allow_sample_num_change policy: world_size: {world_size}, total_sample {total_sample}, add_count: {add_count}, ")
+                logger.info(
+                    f"allow_sample_num_change policy: world_size: {world_size}, total_sample {total_sample}, add_count: {add_count}, "
+                )
                 while add_count != 0:
-                    _task_completed_thread_cnt_find_nonzero_min = [float('inf') if x <=0 else x for x in task_completed_thread_cnt]
-                    min_extra_index = _task_completed_thread_cnt_find_nonzero_min.index(min(_task_completed_thread_cnt_find_nonzero_min))
+                    _task_completed_thread_cnt_find_nonzero_min = [
+                        float("inf") if x <= 0 else x for x in task_completed_thread_cnt
+                    ]
+                    min_extra_index = _task_completed_thread_cnt_find_nonzero_min.index(
+                        min(_task_completed_thread_cnt_find_nonzero_min)
+                    )
                     task_extra_thread_cnt[min_extra_index] += 1
                     task_completed_thread_cnt[min_extra_index] += 1
                     add_count -= 1
-                logger.info(f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}")
+                logger.info(
+                    f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
+                )
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
             else:
                 num_task_max_to_amend = sum(task_extra_thread_cnt) // rollout_n
                 num_task_to_amend = min(num_task_max_to_amend, task_need_amend)
                 extra_num_thread_required = num_task_to_amend * rollout_n
                 remove_count = sum(task_extra_thread_cnt) - extra_num_thread_required
-                logger.info(f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, ")
+                logger.info(
+                    f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, "
+                )
 
                 while remove_count != 0:
                     max_extra_index = task_extra_thread_cnt.index(max(task_extra_thread_cnt))
-                    assert task_extra_thread_cnt[max_extra_index] > 0, "task_extra_thread_cnt should be greater than 0"
+                    assert (
+                        task_extra_thread_cnt[max_extra_index] > 0
+                    ), "task_extra_thread_cnt should be greater than 0"
                     task_extra_thread_cnt[max_extra_index] -= 1
                     task_completed_thread_cnt[max_extra_index] -= 1
                     remove_count -= 1
-                logger.info(f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}")
+                logger.info(
+                    f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
+                )
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
 
             cmt_array = []
             print_buffer = ""
             task_success_rate = []
-            for j, task_future_array, avail_extra_cnt in zip(range(len(futures)), futures, task_extra_thread_cnt):
+            for j, task_future_array, avail_extra_cnt in zip(
+                range(len(futures)), futures, task_extra_thread_cnt
+            ):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
                 completed_results = [cmt for cmt in completed_results if not cmt.discarded]
-                task_cmd_reward_array = [cmt.reward_structure.performance_reward for cmt in completed_results]
-                success_rate_array = [cmt.reward_structure.success_rate for cmt in completed_results]
+                task_cmd_reward_array = [
+                    cmt.reward_structure.performance_reward for cmt in completed_results
+                ]
+                success_rate_array = [
+                    cmt.reward_structure.success_rate for cmt in completed_results
+                ]
                 task_success_rate += [np.mean(success_rate_array)]
                 need_amend = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                 if need_amend and (num_task_to_amend > 0):
@@ -306,10 +374,13 @@ class DynamicRollout(StaticRollout):
                     else:
                         num_completed = len(completed_results)
                         num_to_be_selected = rollout_n + avail_extra_cnt
-                    selected_cmt_array = self.greedy_max_std_selection(completed_results, num_to_be_selected)
+                    selected_cmt_array = self.greedy_max_std_selection(
+                        completed_results, num_to_be_selected
+                    )
                     cmt_array += selected_cmt_array
                     print_buffer += f"/({len(selected_cmt_array)})"
-                    if need_amend: print_buffer += "(no-amend)"
+                    if need_amend:
+                        print_buffer += "(no-amend)"
             logger.info(print_buffer)
 
             for cmt in cmt_array:
@@ -335,15 +406,20 @@ class ParallelEnvManager(DynamicRollout):
                 raise e
             finally:
                 cmt.generate_log(global_step=self.current_global_steps)
-                if os.environ.get('BEST_LOGGER_PATH', None) and os.environ.get('ASTUNE_DEBUG', None):
-                    logger.success(f"View rollout details at [http://localhost:8181/?path={quote(os.path.abspath(os.environ['BEST_LOGGER_PATH']))}]")
+                if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get(
+                    "ASTUNE_DEBUG", None
+                ):
+                    logger.success(
+                        f"View rollout details at [http://localhost:8181/?path={quote(os.path.abspath(os.environ['BEST_LOGGER_PATH']))}]"
+                    )
             sample_arr_final += sample_arr
 
-        if self.config.astune.backbone in ['verl']:
+        if self.config.astune.backbone in ["verl"]:
             world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
             remainder = len(sample_arr_final) % world_size
             if remainder != 0:
                 import random
+
                 remove_indices = random.sample(range(len(sample_arr_final)), remainder)
                 remove_indices.sort(reverse=True)
                 for idx in remove_indices:
@@ -363,8 +439,12 @@ class ParallelEnvManager(DynamicRollout):
         reference_advantage = []
 
         for sample in samples:
-            assert len(sample.input_ids) == len(sample.attention_mask) == len(sample.position_ids) == len(
-                sample.loss_mask), f"Sample {sample.request_id} has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
+            assert (
+                len(sample.input_ids)
+                == len(sample.attention_mask)
+                == len(sample.position_ids)
+                == len(sample.loss_mask)
+            ), f"Sample {sample.request_id} has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
 
             task_ids.append(sample.task_id)
             rollout_ids.append(sample.task_tag)
@@ -379,11 +459,17 @@ class ParallelEnvManager(DynamicRollout):
             prompt_ids.append(torch.tensor(sample.prompt_ids, dtype=torch.int))
             response_ids.append(torch.tensor(sample.response_ids, dtype=torch.int))
 
-            prompt_attention_mask.append(torch.tensor(sample.prompt_attention_mask, dtype=torch.int))
-            response_attention_mask.append(torch.tensor(sample.response_attention_mask, dtype=torch.int))
+            prompt_attention_mask.append(
+                torch.tensor(sample.prompt_attention_mask, dtype=torch.int)
+            )
+            response_attention_mask.append(
+                torch.tensor(sample.response_attention_mask, dtype=torch.int)
+            )
 
             prompt_position_ids.append(torch.tensor(sample.prompt_position_ids, dtype=torch.int))
-            response_position_ids.append(torch.tensor(sample.response_position_ids, dtype=torch.int))
+            response_position_ids.append(
+                torch.tensor(sample.response_position_ids, dtype=torch.int)
+            )
 
             prompt_loss_mask.append(torch.tensor(sample.prompt_loss_mask, dtype=torch.int))
             response_loss_mask.append(torch.tensor(sample.response_loss_mask, dtype=torch.int))
@@ -398,25 +484,71 @@ class ParallelEnvManager(DynamicRollout):
         max_response_length_this_batch = max([p.shape[-1] for p in response_ids])
         assert max_response_length_this_batch <= self.config.astune.data.max_response_length
 
-        prompt_ids = pad_sequence(prompt_ids, batch_first=True, padding_value=self.pad_token_id, padding_side="left")
-        prompt_attention_mask = pad_sequence(prompt_attention_mask, batch_first=True, padding_value=0, padding_side="left")
-        prompt_position_ids = pad_sequence(prompt_position_ids, batch_first=True, padding_value=0, padding_side="left")
-        prompt_loss_mask = pad_sequence(prompt_loss_mask, batch_first=True, padding_value=0, padding_side="left")
+        prompt_ids = pad_sequence(
+            prompt_ids,
+            batch_first=True,
+            padding_value=self.pad_token_id,
+            padding_side="left",
+        )
+        prompt_attention_mask = pad_sequence(
+            prompt_attention_mask,
+            batch_first=True,
+            padding_value=0,
+            padding_side="left",
+        )
+        prompt_position_ids = pad_sequence(
+            prompt_position_ids,
+            batch_first=True,
+            padding_value=0,
+            padding_side="left",
+        )
+        prompt_loss_mask = pad_sequence(
+            prompt_loss_mask,
+            batch_first=True,
+            padding_value=0,
+            padding_side="left",
+        )
 
-        prompt_ids = pad_sequence_to_length(prompt_ids, max_prompt_length_this_batch, self.pad_token_id, left_pad=True)
-        prompt_attention_mask = pad_sequence_to_length(prompt_attention_mask, max_prompt_length_this_batch, 0, left_pad=True)
-        prompt_position_ids = pad_sequence_to_length(prompt_position_ids, max_prompt_length_this_batch, 0, left_pad=True)
-        prompt_loss_mask = pad_sequence_to_length(prompt_loss_mask, max_prompt_length_this_batch, 0, left_pad=True)
+        prompt_ids = pad_sequence_to_length(
+            prompt_ids,
+            max_prompt_length_this_batch,
+            self.pad_token_id,
+            left_pad=True,
+        )
+        prompt_attention_mask = pad_sequence_to_length(
+            prompt_attention_mask,
+            max_prompt_length_this_batch,
+            0,
+            left_pad=True,
+        )
+        prompt_position_ids = pad_sequence_to_length(
+            prompt_position_ids, max_prompt_length_this_batch, 0, left_pad=True
+        )
+        prompt_loss_mask = pad_sequence_to_length(
+            prompt_loss_mask, max_prompt_length_this_batch, 0, left_pad=True
+        )
 
         response_ids = pad_sequence(response_ids, batch_first=True, padding_value=self.pad_token_id)
-        response_attention_mask = pad_sequence(response_attention_mask, batch_first=True, padding_value=0)
+        response_attention_mask = pad_sequence(
+            response_attention_mask, batch_first=True, padding_value=0
+        )
         response_loss_mask = pad_sequence(response_loss_mask, batch_first=True, padding_value=0)
 
-        response_ids = pad_sequence_to_length(response_ids, max_response_length_this_batch, self.pad_token_id)
-        response_attention_mask = pad_sequence_to_length(response_attention_mask, max_response_length_this_batch, 0)
-        response_loss_mask = pad_sequence_to_length(response_loss_mask, max_response_length_this_batch, 0)
+        response_ids = pad_sequence_to_length(
+            response_ids, max_response_length_this_batch, self.pad_token_id
+        )
+        response_attention_mask = pad_sequence_to_length(
+            response_attention_mask, max_response_length_this_batch, 0
+        )
+        response_loss_mask = pad_sequence_to_length(
+            response_loss_mask, max_response_length_this_batch, 0
+        )
 
-        delta_position_id = torch.arange(1, response_ids.size(1) + 1, device=response_ids.device).unsqueeze(0).repeat(len(samples), 1)
+        delta_position_id = (
+            torch.arange(1, response_ids.size(1) + 1, device=response_ids.device)
+            .unsqueeze(0)
+            .repeat(len(samples), 1)
+        )
         response_position_ids = prompt_position_ids[:, -1:] + delta_position_id
 
         input_ids = torch.cat((prompt_ids, response_ids), dim=-1)
@@ -436,10 +568,13 @@ class ParallelEnvManager(DynamicRollout):
             batch_size=len(samples),
         )
 
-        return DataProto(batch=batch, non_tensor_batch={
-            "task_ids": np.array(task_ids),
-            "rollout_ids": np.array(rollout_ids),
-            "messages": np.array(messages),
-            "reward_scores": np.array(step_reward_scores),
-            "reference_advantage": np.array(reference_advantage),
-        })
+        return DataProto(
+            batch=batch,
+            non_tensor_batch={
+                "task_ids": np.array(task_ids),
+                "rollout_ids": np.array(rollout_ids),
+                "messages": np.array(messages),
+                "reward_scores": np.array(step_reward_scores),
+                "reference_advantage": np.array(reference_advantage),
+            },
+        )

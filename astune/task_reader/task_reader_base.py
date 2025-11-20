@@ -10,8 +10,8 @@ class TaskReaderBase:
     def __init__(self, config):
         self.config = config
 
-    def get_training_tasks(self)->List[Task]:
+    def get_training_tasks(self) -> List[Task]:
         raise NotImplementedError
 
-    def get_validation_tasks(self)->List[Task]:
+    def get_validation_tasks(self) -> List[Task]:
         raise NotImplementedError

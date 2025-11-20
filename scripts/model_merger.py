@@ -99,7 +99,9 @@ class BaseModelMerger(ABC):
         self.hf_model_config_path = config.hf_model_config_path
 
         if config.hf_model_path:
-            print("Warning: --hf_model_path is deprecated and will be removed in a future version. Currently verl will save huggingface model configuration files into checkpoint directories. Therefore, there is no need to provide --hf_model_path. ")
+            print(
+                "Warning: --hf_model_path is deprecated and will be removed in a future version. Currently verl will save huggingface model configuration files into checkpoint directories. Therefore, there is no need to provide --hf_model_path. "
+            )
             self.hf_model_config_path = config.hf_model_path
 
         self.model_config = AutoConfig.from_pretrained(self.hf_model_config_path)
@@ -123,9 +125,13 @@ class BaseModelMerger(ABC):
         """
         if model.can_generate():
             try:
-                model.generation_config = GenerationConfig.from_pretrained(self.hf_model_config_path)
+                model.generation_config = GenerationConfig.from_pretrained(
+                    self.hf_model_config_path
+                )
             except OSError:
-                print(f"Warning: Generation config file not found in {self.hf_model_config_path}, using a generation config created from the model config.")
+                print(
+                    f"Warning: Generation config file not found in {self.hf_model_config_path}, using a generation config created from the model config."
+                )
         return model
 
     def save_hf_model_and_tokenizer(self, state_dict: dict[str, torch.Tensor]):
@@ -153,8 +159,16 @@ class BaseModelMerger(ABC):
         from huggingface_hub import HfApi
 
         api = HfApi()
-        api.create_repo(repo_id=self.config.hf_upload_path, private=self.config.private, exist_ok=True)
-        api.upload_folder(folder_path=self.config.target_dir, repo_id=self.config.hf_upload_path, repo_type="model")
+        api.create_repo(
+            repo_id=self.config.hf_upload_path,
+            private=self.config.private,
+            exist_ok=True,
+        )
+        api.upload_folder(
+            folder_path=self.config.target_dir,
+            repo_id=self.config.hf_upload_path,
+            repo_type="model",
+        )
 
     @abstractmethod
     def merge_and_save(self):
@@ -168,12 +182,20 @@ class FSDPModelMerger(BaseModelMerger):
             match = re.match(r"model_world_size_(\d+)_rank_0\.pt", filename)
             if match:
                 return int(match.group(1))
-        raise FileNotFoundError(f"Could not determine world size. No file matching 'model_world_size_(\d+)_rank_0.pt' found in {self.config.local_dir}")
+        raise FileNotFoundError(
+            f"Could not determine world size. No file matching 'model_world_size_(\d+)_rank_0.pt' found in {self.config.local_dir}"
+        )
 
     def _load_rank_zero_state_dict(self, world_size: int) -> dict:
-        return torch.load(Path(self.config.local_dir) / f"model_world_size_{world_size}_rank_0.pt", map_location="cpu", weights_only=False)
+        return torch.load(
+            Path(self.config.local_dir) / f"model_world_size_{world_size}_rank_0.pt",
+            map_location="cpu",
+            weights_only=False,
+        )
 
-    def _extract_device_mesh_info(self, state_dict: dict, world_size: int) -> tuple[np.ndarray, tuple[str, ...]]:
+    def _extract_device_mesh_info(
+        self, state_dict: dict, world_size: int
+    ) -> tuple[np.ndarray, tuple[str, ...]]:
         """
         Retrieves sharding information (device_mesh, mesh_dim_names) from a DTensor in the state_dict.
         If no DTensor is found, infers a simple FSDP mesh based on world_size.
@@ -193,9 +215,14 @@ class FSDPModelMerger(BaseModelMerger):
 
         return mesh, mesh_dim_names
 
-    def _calculate_shard_configuration(self, mesh: np.ndarray, mesh_dim_names: tuple[str, ...]) -> tuple[int, tuple[int, ...]]:
+    def _calculate_shard_configuration(
+        self, mesh: np.ndarray, mesh_dim_names: tuple[str, ...]
+    ) -> tuple[int, tuple[int, ...]]:
         """Calculates the total number of shards and the shape of the device mesh."""
-        assert mesh_dim_names in (("fsdp",), ("ddp", "fsdp")), f"Unsupported mesh_dim_names {mesh_dim_names}"
+        assert mesh_dim_names in (
+            ("fsdp",),
+            ("ddp", "fsdp"),
+        ), f"Unsupported mesh_dim_names {mesh_dim_names}"
 
         if "tp" in mesh_dim_names:
             # TODO: "tp" is not supported yet due to the above assert
@@ -207,7 +234,9 @@ class FSDPModelMerger(BaseModelMerger):
 
         return total_shards, mesh_shape
 
-    def _merge_by_placement(self, tensors: list[torch.Tensor], placement: Placement) -> torch.Tensor:
+    def _merge_by_placement(
+        self, tensors: list[torch.Tensor], placement: Placement
+    ) -> torch.Tensor:
         """Merges a list of tensors based on their DTensor placement"""
         if placement.is_replicate():
             return tensors[0]
@@ -218,18 +247,33 @@ class FSDPModelMerger(BaseModelMerger):
 
         raise NotImplementedError(f"Unsupported placement: {placement}")
 
-    def _load_and_merge_state_dicts(self, world_size: int, total_shards: int, mesh_shape: tuple[int, ...], mesh_dim_names: tuple[str, ...]) -> dict[str, torch.Tensor]:
+    def _load_and_merge_state_dicts(
+        self,
+        world_size: int,
+        total_shards: int,
+        mesh_shape: tuple[int, ...],
+        mesh_dim_names: tuple[str, ...],
+    ) -> dict[str, torch.Tensor]:
         model_state_dict_lst = [None] * total_shards
 
         def process_one_shard(rank: int, model_state_dict_lst: list):
-            model_path = Path(self.config.local_dir) / f"model_world_size_{world_size}_rank_{rank}.pt"
+            model_path = (
+                Path(self.config.local_dir) / f"model_world_size_{world_size}_rank_{rank}.pt"
+            )
             state_dict = torch.load(model_path, map_location="cpu", weights_only=False)
             model_state_dict_lst[rank] = state_dict
             return state_dict
 
         with ThreadPoolExecutor(max_workers=min(32, os.cpu_count())) as executor:
-            futures = [executor.submit(process_one_shard, rank, model_state_dict_lst) for rank in range(total_shards)]
-            for future in tqdm(futures, desc=f"Loading {total_shards} FSDP shards", total=total_shards):
+            futures = [
+                executor.submit(process_one_shard, rank, model_state_dict_lst)
+                for rank in range(total_shards)
+            ]
+            for future in tqdm(
+                futures,
+                desc=f"Loading {total_shards} FSDP shards",
+                total=total_shards,
+            ):
                 future.result()
 
         # Merge state dicts from all shards
@@ -289,7 +333,9 @@ class FSDPModelMerger(BaseModelMerger):
         total_shards, mesh_shape = self._calculate_shard_configuration(mesh, mesh_dim_names)
         print(f"Processing model shards with {total_shards} {mesh_shape} in total")
 
-        merged_state_dict = self._load_and_merge_state_dicts(world_size, total_shards, mesh_shape, mesh_dim_names)
+        merged_state_dict = self._load_and_merge_state_dicts(
+            world_size, total_shards, mesh_shape, mesh_dim_names
+        )
 
         if self.config.operation == "test":
             if not self.config.test_hf_dir:
@@ -305,7 +351,9 @@ class FSDPModelMerger(BaseModelMerger):
     def _test_state_dict(self, state_dict: dict[str, torch.Tensor]):
         auto_model_class = self.get_transformers_auto_model_class()
 
-        hf_model = auto_model_class.from_pretrained(self.config.test_hf_dir, torch_dtype=torch.bfloat16)
+        hf_model = auto_model_class.from_pretrained(
+            self.config.test_hf_dir, torch_dtype=torch.bfloat16
+        )
         hf_state_dict = hf_model.state_dict()
         del hf_model
 
@@ -313,28 +361,40 @@ class FSDPModelMerger(BaseModelMerger):
         collected_keys = set(state_dict.keys())
 
         missing_keys = hf_model_keys - collected_keys
-        assert len(missing_keys) == 0, f"Missing keys in collected state dict: {list(sorted(missing_keys))}"
+        assert (
+            len(missing_keys) == 0
+        ), f"Missing keys in collected state dict: {list(sorted(missing_keys))}"
 
         extra_keys = collected_keys - hf_model_keys
-        assert len(extra_keys) == 0, f"Extra keys in collected state dict: {list(sorted(extra_keys))}"
+        assert (
+            len(extra_keys) == 0
+        ), f"Extra keys in collected state dict: {list(sorted(extra_keys))}"
 
         for key in hf_model_keys:
             hf_shape = hf_state_dict[key].shape
             collected_shape = state_dict[key].shape
-            assert hf_shape == collected_shape, f"Shape mismatch for key '{key}': original {hf_shape} vs collected {collected_shape}"
+            assert (
+                hf_shape == collected_shape
+            ), f"Shape mismatch for key '{key}': original {hf_shape} vs collected {collected_shape}"
 
             hf_dtype = hf_state_dict[key].dtype
             collected_dtype = state_dict[key].dtype
-            assert hf_dtype == collected_dtype, f"Dtype mismatch for key '{key}': original {hf_dtype} vs collected {collected_dtype}"
+            assert (
+                hf_dtype == collected_dtype
+            ), f"Dtype mismatch for key '{key}': original {hf_dtype} vs collected {collected_dtype}"
 
             torch.testing.assert_close(hf_state_dict[key], state_dict[key], atol=1e-6, rtol=1e-6)
 
-        print("FSDP checks passed: The merged state_dict matches the hf model saved by FSDPCheckpointManager.")
+        print(
+            "FSDP checks passed: The merged state_dict matches the hf model saved by FSDPCheckpointManager."
+        )
 
 
 class MegatronModelMerger(BaseModelMerger):
     def __init__(self, config: ModelMergerConfig):
-        from verl.utils.megatron_utils import get_hf_config_and_tokenizer_checkpoint_path
+        from verl.utils.megatron_utils import (
+            get_hf_config_and_tokenizer_checkpoint_path,
+        )
 
         config.hf_model_config_path = get_hf_config_and_tokenizer_checkpoint_path(config.local_dir)
         super().__init__(config)
@@ -355,13 +415,22 @@ class MegatronModelMerger(BaseModelMerger):
         pp_size = 0
         sharded_dirs = sorted(os.listdir(model_path))
         for sharded_dir in sharded_dirs:
-            assert "model.pt" in os.listdir(Path(model_path) / sharded_dir), f"model.pt not found in {sharded_dir}"
+            assert "model.pt" in os.listdir(
+                Path(model_path) / sharded_dir
+            ), f"model.pt not found in {sharded_dir}"
             tp_rank, pp_rank = self._get_tp_pp_rank_from_sharded_dir(sharded_dir)
             tp_size = max(tp_size, tp_rank + 1)
             pp_size = max(pp_size, pp_rank + 1)
         return sharded_dirs, tp_size, pp_size
 
-    def _merge_across_tp(self, key: str, tp_data: list[torch.Tensor], config: PretrainedConfig, tp_size: int, is_value_model: bool = False) -> torch.Tensor | list[torch.Tensor]:
+    def _merge_across_tp(
+        self,
+        key: str,
+        tp_data: list[torch.Tensor],
+        config: PretrainedConfig,
+        tp_size: int,
+        is_value_model: bool = False,
+    ) -> torch.Tensor | list[torch.Tensor]:
         if "linear_fc1.weight" in key:
             # if the tensor is gate and proj
             gate_lst = []
@@ -384,7 +453,11 @@ class MegatronModelMerger(BaseModelMerger):
             num_q_per_kv = config.num_attention_heads // config.num_key_value_heads
             assert tp_data[0].shape[0] % (num_q_per_kv + 2) == 0
             kv_size_per_tp = tp_data[0].shape[0] // (num_q_per_kv + 2)
-            split_size = [kv_size_per_tp * num_q_per_kv, kv_size_per_tp, kv_size_per_tp]
+            split_size = [
+                kv_size_per_tp * num_q_per_kv,
+                kv_size_per_tp,
+                kv_size_per_tp,
+            ]
 
             for infer_param in tp_data:
                 num_query_groups_per_partition = config.num_key_value_heads // tp_size
@@ -412,7 +485,13 @@ class MegatronModelMerger(BaseModelMerger):
                 dim = 1
             return torch.cat(tp_data, dim=dim)
 
-    def _load_state_dicts(self, model_ckpt_path: str, sharded_dirs: list[str], tp_size: int, pp_size: int) -> list[list[dict]]:
+    def _load_state_dicts(
+        self,
+        model_ckpt_path: str,
+        sharded_dirs: list[str],
+        tp_size: int,
+        pp_size: int,
+    ) -> list[list[dict]]:
         model_state_dict_lst = [[None for _ in range(tp_size)] for _ in range(pp_size)]
 
         def _process_one_megatron_shard(sharded_dir: str):
@@ -422,13 +501,25 @@ class MegatronModelMerger(BaseModelMerger):
             model_state_dict_lst[pp_rank][tp_rank] = state_dict
 
         with ThreadPoolExecutor(max_workers=min(32, os.cpu_count())) as executor:
-            futures = [executor.submit(_process_one_megatron_shard, sharded_dir) for sharded_dir in sharded_dirs]
-            for future in tqdm(futures, desc=f"Loading {len(sharded_dirs)} Megatron shards", total=len(sharded_dirs)):
+            futures = [
+                executor.submit(_process_one_megatron_shard, sharded_dir)
+                for sharded_dir in sharded_dirs
+            ]
+            for future in tqdm(
+                futures,
+                desc=f"Loading {len(sharded_dirs)} Megatron shards",
+                total=len(sharded_dirs),
+            ):
                 future.result()
 
         return model_state_dict_lst
 
-    def _merge_state_dicts(self, model_state_dict_lst: list[list[dict]], tp_size: int, pp_size: int) -> dict[str, torch.Tensor]:
+    def _merge_state_dicts(
+        self,
+        model_state_dict_lst: list[list[dict]],
+        tp_size: int,
+        pp_size: int,
+    ) -> dict[str, torch.Tensor]:
         state_dict = {}
         vpp_size = len(model_state_dict_lst[0][0])
         layers_cum = 0
@@ -453,8 +544,17 @@ class MegatronModelMerger(BaseModelMerger):
                         new_key_list[2] = str(global_layer_no)
                         new_key = ".".join(new_key_list)
 
-                    tp_data = [model_state_dict_lst[pp_rank][tp_rank][vpp_rank][key] for tp_rank in range(tp_size)]
-                    merged = self._merge_across_tp(new_key, tp_data, self.model_config, tp_size, self.config.is_value_model)
+                    tp_data = [
+                        model_state_dict_lst[pp_rank][tp_rank][vpp_rank][key]
+                        for tp_rank in range(tp_size)
+                    ]
+                    merged = self._merge_across_tp(
+                        new_key,
+                        tp_data,
+                        self.model_config,
+                        tp_size,
+                        self.config.is_value_model,
+                    )
 
                     if not isinstance(merged, list):
                         state_dict[new_key] = merged
@@ -476,9 +576,13 @@ class MegatronModelMerger(BaseModelMerger):
 
         model_ckpt_path = get_model_checkpoint_path(self.config.local_dir)
         sharded_dirs, tp_size, pp_size = self._check_megatron_checkpoint_path(model_ckpt_path)
-        print(f"sharded_dirs: {sharded_dirs}, tp_size: {tp_size}, pp_size: {pp_size}, mp_size: {len(sharded_dirs)}")
+        print(
+            f"sharded_dirs: {sharded_dirs}, tp_size: {tp_size}, pp_size: {pp_size}, mp_size: {len(sharded_dirs)}"
+        )
 
-        model_state_dict_lst = self._load_state_dicts(model_ckpt_path, sharded_dirs, tp_size, pp_size)
+        model_state_dict_lst = self._load_state_dicts(
+            model_ckpt_path, sharded_dirs, tp_size, pp_size
+        )
         merged_state_dict = self._merge_state_dicts(model_state_dict_lst, tp_size, pp_size)
         del model_state_dict_lst
 
@@ -502,14 +606,26 @@ class MegatronModelMerger(BaseModelMerger):
 
         params_mapping = [
             # (megatron core gpt model name, vllm model name)
-            ("self_attention.linear_qkv.layer_norm_weight", "input_layernorm.weight"),
-            ("self_attention.linear_qkv.layer_norm_bias", "input_layernorm.bias"),
+            (
+                "self_attention.linear_qkv.layer_norm_weight",
+                "input_layernorm.weight",
+            ),
+            (
+                "self_attention.linear_qkv.layer_norm_bias",
+                "input_layernorm.bias",
+            ),
             ("embedding.word_embeddings", "model.embed_tokens"),
             ("self_attention.linear_qkv", "self_attn.qkv_proj"),
             ("self_attention.linear_proj", "self_attn.o_proj"),
             ("pre_mlp_layernorm", "post_attention_layernorm"),
-            ("mlp.linear_fc1.layer_norm_weight", "post_attention_layernorm.weight"),
-            ("mlp.linear_fc1.layer_norm_bias", "post_attention_layernorm.bias"),
+            (
+                "mlp.linear_fc1.layer_norm_weight",
+                "post_attention_layernorm.weight",
+            ),
+            (
+                "mlp.linear_fc1.layer_norm_bias",
+                "post_attention_layernorm.bias",
+            ),
             ("mlp.linear_fc1", "mlp.gate_up_proj"),
             ("mlp.linear_fc2", "mlp.down_proj"),
             ("decoder.final_layernorm", "model.norm"),
@@ -540,7 +656,10 @@ class MegatronModelMerger(BaseModelMerger):
             if "layers" in megatron_name:  # deal with decoder layers
                 megatron_name = megatron_name.replace("decoder", "model")
                 megatron_name_list = megatron_name.split(".")
-                if "layer_norm_weight" in megatron_name_list or "layer_norm_bias" in megatron_name_list:
+                if (
+                    "layer_norm_weight" in megatron_name_list
+                    or "layer_norm_bias" in megatron_name_list
+                ):
                     param_name_list = megatron_name_list[:3]
                     param_name_list.append(v_name)
                     param_name = ".".join(param_name_list)
@@ -559,22 +678,77 @@ class MegatronModelMerger(BaseModelMerger):
 
 def main():
     parser = argparse.ArgumentParser(description="verl model merger")
-    subparsers = parser.add_subparsers(dest="operation", required=True, help="Specify 'merge' or 'test' operation.")
+    subparsers = parser.add_subparsers(
+        dest="operation",
+        required=True,
+        help="Specify 'merge' or 'test' operation.",
+    )
 
     base_op_parser = argparse.ArgumentParser(add_help=False)
-    base_op_parser.add_argument("--backend", type=str, required=True, choices=["fsdp", "megatron"], help="The backend of the model")
-    base_op_parser.add_argument("--local_dir", type=str, required=True, help="Path to the saved model checkpoints")
-    base_op_parser.add_argument("--hf_model_path", type=str, default=None, help="(Deprecated) Path to the original Hugging Face model for config.")
-    base_op_parser.add_argument("--tie-word-embedding", action="store_true", help="Whether to tie word embedding weights (currently only Megatron supported)")
-    base_op_parser.add_argument("--is-value-model", action="store_true", help="Whether the model is a value model (currently only Megatron supported)")
+    base_op_parser.add_argument(
+        "--backend",
+        type=str,
+        required=True,
+        choices=["fsdp", "megatron"],
+        help="The backend of the model",
+    )
+    base_op_parser.add_argument(
+        "--local_dir",
+        type=str,
+        required=True,
+        help="Path to the saved model checkpoints",
+    )
+    base_op_parser.add_argument(
+        "--hf_model_path",
+        type=str,
+        default=None,
+        help="(Deprecated) Path to the original Hugging Face model for config.",
+    )
+    base_op_parser.add_argument(
+        "--tie-word-embedding",
+        action="store_true",
+        help="Whether to tie word embedding weights (currently only Megatron supported)",
+    )
+    base_op_parser.add_argument(
+        "--is-value-model",
+        action="store_true",
+        help="Whether the model is a value model (currently only Megatron supported)",
+    )
 
-    merge_parser = subparsers.add_parser("merge", parents=[base_op_parser], help="Merge model checkpoints and save.")
-    merge_parser.add_argument("--target_dir", default="tmp", type=str, help="Directory to save the merged huggingface model")
-    merge_parser.add_argument("--hf_upload_path", default=None, type=str, help="Hugging Face repository ID to upload the model")
-    merge_parser.add_argument("--private", action="store_true", help="Whether to upload the model to a private Hugging Face repository")
+    merge_parser = subparsers.add_parser(
+        "merge",
+        parents=[base_op_parser],
+        help="Merge model checkpoints and save.",
+    )
+    merge_parser.add_argument(
+        "--target_dir",
+        default="tmp",
+        type=str,
+        help="Directory to save the merged huggingface model",
+    )
+    merge_parser.add_argument(
+        "--hf_upload_path",
+        default=None,
+        type=str,
+        help="Hugging Face repository ID to upload the model",
+    )
+    merge_parser.add_argument(
+        "--private",
+        action="store_true",
+        help="Whether to upload the model to a private Hugging Face repository",
+    )
 
-    test_parser = subparsers.add_parser("test", parents=[base_op_parser], help="Test merged model against a reference Hugging Face model")
-    test_parser.add_argument("--test_hf_dir", type=str, required=True, help="Path to the reference Hugging Face model directory for testing")
+    test_parser = subparsers.add_parser(
+        "test",
+        parents=[base_op_parser],
+        help="Test merged model against a reference Hugging Face model",
+    )
+    test_parser.add_argument(
+        "--test_hf_dir",
+        type=str,
+        required=True,
+        help="Path to the reference Hugging Face model directory for testing",
+    )
 
     args = parser.parse_args()
 

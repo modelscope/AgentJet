@@ -1,7 +1,9 @@
 from typing import Iterable, List
 
 from astune.schema.task import Task
-from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
+from astune.task_rollout.dashscope_llm_bridge import (
+    construct_alien_llm_chat_fn,
+)
 
 from ..fn import Fn
 from .base import Filter
@@ -46,12 +48,13 @@ class LlmEvaluateFilter(Filter):
         max_tokens: int = 2048,
         print_reason: bool = True,
     ) -> None:
-        """Filter that evaluates the quality of tasks using LLM.
-        """
+        """Filter that evaluates the quality of tasks using LLM."""
 
         self._print_reason = print_reason
-        self.alien_llm_chat_fn = construct_alien_llm_chat_fn(alien_llm_model="qwen3-235b-a22b-instruct-2507",
-                                                alien_llm_response_length=512)
+        self.alien_llm_chat_fn = construct_alien_llm_chat_fn(
+            alien_llm_model="qwen3-235b-a22b-instruct-2507",
+            alien_llm_response_length=512,
+        )
         self._fn = Fn(
             name="evaluate_quality",
             description=EVALUATE_PROMPT.format(custom_rubrics=custom_rubrics),
@@ -64,7 +67,10 @@ class LlmEvaluateFilter(Filter):
                 "reason": "judgment reason, briefly explain the reason",
                 "result": "GOOD/BAD",
             },
-            sampling_params={"temperature": temperature, "max_tokens": max_tokens},
+            sampling_params={
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
         )
 
     def filter(self, tasks: Iterable[Task]) -> List[Task]:

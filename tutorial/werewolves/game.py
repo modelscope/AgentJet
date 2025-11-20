@@ -176,8 +176,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
 
                 # Has poison potion and hasn't used the healing potion
                 if poison and not (
-                    msg_witch_resurrect
-                    and msg_witch_resurrect.metadata["resurrect"]
+                    msg_witch_resurrect and msg_witch_resurrect.metadata["resurrect"]
                 ):
                     msg_witch_poison = await agent(
                         await moderator(
@@ -221,10 +220,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
             # Hunter's turn
             for agent in players.hunter:
                 # If killed and not by witch's poison
-                if (
-                    killed_player == agent.name
-                    and poisoned_player != agent.name
-                ):
+                if killed_player == agent.name and poisoned_player != agent.name:
                     shot_player = await hunter_stage(agent, players)
 
             # Update alive players
@@ -347,7 +343,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
     # )
 
     alive_wolves = players.werewolves
-    good_guy_win = (len(alive_wolves) == 0)
+    good_guy_win = len(alive_wolves) == 0
     logger.warning(f"**********************************")
     logger.warning(f"Good guy win: {good_guy_win}, alive werewolves: {alive_wolves}")
     return good_guy_win

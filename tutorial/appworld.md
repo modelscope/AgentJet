@@ -27,7 +27,7 @@ for _ in range(config.astune.rollout.multi_turn.max_steps):
     # agentscope deal with interaction message
     reply_message = await agent(interaction_message)
     # env service protocol
-    obs, _, terminate, _ = astune_proxy.env_step_fn(action={"content": reply_message.content, "role": "assistant"})
+    obs, _, terminate, _ = astune_proxy.gym_step(action={"content": reply_message.content, "role": "assistant"})
     # generate new message from env output
     interaction_message = Msg(name="env", content=obs, role="user")
     # is terminated?
@@ -37,7 +37,7 @@ for _ in range(config.astune.rollout.multi_turn.max_steps):
 ```
 
 - 其中，使用了 astune_proxy 与 agentscope runtime 环境交互的一些接口如下：
-    - `astune_proxy.env_step_fn` 模拟gym接口，输入动作，输出 observation, reward, terminate_flag, info 四元组
+    - `astune_proxy.gym_step` 模拟gym接口，输入动作，输出 observation, reward, terminate_flag, info 四元组
     - `astune_proxy.context_overflow` 查询当前的context窗口是否token溢出
 
 ### 3. 准备Judge (奖励模块)

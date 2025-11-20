@@ -12,7 +12,9 @@ from agentscope.model import ChatResponse
 from agentscope.message import TextBlock, ToolUseBlock
 from agentscope._utils._common import _json_loads_with_repair
 from transformers.tokenization_utils import PreTrainedTokenizer
-from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
+    MultiAgentContextTracking,
+)
 
 
 class AsyncLlmBridge(object):
@@ -23,7 +25,7 @@ class AsyncLlmBridge(object):
         async_rollout_manager: Any,
         tokenizer: Any,
         llm_mode: Literal["local", "remote", "trinity"] = "local",
-        max_llm_retries: int = 3
+        max_llm_retries: int = 3,
     ):
         self.config = config
         self.async_rollout_manager = async_rollout_manager
@@ -33,12 +35,11 @@ class AsyncLlmBridge(object):
 
     def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:
 
-
         def llm_chat(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
-            tools = [],
-            request_id: str = ""
+            tools=[],
+            request_id: str = "",
         ) -> dict:
 
             updated_sampling_params = {}
@@ -48,31 +49,40 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.update(custom_sampling_params)
 
             tools = messages[-1].get("tools", None)
-            for msg in messages: msg.pop("tools", None)
+            for msg in messages:
+                msg.pop("tools", None)
 
             input_messages = copy.deepcopy(messages)
             request_id = uuid.uuid4().hex
             if tools is not None:
-                prompt_ids = self.tokenizer.apply_chat_template(input_messages, add_generation_prompt=True, tokenize=True, tools=tools)
+                prompt_ids = self.tokenizer.apply_chat_template(
+                    input_messages,
+                    add_generation_prompt=True,
+                    tokenize=True,
+                    tools=tools,
+                )
             else:
-                prompt_ids = self.tokenizer.apply_chat_template(input_messages, add_generation_prompt=True, tokenize=True)
+                prompt_ids = self.tokenizer.apply_chat_template(
+                    input_messages, add_generation_prompt=True, tokenize=True
+                )
 
-            final_res = run_async_coro__no_matter_what(self.async_rollout_manager.generate(
+            final_res = run_async_coro__no_matter_what(
+                self.async_rollout_manager.generate(
                     request_id=request_id,
                     prompt_ids=prompt_ids,
                     sampling_params=updated_sampling_params,
                 )
             )
 
-            if self.config.astune.rollout.name == 'vllm':
+            if self.config.astune.rollout.name == "vllm":
                 token_array = final_res.outputs[0].token_ids
-            elif self.config.astune.rollout.name == 'sglang':
+            elif self.config.astune.rollout.name == "sglang":
                 token_array = final_res
 
-            decoded_text = self.tokenizer.decode(token_array) # type: ignore
+            decoded_text = self.tokenizer.decode(token_array)  # type: ignore
 
-            if decoded_text.endswith('<|im_end|>'):
-                decoded_text = decoded_text[:-len('<|im_end|>')]
+            if decoded_text.endswith("<|im_end|>"):
+                decoded_text = decoded_text[: -len("<|im_end|>")]
 
             return {
                 "role": "assistant",
@@ -82,18 +92,17 @@ class AsyncLlmBridge(object):
                     TokenAndProb(
                         token_id=token,
                         logprob=-1,
-                        decoded_string=self.tokenizer.decode(token)
+                        decoded_string=self.tokenizer.decode(token),
                     )
-                    for token in token_array    # type: ignore
-                ]
+                    for token in token_array  # type: ignore
+                ],
             }
-
 
         def llm_chat_remote(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
-            tools = [],
-            request_id: str = ""
+            tools=[],
+            request_id: str = "",
         ) -> dict:
 
             updated_sampling_params = {}
@@ -110,20 +119,19 @@ class AsyncLlmBridge(object):
                         messages=input_messages,
                         sampling_params=updated_sampling_params,
                         tools=tools,
-                        request_id=request_id
+                        request_id=request_id,
                     )
                     break
                 except Exception as e:
                     logger.bind(exception=True).exception(f"rollout_server.{i} error: {e.args}")
                     time.sleep(i + 1)
-            return output_message[-1]   # type: ignore
-
+            return output_message[-1]  # type: ignore
 
         def llm_chat_trinity(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
-            tools = [],
-            request_id: str = ""
+            tools=[],
+            request_id: str = "",
         ) -> dict:
 
             async def main():
@@ -132,7 +140,7 @@ class AsyncLlmBridge(object):
                     updated_sampling_params.update(sampling_params)
                 if custom_sampling_params:
                     updated_sampling_params.update(custom_sampling_params)
-                updated_sampling_params.pop('min_tokens')
+                updated_sampling_params.pop("min_tokens")
 
                 if tools:
                     response = await self.async_rollout_manager.chat.completions.create(
@@ -141,7 +149,7 @@ class AsyncLlmBridge(object):
                         logprobs=True,
                         tools=tools,
                         top_logprobs=0,
-                        **updated_sampling_params
+                        **updated_sampling_params,
                     )
                 else:
                     response = await self.async_rollout_manager.chat.completions.create(
@@ -149,11 +157,11 @@ class AsyncLlmBridge(object):
                         messages=messages,
                         logprobs=True,
                         top_logprobs=0,
-                        **updated_sampling_params
+                        **updated_sampling_params,
                     )
                 return response
 
-            response = run_async_coro__no_matter_what(main()) # type: ignore
+            response = run_async_coro__no_matter_what(main())  # type: ignore
 
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
@@ -170,13 +178,13 @@ class AsyncLlmBridge(object):
                     TokenAndProb(
                         token_id=token,
                         logprob=tokenlogprob.logprob,
-                        decoded_string=tokenlogprob.token
+                        decoded_string=tokenlogprob.token,
                     )
                     for tokenlogprob, token in zip(
                         response.choices[0].logprobs.content,
-                        response.choices[0].token_ids
+                        response.choices[0].token_ids,
                     )
-                ]
+                ],
             }
 
         if self.llm_mode == "remote":
@@ -185,8 +193,6 @@ class AsyncLlmBridge(object):
             return llm_chat_trinity
         else:
             return llm_chat
-
-
 
 
 class LlmProxyForAgentScope(object):
@@ -199,8 +205,8 @@ class LlmProxyForAgentScope(object):
     def __init__(
         self,
         llm_chat_fn,
-        tokenizer:PreTrainedTokenizer,
-        context_tracker:MultiAgentContextTracking,
+        tokenizer: PreTrainedTokenizer,
+        context_tracker: MultiAgentContextTracking,
         config,
     ) -> None:
         self.context_tracker = context_tracker
@@ -208,24 +214,24 @@ class LlmProxyForAgentScope(object):
         self.tokenizer = tokenizer
         self.config = config
 
-
     async def __call__(
-            self,
-            messages: List[dict],
-            tools: List=[],
-            tool_choice: str = "auto",
-            structured_model=None,
-            **kwargs
-        ) -> ChatResponse:
+        self,
+        messages: List[dict],
+        tools: List = [],
+        tool_choice: str = "auto",
+        structured_model=None,
+        **kwargs,
+    ) -> ChatResponse:
 
         # prepare context tracker, check context safety
-        context_safe, info, converted_message, custom_sampling_params = \
+        context_safe, info, converted_message, custom_sampling_params = (
             self.context_tracker.step_prepare(messages, tools)
+        )
         if not context_safe:
             logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
             self.context_overflow = True
             return ChatResponse(
-                content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
+                content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
             )
 
         # run llm inference
@@ -235,7 +241,9 @@ class LlmProxyForAgentScope(object):
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
 
         # parse response
-        response = await self._parse_dashscope_generation_response(llm_output, structured_model=structured_model)
+        response = await self._parse_dashscope_generation_response(
+            llm_output, structured_model=structured_model
+        )
         return response
 
     # copied from AgentScope's DashScopeChatModule
@@ -284,14 +292,13 @@ class LlmProxyForAgentScope(object):
                     ToolUseBlock(
                         type="tool_use",
                         name=tool_call["function"]["name"],
-                        input=input_,   # type: ignore
+                        input=input_,  # type: ignore
                         id=tool_call["id"],
                     ),
                 )
 
                 if structured_model:
-                    metadata = input_   # type: ignore
-
+                    metadata = input_  # type: ignore
 
         parsed_response = ChatResponse(
             content=content_blocks,

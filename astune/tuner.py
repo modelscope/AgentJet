@@ -3,9 +3,15 @@ from typing import Literal, Any, TYPE_CHECKING, Type
 from pydantic import BaseModel, Field
 from astune.utils.dynamic_import import dynamic_import
 from astune.task_rollout.async_llm_bridge import LlmProxyForAgentScope
-from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
+    MultiAgentContextTracking,
+)
 from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
-from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
+from agentscope._utils._common import (
+    _json_loads_with_repair,
+    _create_tool_from_base_model,
+)
+
 if TYPE_CHECKING:
     from astune import Workflow
 
@@ -17,16 +23,15 @@ class Agent2Proxy(DashScopeChatModel):
     When request comes, it switches between default model (dashscope or openai models) and ModelTuner
     """
 
-    def __init__(self, name: str, tuner:"ModelTuner", default_model: ChatModelBase):
+    def __init__(self, name: str, tuner: "ModelTuner", default_model: ChatModelBase):
         self.name = name
         self.tuner = tuner
         self.default_model = default_model
         super().__init__(
-            model_name='astune',
-            api_key='dummy-api-key',
+            model_name="astune",
+            api_key="dummy-api-key",
             stream=False,
         )
-
 
     def __call__(self, *args, **kwargs):
         if self.tuner.is_trainable(self.name):
@@ -44,24 +49,26 @@ class ModelTuner(DashScopeChatModel):
     It keeps record of all registered agent types (by their target names),
     And when request comes, it calls `self.llm_proxy` to handle the request.
     """
+
     def __init__(
-            self,
-            config,
-            context_tracker: MultiAgentContextTracking,
-            agentscope_workflow: "Workflow",
-            **kwargs
-        ) -> None:
+        self,
+        config,
+        context_tracker: MultiAgentContextTracking,
+        agentscope_workflow: "Workflow",
+        **kwargs,
+    ) -> None:
         self.config = config
         self.context_tracker = context_tracker
         self.agentscope_workflow = agentscope_workflow
         self.target2proxy_registry: dict[str, Agent2Proxy] = {}
-        self.llm_proxy = LlmProxyForAgentScope(context_tracker=context_tracker, config=config, **kwargs)
+        self.llm_proxy = LlmProxyForAgentScope(
+            context_tracker=context_tracker, config=config, **kwargs
+        )
         super().__init__(
-            model_name='astune',
-            api_key='dummy-api-key',
+            model_name="astune",
+            api_key="dummy-api-key",
             stream=False,
         )
-
 
     def register_model(self, target_name: str, default_model: ChatModelBase) -> Agent2Proxy:
         """Register an agent type.
@@ -75,10 +82,11 @@ class ModelTuner(DashScopeChatModel):
                 The agent type instance corresponding to the provided name.
         """
         if target_name in self.target2proxy_registry:
-            logger.warning(f"Agent proxy `{target_name}` is already registered. Overwriting `default_model`.")
+            logger.warning(
+                f"Agent proxy `{target_name}` is already registered. Overwriting `default_model`."
+            )
         self.target2proxy_registry[target_name] = Agent2Proxy(target_name, self, default_model)
         return self.get_model(target_name)
-
 
     def get_model(self, target_name: str) -> Agent2Proxy:
         """Get the proxy instance by target_name.
@@ -94,14 +102,11 @@ class ModelTuner(DashScopeChatModel):
         else:
             return self.target2proxy_registry[target_name]
 
-
     async def __call__(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict] | None = None,
-        tool_choice: Literal["auto", "none", "any", "required"]
-        | str
-        | None = None,
+        tool_choice: Literal["auto", "none", "any", "required"] | str | None = None,
         structured_model: Type[BaseModel] | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
@@ -130,10 +135,7 @@ class ModelTuner(DashScopeChatModel):
             self._validate_tool_choice(tool_choice, tools)
             kwargs["tool_choice"] = self._format_tool_choice(tool_choice)
 
-        if (
-            self.enable_thinking is not None
-            and "enable_thinking" not in kwargs
-        ):
+        if self.enable_thinking is not None and "enable_thinking" not in kwargs:
             kwargs["enable_thinking"] = self.enable_thinking
 
         if structured_model:
@@ -171,8 +173,6 @@ class ModelTuner(DashScopeChatModel):
         else:
             return False
 
-
-
     def get_llm_proxy(self) -> LlmProxyForAgentScope:
         """Get the LlmProxyForAgentScope instance.
         Returns:
@@ -180,7 +180,6 @@ class ModelTuner(DashScopeChatModel):
                 The LlmProxyForAgentScope instance used by the ModelTuner.
         """
         return self.llm_proxy
-
 
     def get_context_tracker(self) -> MultiAgentContextTracking:
         """Get the context tracker instance.

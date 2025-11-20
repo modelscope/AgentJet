@@ -7,7 +7,9 @@ import random
 import os
 from datetime import datetime
 
-LOG_PATH = os.environ.get('CLIENT_LOG_PATH', "/mnt/data/eric.czq/rl_log/error.out")
+LOG_PATH = os.environ.get("CLIENT_LOG_PATH", "/mnt/data/eric.czq/rl_log/error.out")
+
+
 # map_env_type = {
 #     'appworld2': 'appworld',
 # }
@@ -21,6 +23,7 @@ def safe_log(msg: str):
     except Exception:
         pass  # 防止日志写失败影响RL主进程
 
+
 def retry_call(
     fn: Callable,
     max_retry: int = 3,
@@ -29,29 +32,36 @@ def retry_call(
     fail_return: Any = None,
     err_prefix: str = "",
     instance_id: str = "",
-    action_name: str = ""
+    action_name: str = "",
 ):
     last_exception = None
     for i in range(max_retry):
         try:
             res = fn()
-            if i>0:
-                safe_log(f"{err_prefix} {action_name} [instance={instance_id}] succeed at try {i+1}/{max_retry}")
+            if i > 0:
+                safe_log(
+                    f"{err_prefix} {action_name} [instance={instance_id}] succeed at try {i+1}/{max_retry}"
+                )
             return res
         except Exception as e:
             last_exception = e
-            safe_log(f"{err_prefix} {action_name} [instance={instance_id}] retry {i+1}/{max_retry} failed: {e}")
+            safe_log(
+                f"{err_prefix} {action_name} [instance={instance_id}] retry {i+1}/{max_retry} failed: {e}"
+            )
             if i + 1 == max_retry:
-                safe_log(f"{err_prefix} {action_name} [instance={instance_id}] max retries exceeded, fallback used.")
+                safe_log(
+                    f"{err_prefix} {action_name} [instance={instance_id}] max retries exceeded, fallback used."
+                )
                 return fail_return
             wait = random.uniform(min_backoff, max_backoff)
             time.sleep(wait)
     return fail_return
 
+
 class EnvClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url.rstrip("/")
-        self.timeout = 150.0+random.uniform(50, 200)
+        self.timeout = 150.0 + random.uniform(50, 200)
 
     def _make_request(
         self,
@@ -80,16 +90,14 @@ class EnvClient:
             safe_log(
                 f"[{endpoint}] _make_request failed (instance={instance_id}): {e}, data: {data}"
             )
-            raise Exception(
-                f"Request failed: {str(e)}, data: {data}"
-            )
+            raise Exception(f"Request failed: {str(e)}, data: {data}")
 
     def get_env_profile(
         self,
         env_type: str,
         split: str = "train",
         params: Optional[dict] = None,
-        max_retry: int = 3
+        max_retry: int = 3,
     ) -> List[str]:
         def call():
             # 使用新的变量名，避免修改外部参数
@@ -111,11 +119,15 @@ class EnvClient:
             max_retry=max_retry,
             fail_return=[],
             err_prefix="[get_env_profile]",
-            action_name="get_env_profile"
+            action_name="get_env_profile",
         )
 
     def get_tools_info(
-        self, instance_id: str, messages: Dict = {}, params: Dict = {}, max_retry: int = 3
+        self,
+        instance_id: str,
+        messages: Dict = {},
+        params: Dict = {},
+        max_retry: int = 3,
     ) -> Any:
         def call():
             response = self._make_request(
@@ -125,13 +137,14 @@ class EnvClient:
                 params=params,
             )
             return response.get("data", None)
+
         return retry_call(
             call,
             max_retry=max_retry,
             fail_return=None,
             err_prefix=f"[get_tools_info]",
             instance_id=instance_id,
-            action_name="get_tools_info"
+            action_name="get_tools_info",
         )
 
     def create_instance(
@@ -140,15 +153,27 @@ class EnvClient:
         task_id: str,
         instance_id: Optional[str] = None,
         params: Optional[Dict] = None,
-        max_retry: int = 3
+        max_retry: int = 3,
     ) -> dict:
         fallback = {
-            "state": [{"role": "system", "content": "create query failed, this is a empty task."},
-                {"role": "user", "content": "create failed, this is a empty task,please close this task."}],
+            "state": [
+                {
+                    "role": "system",
+                    "content": "create query failed, this is a empty task.",
+                },
+                {
+                    "role": "user",
+                    "content": "create failed, this is a empty task,please close this task.",
+                },
+            ],
             "reward": 0,
             "is_terminated": False,
-            "info": {"instance_id": instance_id or "", "task_id": task_id or ""},
+            "info": {
+                "instance_id": instance_id or "",
+                "task_id": task_id or "",
+            },
         }
+
         def call():
             # if env_type in map_env_type: env_type = map_env_type[env_type]
             r = self._make_request(
@@ -159,13 +184,14 @@ class EnvClient:
                 params=params,
             )
             return r["data"]
+
         return retry_call(
             call,
             max_retry=max_retry,
             fail_return=fallback,
             err_prefix=f"[create_instance]",
             instance_id=instance_id,
-            action_name="create_instance"
+            action_name="create_instance",
         )
 
     def step(
@@ -176,28 +202,35 @@ class EnvClient:
         max_retry: int = 3,
     ) -> dict:
         fallback = {
-            "state": [{"role": "assistant", "content": "Step failed (timeout or exception),please retry"}],
+            "state": [
+                {
+                    "role": "assistant",
+                    "content": "Step failed (timeout or exception),please retry",
+                }
+            ],
             "reward": 0,
             "is_terminated": False,
             "info": {"instance_id": instance_id or "", "task_id": ""},
         }
+
         def call():
             resp = self._make_request(
                 endpoint="step",
                 instance_id=instance_id,
                 messages=action,
-                params=params
+                params=params,
             )
             return resp["data"]
+
         res = retry_call(
             call,
             max_retry=max_retry,
             fail_return=fallback,
             err_prefix=f"[step]",
             instance_id=instance_id,
-            action_name="step"
+            action_name="step",
         )
-        res['state'] = res['state'][0]
+        res["state"] = res["state"][0]
         return res
 
     def evaluate(
@@ -215,27 +248,30 @@ class EnvClient:
                 params=params,
             )
             return resp.get("data", 0.0)
+
         return retry_call(
             call,
             max_retry=max_retry,
             fail_return=0.0,
             err_prefix=f"[evaluate]",
             instance_id=instance_id,
-            action_name="evaluate"
+            action_name="evaluate",
         )
 
     def release_instance(self, instance_id: str, max_retry: int = 3) -> bool:
         def call():
             resp = self._make_request(endpoint="release", instance_id=instance_id)
             return resp.get("success", False)
+
         return retry_call(
             call,
             max_retry=max_retry,
             fail_return=False,
             err_prefix=f"[release_instance]",
             instance_id=instance_id,
-            action_name="release_instance"
+            action_name="release_instance",
         )
+
 
 # Usage example
 def main():
