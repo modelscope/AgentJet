@@ -143,4 +143,3 @@ def test_get_training_tasks_with_filter(config_with_filter: SimpleNamespace, con
 
     assert len(delta) > 1
     print("these tasks are filtered:", delta)
-

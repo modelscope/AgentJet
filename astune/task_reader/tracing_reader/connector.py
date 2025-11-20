@@ -163,7 +163,7 @@ class LocalSqliteConnectorV1:
                         if query['content'] is not None and output['content'] is not None:
                             qa.append(
                                 {"query": query['content'], "answer": output['content']})
-        
+
         conn.close()
 
         tasks: List[Task] = []
@@ -182,12 +182,12 @@ class LocalSqliteConnectorV1:
             tasks.append(task)
 
         return tasks
-    
+
 
 class LocalSqliteConnectorV2:
     """
     A connector that loads tasks from a SQLite database file in new format.
-    
+
     https://github.com/agentscope-ai/agentscope-studio/pull/40/files#diff-12c7e27505a5171e080133021430d8cae2f4929ce2f4c93bd4ea5a389094224a
 
     Args:
@@ -222,7 +222,7 @@ class LocalSqliteConnectorV2:
                     "query": inp["parts"][0]["content"],
                     "answer": out["parts"][0]["content"],
                 })
-        
+
         conn.close()
 
         tasks: List[Task] = []

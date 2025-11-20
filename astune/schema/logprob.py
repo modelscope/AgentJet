@@ -9,4 +9,3 @@ class TokenAndProb:
         self.token_id = token_id
         self.logprob = logprob
         self.decoded_string = decoded_string
-

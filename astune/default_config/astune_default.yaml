@@ -128,6 +128,3 @@ astune:
           custom_rubrics: If the answer claims that it has written the output to a file, consider it an invalid response.
           temperature: 0.5
           print_reason: false
-
-
-
