@@ -1,7 +1,6 @@
 from loguru import logger
 from typing import List, Union
 from omegaconf import DictConfig
-from recipe.sppo import config
 from typing import Any, Dict, Tuple, Union, Callable
 from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
 from astune.schema.task import Task, WorkflowTask
