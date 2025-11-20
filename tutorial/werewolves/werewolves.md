@@ -15,8 +15,8 @@
             roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
 
             # Set random seed for reproducibility
-            task_core_arg = astune_proxy.get_agentscope_input_dictionary()[task_core_arg]
-            task_id = task_core_arg.task.task_id
+            workflow_task = astune_proxy.get_agentscope_input_dictionary()[workflow_task]
+            task_id = workflow_task.task.task_id
 
             np.random.seed(int(task_id))
             np.random.shuffle(roles)

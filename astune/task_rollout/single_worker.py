@@ -88,7 +88,7 @@ class BaseParallelEnv:
         sampling_params = get_sample_params(mode, self.config)
         llm_chat_fn = self.async_llm_bridge.get_llm_chat_fn(sampling_params=sampling_params)
 
-        task_core_arg=WorkflowTask(
+        workflow_task=WorkflowTask(
             env_type=task.env_type,
             task_id=task.task_id,
             task_thread_index=task_thread_index,
@@ -101,13 +101,13 @@ class BaseParallelEnv:
             task=task
         )
 
-        with ResourceKeeper(task_core_arg, config=self.config) as resource_keeper:
+        with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 Runner = AgentScopeRunner if self.config.astune.rollout.use_agentscope_protocol else AgentRunner
                 agent_runner: BaseAgentRunner = Runner(llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config)
                 cmt = agent_runner.execute(
                     env=resource_keeper.env,   # type:ignore || self.env: Union[EnvClient, EnvClientNg]
-                    task_core_arg=task_core_arg
+                    workflow_task=workflow_task
                 )
             except Exception as e:
                 logger.bind(exception=True).exception(f"encounter exception in env_worker.agent_flow error={e.args}")

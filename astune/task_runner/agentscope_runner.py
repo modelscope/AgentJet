@@ -18,12 +18,12 @@ from typing import Any, Dict, List, Union, Tuple
 
 class RunnerWithCallback(BaseAgentRunner):
 
-    def agentscope_runner_hooks(self, obs_window, task_thread_index, task_core_arg, env):
+    def agentscope_runner_hooks(self, obs_window, task_thread_index, workflow_task, env):
 
         def env_step_fn(action: dict) -> Tuple[str, float, bool, dict]:
             obs_window['step'][task_thread_index] += 1
             env_output = env.step(
-                instance_id=task_core_arg.task_env_uuid,
+                instance_id=workflow_task.task_env_uuid,
                 action=action,
             )
             obs = ""
@@ -61,12 +61,12 @@ class RunnerWithCallback(BaseAgentRunner):
 
 class AgentScopeRunner(RunnerWithCallback):
 
-    def execute(self, env: EnvClient, task_core_arg: WorkflowTask) -> BasicContextTracker:
-        obs_window = task_core_arg.obs_window
-        task_thread_index = task_core_arg.task_thread_index
-        task_batch_index = task_core_arg.task_batch_index
-        task_tag = task_core_arg.task_tag
-        task_id = task_core_arg.task_id
+    def execute(self, env: EnvClient, workflow_task: WorkflowTask) -> BasicContextTracker:
+        obs_window = workflow_task.obs_window
+        task_thread_index = workflow_task.task_thread_index
+        task_batch_index = workflow_task.task_batch_index
+        task_tag = workflow_task.task_tag
+        task_id = workflow_task.task_id
 
         workflow_import = self.config.astune.rollout.agentscope_learn_protocol
         workflow_cls = dynamic_import(workflow_import)
@@ -82,11 +82,11 @@ class AgentScopeRunner(RunnerWithCallback):
             **self.agentscope_runner_hooks(
                 obs_window=obs_window,
                 task_thread_index=task_thread_index,
-                task_core_arg=task_core_arg,
+                workflow_task=workflow_task,
                 env=env
             )
         )
-        astune_proxy = ModelTuner(
+        m_tuner = ModelTuner(
             context_tracker=context_tracker,
             llm_chat_fn=self.llm_chat_fn,
             tokenizer=self.tokenizer,
@@ -94,11 +94,11 @@ class AgentScopeRunner(RunnerWithCallback):
             config=self.config,
         )
 
-        workflow_output: WorkflowOutput = asyncio.run(agentscope_workflow.agentscope_execute(task_core_arg, astune_proxy))
+        workflow_output: WorkflowOutput = asyncio.run(agentscope_workflow.agentscope_execute(workflow_task, m_tuner))
         if workflow_output.reward is not None:
             raw_reward, is_success = workflow_output.reward, workflow_output.is_success
         else:
-            raw_reward, is_success = self.get_judge().compute_reward(workflow_output.metadata)
+            raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
 
         assert not isinstance(raw_reward, list), "ASTune will support step reward in future versions."
 
