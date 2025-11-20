@@ -116,7 +116,6 @@ class BasicContextTracker(TrackerAttr):
         return ext_msg_list
 
 
-
     @property
     def steps(self):
         return self.prepare_previous_context(mod='future')

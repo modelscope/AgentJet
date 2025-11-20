@@ -1,35 +1,54 @@
 from litellm import Type
 from loguru import logger
-from typing import Literal, Any
+from typing import Literal, Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from astune.utils.dynamic_import import dynamic_import
 from astune.task_rollout.async_llm_bridge import LlmProxyForAgentScope
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
 from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
+if TYPE_CHECKING:
+    from astune import Workflow
 
 
 class Agent2Proxy(DashScopeChatModel):
-    def __init__(self, name: str, proxy, default_model: ChatModelBase):
+    """
+    Handler for **NAMED** agent trainning targets.
+    It stores the target name, and a reference to the ModelTuner.
+    When request comes, it switches between default model (dashscope or openai models) and ModelTuner
+    """
+
+    def __init__(self, name: str, tuner:"ModelTuner", default_model: ChatModelBase):
         self.name = name
-        self.proxy = proxy
+        self.tuner = tuner
         self.default_model = default_model
 
     def __call__(self, *args, **kwargs):
-        if self.name not in self.proxy.get_trainable_targets():
+        if self.tuner.is_trainable(self.name):
             # [DO-NOT-TRAIN] if `trainable_targets` is non-empty,
             # and self.name is not in it, use default model
             return self.default_model(*args, **kwargs)
         else:
             # [TRAIN]
-            return self.proxy(*args, **kwargs)
+            return self.tuner(*args, **kwargs)
 
 
 class ModelTuner(DashScopeChatModel):
-
-    def __init__(self, config, context_tracker, **kwargs) -> None:
+    """
+    ModelTuner for Agentscope workflow.
+    It keeps record of all registered agent types (by their target names),
+    And when request comes, it calls `self.llm_proxy` to handle the request.
+    """
+    def __init__(
+            self,
+            config,
+            context_tracker:MultiAgentContextTracking,
+            agentscope_workflow: Workflow,
+            **kwargs
+        ) -> None:
         self.config = config
         self.context_tracker = context_tracker
+        self.agentscope_workflow = agentscope_workflow
         self.target2proxy_registry: dict[str, Agent2Proxy] = {}
         self.llm_proxy = LlmProxyForAgentScope(context_tracker=context_tracker, **kwargs)
         super().__init__(
@@ -68,24 +87,6 @@ class ModelTuner(DashScopeChatModel):
             raise ValueError(f"Agent proxy '{target_name}' is not registered.")
         else:
             return self.target2proxy_registry[target_name]
-
-
-    def get_llm_proxy(self) -> LlmProxyForAgentScope:
-        """Get the LlmProxyForAgentScope instance.
-        Returns:
-            LlmProxyForAgentScope:
-                The LlmProxyForAgentScope instance used by the ModelTuner.
-        """
-        return self.llm_proxy
-
-
-    def get_context_tracker(self) -> MultiAgentContextTracking:
-        """Get the context tracker instance.
-        Returns:
-            LlmProxyForAgentScope:
-                The context tracker instance used by the ModelTuner.
-        """
-        return self.context_tracker
 
 
     async def __call__(
@@ -154,3 +155,31 @@ class ModelTuner(DashScopeChatModel):
 
         # Return the AsyncGenerator directly
         return response_gen
+
+    def is_trainable(self, target_name) -> bool:
+        if not self.agentscope_workflow.trainable_targets:
+            # always assume trainable when user has never changed trainable_targets
+            return True
+        if target_name in self.agentscope_workflow.trainable_targets:
+            return True
+        else:
+            return False
+
+
+
+    def get_llm_proxy(self) -> LlmProxyForAgentScope:
+        """Get the LlmProxyForAgentScope instance.
+        Returns:
+            LlmProxyForAgentScope:
+                The LlmProxyForAgentScope instance used by the ModelTuner.
+        """
+        return self.llm_proxy
+
+
+    def get_context_tracker(self) -> MultiAgentContextTracking:
+        """Get the context tracker instance.
+        Returns:
+            LlmProxyForAgentScope:
+                The context tracker instance used by the ModelTuner.
+        """
+        return self.context_tracker
