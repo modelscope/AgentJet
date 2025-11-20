@@ -15,4 +15,3 @@ class TaskReaderBase:
 
     def get_validation_tasks(self)->List[Task]:
         raise NotImplementedError
-

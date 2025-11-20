@@ -121,5 +121,3 @@ class AgentScopeRunner(RunnerWithCallback):
         # after merging, process and align reward again
         context_tracker.process_reward(reward)
         return context_tracker
-
-

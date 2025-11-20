@@ -63,4 +63,3 @@ class ExampleMathLearn(Workflow):
         result = await self.agent.reply(msg, structured_model=FinalResult)
         final_answer = extract_final_answer(result)
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-

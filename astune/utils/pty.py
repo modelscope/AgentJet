@@ -111,4 +111,3 @@ if __name__ == "__main__":
         exit(1)
 
     pty_wrapper_final(base64_to_string(args.human_cmd), args.dir, env_dict)
-

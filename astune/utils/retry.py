@@ -41,5 +41,3 @@ def retry_with_backoff(max_retry: int = 3, backoff_fn: Optional[Callable[[int], 
         return wrapper
 
     return decorator
-
-

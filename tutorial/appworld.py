@@ -42,4 +42,3 @@ class ExampleAgentScopeLearnProtocol(Workflow):
             if model_tuner.get_context_tracker().context_overflow: break
 
         return WorkflowOutput(reward=None, metadata={"total_step": step})
-

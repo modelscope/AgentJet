@@ -122,4 +122,3 @@ class ExampleWerewolves(Workflow):
         logger.warning(f"Is success: {is_success}")
 
         return WorkflowOutput(reward=raw_reward, is_success=is_success)
-
