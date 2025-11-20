@@ -2,11 +2,14 @@ from astune.context_tracker.basic_tracker import BasicContextTracker
 from typing import Any, Dict, Tuple, Union, Callable
 from astune.task_judge.judge_base import JudgeBase
 from astune.utils.dynamic_import import dynamic_import
+from astune.utils.env_service_client.env_client_ng import (
+    EnvClient as EnvClientNg,
+)
 
 
 class BaseGymEnv(object):
     def __init__(
-        self, env_client: Any, task_env_uuid: str, task_thread_index: int, obs_window: Dict
+        self, env_client: EnvClientNg, task_env_uuid: str, task_thread_index: int, obs_window: Dict
     ):
         self.env_client = env_client
         self.task_thread_index = task_thread_index
@@ -34,6 +37,9 @@ class BaseGymEnv(object):
 
     def reset(self) -> str:
         raise RuntimeError("Reset is not supported")
+
+    def evaluate(self, task_env_uuid, params):
+        return self.env_client.evaluate(task_env_uuid, params)
 
 
 class BaseAgentRunner(object):
