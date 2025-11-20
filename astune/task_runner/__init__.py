@@ -1,6 +1,7 @@
 from astune.context_tracker.basic_tracker import BasicContextTracker
 from typing import Any, Dict, Tuple, Union, Callable
 from astune.task_judge.judge_base import JudgeBase
+from astune.utils.dynamic_import import dynamic_import
 
 
 class BaseGymEnv(object):
