@@ -8,7 +8,7 @@ from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMe
 from astune.utils.color_hsl import adjust_color_hsl
 from astune.utils.compute_madness import compute_string_madness
 from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
-from astune.context_tracker.agentscope_tracker.timeline_merging import can_merge_steps
+from astune.context_tracker.agentscope_tracker.timeline_merging import merge_tracker_timelines, can_merge_steps
 
 from typing import Any, List, Tuple, Union
 from beast_logger import print_nested, print_listofdict, NestedJsonItem, SeqItem
@@ -26,14 +26,8 @@ class MultiAgentContextTracking(BasicContextTracker):
             **kwargs
         ):
         super().__init__(config, tokenizer, **kwargs)
-        self.task_batch_index = kwargs.pop("task_batch_index")
-        self.task_tag = kwargs.pop("task_tag")
-        self.task_id = kwargs.pop("task_id")
-        self.full_context: List[ExtendedMessage] = []
         self.llm_chat_fn = llm_chat_fn
         self.tokenizer = tokenizer
-        self.stream = False
-        self.config = config
         self.env_step_fn = env_step_fn
         self.should_interrupt_fn = should_interrupt_fn
         self.generated_token_callback_fn = generated_token_callback_fn
@@ -221,43 +215,8 @@ class MultiAgentContextTracking(BasicContextTracker):
             attach="copy this"  # type: ignore
         )
 
-    def group_merge(self):
-
-        def toggle_author(source_step: List[ExtendedMessage], target_step: List[ExtendedMessage]) -> List[ExtendedMessage]:
-            # if any message in `target_step` is author == 'llm', but same-index message in `source_step` is author != 'llm'
-            # change source_step's message author to 'llm'
-            for i in range(len(target_step)):
-                if target_step[i].author == 'llm' and source_step[i].author != 'llm':
-                    source_step[i].author = target_step[i].author
-                    source_step[i].token_arr = target_step[i].token_arr
-                    source_step[i].token_logprob_arr = target_step[i].token_logprob_arr
-                    assert source_step[i].need_training
-            return source_step
-
-        absorbed_step_indices = []
-        reversed_grouped_steps = list(reversed(self.grouped_steps))
-        for i in range(len(reversed_grouped_steps)):
-            if i in absorbed_step_indices:
-                continue
-            # check whether [i, len(reversed_grouped_steps)-1] can be merged
-            for j in range(i+1, len(reversed_grouped_steps)):
-                if j in absorbed_step_indices:
-                    continue
-                source_step = reversed_grouped_steps[i]
-                target_step = reversed_grouped_steps[j]
-                if can_merge_steps(source_step, target_step):
-                    source_step = toggle_author(source_step, target_step)
-                    reversed_grouped_steps[i] = source_step
-                    absorbed_step_indices += [j]
-
-        # reverse back and exclude absorbed steps
-        reversed_grouped_steps_clean = []
-        for i in range(len(reversed_grouped_steps)):
-            if i not in absorbed_step_indices:
-                reversed_grouped_steps_clean.append(reversed_grouped_steps[i])
-        self.grouped_steps = list(reversed(reversed_grouped_steps_clean))
-
-        return self.grouped_steps
+    def group_merge(self) -> List[List[ExtendedMessage]]:
+        return self.grouped_steps = merge_tracker_timelines(self.grouped_steps)
 
     def group_tokenize(self):
         return self.group_tokenize_multi_group()
