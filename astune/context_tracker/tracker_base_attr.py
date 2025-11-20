@@ -40,7 +40,6 @@ class TrackerAttr(object):
         self.max_env_output_length: int = self.config.astune.rollout.max_env_len
         self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
         self.generated_token_cnt = 0
-
         self.terminal_rewards_dict = {}
         self.discarded = False
         self.is_terminated = False

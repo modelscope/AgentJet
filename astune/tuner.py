@@ -1,25 +1,24 @@
 from litellm import Type
 from loguru import logger
-from openai import AsyncOpenAI
+from typing import Literal, Any
 from pydantic import BaseModel, Field
 from astune.utils.dynamic_import import dynamic_import
-from astune.context_tracker.agentscope_tracker.request_proxy import ASTuneLlmProxy
+from astune.task_rollout.async_llm_bridge import ASTuneLlmProxy
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
-from typing import AsyncGenerator, Literal, Optional, Any, List, Dict
 from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
-from agentscope.types import JSONSerializableObject
 from agentscope._utils._common import _json_loads_with_repair, _create_tool_from_base_model
 
 
 class Agent2Proxy(DashScopeChatModel):
     def __init__(self, name: str, proxy, default_model: ChatModelBase):
         self.name = name
-        self.default_model = default_model
         self.proxy = proxy
+        self.default_model = default_model
 
     def __call__(self, *args, **kwargs):
         if self.name not in self.proxy.get_trainable_targets():
-            # [DO-NOT-TRAIN] if `trainable_targets` is non-empty, and self.name is not in it, use default model
+            # [DO-NOT-TRAIN] if `trainable_targets` is non-empty,
+            # and self.name is not in it, use default model
             return self.default_model(*args, **kwargs)
         else:
             # [TRAIN]

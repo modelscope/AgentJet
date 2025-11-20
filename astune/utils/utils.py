@@ -1,5 +1,6 @@
 from typing import Any, List, Dict
 import asyncio
+import copy
 
 # apply chat_template to a message, and then convert back to message
 def convert_tool_to_user_message(tool_message, tokenizer, format="qwen"):
@@ -40,3 +41,10 @@ def run_async_coro__no_matter_what(coro):
             raise _exc_holder["exc"]
         final_res = _res_holder["res"]
     return final_res
+
+
+def remove_fields(d: Dict, fields: List[str]) -> Dict:
+    d = copy.deepcopy(d)
+    for field in fields:
+        d.pop(field.strip(), None)
+    return d

@@ -1,27 +1,19 @@
-import os
 import copy
 import time
 import numpy as np
-import torch
 import uuid
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Literal, Callable, Any
+from pydantic import BaseModel
+from typing import Dict, List, Literal, Callable, Any, Type
 from loguru import logger
 from omegaconf import DictConfig
-from tensordict import TensorDict
-from torch.nn.utils.rnn import pad_sequence
-from tqdm import tqdm
-from verl import DataProto
-from verl.utils.torch_functional import pad_sequence_to_length
-from astune.task_runner.classic_runner import AgentRunner
-from astune.task_runner.classic_runner import BaseAgentRunner
-from astune.schema.task import Task, WorkflowTask
-from astune.schema.trajectory import Sample
-from astune.context_tracker.basic_tracker import BasicContextTracker, TrackerAttr
-from beast_logger import register_logger, print_dict, print_listofdict
-from astune.utils.utils import run_async_coro__no_matter_what
+from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
 from astune.schema.logprob import TokenAndProb
+from agentscope.model import ChatResponse
+from agentscope.message import TextBlock, ToolUseBlock
+from agentscope._utils._common import _json_loads_with_repair
+from transformers.tokenization_utils import PreTrainedTokenizer
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
+
 
 class AsyncLlmBridge(object):
 
@@ -40,6 +32,8 @@ class AsyncLlmBridge(object):
         self.max_llm_retries = max_llm_retries
 
     def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:
+
+
         def llm_chat(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
@@ -62,9 +56,6 @@ class AsyncLlmBridge(object):
                 prompt_ids = self.tokenizer.apply_chat_template(input_messages, add_generation_prompt=True, tokenize=True, tools=tools)
             else:
                 prompt_ids = self.tokenizer.apply_chat_template(input_messages, add_generation_prompt=True, tokenize=True)
-
-            from vsdb import bp
-            bp("TT")
 
             final_res = run_async_coro__no_matter_what(self.async_rollout_manager.generate(
                     request_id=request_id,
@@ -97,6 +88,7 @@ class AsyncLlmBridge(object):
                 ]
             }
 
+
         def llm_chat_remote(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
@@ -125,7 +117,6 @@ class AsyncLlmBridge(object):
                     logger.bind(exception=True).exception(f"rollout_server.{i} error: {e.args}")
                     time.sleep(i + 1)
             return output_message[-1]   # type: ignore
-
 
 
         def llm_chat_trinity(
@@ -196,3 +187,110 @@ class AsyncLlmBridge(object):
             return llm_chat
 
 
+
+
+class ASTuneLlmProxy(object):
+
+    def __init__(
+        self,
+        llm_chat_fn,
+        tokenizer:PreTrainedTokenizer,
+        context_tracker:MultiAgentContextTracking,
+        config,
+    ) -> None:
+        self.context_tracker = context_tracker
+        self.llm_chat_fn = llm_chat_fn
+        self.tokenizer = tokenizer
+        self.config = config
+
+
+    async def execute_model_proxy(
+            self,
+            messages: List[dict],
+            tools: List=[],
+            tool_choice: str = "auto",
+            structured_model=None,
+            **kwargs
+        ) -> ChatResponse:
+
+        # prepare context tracker, check context safety
+        context_safe, info, converted_message, custom_sampling_params = \
+            self.context_tracker.step_prepare(messages, tools)
+        if not context_safe:
+            logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
+            self.context_overflow = True
+            return ChatResponse(
+                content = [{'type': 'text', 'text': 'astune_proxy:[context_overflow]'}]
+            )
+
+        # run llm inference
+        llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
+
+        # begin context tracking
+        self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
+
+        # parse response
+        response = await self._parse_dashscope_generation_response(llm_output, structured_model=structured_model)
+        return response
+
+
+    async def _parse_dashscope_generation_response(
+        self,
+        message,
+        structured_model: Type[BaseModel] | None = None,
+    ) -> ChatResponse:
+
+        content_blocks: List[TextBlock | ToolUseBlock] = []
+        content = message.get("content")
+        metadata: dict | None = None
+
+        if content not in [
+            None,
+            "",
+            [],
+        ]:
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and "text" in item:
+                        content_blocks.append(
+                            TextBlock(
+                                type="text",
+                                text=item["text"],
+                            ),
+                        )
+            else:
+                content_blocks.append(
+                    TextBlock(
+                        type="text",
+                        text=content,
+                    ),
+                )
+
+        if message.get("tool_calls"):
+            for tool_call in message["tool_calls"]:
+                input_ = _json_loads_with_repair(
+                    tool_call["function"].get(
+                        "arguments",
+                        "{}",
+                    )
+                    or "{}",
+                )
+                content_blocks.append(
+                    ToolUseBlock(
+                        type="tool_use",
+                        name=tool_call["function"]["name"],
+                        input=input_,   # type: ignore
+                        id=tool_call["id"],
+                    ),
+                )
+
+                if structured_model:
+                    metadata = input_   # type: ignore
+
+
+        parsed_response = ChatResponse(
+            content=content_blocks,
+            metadata=metadata,
+        )
+
+        return parsed_response
