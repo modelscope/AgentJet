@@ -45,7 +45,7 @@ class TrinityCompatWorkflow(DynamicRollout):
 
     def convert_task(self, task):
         main_query = task.raw_task.get("main_query", "[not defined]")
-        task_id = task.raw_task.get("task_selector", str(uuid.uuid4().hex))
+        task_id = task.raw_task.get("task_id", str(uuid.uuid4().hex))
         env_type = task.raw_task.get("env_type", "[not defined]")
         metadata = task.raw_task.get("metadata", {})
         init_messages = task.raw_task.get("init_messages", [])
