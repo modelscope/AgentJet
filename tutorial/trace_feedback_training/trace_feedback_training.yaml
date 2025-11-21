@@ -37,11 +37,11 @@ trinity:
   buffer:
     train_batch_size: 180
 
-
 # remove swanlab logger
 trainer:
   logger:
     - console
+
 
 # ------------------ 不需要修改 ------------------
 hydra:
