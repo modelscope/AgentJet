@@ -2,6 +2,7 @@ import os
 import sqlite3
 import ast
 import re
+from loguru import logger
 import requests
 import json
 import hashlib
@@ -109,7 +110,7 @@ def parse_msg_line(line: str):
     inner = match.group(1)
 
     kv_pairs = []
-    for item in re.findall(r"(\w+)=((?:'.*?'|None))", inner):
+    for item in re.findall(r"(\w+)=((?:'.*?'|\[.*?\]|None))", inner):
         key, val = item
         kv_pairs.append(f"'{key}': {val}")
     dict_like = "{" + ", ".join(kv_pairs) + "}"
@@ -150,6 +151,7 @@ class LocalSqliteConnectorV1:
         rows = cursor.execute(
             "SELECT attributes FROM span_table where name='ReActAgent.reply'"
         ).fetchall()
+        logger.debug(f"Loaded {len(rows)} rows from {self._db_path}")
 
         qa = []
         for row in rows:
@@ -159,6 +161,11 @@ class LocalSqliteConnectorV1:
             if query is not None and output is not None:
                 query = parse_msg_line(query)
                 output = parse_msg_line(output)
+                # patch
+                if isinstance(output['content'],list):
+                    output['content']=output['content'][-1]
+                if isinstance(output['content'],dict):
+                    output['content']=output['content']['text']
                 if query is not None and output is not None:
                     if query["role"] == "user" and output["role"] == "assistant":
                         if query["content"] is not None and output["content"] is not None:

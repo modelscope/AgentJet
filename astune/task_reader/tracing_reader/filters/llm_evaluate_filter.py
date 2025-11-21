@@ -1,5 +1,7 @@
 from typing import Iterable, List
 
+from tqdm import tqdm
+
 from astune.schema.task import Task
 from astune.task_rollout.dashscope_llm_bridge import (
     construct_alien_llm_chat_fn,
@@ -75,7 +77,7 @@ class LlmEvaluateFilter(Filter):
 
     def filter(self, tasks: Iterable[Task]) -> List[Task]:
         kept: List[Task] = []
-        for task in tasks:
+        for task in tqdm(tasks,desc="filtering tasks"):
             payload = {
                 "query": task.main_query,
                 "answer": task.metadata.get("answer", ""),

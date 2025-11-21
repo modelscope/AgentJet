@@ -1,0 +1,60 @@
+# ------------------ 主要配置 ------------------
+astune:
+  task_reader:
+    type: tracing
+
+  task_judge:
+    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
+
+  model:
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    agentscope_learn_protocol: tutorial.trace_feedback_training.train->ExampleTracingFeedbackTrain
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+  
+  tracing:
+    base_url: ./tutorial/trace_feedback_training/database.sqlite
+    train_output_path: ./tutorial/trace_feedback_training/tasks.jsonl
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 2048
+    filters:
+      - type: llm_evaluate
+        enabled: true
+        params:
+          custom_rubrics: |
+            1. Check the answer and drop the task if it does not answer or answer is wrong.
+            2. Consider a response is invalid if it does not wrap the final answer in \boxed{}.
+          temperature: 0.5
+          print_reason: false
+
+trinity:
+  algorithm:
+    repeat_times: 6
+  buffer:
+    train_batch_size: 180
+
+
+# remove swanlab logger
+trainer:
+  logger:
+    - console
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astune/default_config
+    - file://astune/default_config/verl         # verl only
+    - file://external/verl/verl/trainer/config  # verl only
+    - file://astune/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - ppo_trainer # verl inherit 1/2
+  - verl_default # verl inherit 2/2
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_
