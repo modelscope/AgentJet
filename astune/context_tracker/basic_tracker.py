@@ -618,7 +618,7 @@ class BasicContextTracker(TrackerAttr):
                 # should we begin split point early?
                 if input_ids_len[-1] > self.config.astune.data.max_prompt_length:
                     message_dict = self.to_role_content(ext_steps)
-                    logger.error(
+                    logger.warning(
                         f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix..."
                     )
                     logger.bind(exception=True).exception(
