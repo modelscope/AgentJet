@@ -60,6 +60,7 @@ class ExampleMathLearn(Workflow):
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
         )
+        self.agent.set_console_output_enabled(False)
         msg = Msg("user", query, role="user")
         result = await self.agent.reply(msg, structured_model=FinalResult)
         final_answer = extract_final_answer(result)
