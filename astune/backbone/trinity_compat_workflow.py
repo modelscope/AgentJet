@@ -13,7 +13,7 @@ from transformers import AutoTokenizer
 from astune.task_rollout.native_parallel_worker import DynamicRollout
 from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
-from astune.context_tracker.tracker_base_attr import TrackerAttr
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
 
 
 class TrinityCompatWorkflow(DynamicRollout):
@@ -74,7 +74,7 @@ class TrinityCompatWorkflow(DynamicRollout):
             obs_window=obs_window,
         )
 
-    def run_in_new_thread(self) -> TrackerAttr:
+    def run_in_new_thread(self) -> MultiAgentContextTracking:
         result_holder = {}
         exc_holder = {}
 
@@ -130,7 +130,7 @@ class ASTunetWorkflowWrap(Workflow):
         if yaml_path is None:
             raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
 
-        cmt = TrinityCompatWorkflow(
+        tracker = TrinityCompatWorkflow(
             task=self.task,
             llm_handle=self.model_client,
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
@@ -139,11 +139,11 @@ class ASTunetWorkflowWrap(Workflow):
 
         sample_final = []
         try:
-            sample_arr = cmt.group_tokenize()
+            sample_arr = tracker.group_tokenize()
         except Exception as e:
-            cmt.generate_log(global_step=-1)
             raise e
-        cmt.generate_log(global_step=-1)
+        finally:
+            tracker.generate_log(global_step='NA')
         sample_final += sample_arr
 
         exps = []
@@ -161,19 +161,19 @@ class ASTunetWorkflowWrap(Workflow):
             position_ids = sample.position_ids
             prompt_position_ids = sample.prompt_position_ids
             response_position_ids = sample.response_position_ids
-            # cmt_tokenized["step_reward"] = self.reward_structure.step_reward[index]
+            # tracker_tokenized["step_reward"] = self.reward_structure.step_reward[index]
 
             logprobs = sample.response_logprobs
             try:
-                reward = cmt.reward_structure.step_reward
+                reward = tracker.reward_structure.step_reward
                 if isinstance(reward, list):
                     reward = reward[0]
             except Exception as e:
-                reward = cmt.reward_structure.raw_reward
+                reward = tracker.reward_structure.raw_reward
             if not isinstance(
                 reward, (float, int)
             ):  # if reward is still not a float or int, set it to 0.0
-                reward = cmt.reward_structure.raw_reward
+                reward = tracker.reward_structure.raw_reward
 
             if (
                 len(response_ids) + len(prompt_ids) == len(input_ids)
