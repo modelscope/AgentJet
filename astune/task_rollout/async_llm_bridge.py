@@ -229,12 +229,12 @@ class LlmProxyForAgentScope(object):
         )
         if not context_safe:
             logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
-            self.context_overflow = True
+            self.context_tracker.context_overflow = True
             return ChatResponse(
                 content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
             )
 
-        # run llm inference
+        # run llm inference ✨
         llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
 
         # begin context tracking
