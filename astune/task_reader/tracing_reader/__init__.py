@@ -4,6 +4,8 @@ import json
 import os
 import random
 
+from loguru import logger
+
 from astune.schema.task import Task
 from astune.task_reader.tracing_reader.filters.base import Filter
 from astune.task_reader.tracing_reader.filters.factory import build_filters
@@ -33,7 +35,8 @@ class TracingReader(TaskReaderBase):
         # config patch
         # print("*********", config, "**********")
         self.config = config.astune.tracing
-
+        
+        logger.info(f"reading tasks from {self.config.get('base_url')}, #filter {len(self.config.get('filters'))}")
         self._connector = LocalSqliteConnectorV1(self.config.get("base_url"))
         filters_config = self.config.get("filters")
         built_filters = build_filters(filters_config)
@@ -63,7 +66,8 @@ class TracingReader(TaskReaderBase):
     def _append_tasks(self, path: str, tasks: List[Task]) -> None:
         if not tasks:
             return
-        with open(path, "a") as f:
+        mode = 'a' if os.path.exists(path) else 'w'
+        with open(path, mode) as f:
             for task in tasks:
                 obj = task.model_dump()
                 f.write(json.dumps(obj, ensure_ascii=False) + "\n")
@@ -78,6 +82,7 @@ class TracingReader(TaskReaderBase):
         output_path = self.config.get("train_output_path")
 
         tasks = self._connector.load_tasks_from_conversation()
+        logger.info(f"Loaded {len(tasks)} tasks from conversation")
 
         existing_tasks = self._load_existing_tasks(output_path)
         existing_hashes = {
@@ -121,6 +126,7 @@ class TracingReader(TaskReaderBase):
 
         self._train_tasks = shuffled_tasks[:train_size]
         self._val_tasks = shuffled_tasks[train_size:]
+        logger.info(f"Shuffled {total} tasks into {train_size} train and {total - train_size} val")
 
     def get_training_tasks(self) -> List[Task]:
         return self._train_tasks
