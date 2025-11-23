@@ -96,6 +96,9 @@ astune:
   trainer_common:
     val_before_train: True
     val_pass_n: 4
+    save_freq: 20
+    test_freq: 20
+    total_epochs: 50
     nnodes: 1
     n_gpus_per_node: 8
     logger:
@@ -114,6 +117,7 @@ astune:
     use_kl_loss: True
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
+    trinity_only__n_gpu_for_infer: 2
 
   # the tracing config
   tracing:
