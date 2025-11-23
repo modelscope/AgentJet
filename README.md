@@ -192,4 +192,11 @@ source  .verlvenv/bin/activate
 
 python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear  && \
 python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='verl'
+
+
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='verl'
+
+
+
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='verl'
 ```
