@@ -93,7 +93,11 @@ class StaticRollout(StepPrinter):
                     )
                     futures.append(future)
 
-            while any(future.running() for future in futures):
+            while True:
+                if not any(future.running() for future in futures):
+                    break
+                if any(future.exception() for future in futures):
+                    break
                 self.step_status_printer(obs_window)
                 time.sleep(10)
 

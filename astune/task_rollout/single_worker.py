@@ -24,6 +24,7 @@ from omegaconf import DictConfig
 from astune.task_runner.classic_runner import AgentRunner, BaseAgentRunner
 from astune.task_runner.agentscope_runner import AgentScopeRunner
 from astune.context_tracker.basic_tracker import BasicContextTracker
+from astune.utils.testing_utils import GoodbyeException, TestFailException
 from astune.utils.env_service_client.env_client_ng import (
     EnvClient as EnvClientNg,
 )
@@ -121,6 +122,10 @@ class BaseParallelEnv:
                 cmt = agent_runner.execute(
                     workflow_task=workflow_task,
                 )
+            except GoodbyeException as e:
+                raise e
+            except TestFailException as e:
+                raise e
             except Exception as e:
                 logger.bind(exception=True).exception(
                     f"encounter exception in env_worker.agent_flow error={e.args}"

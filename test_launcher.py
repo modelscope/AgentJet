@@ -7,7 +7,7 @@ cmd = [sys.executable, "launcher.py", "--conf", TEST_TARGET, "--backbone", "verl
 subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=os.environ)
 
 # python launcher.py --kill="python|ray|vllm|VLLM" && ray stop
-# python launcher.py --conf astune_tests/test_apply_chat_template/test.yaml --backbone verl
+# python launcher.py --conf astune_tests/test_apply_chat_template/test.yaml --backbone verl  --db="PPL"
 
 from astune.utils.smart_daemon import LaunchCommandWhenAbsent
 service_path = os.path.dirname(__file__)
