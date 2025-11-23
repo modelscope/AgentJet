@@ -100,6 +100,7 @@ class AsyncLlmBridge(object):
                 if model_called:
                     tool_calls = parsed_tool_calls['tool_calls']
                     decoded_text = parsed_tool_calls['content']
+                    if decoded_text is None: decoded_text = ""
 
             return {
                 "role": "assistant",

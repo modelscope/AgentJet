@@ -123,8 +123,10 @@ class BaseParallelEnv:
                     workflow_task=workflow_task,
                 )
             except GoodbyeException as e:
+                logger.success(f"env_worker.agent_flow completed with GoodbyeException: {e.args}")
                 raise e
             except TestFailException as e:
+                logger.error(f"env_worker.agent_flow failed with TestFailException: {e.args}")
                 raise e
             except Exception as e:
                 logger.bind(exception=True).exception(

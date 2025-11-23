@@ -20,7 +20,7 @@ astune:
   rollout:
     agentscope_learn_protocol: "astune_tests.test_apply_chat_template.agentscope_for_test->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 1.0
-    max_env_worker: 4
+    max_env_worker: 1
 
   debug:
     debug_max_parallel: 1
