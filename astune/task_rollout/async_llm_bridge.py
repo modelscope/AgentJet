@@ -7,6 +7,7 @@ from typing import Dict, List, Literal, Callable, Any, Type
 from loguru import logger
 from omegaconf import DictConfig
 from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
+from astune.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
 from astune.schema.logprob import TokenAndProb
 from agentscope.model import ChatResponse
 from agentscope.message import TextBlock, ToolUseBlock
@@ -15,6 +16,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracking,
 )
+from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 
 
 class AsyncLlmBridge(object):
@@ -48,23 +50,24 @@ class AsyncLlmBridge(object):
             if custom_sampling_params:
                 updated_sampling_params.update(custom_sampling_params)
 
-            tools = messages[-1].get("tools", None)
-            for msg in messages:
-                msg.pop("tools", None)
-
             input_messages = copy.deepcopy(messages)
             request_id = uuid.uuid4().hex
-            if tools is not None:
-                prompt_ids = self.tokenizer.apply_chat_template(
+            if tools:
+                prompt_text = self.tokenizer.apply_chat_template(
                     input_messages,
                     add_generation_prompt=True,
-                    tokenize=True,
                     tools=tools,
+                    tokenize=False
                 )
             else:
-                prompt_ids = self.tokenizer.apply_chat_template(
-                    input_messages, add_generation_prompt=True, tokenize=True
+                prompt_text = self.tokenizer.apply_chat_template(
+                    input_messages,
+                    add_generation_prompt=True,
+                    tokenize=False
                 )
+            prompt_ids = self.tokenizer(prompt_text)["input_ids"]
+
+            _test_if_test_mode('prompt_text', prompt_text, self.config)
 
             final_res = run_async_coro__no_matter_what(
                 self.async_rollout_manager.generate(
@@ -80,14 +83,29 @@ class AsyncLlmBridge(object):
                 token_array = final_res
 
             decoded_text = self.tokenizer.decode(token_array)  # type: ignore
+            if not self.config.astune.execute_test:
+                decoded_text = _mock_if_test_mode('mock_decoded_text', decoded_text, self.config)
 
             if decoded_text.endswith("<|im_end|>"):
                 decoded_text = decoded_text[: -len("<|im_end|>")]
+
+            # if tool call
+            tool_calls = None
+            if '<tool_call>' in decoded_text:
+                tool_parser = Hermes2ProToolParser(self.tokenizer)
+                parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
+                parsed_tool_calls = parsed_tool_calls.model_dump()
+                _test_if_test_mode('parsed_tool_calls', parsed_tool_calls['tool_calls'], self.config)
+                model_called = parsed_tool_calls['tools_called']
+                if model_called:
+                    tool_calls = parsed_tool_calls['tool_calls']
+                    decoded_text = parsed_tool_calls['content']
 
             return {
                 "role": "assistant",
                 "request_id": request_id,
                 "content": decoded_text,
+                "tool_calls": tool_calls,
                 "tokens": [
                     TokenAndProb(
                         token_id=token,

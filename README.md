@@ -26,7 +26,9 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
     uv pip install -r scripts/requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
     uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
-    uv pip install -e external/agentscope -i https://mirrors.aliyun.com/pypi/simple/
+    # uv pip install -e external/agentscope -i https://mirrors.aliyun.com/pypi/simple/
+    uv pip install agentscope==1.0.7 -i https://mirrors.aliyun.com/pypi/simple/
+
 
     # Install flash attention (must be installed at last)
     uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
@@ -175,4 +177,19 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 
 # Future
 
-- [ ] Generative Adversarial Distillation: https://www.alphaxiv.org/abs/2511.10643
+- [ ] test server
+- [ ] RUBRICS INT
+- [ ] TEST TOKEN REASON
+- [x] TRINITY CONF MAP
+
+```
+ python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+```
+
+
+```
+source  .verlvenv/bin/activate
+
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear  && \
+python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='verl'
+```

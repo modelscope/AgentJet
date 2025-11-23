@@ -1,6 +1,7 @@
 import time
 from functools import wraps
 from typing import Any, Callable, Literal, Optional, TypeVar
+from astune.utils.testing_utils import GoodbyeException, TestFailException
 from loguru import logger
 
 T = TypeVar("T")
@@ -27,6 +28,10 @@ def retry_with_backoff(
             for attempt in range(target_max_retry):
                 try:
                     return func(*args, **kwargs)
+                except GoodbyeException as exc:  # noqa: BLE001
+                    raise exc
+                except TestFailException as exc:  # noqa: BLE001
+                    raise exc
                 except Exception as exc:  # noqa: BLE001
                     if attempt < target_max_retry - 1:
                         logger.bind(exception=True).exception(
