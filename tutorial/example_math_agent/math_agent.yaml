@@ -20,6 +20,7 @@ astune:
   rollout:
     agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 1.0
+    max_env_worker: 4
 
   debug:
     debug_max_parallel: 1
