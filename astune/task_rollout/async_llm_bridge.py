@@ -100,9 +100,9 @@ class AsyncLlmBridge(object):
                 model_called = parsed_tool_calls['tools_called']
                 if model_called:
                     tool_calls = parsed_tool_calls['tool_calls']
-                    for i in range(len(tool_calls)):
-                        if 'function' in tool_calls[i] and 'arguments' in tool_calls[i]['function']:
-                            tool_calls[i]['function']['arguments'] = json.loads(tool_calls[i]['function']['arguments'])
+                    # for i in range(len(tool_calls)):
+                    #     if 'function' in tool_calls[i] and 'arguments' in tool_calls[i]['function']:
+                    #         tool_calls[i]['function']['arguments'] = json.loads(tool_calls[i]['function']['arguments'])
                     decoded_text = parsed_tool_calls['content']
                     if decoded_text is None: decoded_text = ""
 
@@ -304,6 +304,7 @@ class LlmProxyForAgentScope(object):
 
         if message.get("tool_calls"):
             for tool_call in message["tool_calls"]:
+                from vsdb import bp; bp("TOOL_CALL_PARSE")
                 input_ = _json_loads_with_repair(
                     tool_call["function"].get(
                         "arguments",
