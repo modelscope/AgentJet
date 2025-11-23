@@ -14,7 +14,7 @@ astune:
 
   rollout:
     agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
-    num_repeat: 6
+    num_repeat: 4
     agent_madness_reward: 0.0
 
   debug:
@@ -24,13 +24,10 @@ astune:
   data:
     max_prompt_length: 15000
     max_response_length: 3000
-    train_batch_size: 32
+    train_batch_size: 8
 
-trinity:
-  algorithm:
-    repeat_times: 6
-  buffer:
-    train_batch_size: 84
+  trainer_common:
+    val_before_train: False
 
 # ------------------ 不需要修改 ------------------
 hydra:
