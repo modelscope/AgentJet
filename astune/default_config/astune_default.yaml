@@ -94,7 +94,7 @@ astune:
     debug_tensor_parallel_size: 4
 
   trainer_common:
-    val_before_train: True
+    val_before_train: False
     val_pass_n: 4
     save_freq: 20
     test_freq: 20
