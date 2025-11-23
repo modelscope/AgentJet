@@ -34,6 +34,7 @@ from agentscope.pipeline import (
 
 
 moderator = EchoAgent()
+moderator.set_console_output_enabled(False)
 
 
 async def hunter_stage(
