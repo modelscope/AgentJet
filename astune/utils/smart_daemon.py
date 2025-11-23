@@ -9,6 +9,7 @@ import logging
 from loguru import logger
 from pathlib import Path
 from typing import Optional, Tuple, List
+from beast_logger import print_dict
 
 
 class LaunchWhenAbsent:
@@ -292,6 +293,11 @@ class LaunchWhenAbsent:
                             )
 
                 logger.success(f"Successfully launched {self.cmd} with PID {proc.pid}")
+                print_dict({
+                    "Result": "Successfully launched",
+                    "Command": " ".join(self.cmd),
+                    "PID": proc.pid,
+                })
 
         except Exception as e:
             logging.error(f"Error launching script: {e}")
