@@ -74,7 +74,7 @@ class AsyncLlmBridge(object):
                     request_id=request_id,
                     prompt_ids=prompt_ids,
                     sampling_params=updated_sampling_params,
-                )
+                ), timeout=1200
             )
 
             if self.config.astune.rollout.name == "vllm":
@@ -91,7 +91,7 @@ class AsyncLlmBridge(object):
 
             # if tool call
             tool_calls = None
-            if '<tool_call>' in decoded_text:
+            if ('<tool_call>' in decoded_text) and (not self.config.astune.rollout.agentscope_disable_toolcalls):
                 tool_parser = Hermes2ProToolParser(self.tokenizer)
                 parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
                 parsed_tool_calls = parsed_tool_calls.model_dump()
