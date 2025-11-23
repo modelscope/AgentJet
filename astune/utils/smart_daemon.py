@@ -100,9 +100,15 @@ class LaunchWhenAbsent:
                 return False, None, None
 
     def is_pgid_running(self, pgid):
-        for proc in psutil.process_iter(["pid"]):
+        # Treat zombie processes as not running to avoid false positives.
+        for proc in psutil.process_iter(["pid", "status"]):
             try:
+                if proc.info.get("status") == psutil.STATUS_ZOMBIE:
+                    continue
                 if os.getpgid(proc.pid) == pgid:
+                    # Double-check status to avoid races where the cached info is missing.
+                    if proc.status() == psutil.STATUS_ZOMBIE:
+                        continue
                     return True, proc
             except (psutil.NoSuchProcess, ProcessLookupError):
                 continue
@@ -147,6 +153,16 @@ class LaunchWhenAbsent:
         if self.pgid:
             self._kill_existing_process_group(self.pgid)
 
+    def kill_self(self):
+        """Force terminate this launcher instance if it's running."""
+        is_running, _, pgid = self._is_script_running()
+        if not is_running or pgid is None:
+            logger.info("No running process group found for this launcher")
+            return False
+        self.pgid = pgid
+        self._kill_existing_process_group(pgid)
+        return True
+
     def launch(
         self,
         force_restart: bool = False,
@@ -188,8 +204,13 @@ class LaunchWhenAbsent:
                 raise NotImplementedError("Windows support is not implemented yet.")
             else:  # Unix-like systems
                 # Use nohup and redirect output
-                logger.warning("\nlaunching: " + " ".join(self.cmd))
-                logger.warning(f"\nlogging to {log_file}\n")
+                print_dict({
+                    "Action": "Launching command",
+                    "Command": " ".join(self.cmd),
+                    "LogFile": str(log_file),
+                })
+                # logger.warning("\nlaunching: " + " ".join(self.cmd))
+                # logger.warning(f"\nlogging to {log_file}\n")
                 # Open log file
                 if log_file.exists():
                     os.remove(log_file)
@@ -268,12 +289,12 @@ class LaunchWhenAbsent:
                             if previous_r_print:
                                 print("")
                             print(
-                                f"Waiting for process launch... {remaining}s remaining ({f_read_trim})"
+                                f"Waiting for process launch [PGID {pgid}, PID {proc.pid}]... {remaining}s remaining ({f_read_trim})"
                             )
                             previous_r_print = False
                         else:
                             print(
-                                f"\rWaiting for process launch... {remaining}s remaining",
+                                f"\rWaiting for process launch [PGID {pgid}, PID {proc.pid}]... {remaining}s remaining",
                                 end="",
                                 flush=True,
                             )
