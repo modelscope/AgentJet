@@ -274,7 +274,7 @@ class BasicContextTracker(TrackerAttr):
             "role": llm_output["role"],
             "content": llm_output["content"],
         }
-        if not llm_output.get("tool_calls", None):
+        if llm_output.get("tool_calls", None):
             llm_output_role_content.update({"tool_calls": llm_output.get("tool_calls", [])})
 
         completion_token_arr, msg2 = self.get_inc(
