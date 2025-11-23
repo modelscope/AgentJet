@@ -301,7 +301,7 @@ class LaunchWhenAbsent:
 
         except Exception as e:
             logging.error(f"Error launching script: {e}")
-            raise
+            raise e
 
 
 class LaunchCommandWhenAbsent(LaunchWhenAbsent):

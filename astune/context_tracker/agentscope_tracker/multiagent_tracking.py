@@ -160,13 +160,13 @@ class MultiAgentContextTracking(BasicContextTracker):
                 )
             self.grouped_steps += [copy.deepcopy(self.full_context)]
 
-            DEBUG = True
-            if (
-                DEBUG
-                and len(self.grouped_steps) >= 2
-                and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2]))
-            ):
-                print(f"General Warning: merge failure discovered.")
+            # DEBUG = True   # warn when merge fails
+            # if (
+            #     DEBUG
+            #     and len(self.grouped_steps) >= 2
+            #     and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2]))
+            # ):
+            #     print(f"General Warning: merge failure discovered.")
 
         return None
 

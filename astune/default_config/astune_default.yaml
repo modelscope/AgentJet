@@ -1,4 +1,4 @@
-# ------------------ 主要配置 ------------------
+# ------------------ main configuration ------------------
 astune:
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
@@ -132,3 +132,6 @@ astune:
           custom_rubrics: If the answer claims that it has written the output to a file, consider it an invalid response.
           temperature: 0.5
           print_reason: false
+
+  execute_test: "" # DO NOT EDIT, FOR TESTING PURPOSE ONLY
+  execute_testing_lambda: ""
