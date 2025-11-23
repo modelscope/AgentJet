@@ -52,6 +52,7 @@ class MultiAgentContextTracking(BasicContextTracker):
         disable_toolcalls = self.config.astune.rollout.agentscope_disable_toolcalls
         if disable_toolcalls:
             consider_roles.remove("tool")
+            tools = []
 
         for i, msg in enumerate(messages):
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
@@ -103,7 +104,7 @@ class MultiAgentContextTracking(BasicContextTracker):
         if not context_safe:
             self.context_overflow = True
 
-        return context_safe, info, converted_message, custom_sampling_params
+        return context_safe, info, converted_message, custom_sampling_params, tools
 
     def step_track(
         self,

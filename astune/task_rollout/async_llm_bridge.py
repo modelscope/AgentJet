@@ -242,7 +242,7 @@ class LlmProxyForAgentScope(object):
     ) -> ChatResponse:
 
         # prepare context tracker, check context safety
-        context_safe, info, converted_message, custom_sampling_params = (
+        context_safe, info, converted_message, custom_sampling_params, tools = (
             self.context_tracker.step_prepare(messages, tools)
         )
         if not context_safe:
