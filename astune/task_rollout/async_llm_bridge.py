@@ -84,7 +84,7 @@ class AsyncLlmBridge(object):
                 token_array = final_res
 
             decoded_text = self.tokenizer.decode(token_array)  # type: ignore
-            if not self.config.astune.execute_test:
+            if self.config.astune.execute_test:
                 decoded_text = _mock_if_test_mode('mock_decoded_text', decoded_text, self.config)
 
             if decoded_text.endswith("<|im_end|>"):
@@ -184,7 +184,7 @@ class AsyncLlmBridge(object):
                     )
                 return response
 
-            response = run_async_coro__no_matter_what(main())  # type: ignore
+            response = run_async_coro__no_matter_what(main(), timeout=1200)  # type: ignore
 
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
@@ -256,9 +256,9 @@ class LlmProxyForAgentScope(object):
             return ChatResponse(
                 content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
             )
-
         # run llm inference ✨
         llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
+        from vsdb import bp; bp("TOOL_CALL_PARSE")
 
         # begin context tracking
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
@@ -304,7 +304,7 @@ class LlmProxyForAgentScope(object):
 
         if message.get("tool_calls"):
             for tool_call in message["tool_calls"]:
-                from vsdb import bp; bp("TOOL_CALL_PARSE")
+
                 input_ = _json_loads_with_repair(
                     tool_call["function"].get(
                         "arguments",

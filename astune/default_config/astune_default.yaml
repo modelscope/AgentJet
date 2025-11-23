@@ -133,5 +133,5 @@ astune:
           temperature: 0.5
           print_reason: false
 
-  execute_test: "" # DO NOT EDIT, FOR TESTING PURPOSE ONLY
+  execute_test: False # DO NOT EDIT, FOR TESTING PURPOSE ONLY
   execute_testing_lambda: ""
