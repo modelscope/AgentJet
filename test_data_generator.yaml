@@ -1,10 +1,18 @@
 # ------------------ 主要配置 ------------------
 astune:
+  # task_reader:
+  #   type: dataset_file
+  #   dataset_file:
+  #     training:
+  #       file_path: '/mnt/workspace/shian.lq/AStune/astune/dataset/jsonl/finQA.jsonl'
+
   task_reader:
-    type: dataset_file
-    dataset_file:
-      training:
-        file_path: '/mnt/workspace/shian.lq/AStune/astune/dataset/jsonl/finQA.jsonl'
+    type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
+    # 如果选择 `huggingface_dat_repo` 以下配置生效
+    huggingface_dat_repo:
+      dataset_path: '/mnt/workspace/shian.lq/AStune/astune/dataset/huggingface/financial-qa-10K'
+      training_split: "train"
+      validation_split: "test"
       
   document_reader:
     document_path: '/mnt/workspace/shian.lq/AStune/astune/dataset/document/Anti-Money Laundering and Counter-Terrorist Financing Ordinance.pdf'
