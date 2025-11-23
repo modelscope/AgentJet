@@ -1,5 +1,6 @@
 # ------------------ 主要配置 ------------------
 astune:
+  project_name: example_math_agent
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     # 如果选择 `huggingface_dat_repo` 以下配置生效
@@ -18,6 +19,7 @@ astune:
 
   rollout:
     agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
+    temperature: 1.0
 
   debug:
     debug_max_parallel: 1

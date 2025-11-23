@@ -1,5 +1,6 @@
 # ------------------ 主要配置 ------------------
 astune:
+  project_name: example_werewolves
   task_reader:
     type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
 
