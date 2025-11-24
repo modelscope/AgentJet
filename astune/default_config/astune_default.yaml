@@ -30,7 +30,7 @@ astune:
 
     # rubrics begin
     class_name: RMAutoGraderJudge
-    model_name: qwen3-32b
+    model_name: qwen-max
     grader_mode: pointwise
     language: en
     min_score: 0

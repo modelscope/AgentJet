@@ -39,18 +39,13 @@ def parse_args():
         help="Path to experiment directory",
     )
     parser.add_argument(
-        "--db",
+        "--debug",
         type=str,
         default="",
         required=False,
         help="Path to configuration file",
     )
-    parser.add_argument(
-        "--with-exp-maker",
-        action="store_true",
-        default=False,
-        help="Launch exp maker",
-    )
+
     parser.add_argument("--with-ray", action="store_true", default=False, help="Launch ray")
     parser.add_argument(
         "--with-appworld",
@@ -155,9 +150,9 @@ def main():
             exp_config,
         ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone)
 
-    if args.db:
+    if args.debug:
         env["RAY_DEBUG_POST_MORTEM"] = "1"
-        env["DEBUG_TAGS"] = args.db
+        env["DEBUG_TAGS"] = args.debug
         env["RAY_record_task_actor_creation_sites"] = "true"
         assert exp_config["astune"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"    # type: ignore
         logger.warning("Debug mode is ON")
