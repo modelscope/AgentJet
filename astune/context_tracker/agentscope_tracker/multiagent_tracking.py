@@ -24,7 +24,7 @@ from beast_logger import (
     NestedJsonItem,
     SeqItem,
 )
-
+import json
 
 class MultiAgentContextTracking(BasicContextTracker):
 
@@ -53,6 +53,9 @@ class MultiAgentContextTracking(BasicContextTracker):
         if disable_toolcalls:
             consider_roles.remove("tool")
             tools = []
+        else:
+            # rerank tool parameters to improve compatibility
+            for i in range(len(tools)): tools[i]['function']['parameters'] = tools[i]['function'].pop('parameters')
 
         for i, msg in enumerate(messages):
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
@@ -127,6 +130,24 @@ class MultiAgentContextTracking(BasicContextTracker):
         token_generator = "manual"
         if llm_output.get("tool_calls", None) is not None:
             tool_calls = llm_output["tool_calls"]
+            if ("wrong_toolcall" in self.config.astune.rollout.compute_madness_checklist):
+                # check tool call formating
+                copy_tool_calls = copy.deepcopy(tool_calls)
+                wrong_toolcall = False
+                for i in range(len(copy_tool_calls)):
+                    from vsdb import bp; bp("TOOL_CALL_PARSE_2")
+                    if ('function' in copy_tool_calls[i]) and ('arguments' in copy_tool_calls[i]['function']):
+                        try:
+                            copy_tool_calls[i]['function']['arguments'] = json.loads(copy_tool_calls[i]['function']['arguments'])
+                            if isinstance(copy_tool_calls[i]['function']['arguments'], str):
+                                wrong_toolcall = True
+                        except:
+                            wrong_toolcall = True
+                    else:
+                        wrong_toolcall = True
+                if wrong_toolcall:
+                    logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*-*---\n{llm_output['tool_calls']}\n---*-*---\n")
+                    self.already_mad_flag = True
         else:
             tool_calls = []
 
