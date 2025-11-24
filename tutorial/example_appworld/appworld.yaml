@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
 astune:
-  project_name: appworld_astune
+  project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数

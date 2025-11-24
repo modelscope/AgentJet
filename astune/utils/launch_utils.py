@@ -6,6 +6,7 @@ import time
 import sys
 import os
 from loguru import logger
+from beast_logger import print_dict
 from astune.utils.config_utils import align_parameters
 from astune.utils.smart_daemon import LaunchCommandWhenAbsent
 
@@ -140,6 +141,11 @@ def execute_training_process(
 
     try:
         logger.info(f"Running command: {' '.join(cmd)}")
+        print_dict({
+            "Running Command": ' '.join(cmd),
+            "Experiment Base": exe_exp_base,
+            "YAML Config": exe_yaml_path,
+        })
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")

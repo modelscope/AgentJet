@@ -52,6 +52,7 @@ class MultiAgentContextTracking(BasicContextTracker):
         disable_toolcalls = self.config.astune.rollout.agentscope_disable_toolcalls
         if disable_toolcalls:
             consider_roles.remove("tool")
+            tools = []
 
         for i, msg in enumerate(messages):
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
@@ -103,7 +104,7 @@ class MultiAgentContextTracking(BasicContextTracker):
         if not context_safe:
             self.context_overflow = True
 
-        return context_safe, info, converted_message, custom_sampling_params
+        return context_safe, info, converted_message, custom_sampling_params, tools
 
     def step_track(
         self,
@@ -145,7 +146,7 @@ class MultiAgentContextTracking(BasicContextTracker):
             )
             assert (
                 len(token_arr_method2) <= self.config.astune.rollout.max_response_length_in_one_turn
-            ), f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.astune.rollout.max_response_length_in_one_turn}"
+            ), f"Generated token length {len(token_arr_method2)} exceeds max_response_length_in_one_turn {self.config.astune.rollout.max_response_length_in_one_turn}"
             llm_ext_msg.token_arr = token_arr_method2
             llm_ext_msg.token_logprob_arr = token_logprob_arr
             self.generated_token_callback_fn(llm_ext_msg.token_arr)
@@ -160,13 +161,13 @@ class MultiAgentContextTracking(BasicContextTracker):
                 )
             self.grouped_steps += [copy.deepcopy(self.full_context)]
 
-            DEBUG = True
-            if (
-                DEBUG
-                and len(self.grouped_steps) >= 2
-                and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2]))
-            ):
-                print(f"General Warning: merge failure discovered.")
+            # DEBUG = True   # warn when merge fails
+            # if (
+            #     DEBUG
+            #     and len(self.grouped_steps) >= 2
+            #     and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2]))
+            # ):
+            #     print(f"General Warning: merge failure discovered.")
 
         return None
 

@@ -18,7 +18,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
         rollout_args:
           temperature: 1.0
         split: train
-        storage_type: astune
+        storage_type: astune_workflow
         subset_name: appworld
     total_epochs: 1000
     train_batch_size: 36
@@ -47,12 +47,14 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
       seed: 42
       tensor_parallel_size: 1
       tool_call_parser: hermes
-    runner_per_model: 12
+    runner_per_model: 8
+    runner_state_report_interval: 30
   model:
     max_model_len: 21000
     max_response_tokens: 16000
   monitor:
     monitor_type: swanlab
+    # monitor_type: tensorboard
   synchronizer:
     sync_interval: 2
     sync_method: nccl
@@ -60,7 +62,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
     sync_timeout: 1200
   trainer:
     grad_clip: 1.0
-    max_token_len_per_gpu: 24576
+    max_token_len_per_gpu: 20000
     save_interval: 100
-    ulysses_sequence_parallel_size: 2
+    ulysses_sequence_parallel_size: 1
     use_dynamic_bsz: true
