@@ -1,13 +1,10 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from astune.schema.task import Task
 from astune.schema.document import Document
 from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 
 class DataGeneratorBase:
-    def __init__(
-        self, 
-        config
-    ):
+    def __init__(self, config):
         """
         Initialize the TaskGeneratorBase class.
 
@@ -15,7 +12,7 @@ class DataGeneratorBase:
             config: Optional configuration object (LLM model, Maximum response length)
         """
         self.config = config
-
+        self.sampling_params = self.config.astune.data_generator.sampling_params or {}
         self.llm_client = construct_alien_llm_chat_fn(
             alien_llm_model=self.config.astune.data_generator.llm_model,
             alien_llm_response_length=self.config.astune.data_generator.llm_response_length
