@@ -5,11 +5,8 @@ import os
 import random
 
 from astune.schema.task import Task
-from astune.task_reader.tracing_reader.filters.base import Filter
-from astune.task_reader.tracing_reader.filters.factory import build_filters
-from astune.task_reader.tracing_reader.filters.llm_evaluate_filter import (
-    LlmEvaluateFilter,
-)
+from astune.data_generator.filters.base import Filter
+from astune.data_generator.filters.factory import build_filters
 from ..task_reader_base import TaskReaderBase
 from .connector import LocalSqliteConnectorV1, PhoenixConnector
 
