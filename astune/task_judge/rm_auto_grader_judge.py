@@ -15,6 +15,7 @@ Key Features:
 import asyncio
 from typing import List, Optional, Dict, Any
 from loguru import logger
+import json
 
 from astune.workflow import WorkflowOutput, WorkflowTask
 from astune.task_judge.judge_base import JudgeBase
@@ -177,6 +178,13 @@ class RMAutoGraderJudge(JudgeBase):
 
         # Generate rubrics and get LLMGrader
         self.llm_grader = await auto_grader.run(eval_cases)
+        json.dump(self.llm_grader.to_dict(), open("my_grader.json", "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+
+        # Load grader config and inject model
+        # grader_config = json.load(open("my_grader.json", "r", encoding="utf-8"))
+        # grader_config["model"] = self.model
+        # self.llm_grader = LLMGrader.from_config(grader_config)
+
         self.rubrics_generated = True
 
         logger.info("Rubrics generated successfully!")
