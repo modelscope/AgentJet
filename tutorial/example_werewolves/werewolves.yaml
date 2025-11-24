@@ -24,8 +24,8 @@ astune:
     debug_first_n_tasks: 1
 
   data:
-    max_prompt_length: 15000
-    max_response_length: 3000
+    max_prompt_length: 9000
+    max_response_length: 9000
     train_batch_size: 8
 
   trainer_common:

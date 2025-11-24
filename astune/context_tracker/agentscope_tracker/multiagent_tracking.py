@@ -146,7 +146,7 @@ class MultiAgentContextTracking(BasicContextTracker):
             )
             assert (
                 len(token_arr_method2) <= self.config.astune.rollout.max_response_length_in_one_turn
-            ), f"Generated token length {len(token_arr_method2)} exceeds max_response_len {self.config.astune.rollout.max_response_length_in_one_turn}"
+            ), f"Generated token length {len(token_arr_method2)} exceeds max_response_length_in_one_turn {self.config.astune.rollout.max_response_length_in_one_turn}"
             llm_ext_msg.token_arr = token_arr_method2
             llm_ext_msg.token_logprob_arr = token_logprob_arr
             self.generated_token_callback_fn(llm_ext_msg.token_arr)
