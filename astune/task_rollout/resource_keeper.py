@@ -4,6 +4,7 @@ from omegaconf import DictConfig
 from typing import Any, Dict, Tuple, Union, Callable
 from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
 from astune.schema.task import Task, WorkflowTask
+from beast_logger import print_dict
 
 class ResourceKeeper(object):
     """
@@ -71,6 +72,7 @@ class ResourceKeeper(object):
         Raises:
             Exception: If environment creation fails or required task data is missing
         """
+
         if self.config.astune.task_reader.type == 'env_service':
             if self.env is None:
                 raise ValueError("Environment client is None but env_service type is specified")
@@ -148,6 +150,19 @@ class BaseGymEnv(object):
         self.task_env_uuid = task_env_uuid
 
     def step(self, action: dict) -> Tuple[str, float, bool, dict]:
+        # fix agentscope output
+        if not isinstance(action['content'], str):
+            # assert isinstance(action['content'], list)
+            # assert len(action['content']) == 1
+            # assert isinstance(action['content'][0], dict)
+            # assert 'type' in action['content'][0]
+            # assert 'text' in action['content'][0]
+            try:
+                action['content'] = action['content'][0]['text']
+            except:
+                logger.exception(f"Failed to parse action content from agentscope output. {action['content']}")
+                action['content'] = str(action['content'])
+
         self.obs_window["step"][self.task_thread_index] += 1
         env_output = self.env_client.step(
             instance_id=self.task_env_uuid,

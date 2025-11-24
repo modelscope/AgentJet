@@ -5,6 +5,7 @@ import yaml
 from loguru import logger
 from hydra import initialize, compose
 from omegaconf import DictConfig
+from best_logger import print_dict
 
 
 def read_astune_config(yaml_fp):
@@ -116,7 +117,10 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     # save to_config_fp
     with open(to_config_fp, "w") as file:
         yaml.dump(to_config, file)
-    logger.success(f"Saved aligned configuration to {to_config_fp}")
+    # logger.success(f"Saved aligned configuration to {to_config_fp}")
+    print_dict({
+        "Note": f"Saved aligned configuration to {to_config_fp}"
+    })
 
 
 def read_astune_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None):

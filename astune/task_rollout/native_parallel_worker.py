@@ -93,7 +93,14 @@ class StaticRollout(StepPrinter):
                     )
                     futures.append(future)
 
-            while any(future.running() for future in futures):
+            while True:
+                if not any(future.running() for future in futures):
+                    break
+                if any(future.exception() for future in futures):
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    for f in futures:
+                        if not f.done(): f.cancel()
+                    raise RuntimeError("One of the rollout threads has encountered an exception.")
                 self.step_status_printer(obs_window)
                 time.sleep(10)
 
