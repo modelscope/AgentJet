@@ -40,7 +40,7 @@ def warm_up_process(config):
 
     if "PROCESS_LEVEL_WARMUP_INIT" in os.environ: return
     os.environ["PROCESS_LEVEL_WARMUP_INIT"] = "1"
-    experiment_name = config.experiment_name
+    experiment_name = config.astune.experiment_name
     init_parallel_rollout_logger(experiment_name)
     warm_up_task_judge_when_needed(config)
 
