@@ -15,8 +15,8 @@ from astune.task_reader.tracing_reader import TracingReader
 
 class RandomDummyGenerator(TaskReaderBase):
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, reader_config):
+        super().__init__(reader_config)
 
     def _load_dataset_split(self, dataset_name: str, split: str) -> List[Task]:
         tasks = []
@@ -49,19 +49,45 @@ class RandomDummyGenerator(TaskReaderBase):
 class TaskReaderRouter(TaskReaderBase):
     def __init__(self, config):
         super().__init__(config)
-        self.task_reader_type = self.config.astune.task_reader.type
-        if self.task_reader_type == "env_service":
-            self.task_reader = TaskReaderEnvService(config)
-        elif self.task_reader_type == "dataset_file":
-            self.task_reader = TaskReaderJsonl(config)
-        elif self.task_reader_type == "huggingface_dat_repo":
-            self.task_reader = TaskReaderHuggingFace(config)
-        elif self.task_reader_type == "tracing":
-            self.task_reader = TracingReader(config)
-        elif self.task_reader_type == "random_dummy":
-            self.task_reader = RandomDummyGenerator(config)
+        task_reader_type = config.astune.task_reader.type
+        reader_config = config.astune.task_reader
+        if task_reader_type == "env_service":
+            self.task_reader = TaskReaderEnvService(reader_config)
+        elif task_reader_type == "dataset_file":
+            self.task_reader = TaskReaderJsonl(reader_config)
+        elif task_reader_type == "huggingface_dat_repo":
+            self.task_reader = TaskReaderHuggingFace(reader_config)
+        elif self.task_reader == "tracing":
+            self.task_reader = TracingReader(reader_config)
+        elif task_reader_type == "random_dummy":
+            self.task_reader = RandomDummyGenerator(reader_config)
         else:
-            raise ValueError(f"Unsupported task reader type: {self.task_reader_type}")
+            raise ValueError(f"Unsupported task reader type: {task_reader_type}")
+
+    def get_training_tasks(self) -> List[Task]:
+        return self.task_reader.get_training_tasks()
+
+    def get_validation_tasks(self) -> List[Task]:
+        return self.task_reader.get_validation_tasks()
+
+
+class TaskReaderRouterV2(TaskReaderBase):
+    def __init__(self, reader_type, reader_config):
+        super().__init__(None)
+
+        task_reader_type = reader_type
+        if task_reader_type == "env_service":
+            self.task_reader = TaskReaderEnvService(reader_config)
+        elif task_reader_type == "dataset_file":
+            self.task_reader = TaskReaderJsonl(reader_config)
+        elif task_reader_type == "huggingface_dat_repo":
+            self.task_reader = TaskReaderHuggingFace(reader_config)
+        elif self.task_reader == "tracing":
+            self.task_reader = TracingReader(reader_config)
+        elif task_reader_type == "random_dummy":
+            self.task_reader = RandomDummyGenerator(reader_config)
+        else:
+            raise ValueError(f"Unsupported task reader type: {task_reader_type}")
 
     def get_training_tasks(self) -> List[Task]:
         return self.task_reader.get_training_tasks()

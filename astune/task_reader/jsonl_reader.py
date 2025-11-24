@@ -8,8 +8,9 @@ from astune.task_reader.task_reader_base import TaskReaderBase
 
 
 class TaskReaderJsonl(TaskReaderBase):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, reader_config):
+        super().__init__(reader_config)
+        self.reader_config = reader_config
 
     def _read_jsonl_file(self, file_path):
         """
@@ -53,7 +54,7 @@ class TaskReaderJsonl(TaskReaderBase):
         Returns:
             List[Task]: List of training Task objects.
         """
-        file_path = self.config.astune.task_reader.dataset_file.training.file_path
+        file_path = self.reader_config.dataset_file.training.file_path
         return self._read_jsonl_file(file_path)
 
     def get_validation_tasks(self) -> List[Task]:
@@ -63,5 +64,5 @@ class TaskReaderJsonl(TaskReaderBase):
         Returns:
             List[Task]: List of validation Task objects.
         """
-        file_path = self.config.astune.task_reader.dataset_file.validation.file_path
+        file_path = self.reader_config.dataset_file.validation.file_path
         return self._read_jsonl_file(file_path)
