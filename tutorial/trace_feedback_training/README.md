@@ -1,42 +1,46 @@
-# 从 Tracing Log 回流数据训练一个新的 Agent
+# Training a New Agent from Tracing Logs
 
-ASTune 支持回收和利用 Agent 生产过程产生的聊天日志，不断训练、提升 Agent 表现。在该文档中，我们将展示如何从 Tracing Log 回流数据训练一个 Agent。
+ASTune allows you to recycle the chat logs generated during an Agent’s execution and continuously improve the Agent through iterative training.
+This document demonstrates how to train an Agent using tracing log feedback.
 
-## 1. 准备数据
+## 1. Preparing the Data
 
-为使用回流数据训练，应当已经有一个基于 agentscope 构建的 Agent，且连接在 studio 上运行了一段时间。
+To use tracing logs for training, you must already have an Agent built with **agentscope** running in **agentscope-studio** for some time.
 
-在本示例中，我们在 `agent_deployed.py` 实现了一个能用于解决数学问题的 agent。为方便演示，我们首先使用它模拟数据收集的过程。
+In this example, we implement a math-problem-solving agent in `agent_deployed.py`.
+To demonstrate the workflow, we will first simulate the data-collection process.
 
-1. 安装 [agentscope-studio](https://github.com/agentscope-ai/agentscope-studio)。
-2. 依照默认端口设置启动 agentscope-studio。
-3. 运行 `agent_deployed.py`，并模拟用户与 agent 聊天交互。
+1. Install [agentscope-studio](https://github.com/agentscope-ai/agentscope-studio).
+2. Start agentscope-studio with the default port settings.
+3. Run `agent_deployed.py` and simulate user–agent conversations.
 
-在完成几轮交互后，studio 在 `~/AgentScope-Studio/database.sqlite` 中保存了 tracing log，其中包含了用户与 agent 的对话记录。
+After several rounds of interaction, studio will store the tracing logs in
+`~/AgentScope-Studio/database.sqlite`, containing all recorded dialogues between the user and the agent.
 
-> **AgentScope 与 Studio 版本**
+> **AgentScope & Studio Version Compatibility**
 >
-> 建议使用 AgentScope 及与之匹配的 Studio 版本：
-> 
-> - AgentScope (v1.0.7)
-> - Studio (23eb7c0b1185486d1baca36aea0ce8b85ea9de48)
+> It is recommended to use matched versions:
+>
+> * AgentScope (v1.0.7)
+> * Studio (23eb7c0b1185486d1baca36aea0ce8b85ea9de48)
 
-## 2. 启动数据回流训练
+## 2. Starting Trace-Feedback Training
 
-在获得 tracing log（`database.sqlite`）后，接下来就能使用本项目的回流训练功能来训练一个 Agent。
+Once you have the tracing log (`database.sqlite`), you can use the trace-feedback training module to train a new Agent.
 
-1. 修改配置文件中参数 `task_reader` 为 `tracing`，启用回流模式。
-2. 依照需求，配置 `tracing` 中的数据库地址以及数据筛选设置。
-3. 仿照正常的训练流程，配置其他参数与 Reward。
+1. Set the `task_reader` parameter to `tracing` in the configuration file to enable trace-feedback mode.
+2. Configure the `tracing` section with the database path and filtering options.
+3. Configure other training parameters and Rewards as you would in a normal training workflow.
 
-在文件夹 `trace_feedback_training` 中已准备了一份示例 database 及相应的训练配置。
+An example database and configuration file are provided under
+`trace_feedback_training/`.
 
-在一切准备妥当后，使用 launcher 启动训练。
+When everything is ready, start the training with:
 
 ```bash
 python launcher.py --conf tutorial/trace_feedback_training/trace_feedback_training.yaml --backbone='trinity' --with-ray
 ```
 
-## 3. 部署新的 Agent
+## 3. Deploying the New Agent
 
-现在，可以将全新的 Agent 部署到生产环境，最终实现迭代式的回流数据训练增强。
+You can now deploy the newly trained Agent into production, enabling continuous improvement through iterative trace-feedback training.
