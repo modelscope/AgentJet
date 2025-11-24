@@ -23,22 +23,22 @@ class Config(TypedDict):
 
 
 class TracingReader(TaskReaderBase):
-    config: Config
+    reader_config: Config
 
     def __init__(
         self,
-        config,
+        reader_config,
         train_ratio: float = 0.7,
         split_seed: int = 42,
     ) -> None:
-        super().__init__(config)
+        super().__init__(reader_config)
         # config patch
         # print("*********", config, "**********")
-        self.config = config.astune.task_reader.feedback_tracing
+        self.reader_config = reader_config.feedback_tracing
 
-        logger.info(f"reading tasks from {self.config.get('base_url')}, #filter {len(self.config.get('filters'))}")
-        self._connector = LocalSqliteConnectorV1(self.config.get("base_url"))
-        filters_config = self.config.get("filters")
+        logger.info(f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters'))}")
+        self._connector = LocalSqliteConnectorV1(self.reader_config.get("base_url"))
+        filters_config = self.reader_config.get("filters")
         built_filters = build_filters(filters_config)
         self._filters: List[Filter] = built_filters
 
@@ -79,7 +79,7 @@ class TracingReader(TaskReaderBase):
         return filtered
 
     def _init_tasks(self) -> None:
-        output_path = self.config.get("train_output_path")
+        output_path = self.reader_config.get("train_output_path")
 
         tasks = self._connector.load_tasks_from_conversation()
         logger.info(f"Loaded {len(tasks)} tasks from conversation")

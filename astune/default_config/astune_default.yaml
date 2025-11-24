@@ -2,6 +2,7 @@
 astune:
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
+  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
   backbone: debug # debug or trinity or verl
 
   task_reader:
@@ -47,8 +48,14 @@ astune:
       query_field: main_query
       answer_field: final_answer
       reference_field: answer
-      # rubrics end
 
+      input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
+      dataset_file:
+        training:
+          file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
+
+
+      # rubrics end
 
   model:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct

@@ -139,4 +139,5 @@ launcher_record
 
 trinity_checkpoints
 astune_test
-/_resources
+_resources
+auto/auto_grader.json

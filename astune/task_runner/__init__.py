@@ -2,6 +2,7 @@ from astune.context_tracker.basic_tracker import BasicContextTracker
 from typing import Any, Dict, Tuple, Union, Callable
 from astune.task_judge.judge_base import JudgeBase
 from astune.utils.dynamic_import import dynamic_import
+from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
 from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
 
 
@@ -36,6 +37,15 @@ class BaseAgentRunner(object):
             "generated_token_callback_fn": generated_token_callback_fn,
         }
 
-    def get_judge(self) -> JudgeBase:
-        judge_protocol = self.config.astune.task_judge.judge_protocol
-        return dynamic_import(judge_protocol)(self.config)  # type: ignore
+    def get_judge(self) -> JudgeBase:  # type: ignore
+
+        if self.config.astune.task_judge.judge_type == 'customized_protocal':
+            judge_protocol = self.config.astune.task_judge.judge_protocol
+            return dynamic_import(judge_protocol)(self.config)  # type: ignore
+
+        elif self.config.astune.task_judge.judge_type == 'rubrics_auto_grader':
+            # astune/task_judge/rm_auto_grader_judge.py
+            from astune.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+            judge = RMAutoGraderJudge(self.config)
+            run_async_coro__no_matter_what(judge.load_rubrics_from_cache())
+            return judge

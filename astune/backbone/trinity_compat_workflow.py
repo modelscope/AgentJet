@@ -31,6 +31,9 @@ from astune.utils.config_utils import read_astune_config
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
 from typing import List, Optional, Tuple
 from datasets import Dataset, load_dataset
+from astune.backbone.common_warm_up import warm_up_process
+
+
 
 
 class TrinityCompatWorkflow(DynamicRollout):
@@ -94,6 +97,8 @@ class TrinityCompatWorkflow(DynamicRollout):
         )
 
 
+
+
 @WORKFLOWS.register_module("astune_workflow")
 class ASTunetWorkflowWrap(Workflow):
     is_async: bool = True
@@ -121,13 +126,14 @@ class ASTunetWorkflowWrap(Workflow):
         yaml_path = os.environ.get("ASTUNE_CONFIG_REDIRECT", None)
         if yaml_path is None:
             raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
-
+        astune_config = read_astune_config(yaml_path)
+        warm_up_process(astune_config)
         tracker = await TrinityCompatWorkflow(
             is_eval=self.is_eval,
             task=self.task,
             llm_handle=self.model_client,
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
-            config=read_astune_config(yaml_path),
+            config=astune_config,
         ).run_in_new_thread()
 
         sample_final = []
