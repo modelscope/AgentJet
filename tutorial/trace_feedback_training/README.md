@@ -4,9 +4,9 @@ ASTune 支持回收和利用 Agent 生产过程产生的聊天日志，不断训
 
 ## 1. 准备数据
 
-为使用回流数据训练，假设已经有一个基于 agentscope 构建的 Agent，且连接在 studio 上运行了一段时间。
+为使用回流数据训练，应当已经有一个基于 agentscope 构建的 Agent，且连接在 studio 上运行了一段时间。
 
-在本示例中，我们在 `agent_deployed.py` 中实现了一个能用于解决数学问题的 agent。现在，我们将先使用它模拟数据收集的过程。
+在本示例中，我们在 `agent_deployed.py` 实现了一个能用于解决数学问题的 agent。为方便演示，我们首先使用它模拟数据收集的过程。
 
 1. 安装 [agentscope-studio](https://github.com/agentscope-ai/agentscope-studio)。
 2. 依照默认端口设置启动 agentscope-studio。
@@ -25,7 +25,7 @@ ASTune 支持回收和利用 Agent 生产过程产生的聊天日志，不断训
 
 在获得 tracing log（`database.sqlite`）后，接下来就能使用本项目的回流训练功能来训练一个 Agent。
 
-1. 乞丐配置文件中参数 `task_reader` 为 `tracing`，启用回流模式。
+1. 修改配置文件中参数 `task_reader` 为 `tracing`，启用回流模式。
 2. 依照需求，配置 `tracing` 中的数据库地址以及数据筛选设置。
 3. 仿照正常的训练流程，配置其他参数与 Reward。
 
@@ -36,3 +36,7 @@ ASTune 支持回收和利用 Agent 生产过程产生的聊天日志，不断训
 ```bash
 python launcher.py --conf tutorial/trace_feedback_training/trace_feedback_training.yaml --backbone='trinity' --with-ray
 ```
+
+## 3. 部署新的 Agent
+
+现在，可以将全新的 Agent 部署到生产环境，最终实现迭代式的回流数据训练增强。
