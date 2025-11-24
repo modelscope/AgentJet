@@ -63,6 +63,8 @@ astune:
     step_skip_action: 0 # skip action generation every N steps, 0 means never skip
     submit_oversample_multiplier: 1.5
     enable_oversample: True
+    tensor_model_parallel_size: 1
+    max_num_seqs: 10
     num_repeat: 4
     name: vllm
     val_kwargs:
