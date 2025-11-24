@@ -33,7 +33,7 @@ class TaskReaderJsonl(TaskReaderBase):
                             init_messages=task_data.get("init_messages", []),
                             task_id=task_data.get("task_id", ""),
                             env_type=task_data.get("env_type", "no_env"),
-                            metadata=task_data.get("metadata", {}),
+                            metadata=task_data.get("metadata", task_data),
                         )
                         tasks.append(task)
         except FileNotFoundError:
