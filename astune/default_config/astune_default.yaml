@@ -23,9 +23,31 @@ astune:
       validation_split: "validation"
 
   task_judge:
+    judge_type: rubrics_auto_grader  # Options: custom_protocal, rubrics_auto_grader
     judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
+
+    # rubrics begin
+    class_name: RMAutoGraderJudge
+    model_name: qwen3-32b
+    grader_mode: pointwise
+    language: en
+    min_score: 0
+    max_score: 1
+    success_threshold: 0.7
+    sampling_mode: all_samples
+    generate_number: 1
+    max_epochs: 2
+    max_retries: 3
+    aggregation_mode: keep_all
+    query_field: main_query
+    answer_field: final_answer
+    reference_field: answer
+    grader_name: Math Auto Grader
+    num_reference_samples: 20
+    # rubrics end
+
 
   model:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct

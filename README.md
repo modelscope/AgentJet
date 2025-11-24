@@ -21,6 +21,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     source .venv/bin/activate
     git clone https://github.com/binary-husky/Trinity-RFT external/trinity
     git clone https://github.com/binary-husky/agentscope external/agentscope
+    git clone http://gitlab.alibaba-inc.com/DAIL-LLM/RM-Gallery.git -b xlp_dev external/rm_gallery
 
     # Install dependencies
     uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
@@ -28,6 +29,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
     # uv pip install -e external/agentscope -i https://mirrors.aliyun.com/pypi/simple/
     uv pip install agentscope==1.0.7 -i https://mirrors.aliyun.com/pypi/simple/
+    uv pip install -e external/rm_gallery -i https://mirrors.aliyun.com/pypi/simple/
 
 
     # Install flash attention (must be installed at last)
