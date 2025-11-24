@@ -183,7 +183,7 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 - [x] TRINITY CONF MAP
 
 ```
- python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
 ```
 
 

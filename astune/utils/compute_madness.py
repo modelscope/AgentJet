@@ -75,7 +75,6 @@ def compute_string_madness(completion, detail=False, checklist=["nonsense"]) -> 
         all_reward += compute_string_madness_char(completion, detail=detail)
     elif ("nonsense" in checklist) and ("non_ascii" not in checklist):
         all_reward += compute_string_madness_char(completion, detail=detail, skip_non_ascii=True)
-
     if "format_type_1" in checklist:
         all_reward += compute_string_madness_format(completion, detail=detail, format_type="type_1")
 
