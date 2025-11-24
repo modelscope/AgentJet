@@ -128,14 +128,14 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # dummy response for now
         token_generator = "manual"
-        if llm_output.get("tool_calls", None) is not None:
+        if (llm_output.get("tool_calls", None) is not None):
             tool_calls = llm_output["tool_calls"]
             if ("wrong_toolcall" in self.config.astune.rollout.compute_madness_checklist):
                 # check tool call formating
                 copy_tool_calls = copy.deepcopy(tool_calls)
                 wrong_toolcall = False
                 for i in range(len(copy_tool_calls)):
-                    from vsdb import bp; bp("TOOL_CALL_PARSE_2")
+                    from vsdb import bp; bp("UPUP1")
                     if ('function' in copy_tool_calls[i]) and ('arguments' in copy_tool_calls[i]['function']):
                         try:
                             copy_tool_calls[i]['function']['arguments'] = json.loads(copy_tool_calls[i]['function']['arguments'])
@@ -148,6 +148,10 @@ class MultiAgentContextTracking(BasicContextTracker):
                 if wrong_toolcall:
                     logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*-*---\n{llm_output['tool_calls']}\n---*-*---\n")
                     self.already_mad_flag = True
+        elif ('<tool_call>' in llm_output["content"]):
+            from vsdb import bp; bp("UPUP2")
+            logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*-*---\n{llm_output['tool_calls']}\n---*-*---\n")
+            self.already_mad_flag = True
         else:
             tool_calls = []
 
