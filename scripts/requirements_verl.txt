@@ -17,6 +17,7 @@ async-timeout==5.0.1
 attrs==25.4.0
 av==15.0.0
 beast-logger
+scikit-learn
 bidict==0.23.1
 blake3==1.0.5
 blobfile==3.0.0
