@@ -177,9 +177,9 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 
 # Future
 
-- [ ] test server
+- [x] test server
 - [ ] RUBRICS INT
-- [ ] TEST TOKEN REASON
+- [-] TEST TOKEN REASON
 - [x] TRINITY CONF MAP
 
 ```
