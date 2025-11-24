@@ -27,6 +27,8 @@ from rm_gallery.core.model.openai_llm import OpenAIChatModel
 from rm_gallery.core.schema.data import EvalCase
 from rm_gallery.core.schema.template import LanguageEnum
 
+from rm_gallery.core.grader.base import aevaluate_with_cases
+
 
 class RMAutoGraderJudge(JudgeBase):
     """
@@ -175,7 +177,7 @@ class RMAutoGraderJudge(JudgeBase):
         )
 
         # Generate rubrics and get LLMGrader
-        self.llm_grader = await auto_grader.aevaluate_batch(eval_cases)
+        self.llm_grader = await auto_grader.run(eval_cases)
         self.rubrics_generated = True
 
         logger.info("Rubrics generated successfully!")
@@ -302,7 +304,7 @@ class RMAutoGraderJudge(JudgeBase):
 
         # Evaluate using LLMGrader - it handles both pointwise and listwise internally
         try:
-            results = await self.llm_grader.aevaluate_batch(eval_cases=[eval_case])
+            results = await aevaluate_with_cases(self.llm_grader, eval_cases=[eval_case])
             # For all other cases (listwise, or pointwise with multiple outputs), return raw results
             return results
 
