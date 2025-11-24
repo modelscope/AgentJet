@@ -257,8 +257,8 @@ class LlmProxyForAgentScope(object):
                 content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
             )
         # run llm inference ✨
+        # from vsdb import bp; bp("TOOL_CALL_PARSE5")
         llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
-        from vsdb import bp; bp("TOOL_CALL_PARSE")
 
         # begin context tracking
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)

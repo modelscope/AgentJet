@@ -25,7 +25,7 @@ def extract_final_answer(result) -> str:
 
 class FinalResult(BaseModel):
     result: str = Field(
-        description="Your solution of the given math problem. Put your final answer in boxed format, e.g., \\boxed{42}"
+        description=r"Your solution of the given math problem. Put your final answer in boxed format, e.g., \boxed{42}"
     )
 
 
@@ -59,6 +59,7 @@ class ExampleMathLearn(Workflow):
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
+            max_iters=4,
         )
         self.agent.set_console_output_enabled(False)
         msg = Msg("user", query, role="user")
