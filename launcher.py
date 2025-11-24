@@ -168,9 +168,6 @@ def main():
     if args.with_ray:
         start_ray_service(args, env)
 
-    if args.with_exp_maker:
-        pty_launch("exp_maker", success_std_string="Uvicorn running on")
-
     if args.with_appworld:
         pty_launch("appworld")
 

@@ -28,25 +28,26 @@ astune:
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
 
-    # rubrics begin
-    class_name: RMAutoGraderJudge
-    model_name: qwen-max
-    grader_mode: pointwise
-    language: en
-    min_score: 0
-    max_score: 1
-    success_threshold: 0.7
-    sampling_mode: all_samples
-    generate_number: 1
-    max_epochs: 2
-    max_retries: 3
-    aggregation_mode: keep_all
-    query_field: main_query
-    answer_field: final_answer
-    reference_field: answer
-    grader_name: Math Auto Grader
-    num_reference_samples: 20
-    # rubrics end
+    rubrics_auto_grader:
+      # rubrics begin
+      model_name: qwen-max
+      grader_mode: pointwise
+      language: en
+      min_score: 0
+      max_score: 1
+      success_threshold: 0.7
+      sampling_mode: all_samples
+      generate_number: 1
+      max_epochs: 2
+      max_retries: 3
+      aggregation_mode: keep_all
+      grader_name: Math Auto Grader
+      num_reference_samples: 20
+
+      query_field: main_query
+      answer_field: final_answer
+      reference_field: answer
+      # rubrics end
 
 
   model:

@@ -44,7 +44,6 @@ class RMAutoGraderJudge(JudgeBase):
 
     Example Config (in YAML):
         task_judge:
-          class_name: RMAutoGraderJudge
           # RM Gallery Model Configuration
           model_name: "qwen-plus"  # or "gpt-4", "claude-3-sonnet", etc.
           api_key: "your-api-key"
@@ -84,16 +83,16 @@ class RMAutoGraderJudge(JudgeBase):
         self.grader_config = self._parse_config()
 
         # Initialize the model
-        self.model = OpenAIChatModel(model=config.astune.task_judge.model_name, stream=False)
+        self.model = OpenAIChatModel(model=config.astune.task_judge.rubrics_auto_grader.model_name, stream=False)
 
         # Storage for generated grader
         self.llm_grader: Optional[LLMGrader] = None
         self.rubrics_generated = False
 
         # Field mappings for data extraction
-        self.query_field = getattr(config.astune.task_judge, 'query_field', 'main_query')
-        self.answer_field = getattr(config.astune.task_judge, 'answer_field', 'final_answer')
-        self.reference_field = getattr(config.astune.task_judge, 'reference_field', 'answer')
+        self.query_field = getattr(config.astune.task_judge.rubrics_auto_grader, 'query_field', 'main_query')
+        self.answer_field = getattr(config.astune.task_judge.rubrics_auto_grader, 'answer_field', 'final_answer')
+        self.reference_field = getattr(config.astune.task_judge.rubrics_auto_grader, 'reference_field', 'answer')
 
         logger.info(
             f"RMAutoGraderJudge initialized with mode={self.grader_config.method_config.grader_mode.value}, "
@@ -102,7 +101,7 @@ class RMAutoGraderJudge(JudgeBase):
 
     def _parse_config(self) -> AutoGraderConfig:
         """Parse astune config into AutoGraderConfig."""
-        judge_config = self.config.astune.task_judge
+        judge_config = self.config.astune.task_judge.rubrics_auto_grader
 
         # Parse grader mode
         grader_mode_str = getattr(judge_config, 'grader_mode', 'pointwise').lower()
@@ -182,6 +181,7 @@ class RMAutoGraderJudge(JudgeBase):
 
         logger.info("Rubrics generated successfully!")
         logger.info(f"Generated rubrics:\n{self.llm_grader.rubrics}")
+
 
     def _workflow_task_to_eval_case(
         self,
