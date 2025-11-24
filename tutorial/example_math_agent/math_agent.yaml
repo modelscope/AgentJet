@@ -15,7 +15,7 @@ astune:
 
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 
   rollout:
     agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
@@ -23,13 +23,15 @@ astune:
     max_env_worker: 256
     num_repeat: 8
     agent_madness_reward: -1.0
+    tensor_model_parallel_size: 4
+    max_num_seqs: 256
     multi_turn:
-      max_sample_per_task: 2
+      max_sample_per_task: 4
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"
   data:
-    train_batch_size: 16
+    train_batch_size: 128
 
   debug:
     debug_max_parallel: 1
