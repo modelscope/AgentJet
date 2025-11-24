@@ -23,7 +23,7 @@ astune:
       validation_split: "validation"
 
   task_judge:
-    judge_type: rubrics_auto_grader  # Options: custom_protocal, rubrics_auto_grader
+    judge_type: customized_protocal  # Options: 'customized_protocal', 'rubrics_auto_grader'
     judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
