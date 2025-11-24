@@ -5,7 +5,7 @@ from astune.task_rollout.dashscope_llm_bridge import (
     construct_alien_llm_chat_fn,
 )
 
-from ..fn import Fn
+from astune.utils.fn import Fn
 from .base import Filter
 
 
