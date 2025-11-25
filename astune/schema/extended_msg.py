@@ -1,5 +1,6 @@
 from typing import List, Union, Tuple
 from transformers.tokenization_utils import PreTrainedTokenizer
+from astune.utils.tokenizer import astune_apply_chat_templat
 from astune.schema.trajectory import Reward
 from loguru import logger
 import uuid
@@ -73,8 +74,9 @@ class ExtendedMessage:
                 }
                 if self.tool_calls:
                     auto_tokenize_target.update({"tool_calls": self.tool_calls})
-                text_frag_to = tokenizer.apply_chat_template(
-                    dummy_msg + [auto_tokenize_target],
+                text_frag_to = astune_apply_chat_templat(
+                    tokenizer=tokenizer,
+                    conversation=dummy_msg + [auto_tokenize_target],
                     tokenize=False,
                     tools=tools,
                 )
@@ -83,8 +85,11 @@ class ExtendedMessage:
                     f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}"
                 )
             self.token_arr, _ = self.get_inc_simple(
-                text_frag_from=tokenizer.apply_chat_template(
-                    dummy_msg, tokenize=False, tools=tools
+                text_frag_from=astune_apply_chat_templat(
+                    tokenizer=tokenizer,
+                    conversation=dummy_msg,
+                    tokenize=False,
+                    tools=tools,
                 ),
                 text_frag_to=text_frag_to,
                 tokenizer=tokenizer,

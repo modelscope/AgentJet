@@ -10,6 +10,7 @@ from astune.context_tracker.basic_tracker import (
     replace_token_ids,
 )
 from astune.utils.color_hsl import adjust_color_hsl
+from astune.utils.tokenizer import astune_apply_chat_templat
 from astune.utils.compute_madness import compute_string_madness
 from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from astune.context_tracker.agentscope_tracker.timeline_merging import (
@@ -46,26 +47,8 @@ class MultiAgentContextTracking(BasicContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
 
-
-    def cleanup_messages(self, messages: List[Dict]) -> List[Dict]:
-        " A temperary fix for tool_calls being str instead of dict "
-        messages_copied = copy.deepcopy(messages)
-        for m in messages_copied:
-            if 'tool_calls' not in m:
-                continue
-            for t in m['tool_calls']:
-                if 'function' not in t or 'arguments' not in t['function']:
-                    continue
-                try:
-                    t['function']['arguments'] = json.loads(t['function']['arguments'])
-                except:
-                    pass
-        return messages_copied
-
-
     def step_prepare(self, messages: List[dict], tools: List = []):
         self.full_context = []
-        messages = self.cleanup_messages(messages)
         consider_roles = ["user", "assistant", "system", "tool"]
         disable_toolcalls = self.config.astune.rollout.agentscope_disable_toolcalls
         if disable_toolcalls:
@@ -346,12 +329,12 @@ class MultiAgentContextTracking(BasicContextTracker):
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore
         dict_messages = self.to_role_content(ext_messages)
-
-        prompt_text = self.tokenizer.apply_chat_template(
-            dict_messages,
-            tokenize=False,
-            add_generation_prompt=True,
+        prompt_text = astune_apply_chat_templat(
+            tokenizer=self.tokenizer,
+            conversation=dict_messages,
             tools=tools,
+            add_generation_prompt=True,
+            tokenize=False
         )
         length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
         max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
@@ -365,8 +348,12 @@ class MultiAgentContextTracking(BasicContextTracker):
         return tuple(ret)
 
     def check_context_token_num_safe(self, messages: List, tools: List = []) -> Tuple[bool, str]:
-        prompt_text = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True, tools=tools
+        prompt_text = astune_apply_chat_templat(
+            tokenizer=self.tokenizer,
+            conversation=messages,
+            tools=tools,
+            add_generation_prompt=True,
+            tokenize=False
         )
         length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
         max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
@@ -393,15 +380,3 @@ class MultiAgentContextTracking(BasicContextTracker):
                 d.update({"tool_calls": ext_msg.tool_calls})
             result.append(d)
         return result
-
-    def apply_chat_template_for_ext_messages(
-        self, ext_messages: List[ExtendedMessage], tools: List = []
-    ) -> str:
-        dict_messages = self.to_role_content(ext_messages)
-        prompt_text = self.tokenizer.apply_chat_template(
-            dict_messages,
-            tokenize=False,
-            add_generation_prompt=True,
-            tools=tools,
-        )
-        return prompt_text  # type: ignore
