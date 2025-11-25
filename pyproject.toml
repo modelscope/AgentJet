@@ -45,6 +45,11 @@ flash_attn = [
     "flash-attn==2.8.1"
 ]
 
+doc = [
+    "jupyter-book>=1.0.4.post1,<2.0.0",
+    "furo>=2025.7.19",
+]
+
 
 [tool.setuptools.packages.find]
 where = ["."]
