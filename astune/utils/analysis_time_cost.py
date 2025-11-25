@@ -36,15 +36,19 @@ def time_cost_analysis(file_path: str):
 
     for k, v in sorted(result_time.items(), key=lambda x: x[0]):
         len_list = result_len[k]
-        print(f"act_step={k} time_cost={sum(v) / len(v):.2f} "
-              f"count={len(v)} "
-              f"len={sum(len_list) / len(len_list):.2f} "
-              f"efficient={sum(v) * 1000 / sum(len_list):.2f}")
+        print(
+            f"act_step={k} time_cost={sum(v) / len(v):.2f} "
+            f"count={len(v)} "
+            f"len={sum(len_list) / len(len_list):.2f} "
+            f"efficient={sum(v) * 1000 / sum(len_list):.2f}"
+        )
 
-    print(f"time_cost={sum(all_time) / len(all_time):.2f} "
-          f"count={len(all_time)} "
-          f"len={sum(all_len) / len(all_len):.2f} "
-          f"efficient={sum(all_time) * 1000 / sum(all_len):.2f}")
+    print(
+        f"time_cost={sum(all_time) / len(all_time):.2f} "
+        f"count={len(all_time)} "
+        f"len={sum(all_len) / len(all_len):.2f} "
+        f"efficient={sum(all_time) * 1000 / sum(all_len):.2f}"
+    )
 
 
 if __name__ == "__main__":

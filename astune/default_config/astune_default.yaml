@@ -1,4 +1,4 @@
-# ------------------ 主要配置 ------------------
+# ------------------ main configuration ------------------
 astune:
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
@@ -24,6 +24,8 @@ astune:
 
   task_judge:
     judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
 
   model:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -35,7 +37,7 @@ astune:
 
   rollout:
     use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     agentscope_disable_toolcalls: False
     max_env_worker: 128
     use_step_reward_from_env: False
@@ -61,6 +63,8 @@ astune:
     step_skip_action: 0 # skip action generation every N steps, 0 means never skip
     submit_oversample_multiplier: 1.5
     enable_oversample: True
+    tensor_model_parallel_size: 1
+    max_num_seqs: 10
     num_repeat: 4
     name: vllm
     val_kwargs:
@@ -70,19 +74,19 @@ astune:
       do_sample: False
       num_repeat: 1
 
-  context_manager: # context manager protocol is used ONLY when `use_agentscope_protocol=False`
-    context_manager_type: "linear"
+  context_tracker: # context tracker protocol is used ONLY when `use_agentscope_protocol=False`
+    context_tracker_type: "linear"
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
-    auto_context_cm:
-      train_sp_action: False
-      token_num_trigger_clip: 8000
-    sliding_window_cm:
-      enable_llm_memory_extraction: False
-    linear_think_cm:
-      remove_think_before_submit_as_action: False
-      extract_box_before_submit_as_action: False
-      train_history_infer_token: True
+    # auto_context_cm:
+    #   train_sp_action: False
+    #   token_num_trigger_clip: 8000
+    # sliding_window_cm:
+    #   enable_llm_memory_extraction: False
+    # linear_think_cm:
+    #   remove_think_before_submit_as_action: False
+    #   extract_box_before_submit_as_action: False
+    #   train_history_infer_token: True
 
   debug:
     debug_max_parallel: 16
@@ -92,8 +96,11 @@ astune:
     debug_tensor_parallel_size: 4
 
   trainer_common:
-    val_before_train: True
+    val_before_train: False
     val_pass_n: 4
+    save_freq: 20
+    test_freq: 20
+    total_epochs: 50
     nnodes: 1
     n_gpus_per_node: 8
     logger:
@@ -112,19 +119,21 @@ astune:
     use_kl_loss: True
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
+    trinity_only__n_gpu_for_infer: 2
 
   # the tracing config
   tracing:
-    base_url: http://phoenix:port
-    train_output_path: /path/to/tasks.jsonl
+    base_url: ./.trash/database.sqlite
+    train_output_path: ./.trash/tasks.jsonl
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 2048
     filters:
       - type: llm_evaluate
         enabled: true
         params:
-          custom_rubrics: "1. 如果 answer 声称将答案写入了文件，请判定为有实质性的回答。"
+          custom_rubrics: If the answer claims that it has written the output to a file, consider it an invalid response.
           temperature: 0.5
-          max_tokens: 2048
           print_reason: false
 
-
-
+  execute_test: False # DO NOT EDIT, FOR TESTING PURPOSE ONLY
+  execute_testing_lambda: ""

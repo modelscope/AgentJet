@@ -1,3 +1,7 @@
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `astune/default_config/trinity/trinity_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `astune/default_config/trinity/trinity_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `astune/default_config/trinity/trinity_default.yaml` INSTEAD
+
 algorithm:
   algorithm_type: multi_step_grpo
   optimizer:

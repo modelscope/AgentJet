@@ -1,4 +1,3 @@
-
 import subprocess
 import argparse
 import shutil
@@ -7,7 +6,10 @@ import sys
 import os
 import shlex
 
-def _fast_kill_by_keyword_bash(keyword: str, exclude_substrings=["vscode"], grace_seconds: float = 1.0):
+
+def fast_kill_by_keyword_bash(
+    keyword: str, exclude_substrings=["vscode"], grace_seconds: float = 1.0
+):
     """Use bash pipelines to kill processes matching keyword quickly.
 
     - Filters out processes containing any exclude_substrings
@@ -26,7 +28,12 @@ def _fast_kill_by_keyword_bash(keyword: str, exclude_substrings=["vscode"], grac
     )
 
     try:
-        res = subprocess.run(["bash", "-lc", pid_list_cmd], capture_output=True, text=True, check=False)
+        res = subprocess.run(
+            ["bash", "-lc", pid_list_cmd],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         pids = [pid for pid in res.stdout.split() if pid.isdigit()]
     except Exception as e:
         print(f"Failed to list PIDs via bash: {e}")
@@ -39,7 +46,12 @@ def _fast_kill_by_keyword_bash(keyword: str, exclude_substrings=["vscode"], grac
             f"{exclude_filters} | awk '{{print $1}}' | grep -v -x {self_pid} || true"
         )
         try:
-            res2 = subprocess.run(["bash", "-lc", ps_pid_cmd], capture_output=True, text=True, check=False)
+            res2 = subprocess.run(
+                ["bash", "-lc", ps_pid_cmd],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             pids = [pid for pid in res2.stdout.split() if pid.isdigit()]
         except Exception as e:
             print(f"Failed to list PIDs via ps/grep: {e}")
@@ -51,10 +63,16 @@ def _fast_kill_by_keyword_bash(keyword: str, exclude_substrings=["vscode"], grac
     pid_args = " ".join(pids)
     try:
         # Send TERM to all in one call
-        subprocess.run(["bash", "-lc", f"kill -TERM -- {pid_args} 2>/dev/null || true"], check=False)
+        subprocess.run(
+            ["bash", "-lc", f"kill -TERM -- {pid_args} 2>/dev/null || true"],
+            check=False,
+        )
         time.sleep(grace_seconds)
         # Escalate with KILL once; ignore failures for already-exited PIDs
-        subprocess.run(["bash", "-lc", f"kill -KILL -- {pid_args} 2>/dev/null || true"], check=False)
+        subprocess.run(
+            ["bash", "-lc", f"kill -KILL -- {pid_args} 2>/dev/null || true"],
+            check=False,
+        )
     except Exception as e:
         print(f"Error issuing kill commands: {e}")
 

@@ -28,8 +28,7 @@ def _build_single_filter(spec: Mapping[str, Any]) -> Filter:
 
 
 def build_filters(specs: Sequence[Mapping[str, Any]] | None) -> List[Filter]:
-    """Setup filter chain according to config.
-    """
+    """Setup filter chain according to config."""
     if not specs:
         return []
 

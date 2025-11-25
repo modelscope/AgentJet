@@ -9,6 +9,8 @@ import logging
 from loguru import logger
 from pathlib import Path
 from typing import Optional, Tuple, List
+from beast_logger import print_dict
+
 
 class LaunchWhenAbsent:
     """
@@ -16,7 +18,15 @@ class LaunchWhenAbsent:
     If the script is already running, it will skip launching unless force_restart is True.
     """
 
-    def __init__(self, script_path: str, argument_list: List[str] = None, exe: str = None, dir = None, tag='', use_pty=False):
+    def __init__(
+        self,
+        script_path: str,
+        argument_list: List[str] = None,
+        exe: str = None,
+        dir=None,
+        tag="",
+        use_pty=False,
+    ):
         """
         Initialize with the path to the Python script to be launched.
 
@@ -41,14 +51,14 @@ class LaunchWhenAbsent:
 
         full_argument_list = [self.script_path] + self.argument_list
         hash_items = full_argument_list + [str(self.dir), str(exe)]
-        self.script_hash = hashlib.md5(''.join(hash_items).encode()).hexdigest()[:8]
+        self.script_hash = hashlib.md5("".join(hash_items).encode()).hexdigest()[:8]
 
         # Prepare command with hash ID marker
         if self.use_pty:
             assert len(full_argument_list) == 1
-            self.cmd = [self.exe  + " " + full_argument_list[0]]
+            self.cmd = [self.exe + " " + full_argument_list[0]]
         else:
-            self.cmd = ['nohup'] + [self.exe] + full_argument_list
+            self.cmd = ["nohup"] + [self.exe] + full_argument_list
 
         log_dir = Path("launcher_record/companion_logs/companion")
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -61,8 +71,9 @@ class LaunchWhenAbsent:
         self.logger_file = log_dir / f"{base_log_name}.log"
         self.pgid = None
 
-
-    def _is_script_running(self) -> Tuple[bool, Optional[psutil.Process], Optional[int]]:
+    def _is_script_running(
+        self,
+    ) -> Tuple[bool, Optional[psutil.Process], Optional[int]]:
         """
         Check if the script is already running by looking for its unique hash ID
         in process command lines.
@@ -76,7 +87,7 @@ class LaunchWhenAbsent:
         if not self.pgid_file.exists():
             return False, None, None
         else:
-            with open(self.pgid_file, 'r') as f_pgid:
+            with open(self.pgid_file, "r") as f_pgid:
                 pgid = int(f_pgid.read().strip())
             # Check if the process group ID is still running, if true, psutil
             is_running, proc = self.is_pgid_running(pgid)
@@ -89,9 +100,15 @@ class LaunchWhenAbsent:
                 return False, None, None
 
     def is_pgid_running(self, pgid):
-        for proc in psutil.process_iter(['pid']):
+        # Treat zombie processes as not running to avoid false positives.
+        for proc in psutil.process_iter(["pid", "status"]):
             try:
+                if proc.info.get("status") == psutil.STATUS_ZOMBIE:
+                    continue
                 if os.getpgid(proc.pid) == pgid:
+                    # Double-check status to avoid races where the cached info is missing.
+                    if proc.status() == psutil.STATUS_ZOMBIE:
+                        continue
                     return True, proc
             except (psutil.NoSuchProcess, ProcessLookupError):
                 continue
@@ -136,7 +153,23 @@ class LaunchWhenAbsent:
         if self.pgid:
             self._kill_existing_process_group(self.pgid)
 
-    def launch(self, force_restart: bool = False, launch_wait_time: int = 30, success_std_string: str = None, env_dict = {}):
+    def kill_self(self):
+        """Force terminate this launcher instance if it's running."""
+        is_running, _, pgid = self._is_script_running()
+        if not is_running or pgid is None:
+            logger.info("No running process group found for this launcher")
+            return False
+        self.pgid = pgid
+        self._kill_existing_process_group(pgid)
+        return True
+
+    def launch(
+        self,
+        force_restart: bool = False,
+        launch_wait_time: int = 30,
+        success_std_string: str = None,
+        env_dict={},
+    ):
         """
         Launch the script if it's not running, or restart it if force_restart is True.
 
@@ -153,7 +186,9 @@ class LaunchWhenAbsent:
                 logger.warning(f"Force restarting")
                 self._kill_existing_process_group(pgid)
             else:
-                logger.success(f"Script is already running, skipping launch. pgid: {pgid}. Command [{' '.join(self.cmd)}]")
+                logger.success(
+                    f"Script is already running, skipping launch. pgid: {pgid}. Command [{' '.join(self.cmd)}]"
+                )
                 return
         try:
             # Set up process creation flags and environment
@@ -164,26 +199,31 @@ class LaunchWhenAbsent:
             # Open log file
             log_file = self.logger_file
 
-            if os.name == 'nt':  # Windows
+            if os.name == "nt":  # Windows
                 # DETACHED_PROCESS flag
                 raise NotImplementedError("Windows support is not implemented yet.")
             else:  # Unix-like systems
                 # Use nohup and redirect output
-                logger.warning("\nlaunching: " + " ".join(self.cmd))
-                logger.warning(f"\nlogging to {log_file}\n")
+                print_dict({
+                    "Action": "Launching command",
+                    "Command": " ".join(self.cmd),
+                    "LogFile": str(log_file),
+                })
+                # logger.warning("\nlaunching: " + " ".join(self.cmd))
+                # logger.warning(f"\nlogging to {log_file}\n")
                 # Open log file
                 if log_file.exists():
                     os.remove(log_file)
                 if not self.use_pty:
-                    f = open(log_file, 'a')
+                    f = open(log_file, "a")
                     proc = subprocess.Popen(
                         self.cmd,
                         stdout=f,
                         stderr=subprocess.STDOUT,
                         stdin=subprocess.DEVNULL,
                         cwd=self.dir,
-                        env={'ScriptHash': self.script_hash, **env_dict},
-                        start_new_session=True  # Start new session
+                        env={"ScriptHash": self.script_hash, **env_dict},
+                        start_new_session=True,  # Start new session
                     )
                     f.close()  # Close append handle
                     pgid = os.getpgid(proc.pid)
@@ -191,48 +231,51 @@ class LaunchWhenAbsent:
                     import base64
 
                     def string_to_base64(s):
-                        # 首先将字符串编码为字节
-                        s_bytes = s.encode('utf-8')
-                        # 将字节转换为 base64
+                        # First, encode the string to bytes
+                        s_bytes = s.encode("utf-8")
+                        # Then convert bytes to base64
                         base64_bytes = base64.b64encode(s_bytes)
-                        # 将 base64 字节转换回字符串
-                        base64_string = base64_bytes.decode('utf-8')
+                        # Finally, convert base64 bytes back to string
+                        base64_string = base64_bytes.decode("utf-8")
                         return base64_string
 
-                    f = open(log_file, 'a')
+                    f = open(log_file, "a")
                     converted_cmd = [
-                            sys.executable,
-                            "-m",
-                            "astune.utils.pty",
-                            "--human-cmd", f"'{string_to_base64(self.cmd[0])}'",
-                            "--dir", self.dir,
-                            "--env", json.dumps(env_dict),
-                        ]
-                    print('running pty command:', ' '.join(converted_cmd))
+                        sys.executable,
+                        "-m",
+                        "astune.utils.pty",
+                        "--human-cmd",
+                        f"'{string_to_base64(self.cmd[0])}'",
+                        "--dir",
+                        self.dir,
+                        "--env",
+                        json.dumps(env_dict),
+                    ]
+                    print("running pty command:", " ".join(converted_cmd))
                     proc = subprocess.Popen(
                         converted_cmd,
                         stdout=f,
                         stderr=subprocess.STDOUT,
                         stdin=subprocess.DEVNULL,
                         cwd="./",
-                        env={'ScriptHash': self.script_hash, **env_dict},
-                        start_new_session=True  # Start new session
+                        env={"ScriptHash": self.script_hash, **env_dict},
+                        start_new_session=True,  # Start new session
                     )
                     f.close()  # Close append handle
                     pgid = os.getpgid(proc.pid)
 
                 # write pgid to {log_file}.pgid
-                with open(self.pgid_file, 'w') as f_pgid:
+                with open(self.pgid_file, "w") as f_pgid:
                     f_pgid.write(str(pgid))
 
                 # Monitor log file for success string or timeout
                 start_time = time.time()
                 f_read = ""
                 previous_r_print = False
-                with open(log_file, 'r') as f:
+                with open(log_file, "r") as f:
                     while time.time() - start_time < launch_wait_time:
                         f_read_ = f.read()
-                        inc_read = f_read_[len(f_read):]
+                        inc_read = f_read_[len(f_read) :]
                         f_read = f_read_  # Update f_read to the latest content
                         if success_std_string:
                             # Move to end of file and read new content
@@ -241,32 +284,49 @@ class LaunchWhenAbsent:
                                 break
                         time.sleep(1)
                         remaining = int(launch_wait_time - (time.time() - start_time))
-                        f_read_trim = inc_read.replace('\n', ' ')
+                        f_read_trim = inc_read.replace("\n", " ")
                         if f_read_trim:
-                            if previous_r_print: print('')
-                            print(f"Waiting for process launch... {remaining}s remaining ({f_read_trim})")
+                            if previous_r_print:
+                                print("")
+                            print(
+                                f"Waiting for process launch [PGID {pgid}, PID {proc.pid}]... {remaining}s remaining ({f_read_trim})"
+                            )
                             previous_r_print = False
                         else:
-                            print(f"\rWaiting for process launch... {remaining}s remaining", end='', flush=True)
+                            print(
+                                f"\rWaiting for process launch [PGID {pgid}, PID {proc.pid}]... {remaining}s remaining",
+                                end="",
+                                flush=True,
+                            )
                             previous_r_print = True
 
                         if remaining % 10 == 0:
                             is_running, proc = self.is_pgid_running(pgid)
                             if not is_running:
-                                raise RuntimeError(f"Process with PGID {pgid} is not running, cannot confirm launch")
+                                raise RuntimeError(
+                                    f"Process with PGID {pgid} is not running, cannot confirm launch"
+                                )
 
                     else:
                         if success_std_string:
-                            raise TimeoutError(f"Process did not output success string '{success_std_string}' within {launch_wait_time} seconds")
+                            raise TimeoutError(
+                                f"Process did not output success string '{success_std_string}' within {launch_wait_time} seconds"
+                            )
 
                 logger.success(f"Successfully launched {self.cmd} with PID {proc.pid}")
+                print_dict({
+                    "Result": "Successfully launched",
+                    "Command": " ".join(self.cmd),
+                    "PID": proc.pid,
+                })
 
         except Exception as e:
             logging.error(f"Error launching script: {e}")
-            raise
+            raise e
+
 
 class LaunchCommandWhenAbsent(LaunchWhenAbsent):
-    def __init__(self, full_argument_list: List[str], dir = None, tag = "", use_pty=False):
+    def __init__(self, full_argument_list: List[str], dir=None, tag="", use_pty=False):
         if not dir:
             self.dir = os.getcwd()
         else:
@@ -277,15 +337,15 @@ class LaunchCommandWhenAbsent(LaunchWhenAbsent):
 
         full_argument_list_compute_hash = full_argument_list.copy()
         if full_argument_list_compute_hash[0] == sys.executable:
-            full_argument_list_compute_hash[0] = 'python'
+            full_argument_list_compute_hash[0] = "python"
 
         hash_items = full_argument_list_compute_hash + [str(self.dir)]
-        self.script_hash = hashlib.md5(''.join(hash_items).encode()).hexdigest()[:8]
+        self.script_hash = hashlib.md5("".join(hash_items).encode()).hexdigest()[:8]
         if self.use_pty:
             assert len(full_argument_list) == 1
             self.cmd = full_argument_list
         else:
-            self.cmd = ['nohup'] + full_argument_list
+            self.cmd = ["nohup"] + full_argument_list
         # raise ValueError(self.script_hash)
 
         log_dir = Path("launcher_record/companion_logs/companion")

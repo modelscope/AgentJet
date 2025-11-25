@@ -30,6 +30,7 @@ from verl.utils.device import is_cuda_available
 from verl.utils.import_utils import load_extern_type
 from beast_logger import register_logger, print_dict
 
+
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
 def main(config):
     """Main entry point for PPO training with Hydra configuration management.
@@ -52,26 +53,31 @@ def run_ppo(config) -> None:
     # Check if Ray is not initialized
     if not ray.is_initialized():
         # this is for local ray cluster
-        runtime_env={
-            "env_vars":
-                {
-                    "TOKENIZERS_PARALLELISM": "true",
-                    "NCCL_DEBUG": "WARN",
-                    "VLLM_LOGGING_LEVEL": "WARN",
-                    "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
-                    "VLLM_USE_V1": "1",
-                    "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY"),
-                }
+        runtime_env = {
+            "env_vars": {
+                "TOKENIZERS_PARALLELISM": "true",
+                "NCCL_DEBUG": "WARN",
+                "VLLM_LOGGING_LEVEL": "WARN",
+                "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
+                "VLLM_USE_V1": "1",
+                "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY"),
+            }
         }
 
         if os.getenv("RAY_record_task_actor_creation_sites"):
-            runtime_env["env_vars"].update({
-                "RAY_record_task_actor_creation_sites": os.getenv("RAY_record_task_actor_creation_sites"),
-            })
+            runtime_env["env_vars"].update(
+                {
+                    "RAY_record_task_actor_creation_sites": os.getenv(
+                        "RAY_record_task_actor_creation_sites"
+                    ),
+                }
+            )
         if os.getenv("BEST_LOGGER_WEB_SERVICE_URL"):
-            runtime_env["env_vars"].update({
-                "BEST_LOGGER_WEB_SERVICE_URL": os.getenv("BEST_LOGGER_WEB_SERVICE_URL"),
-            })
+            runtime_env["env_vars"].update(
+                {
+                    "BEST_LOGGER_WEB_SERVICE_URL": os.getenv("BEST_LOGGER_WEB_SERVICE_URL"),
+                }
+            )
         print_dict(runtime_env["env_vars"], "runtime_env")
         ray.init(
             runtime_env=runtime_env,
@@ -90,7 +96,9 @@ def run_ppo(config) -> None:
     ):
         from verl.utils.import_utils import is_nvtx_available
 
-        assert is_nvtx_available(), "nvtx is not available in CUDA platform. Please 'pip3 install nvtx'"
+        assert (
+            is_nvtx_available()
+        ), "nvtx is not available in CUDA platform. Please 'pip3 install nvtx'"
         nsight_options = OmegaConf.to_container(config.trainer.controller_nsight_options)
         runner = TaskRunner.options(runtime_env={"nsight": nsight_options}).remote()
     else:
@@ -136,7 +144,8 @@ class TaskRunner:
         # Download the checkpoint from HDFS to the local machine.
         # `use_shm` determines whether to use shared memory, which could lead to faster model loading if turned on
         local_path = copy_to_local(
-            config.astune.model.path, use_shm=config.actor_rollout_ref.model.get("use_shm", False)
+            config.astune.model.path,
+            use_shm=config.actor_rollout_ref.model.get("use_shm", False),
         )
 
         # Instantiate the tokenizer and processor.
@@ -151,7 +160,10 @@ class TaskRunner:
         if config.actor_rollout_ref.actor.strategy in {"fsdp", "fsdp2"}:
             assert config.critic.strategy in {"fsdp", "fsdp2"}
             from verl.single_controller.ray import RayWorkerGroup
-            from verl.workers.fsdp_workers import ActorRolloutRefWorker, AsyncActorRolloutRefWorker
+            from verl.workers.fsdp_workers import (
+                ActorRolloutRefWorker,
+                AsyncActorRolloutRefWorker,
+            )
 
             use_legacy_worker_impl = config.trainer.get("use_legacy_worker_impl", "auto")
             if use_legacy_worker_impl in ["auto", "enable"]:
@@ -175,8 +187,14 @@ class TaskRunner:
 
         elif config.actor_rollout_ref.actor.strategy == "megatron":
             assert config.actor_rollout_ref.actor.strategy == config.critic.strategy
-            from verl.single_controller.ray.megatron import NVMegatronRayWorkerGroup
-            from verl.workers.megatron_workers import ActorRolloutRefWorker, AsyncActorRolloutRefWorker, CriticWorker
+            from verl.single_controller.ray.megatron import (
+                NVMegatronRayWorkerGroup,
+            )
+            from verl.workers.megatron_workers import (
+                ActorRolloutRefWorker,
+                AsyncActorRolloutRefWorker,
+                CriticWorker,
+            )
 
             actor_rollout_cls = (
                 AsyncActorRolloutRefWorker
@@ -188,7 +206,10 @@ class TaskRunner:
         else:
             raise NotImplementedError
 
-        from astune.backbone_others.trainer import ResourcePoolManager, Role
+        from astune.backbone.native_compat_trainer import (
+            ResourcePoolManager,
+            Role,
+        )
 
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
@@ -230,24 +251,37 @@ class TaskRunner:
 
         # Load the reward manager for training and validation.
         reward_fn = load_reward_manager(
-            config, tokenizer, num_examine=0, **config.reward_model.get("reward_kwargs", {})
+            config,
+            tokenizer,
+            num_examine=0,
+            **config.reward_model.get("reward_kwargs", {}),
         )
         val_reward_fn = load_reward_manager(
-            config, tokenizer, num_examine=1, **config.reward_model.get("reward_kwargs", {})
+            config,
+            tokenizer,
+            num_examine=1,
+            **config.reward_model.get("reward_kwargs", {}),
         )
-        resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
+        resource_pool_manager = ResourcePoolManager(
+            resource_pool_spec=resource_pool_spec, mapping=mapping
+        )
 
         from verl.utils.dataset.rl_dataset import collate_fn
         from astune.utils.process_dataset import create_rl_sampler
 
         # Create training and validation datasets.
-        from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
+        from astune.task_reader import (
+            TaskReaderRouter,
+            task_to_standard_dataset,
+        )
+
         task_reader = TaskReaderRouter(config)
         val_dataset = task_to_standard_dataset(task_reader.get_validation_tasks())
         train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
-        from astune.backbone_others.trainer import ASTuneRayPPOTrainer
+        from astune.backbone.native_compat_trainer import ASTuneRayPPOTrainer
+
         # Initialize the PPO trainer.
         trainer = ASTuneRayPPOTrainer(
             config=config,
@@ -268,7 +302,6 @@ class TaskRunner:
         trainer.init_workers()
         # Start the training process.
         trainer.fit()
-
 
 
 if __name__ == "__main__":

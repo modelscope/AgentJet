@@ -1,5 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
+
+
+"""
+The basic schema for task_reader module
+"""
 
 
 class Task(BaseModel):
@@ -10,7 +15,12 @@ class Task(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
-class TaskLaunchCoreArgument(BaseModel):
+"""
+For workflow execution, include task uuid and gym client if needed
+"""
+
+
+class WorkflowTask(BaseModel):
     env_type: str = Field(default="")
     task_id: str = Field(default="")
     task_thread_index: int = Field(default=0)
@@ -20,5 +30,16 @@ class TaskLaunchCoreArgument(BaseModel):
     obs_window: dict = Field(default={})
     llm_chat_fn: Any = Field(default=None)
     tokenizer: Any = Field(default=None)
-    task: Task = Field(default=None)    # type: ignore
+    task: Task = Field(default=Task())
+    gym_env: Any = Field(default=None)  # agentscope runtime handle or env service handle
 
+
+"""
+workflow output, user should provide as workflow output
+"""
+
+
+class WorkflowOutput(BaseModel):
+    reward: Union[float, List[float], None] = Field(default=None)
+    is_success: Union[bool, None] = Field(default=None)
+    metadata: Dict[str, Any] = Field(default_factory=dict)

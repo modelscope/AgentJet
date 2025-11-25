@@ -9,7 +9,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
 
 1. Clone the repo and trinity module:
     ```bash
-    git clone https://github.com/..../agentscope-tune.git astune
+    git clone https://github.com/..../agentscope-tuner.git astune
     git clone https://github.com/binary-husky/Trinity-RFT astune/external/trinity
     cd astune
     ```
@@ -20,11 +20,15 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
     uv venv --python=3.10.16
     source .venv/bin/activate
     git clone https://github.com/binary-husky/Trinity-RFT external/trinity
+    git clone https://github.com/binary-husky/agentscope external/agentscope
 
     # Install dependencies
     uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
     uv pip install -r scripts/requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow
     uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
+    # uv pip install -e external/agentscope -i https://mirrors.aliyun.com/pypi/simple/
+    uv pip install agentscope==1.0.7 -i https://mirrors.aliyun.com/pypi/simple/
+
 
     # Install flash attention (must be installed at last)
     uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation
@@ -54,11 +58,11 @@ Let see:
     ```bash
     # （训练math agent demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
-    python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --backbone='debug' --with-logview
+    python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 
     # （训练appworld demo）建议开始前杀死所有ray、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
-    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --backbone='debug' --with-logview
+    python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
     ```
     备注：当`--backbone=debug`时，程序**不再使用ray**，这意味着您可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置见本文档最后。
 
@@ -67,9 +71,9 @@ Let see:
     ```bash
     # 建议开始前杀死所有ray、vllm、env_service进程 (python launcher.py --kill="python|ray|vllm|VLLM" && ray stop)
     clear && \
-    python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='trinity'
+    python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --with-ray --backbone='trinity'
 
-    clear && python launcher.py --conf launcher/math_agent/git-math-agentscope.yaml --with-ray --backbone='trinity'
+    clear && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='trinity'
     ```
     备注：如果需要断点调试，请添加参数 `python launcher.py --db='TAG1|TAG2|TAG3' --conf=...`，并在代码中需要断点的地方标记一行特殊代码 `from vsdb import bp; bp("TAG1")` 即可。(需要配合Ray Distributed Debugger VSCode Extension)。此外，也可以使用BeyondAgent后端训练（--backbone='verl'），但目前verl训练后端正在维护中。
 
@@ -89,7 +93,7 @@ Let see:
         - class::TaskReaderJsonl
         - class::TaskReaderHuggingFace
 
-2. 定义 AgentScopeWorkflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
+2. 定义 Workflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
     - tutorial/appworld.py
     - tutorial/math_agent.py
 
@@ -112,7 +116,7 @@ Let see:
         - astune/default_config/config_auto_convertion_trinity.json
 
 6. ASTune 和 AgentScope 交互系统 V0.5
-    - astune/context_manager/cmt_agentscope.py 负责
+    - astune/context_tracker/agentscope.py 负责
         - 处理AgentScope生成的Token
         - 缓存judge给出评分需要的各种数据（包括但不限于所有对话message，env_service句柄，从astune.task_reader读取的task metadata等）
         - 提供LLM的桥接
@@ -122,9 +126,9 @@ Let see:
 
 FlashInfer?
 
-clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --with-ray --backbone='verl'
 
-clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf launcher/appworld_linear_base/git-appworld-qwen2-agentscope-bz32-tp4-linear.yaml --with-ray --backbone='verl'
+clear && killer VLLM  && killer ray && killer python  && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --with-ray --backbone='verl'
 
 
 - `launche.json` for vscode debugging
@@ -169,3 +173,31 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 - [ ] Trinity: SFT support
 - [ ] AgentScope Studio Intergration
 - [ ] AgentScope
+
+
+# Future
+
+- [x] test server
+- [ ] RUBRICS INT
+- [-] TEST TOKEN REASON
+- [x] TRINITY CONF MAP
+
+```
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+```
+
+
+```
+source  .verlvenv/bin/activate
+
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear  && \
+python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='verl'
+
+
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='trinity'
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='verl'
+
+
+
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='verl'
+```
