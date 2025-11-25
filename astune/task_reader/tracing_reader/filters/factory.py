@@ -28,7 +28,9 @@ def _build_single_filter(spec: Mapping[str, Any]) -> Filter:
 
 
 def build_filters(specs: Sequence[Mapping[str, Any]] | None) -> List[Filter]:
-    """Setup filter chain according to config."""
+    """Setup filter chain according to config.
+    Refer to: astune.task_reader.feedback_tracing.filters
+    """
     if not specs:
         return []
 
