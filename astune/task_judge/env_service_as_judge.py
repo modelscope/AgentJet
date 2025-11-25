@@ -1,4 +1,5 @@
 from astune.task_judge.judge_base import JudgeBase
+from astune.workflow import WorkflowOutput, WorkflowTask
 
 
 class EnvServiceJudge(JudgeBase):
@@ -6,13 +7,11 @@ class EnvServiceJudge(JudgeBase):
     def __init__(self, config):
         self.config = config
 
-    def compute_reward(self, judge_input_dictionary) -> tuple:
+    def compute_reward(self, workflow_task: WorkflowTask, workflow_output: WorkflowOutput) -> tuple:
         raw_reward = 0
 
-        env = judge_input_dictionary['env']
-        task_core_arg = judge_input_dictionary['task_core_arg']
-
-        raw_reward = env.evaluate(task_core_arg.task_env_uuid, params={"sparse": False})
+        env = workflow_task.gym_env
+        raw_reward = env.evaluate(workflow_task.task_env_uuid, params={"sparse": False})
         if raw_reward >= 1:
             is_success = True
         else:

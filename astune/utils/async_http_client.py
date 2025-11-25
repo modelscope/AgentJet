@@ -9,7 +9,10 @@ from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 class AsyncHttpClient(BaseModel):
     url: str = Field(default="")
-    keep_alive: bool = Field(default=False, description="if true, use session to keep long connection")
+    keep_alive: bool = Field(
+        default=False,
+        description="if true, use session to keep long connection",
+    )
     timeout: int = Field(default=300, description="request timeout, second")
     return_default_if_error: bool = Field(default=True)
 
@@ -45,27 +48,40 @@ class AsyncHttpClient(BaseModel):
         return None
 
     async def request(
-            self,
-            data: str | Any = None,
-            json_data: dict = None,
-            headers: dict = None,
-            http_enum: str = "post",
-            **kwargs,
+        self,
+        data: str | Any = None,
+        json_data: dict = None,
+        headers: dict = None,
+        http_enum: str = "post",
+        **kwargs,
     ) -> Any:
         retry_sleep_time = self.retry_sleep_time
         method = http_enum
 
         for i in range(self.retry_max_count):
             try:
-                response = await self._client.request(method=method, url=self.url, data=data, json=json_data,
-                                                      headers=headers)
+                response = await self._client.request(
+                    method=method,
+                    url=self.url,
+                    data=data,
+                    json=json_data,
+                    headers=headers,
+                )
 
-                result = self.parse_result(response=response, data=data, json_data=json_data, headers=headers,
-                                           http_enum=http_enum, **kwargs)
+                result = self.parse_result(
+                    response=response,
+                    data=data,
+                    json_data=json_data,
+                    headers=headers,
+                    http_enum=http_enum,
+                    **kwargs,
+                )
                 return result
 
             except Exception as e:
-                logger.exception(f"{self.__class__.__name__} {i}th request failed with args={e.args}")
+                logger.exception(
+                    f"{self.__class__.__name__} {i}th request failed with args={e.args}"
+                )
 
                 if i == self.retry_max_count - 1:
                     if self.return_default_if_error:

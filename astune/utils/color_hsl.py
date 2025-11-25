@@ -1,5 +1,6 @@
 import colorsys
 
+
 def adjust_color_hsl(base_color, logprob):
     """
     使用HSL颜色空间根据logprob调整颜色饱和度

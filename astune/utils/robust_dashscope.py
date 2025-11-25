@@ -6,6 +6,7 @@ from textwrap import dedent
 from loguru import logger
 from agentscope.model import DashScopeChatModel
 
+
 class RobustDashScopeChatModel(DashScopeChatModel):
     """
     A robust version of DashScopeChatModel that includes retry logic and multiple API key handling.
@@ -15,19 +16,17 @@ class RobustDashScopeChatModel(DashScopeChatModel):
     3. Error handling with appropriate logging
     """
 
-    def __init__(
-        self,
-        model_name="qwen3-max",
-        stream=False,
-        max_try=4,
-        **kwargs
-    ):
+    def __init__(self, model_name="qwen3-max", stream=False, max_try=4, **kwargs):
         # Check for environment variables
         self._check_env_variables()
 
         # Parse API keys from environment variables
         self.regular_key_list = os.environ.get("DASHSCOPE_API_KEY", "").split("|")
-        self.backup_key_list = os.environ.get("DASHSCOPE_API_KEY_BACKUP", "").split("|") if os.environ.get("DASHSCOPE_API_KEY_BACKUP") else []
+        self.backup_key_list = (
+            os.environ.get("DASHSCOPE_API_KEY_BACKUP", "").split("|")
+            if os.environ.get("DASHSCOPE_API_KEY_BACKUP")
+            else []
+        )
 
         api_key = random.choice(self.regular_key_list)
 
@@ -35,25 +34,31 @@ class RobustDashScopeChatModel(DashScopeChatModel):
         self.max_try = max_try
 
         # Initialize the parent class
-        super().__init__(
-            api_key=api_key,
-            model_name=model_name,
-            stream=stream,
-            **kwargs
-        )
+        super().__init__(api_key=api_key, model_name=model_name, stream=stream, **kwargs)
 
     def _check_env_variables(self):
         """Check if required environment variables are set."""
         if os.environ.get("DASHSCOPE_API_KEY") is None:
-            raise RuntimeError(dedent("""
+            raise RuntimeError(
+                dedent(
+                    """
                 Please set the DASHSCOPE_API_KEY environment variable.
                 You can get the API keys from https://www.dashscope.com/.
                 Example:
                 export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
                 export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz' (optional)
-            """))
+            """
+                )
+            )
 
-    async def __call__(self, messages, tools=None, tool_choice=None, structured_model=None, **kwargs):
+    async def __call__(
+        self,
+        messages,
+        tools=None,
+        tool_choice=None,
+        structured_model=None,
+        **kwargs,
+    ):
         """
         Override the __call__ method to add retry logic and API key rotation.
 
@@ -89,7 +94,7 @@ class RobustDashScopeChatModel(DashScopeChatModel):
                     tools=tools,
                     tool_choice=tool_choice,
                     structured_model=structured_model,
-                    **kwargs
+                    **kwargs,
                 )
                 return response
 
@@ -99,4 +104,6 @@ class RobustDashScopeChatModel(DashScopeChatModel):
                 print(f"Error calling DashScope API: {e}, retrying ({n_try + 1}/{self.max_try})...")
 
         # If all attempts fail
-        raise RuntimeError(f"Failed to get response from DashScope API after {self.max_try} attempts")
+        raise RuntimeError(
+            f"Failed to get response from DashScope API after {self.max_try} attempts"
+        )

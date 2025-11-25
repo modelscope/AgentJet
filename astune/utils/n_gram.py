@@ -1,10 +1,11 @@
 import re
 
+
 def preserve_chinese(text):
     # 使用正则表达式匹配所有中文字符
-    chinese_chars = re.findall(r'[\u4e00-\u9fff]', text)
+    chinese_chars = re.findall(r"[\u4e00-\u9fff]", text)
     # 将匹配到的中文字符拼接成一个字符串
-    return ''.join(chinese_chars)
+    return "".join(chinese_chars)
 
 
 def get_repetition_penalty_reward(ngram_size: int, max_penalty: float):
@@ -19,14 +20,13 @@ def get_repetition_penalty_reward(ngram_size: int, max_penalty: float):
     if max_penalty > 0:
         raise ValueError(f"max_penalty {max_penalty} should not be positive")
 
-
     def zipngram_chinese(text: str, ngram_size: int):
         import jieba
+
         text = preserve_chinese(text)
         seg_list = list(jieba.cut(text))
         # print(seg_list)
         return zip(*[seg_list[i:] for i in range(ngram_size)])
-
 
     def repetition_penalty_reward(completions, **kwargs) -> float:
         """
@@ -78,7 +78,7 @@ if __name__ == "__main__":
                 {
                     "content": "今天，一则消息在科技圈热传——据外媒报道，在近日向白宫提交的一项政策建议中，OpenAI对DeepSeek进行了十分露骨的攻击。一边称DeepSeek是“另一个华为”，是“国家补贴”“国家控制”的，会受中国指示“操纵其模型以造成损害”，一边强烈呼吁对该机构及类似机构开发的中国AI模型实施禁令。OpenAI的提案并非临时起意。今年1月，特朗普撤销了此前美国AI行政命令《安全、可靠和值得信赖的人工智能开发与使用》，随后签署了一项新的行政命令，宣布“美国的政策是维持并提升全球人工智能领域的主导地位”，并要求在180天内提交一份AI行动计划。无独有偶，美国另一家AI巨头Anthropic也强烈建议政府加强AI领域出口管制。它们显然都是瞄准了这一计划，想要以“技术话语权”换取“政策制定话语权”。事实上，以妖魔化外国竞争对手说事，博得政府支持最大化，是美国科技公司的惯用伎俩。但如此情绪激烈、赤裸裸地迎合美国“零和博弈”的政治逻辑，高调呼吁“抵制”“封禁”某家外国公司，多少还是过于难看。更可笑的是，这些话还出自自诩“开放”的OpenAI之口。OpenAI曾是开源的代名词，GPT-2的全面开放一度被视为行业标杆。但自GPT-3起，这家公司就选择筑起闭源高墙，更通过API订阅制赚得盆满钵满。本以为，DeepSeek掀起的AI行业普惠与效率革命，会让美国AI公司反思自己的路径选择。但如今来看，科技霸权主义对美国政治、美国科技企业的毒害远比我们想象的大得多。“层层封锁，封不住孤勇者。”不管出于什么心态，美国AI公司或许是忘了DeepSeek是怎么“逆袭”的了。近些年，美国政府为了压制中国人工智能的发展，动作不断，先是禁止AI芯片霸主英伟达向中国出口高端AI芯片，后又推动AI大模型霸主OpenAI停止向中国开放。这种情况下，即便对中国AI发展最为乐观的人也不敢想象——硬件性能无法做到最优，那就卷架构、卷工程，最终竟能“柳暗花明又一村”，让美国精心堆砌的人工智能高墙濒临坍塌。OpenAI将DeepSeek比作华为，怕是也忘了，几乎体验过美国所有打压、制裁手段的华为，如今已然是“轻舟已过万重山”。就如华为创始人任正非所说的，无论美国再怎么打压，华为也不恨美国。华为原来就像羊，慢慢吃草，变得很胖；美国是狼，狼一追羊就跑，减肥了就有战斗力。从更大范围看，于封锁中坚定自主创新、国产自研的心气与斗志，一直都是中国科技发展独特的“孤勇叙事”。至于迟迟丢不掉霸权逻辑者，在封闭、狭隘的创新环境里打转转，所谓的技术领先优势又能保持多久呢？最为讽刺的是，在提案中OpenAI还在唱“推广民主AI”“确保AI发展惠及所有人”的高调。试问，打压他国AI技术发展，到底“民主”在哪？“普惠”在哪？更何况，DeepSeek坚定走开源之路，极大促进了全球AI行业的合作交流，正让“AI人人可用”的理想不再遥不可及。“闭源”打压“开源”，还好意思抢占道德高地，不得不说，美国科技精英玩起政治双标那套来，也很溜。管中窥豹，可见一斑。马斯克曾言辞激烈地抨击OpenAI：“封闭”且“贪婪”。而这，形容的何尝不是当下的美国呢？"
                 }
-            ]
+            ],
         ]
         rewards = reward_fn(completions)
         print(ngram_size, rewards)

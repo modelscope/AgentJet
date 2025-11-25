@@ -4,9 +4,7 @@ import torch
 import datasets
 from typing import List, Dict, Optional
 from astune.schema.task import Task
-from astune.env_service_client.env_client_ng import EnvClient
 from astune.task_reader.task_reader_base import TaskReaderBase
-
 
 
 class TaskReaderHuggingFace(TaskReaderBase):
@@ -19,7 +17,6 @@ class TaskReaderHuggingFace(TaskReaderBase):
 
     def __init__(self, config):
         super().__init__(config)
-
 
     def _load_dataset_split(self, dataset_name: str, split: str) -> List[Task]:
         """
@@ -35,7 +32,9 @@ class TaskReaderHuggingFace(TaskReaderBase):
         try:
             dataset = datasets.load_dataset(dataset_name, split=split)
         except Exception as e:
-            raise ValueError(f"Failed to load dataset '{dataset_name}' with split '{split}': {str(e)}")
+            raise ValueError(
+                f"Failed to load dataset '{dataset_name}' with split '{split}': {str(e)}"
+            )
 
         # if len(dataset) == 0:
         #     raise ValueError(f"No examples found in dataset '{dataset_name}' with split '{split}'")
@@ -44,7 +43,7 @@ class TaskReaderHuggingFace(TaskReaderBase):
         for idx, example in enumerate(dataset):
             # Create Task object
             task = Task(
-                main_query=example['question'],
+                main_query=example["question"],
                 init_messages=[],  # Dataset examples typically don't have init messages
                 task_id=str(idx),
                 env_type=f"no_env",

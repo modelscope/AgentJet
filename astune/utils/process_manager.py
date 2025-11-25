@@ -50,7 +50,12 @@ def kill_process_with_keyword(keyword: str, exclude_substrings=None, grace_secon
     )
 
     try:
-        res = subprocess.run(["bash", "-lc", pid_list_cmd], capture_output=True, text=True, check=False)
+        res = subprocess.run(
+            ["bash", "-lc", pid_list_cmd],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         pids = [pid for pid in res.stdout.split() if pid.isdigit()]
     except Exception as e:
         print(f"Failed to list PIDs via bash: {e}")
@@ -63,7 +68,12 @@ def kill_process_with_keyword(keyword: str, exclude_substrings=None, grace_secon
             f"{exclude_filters} | awk '{{print $1}}' | grep -v -x {self_pid} || true"
         )
         try:
-            res2 = subprocess.run(["bash", "-lc", ps_pid_cmd], capture_output=True, text=True, check=False)
+            res2 = subprocess.run(
+                ["bash", "-lc", ps_pid_cmd],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             pids = [pid for pid in res2.stdout.split() if pid.isdigit()]
         except Exception as e:
             print(f"Failed to list PIDs via ps/grep: {e}")
@@ -75,10 +85,16 @@ def kill_process_with_keyword(keyword: str, exclude_substrings=None, grace_secon
     pid_args = " ".join(pids)
     try:
         # Send TERM to all in one call
-        subprocess.run(["bash", "-lc", f"kill -TERM -- {pid_args} 2>/dev/null || true"], check=False)
+        subprocess.run(
+            ["bash", "-lc", f"kill -TERM -- {pid_args} 2>/dev/null || true"],
+            check=False,
+        )
         time.sleep(grace_seconds)
         # Escalate with KILL once; ignore failures for already-exited PIDs
-        subprocess.run(["bash", "-lc", f"kill -KILL -- {pid_args} 2>/dev/null || true"], check=False)
+        subprocess.run(
+            ["bash", "-lc", f"kill -KILL -- {pid_args} 2>/dev/null || true"],
+            check=False,
+        )
     except Exception as e:
         print(f"Error issuing kill commands: {e}")
 

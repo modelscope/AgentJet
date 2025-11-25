@@ -18,12 +18,16 @@ from trinity.common.constants import DEBUG_NAMESPACE, PLUGIN_DIRS_ENV_VAR
 from trinity.explorer.explorer import Explorer
 from trinity.manager.state_manager import StateManager
 from trinity.trainer.trainer import Trainer
-from trinity.utils.dlc_utils import is_running, setup_ray_cluster, stop_ray_cluster
+from trinity.utils.dlc_utils import (
+    is_running,
+    setup_ray_cluster,
+    stop_ray_cluster,
+)
 from trinity.utils.log import get_logger
 from trinity.utils.plugin_loader import load_plugins
 
 # register trinity backbone modules
-import astune.backbone_trinity.register_flow  # noqa: F401
+import astune.backbone.trinity_compat_workflow  # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -175,13 +179,13 @@ def run(config_path: str, dlc: bool = False, plugin_dir: str = None):
 
     if os.path.exists(".env"):
         from dotenv import load_dotenv
+
         load_dotenv(".env")
 
     atexit.register(lambda: send_train_message("0000"))
 
     if plugin_dir:
         os.environ[PLUGIN_DIRS_ENV_VAR] = plugin_dir
-
 
     load_plugins()
     config = load_config(config_path)
@@ -305,7 +309,9 @@ def main() -> None:
         help="Path to the directory containing plugin modules.",
     )
     run_parser.add_argument(
-        "--dlc", action="store_true", help="Specify when running in Aliyun PAI DLC."
+        "--dlc",
+        action="store_true",
+        help="Specify when running in Aliyun PAI DLC.",
     )
 
     # studio command

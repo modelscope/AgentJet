@@ -1,83 +1,87 @@
 import os
 import pty
+import base64
+
+
 
 def run_command_with_pty(cmd, working_dir, env_dict):
     """
-    使用伪终端运行命令，并将输出写入日志文件。
+    Run a command in a pseudo-terminal (PTY) and stream output to stdout.
 
-    参数：
-        cmd (list): 要运行的命令（如 ["ls", "-l"]）。
-        working_dir (str): 工作目录。
-        env_dict (dict): 环境变量字典。
+    Args:
+        cmd (list): Command to run (e.g., ["ls", "-l"]).
+        working_dir (str): Working directory.
+        env_dict (dict): Environment variables dictionary.
     """
-    # 保存原始环境变量
+    # Save original environment and directory
     original_env = os.environ.copy()
     original_dir = os.getcwd()
 
     try:
-        # 切换到指定工作目录
+        # Change to the target working directory
         os.chdir(working_dir)
 
-        # 更新环境变量
+        # Update environment variables
         for key, value in env_dict.items():
             os.environ[key] = value
 
-        # # 打开日志文件以追加模式写入
+        # # Open a log file in append mode (optional)
         # with open(log_file, 'a') as log_f:
 
-        # 定义主设备读取回调函数
+        # Define master device read callback
         def master_read(fd):
             try:
-                # 从主设备读取数据
+                # Read data from PTY master
                 data = os.read(fd, 1024)
             except OSError:
                 return b""
 
             if data:
-                # 将数据写入日志文件
+                # Write data to log file
                 # log_f.write(data.decode())
                 # log_f.flush()
-                # 同时打印到标准输出（可选）
+                # Also print to stdout (optional)
                 print(data.decode(), end="")
             return data
 
-        # 定义标准输入读取回调函数
+        # Define stdin read callback
         def stdin_read(fd):
-            # 如果不需要从标准输入读取数据，直接返回空字节
+            # Return empty bytes if no stdin input is needed
             return b""
 
-        # 使用 pty.spawn 分配伪终端并运行命令
+        # Spawn a PTY and run the command
         pty.spawn(cmd, master_read, stdin_read)
 
     finally:
-        # 恢复原始工作目录
+        # Restore original working directory
         os.chdir(original_dir)
 
-        # 恢复原始环境变量
+        # Restore original environment variables
         os.environ.clear()
         os.environ.update(original_env)
 
-import base64
 
-# 将字符串转换为 Base64
+# Convert string to Base64
 def string_to_base64(s):
-    # 首先将字符串编码为字节
-    s_bytes = s.encode('utf-8')
-    # 将字节转换为 base64
+    # First, encode the string to bytes
+    s_bytes = s.encode("utf-8")
+    # Convert bytes to base64
     base64_bytes = base64.b64encode(s_bytes)
-    # 将 base64 字节转换回字符串
-    base64_string = base64_bytes.decode('utf-8')
+    # Convert base64 bytes back to string
+    base64_string = base64_bytes.decode("utf-8")
     return base64_string
 
-# 将 Base64 转换回字符串
+
+# Convert Base64 back to string
 def base64_to_string(b):
-    # 将 base64 字符串转换为字节
-    base64_bytes = b.encode('utf-8')
-    # 解码 base64 字节
+    # Convert base64 string to bytes
+    base64_bytes = b.encode("utf-8")
+    # Decode base64 bytes
     message_bytes = base64.b64decode(base64_bytes)
-    # 将字节转换回字符串
-    message = message_bytes.decode('utf-8')
+    # Convert bytes back to string
+    message = message_bytes.decode("utf-8")
     return message
+
 
 def pty_wrapper(
     cmd: list[str],
@@ -86,19 +90,47 @@ def pty_wrapper(
 ):
     run_command_with_pty(cmd, working_dir=dir, env_dict=env_dict)
 
+
 def pty_wrapper_final(human_cmd, dir, env_dict):
     print("[pty]: ", human_cmd)
     pty_wrapper(["/bin/bash", "-c", human_cmd], dir, env_dict)
+
+
+def pty_launch(service_name: str, success_std_string="Starting server on"):
+    from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+    service_path = os.environ.get(f"{service_name.upper()}_PATH")
+    service_script = os.environ.get(f"{service_name.upper()}_SCRIPT")
+    if service_path is None or service_script is None:
+        raise ValueError(f"Environment variables for {service_name} not properly set.")
+    companion = LaunchCommandWhenAbsent(
+        full_argument_list=[service_script],
+        dir=service_path,
+        tag="appworld_env_service",
+        use_pty=True,
+    )
+    companion.launch(
+        launch_wait_time=1800,
+        success_std_string=success_std_string,
+    )
+
+
 
 
 if __name__ == "__main__":
     import argparse
     import json
 
-    parser = argparse.ArgumentParser(description="Run a shell command in a PTY with logging and custom env.")
+    parser = argparse.ArgumentParser(
+        description="Run a shell command in a PTY with logging and custom env."
+    )
     parser.add_argument("--human-cmd", type=str, help="Shell command to run (as a string)")
     parser.add_argument("--dir", type=str, default=".", help="Working directory")
-    parser.add_argument("--env", type=str, default="{}", help="Environment variables as JSON string, e.g. '{\"KEY\":\"VAL\"}'")
+    parser.add_argument(
+        "--env",
+        type=str,
+        default="{}",
+        help='Environment variables as JSON string, e.g. \'{"KEY":"VAL"}\'',
+    )
 
     args = parser.parse_args()
 
@@ -107,8 +139,10 @@ if __name__ == "__main__":
         if not isinstance(env_dict, dict):
             raise ValueError
     except Exception:
-        print("--env must be a valid JSON object string, e.g. '{\"KEY\":\"VAL\"}'. But get:", args.env)
+        print(
+            '--env must be a valid JSON object string, e.g. \'{"KEY":"VAL"}\'. But get:',
+            args.env,
+        )
         exit(1)
 
     pty_wrapper_final(base64_to_string(args.human_cmd), args.dir, env_dict)
-

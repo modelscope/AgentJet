@@ -16,135 +16,16 @@ import torch
 import time
 import datasets
 from datasets import Dataset
+from omegaconf import DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from torch.utils.data import RandomSampler, SequentialSampler
-
-from verl.utils.dataset.rl_dataset import RLHFDataset
 from verl.utils.import_utils import load_extern_type
 from verl.experimental.dataset.sampler import AbstractSampler
-
-
 from typing import List, Optional, Union, Dict, Any
-from transformers.processing_utils import ProcessorMixin
-from omegaconf import DictConfig
-
-
-class EnvServiceDataset(RLHFDataset):
-    """Dataset class that handles environment service data loading and processing."""
-
-    def __init__(self,
-                 data_files: List[str],
-                 tokenizer,
-                 processor: Optional[ProcessorMixin],
-                 config: DictConfig,
-                 env_config: Optional[DictConfig] = None):
-        """Initialize the EnvServiceDataset.
-
-        Args:
-            data_files: List of data file paths
-            tokenizer: The tokenizer to use
-            processor: The processor to use for multimodal data
-            config: Configuration for dataset
-            env_config: Configuration for environment service
-        """
-        self.config = config
-        self.env_config = env_config or {}
-        super().__init__(data_files, tokenizer, config, processor)
-
-    def _read_files_and_tokenize(self):
-        env_url = self.env_config.env_url
-        env_type = self.env_config.env_type
-        dataframes = []
-
-        from astune.env_service_client.env_client_ng import EnvClient
-        for parquet_file in self.data_files:
-            # read parquet files and cache
-            if 'train(read_from_env_service)' in parquet_file:
-                split = 'train'
-            elif 'val(read_from_env_service)' in parquet_file:
-                split = 'test'
-                split = 'dev'   # or test_normal
-            else:
-                raise ValueError(f"Unsupported split: {parquet_file}")
-            env_service_client = EnvClient(base_url=env_url)
-            task_id_array = env_service_client.get_env_profile(env_type, split=split)
-            if len(task_id_array) == 0:
-                raise ValueError(f"No task_id found for env_type: {env_type}, split: {split}, Please check connection to {env_url}")
-            data = {
-                'data_source': [env_type for task_id in task_id_array],
-                'prompt': ['not available' for task_id in task_id_array],
-                'reward_model': [{} for task_id in task_id_array],
-                'extras': [{'task_id': task_id} for task_id in task_id_array],
-            }
-            dataframe = Dataset.from_dict(data)
-            dataframes.append(dataframe)
-
-        self.dataframe: datasets.Dataset = datasets.concatenate_datasets(dataframes)
-        print(f"dataset len: {len(self.dataframe)}")
-        self.dataframe = self.maybe_filter_out_long_prompts(self.dataframe)
-
-
-def create_rl_dataset(
-    data_paths: List[str],
-    data_config: DictConfig,
-    tokenizer,
-    processor: Optional[ProcessorMixin],
-    is_train: bool = True,
-    env_config: Optional[DictConfig] = None
-) -> TorchDataset:
-    """Create a dataset.
-
-    Arguments:
-        data_paths: List of paths to data files.
-        data_config: The data config.
-        tokenizer (Tokenizer): The tokenizer.
-        processor (Processor): The processor.
-        is_train (bool): Whether this is for training or validation.
-        env_config: Environment configuration.
-
-    Returns:
-        dataset (Dataset): The dataset.
-    """
-
-    # Check if a custom dataset class is specified in the data configuration
-    # and if the path to the custom class is provided
-    if "custom_cls" in data_config and data_config.custom_cls.get("path", None) is not None:
-        # Dynamically load the custom dataset class
-        dataset_cls = load_extern_type(data_config.custom_cls.path, data_config.custom_cls.name)
-        # Verify that the custom dataset class inherits from torch.utils.data.Dataset
-        if not issubclass(dataset_cls, TorchDataset):
-            raise TypeError(
-                f"The custom dataset class '{data_config.custom_cls.name}' from "
-                f"'{data_config.custom_cls.path}' must inherit from torch.utils.data.Dataset"
-            )
-
-    elif "datagen" in data_config and data_config.datagen.get("path", None) is not None and is_train:
-        # If a data generation strategy is specified, use the DynamicGenDataset class
-        from verl.utils.dataset.dynamicgen_dataset import DynamicGenDataset
-        dataset_cls = DynamicGenDataset
-        print("Using DynamicGenDataset for data generation.")
-
-    else:
-        # Use EnvServiceDataset
-        dataset_cls = EnvServiceDataset
-    print(f"Using dataset class: {dataset_cls.__name__}")
-
-    # Instantiate the dataset using the determined dataset class
-    print('using', dataset_cls)
-    dataset = dataset_cls(
-        data_files=data_paths,
-        tokenizer=tokenizer,
-        processor=processor,
-        config=data_config,
-        env_config=env_config,
-    )
-
-    return dataset
 
 
 def create_rl_sampler(
-    data_config: DictConfig,
-    dataset: TorchDataset
+    data_config: DictConfig, dataset: TorchDataset
 ) -> Union[RandomSampler, SequentialSampler, AbstractSampler]:
     """Create a sampler for the dataset.
 

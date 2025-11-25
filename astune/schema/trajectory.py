@@ -23,6 +23,7 @@ class Reward(BaseModel):
         else:
             return self.raw_reward
 
+
 class Trajectory(BaseModel):
     task_batch_index: int = Field(default=0)
     task_tag: str = Field(default="")
@@ -69,12 +70,14 @@ class Sample(BaseModel):
     step_reward: float = 0.0
     reference_advantage: float = 0.0
 
-    def __init__(self, cmt_tokenized:dict, messages, config, **kwargs):
+    def __init__(self, cmt_tokenized: dict, messages, config, **kwargs):
         super().__init__(**kwargs)
 
         self.max_prompt_len = config.astune.data.max_prompt_length
         self.max_response_len = config.astune.data.max_response_length
-        self.max_model_len = config.astune.data.max_response_length + config.astune.data.max_prompt_length
+        self.max_model_len = (
+            config.astune.data.max_response_length + config.astune.data.max_prompt_length
+        )
 
         self.input_ids = cmt_tokenized["input_ids"]
         self.attention_mask = cmt_tokenized["attention_mask"]
@@ -105,31 +108,65 @@ class Sample(BaseModel):
 
     def truncate_output_ids(self) -> None:
 
-        assert len(self.input_ids) == len(self.attention_mask) == len(self.position_ids) == len(self.loss_mask)
-        assert len(self.prompt_ids) == len(self.prompt_attention_mask) == len(self.prompt_position_ids) == len(self.prompt_loss_mask) == len(self.prompt_logprobs)
-        assert len(self.response_ids) == len(self.response_attention_mask) == len(self.response_position_ids) == len(self.response_loss_mask) == len(self.response_logprobs)
-        assert isinstance(self.input_ids, list) and isinstance(self.prompt_ids, list) and isinstance(self.response_ids, list)
+        assert (
+            len(self.input_ids)
+            == len(self.attention_mask)
+            == len(self.position_ids)
+            == len(self.loss_mask)
+        )
+        assert (
+            len(self.prompt_ids)
+            == len(self.prompt_attention_mask)
+            == len(self.prompt_position_ids)
+            == len(self.prompt_loss_mask)
+            == len(self.prompt_logprobs)
+        )
+        assert (
+            len(self.response_ids)
+            == len(self.response_attention_mask)
+            == len(self.response_position_ids)
+            == len(self.response_loss_mask)
+            == len(self.response_logprobs)
+        )
+        assert (
+            isinstance(self.input_ids, list)
+            and isinstance(self.prompt_ids, list)
+            and isinstance(self.response_ids, list)
+        )
 
         truncate_any = False
 
         if len(self.prompt_ids) > self.max_prompt_len:
             truncate_any = True
-            print(f"-------------------------------------------------------------------------------------------------------")
-            print(f"Warning: prompt_ids length {len(self.prompt_ids)} exceeds max_prompt_len {self.max_prompt_len}, truncating.")
-            print(f"-------------------------------------------------------------------------------------------------------")
-            raise RuntimeError("Prompt length exceeds maximum allowed length. Please adjust the input data.")
-            self.prompt_ids = self.prompt_ids[-self.max_prompt_len:]
-            self.prompt_attention_mask = self.prompt_attention_mask[-self.max_prompt_len:]
-            self.prompt_position_ids = self.prompt_position_ids[-self.max_prompt_len:]
-            self.prompt_loss_mask = self.prompt_loss_mask[-self.max_prompt_len:]
-            self.prompt_logprobs = self.prompt_logprobs[-self.max_prompt_len:]
-
+            print(
+                f"-------------------------------------------------------------------------------------------------------"
+            )
+            print(
+                f"Warning: prompt_ids length {len(self.prompt_ids)} exceeds max_prompt_len {self.max_prompt_len}, truncating."
+            )
+            print(
+                f"-------------------------------------------------------------------------------------------------------"
+            )
+            raise RuntimeError(
+                "Prompt length exceeds maximum allowed length. Please adjust the input data."
+            )
+            self.prompt_ids = self.prompt_ids[-self.max_prompt_len :]
+            self.prompt_attention_mask = self.prompt_attention_mask[-self.max_prompt_len :]
+            self.prompt_position_ids = self.prompt_position_ids[-self.max_prompt_len :]
+            self.prompt_loss_mask = self.prompt_loss_mask[-self.max_prompt_len :]
+            self.prompt_logprobs = self.prompt_logprobs[-self.max_prompt_len :]
 
         if len(self.response_ids) > self.max_response_len:
             truncate_any = True
-            print(f"-------------------------------------------------------------------------------------------------------")
-            print(f"Warning: response_ids length {len(self.response_ids)} exceeds max_response_len {self.max_response_len}, truncating.")
-            print(f"-------------------------------------------------------------------------------------------------------")
+            print(
+                f"-------------------------------------------------------------------------------------------------------"
+            )
+            print(
+                f"Warning: response_ids length {len(self.response_ids)} exceeds max_response_len {self.max_response_len}, truncating."
+            )
+            print(
+                f"-------------------------------------------------------------------------------------------------------"
+            )
             self.response_ids = self.response_ids[: self.max_response_len]
             self.response_attention_mask = self.response_attention_mask[: self.max_response_len]
             self.response_position_ids = self.response_position_ids[: self.max_response_len]
@@ -147,4 +184,4 @@ class Sample(BaseModel):
         """
         Discard the experience.
         """
-        raise RuntimeError('Never use this method.')
+        raise RuntimeError("Never use this method.")
