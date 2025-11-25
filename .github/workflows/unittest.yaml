@@ -48,27 +48,9 @@ jobs:
       working-directory: astune-${{ github.run_id }}
       run: |
         COMMENT="${{ github.event.comment.body }}"
-        if [[ "$COMMENT" == "/unittest-all"* ]]; then
-          echo "type=all" >> $GITHUB_OUTPUT
-        elif [[ "$COMMENT" == "/unittest-diff"* ]]; then
-          echo "type=diff" >> $GITHUB_OUTPUT
-        elif [[ "$COMMENT" =~ ^/unittest-module-(.+)$ ]]; then
-          MODULE=$(echo "$COMMENT" | sed -n 's/\/unittest-module-\(.*\)/\1/p')
-          echo "type=module" >> $GITHUB_OUTPUT
-          echo "module=$MODULE" >> $GITHUB_OUTPUT
-        else
+        if [[ "$COMMENT" == "/unittest"* ]]; then
           echo "type=all" >> $GITHUB_OUTPUT
         fi
-
-    - name: Get changed modules (for diff)
-      if: steps.test_type.outputs.type == 'diff'
-      id: diff
-      working-directory: astune-${{ github.run_id }}
-      run: |
-        git fetch origin main
-        git diff --name-only origin/main...HEAD > changed_files.txt
-        awk -F/ '/^(astune)\// {print $2}' changed_files.txt | sort | uniq > changed_modules.txt
-        awk '{print "tests/"$1}' changed_modules.txt > test_dirs.txt
 
     - name: Run unittest
       working-directory: astune-${{ github.run_id }}/.github/workflows/docker
@@ -77,24 +59,6 @@ jobs:
         if [ "$TYPE" = "all" ]; then
           echo "tests_run=true" >> $GITHUB_ENV
           docker compose exec astune-node-1 pytest tests -v -s --ctrf report.json
-        elif [ "$TYPE" = "diff" ]; then
-          if [ -s ../../../test_dirs.txt ]; then
-            echo "tests_run=true" >> $GITHUB_ENV
-            TEST_DIRS=$(cat ../../../test_dirs.txt | xargs)
-            docker compose exec astune-node-1 pytest $TEST_DIRS -v -s --ctrf report.json
-          else
-            echo "No changed modules detected, skipping tests."
-            echo "tests_run=false" >> $GITHUB_ENV
-          fi
-        elif [ "$TYPE" = "module" ]; then
-          MODULE="${{ steps.test_type.outputs.module }}"
-          if [ -n "$MODULE" ]; then
-            echo "tests_run=true" >> $GITHUB_ENV
-            docker compose exec astune-node-1 pytest tests/$MODULE -v -s --ctrf report.json
-          else
-            echo "No module specified, skipping tests."
-            echo "tests_run=false" >> $GITHUB_ENV
-          fi
         fi
 
     - name: Convert report.json time to ms
