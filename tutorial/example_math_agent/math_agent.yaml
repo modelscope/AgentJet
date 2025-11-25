@@ -31,15 +31,16 @@ astune:
       - "nonsense"
       - "wrong_toolcall"
   data:
-    train_batch_size: 128
+    train_batch_size: 120
 
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
 
   trainer_common:
-    save_freq: 100
-    test_freq: 100
+    save_freq: 99999
+    test_freq: 99999
+    total_epochs: 99999
 
 
 # ------------------ 不需要修改 ------------------

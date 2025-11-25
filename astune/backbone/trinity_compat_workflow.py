@@ -8,12 +8,16 @@ from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
 from trinity.common.workflows.workflow import WORKFLOWS, Workflow
 from trinity.common.workflows.workflow import Task as TrinityTask
-from trinity.buffer.reader import READER
-from trinity.buffer.reader.file_reader import FileReader, TaskFileReader, _HFBatchReader
-from trinity.buffer.buffer_reader import BufferReader
-from trinity.buffer.reader.reader import READER
-from trinity.buffer.schema.formatter import FORMATTER
-from trinity.common.config import StorageConfig
+
+try:
+    from trinity.buffer.reader import READER
+    from trinity.buffer.reader.file_reader import FileReader, TaskFileReader, _HFBatchReader
+    from trinity.buffer.buffer_reader import BufferReader
+    from trinity.buffer.reader.reader import READER
+    from trinity.buffer.schema.formatter import FORMATTER
+    from trinity.common.config import StorageConfig
+except ImportError:
+    pass
 
 from typing import List, Literal, Optional, cast
 from loguru import logger
@@ -198,64 +202,58 @@ class ASTunetWorkflowWrap(Workflow):
         return exps
 
 
-class CustomReader(TaskFileReader):
-    """A custom reader for testing."""
 
-    def __init__(self, config):
-        super().__init__(config)
+try:
+    @READER.register_module("astune")
+    class AstuneTaskReader(TaskFileReader):
+        def __init__(self, config):
+            self.config = config
+            self.read_batch_size = config.batch_size
+            self.split = config.split
 
+            yaml_path = os.environ.get('ASTUNE_CONFIG_REDIRECT', None)
+            if yaml_path is None:
+                raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
+            astune_config = read_astune_config(yaml_path)
 
+            from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
+            task_reader = TaskReaderRouter(astune_config)
 
+            dataset_segments = []
+            if 'train' in self.split:
+                dataset_segments.append(task_to_standard_dataset(task_reader.get_training_tasks()))
+            if 'val' in self.split:
+                dataset_segments.append(task_to_standard_dataset(task_reader.get_validation_tasks()))
+            if not dataset_segments:
+                raise ValueError(f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'.")
 
+            concatenated_dataset = (
+                dataset_segments[0]
+                if len(dataset_segments) == 1
+                else datasets.concatenate_datasets(dataset_segments)
+            )
 
-@READER.register_module("astune_workflow")
-class AstuneTaskReader(TaskFileReader):
-    def __init__(self, config):
-        self.config = config
-        self.read_batch_size = config.batch_size
-        self.split = config.split
+            # from vsdb import bp; bp("XXX")
+            self.dataset = _HFBatchReader(
+                concatenated_dataset,
+                name=self.config.name,
+                default_batch_size=self.read_batch_size,
+                total_epochs=self.config.total_epochs if not self.config.is_eval else 1,
+                offset=self.config.index,
+                drop_last=not self.config.is_eval,
+                total_steps=self.config.total_steps,
+                enable_progress_bar=self.config.enable_progress_bar,
+            )
+            self.formatter = FORMATTER.get("task")(self.config)
 
-        yaml_path = os.environ.get('ASTUNE_CONFIG_REDIRECT', None)
-        if yaml_path is None:
-            raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
-        astune_config = read_astune_config(yaml_path)
-
-        from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
-        task_reader = TaskReaderRouter(astune_config)
-
-        dataset_segments = []
-        if 'train' in self.split:
-            dataset_segments.append(task_to_standard_dataset(task_reader.get_training_tasks()))
-        if 'val' in self.split:
-            dataset_segments.append(task_to_standard_dataset(task_reader.get_validation_tasks()))
-        if not dataset_segments:
-            raise ValueError(f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'.")
-
-        concatenated_dataset = (
-            dataset_segments[0]
-            if len(dataset_segments) == 1
-            else datasets.concatenate_datasets(dataset_segments)
-        )
-
-        # from vsdb import bp; bp("XXX")
-        self.dataset = _HFBatchReader(
-            concatenated_dataset,
-            name=self.config.name,
-            default_batch_size=self.read_batch_size,
-            total_epochs=self.config.total_epochs if not self.config.is_eval else 1,
-            offset=self.config.index,
-            drop_last=not self.config.is_eval,
-            total_steps=self.config.total_steps,
-            enable_progress_bar=self.config.enable_progress_bar,
-        )
-        self.formatter = FORMATTER.get("task")(self.config)
-
-    def read(self, batch_size: Optional[int] = None) -> List:
-        # from vsdb import bp; bp("CCC")
-        batch_size = batch_size or self.read_batch_size
-        tasks = []
-        samples, indices = self.dataset.read_batch(batch_size)
-        for sample in samples:
-            task = self.formatter.format(sample)
-            tasks.append(task)
-        return tasks
+        def read(self, batch_size: Optional[int] = None) -> List:
+            # from vsdb import bp; bp("CCC")
+            batch_size = batch_size or self.read_batch_size
+            tasks = []
+            samples, indices = self.dataset.read_batch(batch_size)
+            for sample in samples:
+                task = self.formatter.format(sample)
+                tasks.append(task)
+            return tasks
+except:
+    pass

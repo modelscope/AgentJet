@@ -18,7 +18,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
         rollout_args:
           temperature: 1.0
         split: train
-        storage_type: astune_workflow
+        storage_type: astune
         subset_name: appworld
     total_epochs: 1000
     train_batch_size: 36
@@ -48,7 +48,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
       tensor_parallel_size: 1
       tool_call_parser: hermes
     runner_per_model: 8
-    runner_state_report_interval: 30
+    # runner_state_report_interval: 30
   model:
     max_model_len: 21000
     max_response_tokens: 16000
