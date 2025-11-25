@@ -22,9 +22,9 @@ astune:
   data_generator:
     llm_model: gpt-4o-2024-11-20
     llm_response_length: 8192
-    task_augment:
+    task_augmentor:
 
-    knowledge_augment:
+    knowledge_augmentor:
       n: 10    # 文档生成query 的数量
 
 
