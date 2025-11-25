@@ -60,7 +60,7 @@ def run_ppo(config) -> None:
                 "VLLM_LOGGING_LEVEL": "WARN",
                 "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
                 "VLLM_USE_V1": "1",
-                "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY"),
+                "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
             }
         }
 
@@ -68,14 +68,16 @@ def run_ppo(config) -> None:
             runtime_env["env_vars"].update(
                 {
                     "RAY_record_task_actor_creation_sites": os.getenv(
-                        "RAY_record_task_actor_creation_sites"
+                        "RAY_record_task_actor_creation_sites", ""
                     ),
                 }
             )
         if os.getenv("BEST_LOGGER_WEB_SERVICE_URL"):
             runtime_env["env_vars"].update(
                 {
-                    "BEST_LOGGER_WEB_SERVICE_URL": os.getenv("BEST_LOGGER_WEB_SERVICE_URL"),
+                    "BEST_LOGGER_WEB_SERVICE_URL": os.getenv(
+                        "BEST_LOGGER_WEB_SERVICE_URL", ""
+                    ),
                 }
             )
         print_dict(runtime_env["env_vars"], "runtime_env")

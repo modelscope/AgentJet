@@ -17,6 +17,7 @@ astune:
               2. Consider a response is invalid if it does not wrap the final answer in \boxed{}.
             temperature: 0.5
             print_reason: false
+            max_thread: 16
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
