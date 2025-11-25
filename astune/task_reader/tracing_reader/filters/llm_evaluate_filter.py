@@ -1,4 +1,5 @@
 from typing import Iterable, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tqdm import tqdm
 
@@ -49,10 +50,12 @@ class LlmEvaluateFilter(Filter):
         temperature: float = 0.7,
         max_tokens: int = 2048,
         print_reason: bool = True,
+        max_thread: int = 1,
     ) -> None:
         """Filter that evaluates the quality of tasks using LLM."""
 
         self._print_reason = print_reason
+        self._max_thread = max_thread
         self.alien_llm_chat_fn = construct_alien_llm_chat_fn(
             alien_llm_model="qwen3-235b-a22b-instruct-2507",
             alien_llm_response_length=512,
@@ -76,16 +79,33 @@ class LlmEvaluateFilter(Filter):
         )
 
     def filter(self, tasks: Iterable[Task]) -> List[Task]:
+        tasks_list = list(tasks)
         kept: List[Task] = []
-        for task in tqdm(tasks,desc="filtering tasks"):
+
+        if not tasks_list:
+            return kept
+
+        max_workers = max(self._max_thread, 1)
+
+        def _evaluate(task: Task) -> dict:
             payload = {
                 "query": task.main_query,
                 "answer": task.metadata.get("answer", ""),
             }
             res = self._fn(payload)
             assert isinstance(res, dict)
-            if self._print_reason:
-                print(res["reason"])
-            if res.get("result") == "GOOD":
-                kept.append(task)
+            return res
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_task = {
+                executor.submit(_evaluate, task): task for task in tasks_list
+            }
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                res = future.result()
+                if self._print_reason:
+                    print(res["reason"])
+                if res.get("result") == "GOOD":
+                    kept.append(task)
+
         return kept
