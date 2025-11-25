@@ -1,5 +1,6 @@
 astune:
   project_name: unittest
+  experiment_name: sample
   task_reader:
     type: huggingface_dat_repo
     huggingface_dat_repo:
