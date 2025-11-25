@@ -1,21 +1,37 @@
 # ------------------ 主要配置 ------------------
 astune:
+  project_name: example_feedback_training
   task_reader:
     type: tracing
 
   task_judge:
+    # ✨✨✨✨ 编写并选择评价函数
     judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
 
   model:
+    # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 
   rollout:
     agentscope_learn_protocol: tutorial.trace_feedback_training.train->ExampleTracingFeedbackTrain
+    temperature: 0.7
+    max_env_worker: 256
+    num_repeat: 8
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 4
+    max_num_seqs: 256
+    multi_turn:
+      max_sample_per_task: 4
+    compute_madness_checklist:
+      - "nonsense"
+      - "wrong_toolcall"
+  data:
+    train_batch_size: 240
 
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
-  
+
   tracing:
     base_url: ./tutorial/trace_feedback_training/database.sqlite
     train_output_path: ./tutorial/trace_feedback_training/tasks.jsonl
@@ -31,11 +47,6 @@ astune:
           temperature: 0.5
           print_reason: false
 
-trinity:
-  algorithm:
-    repeat_times: 6
-  buffer:
-    train_batch_size: 180
 
 # remove swanlab logger
 trainer:
