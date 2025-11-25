@@ -4,6 +4,8 @@ import uuid
 import openai
 import datasets
 
+from loguru import logger
+
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
 from trinity.common.workflows.workflow import WORKFLOWS, Workflow
@@ -16,11 +18,12 @@ try:
     from trinity.buffer.reader.reader import READER
     from trinity.buffer.schema.formatter import FORMATTER
     from trinity.common.config import StorageConfig
+    logger.success("[New Trinity] Trinity imports successful.")
 except ImportError:
+    logger.success("[Old Trinity] Using old trinity.")
     pass
 
 from typing import List, Literal, Optional, cast
-from loguru import logger
 from transformers import AutoTokenizer
 from astune.task_rollout.native_parallel_worker import DynamicRollout
 from astune.schema.trajectory import Sample
