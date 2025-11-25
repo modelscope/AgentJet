@@ -34,8 +34,8 @@ class TracingReader(TaskReaderBase):
         super().__init__(config)
         # config patch
         # print("*********", config, "**********")
-        self.config = config.astune.tracing
-        
+        self.config = config.astune.task_reader.feedback_tracing
+
         logger.info(f"reading tasks from {self.config.get('base_url')}, #filter {len(self.config.get('filters'))}")
         self._connector = LocalSqliteConnectorV1(self.config.get("base_url"))
         filters_config = self.config.get("filters")

@@ -19,7 +19,7 @@ You should return your final answer within \\boxed{{}}.
 def build_agent():
     tool_kit=Toolkit()
     tool_kit.register_tool_function(execute_python_code)
-    
+
     agent = ReActAgent(
         name="Qwen",
         sys_prompt=SYSTEM_PROMPT,
@@ -33,16 +33,16 @@ def build_agent():
         toolkit=tool_kit,
         print_hint_msg=False,
     )
-    
+
     return agent
 
 
 async def main():
     # init the tracing module
     agentscope.init(studio_url="http://localhost:3000")
-    
+
     agent = build_agent()
-    
+
     while True:
         inp = input("User: ")
         print(await agent.reply(Msg("user", inp, role="user")))
