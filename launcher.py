@@ -159,9 +159,11 @@ def main():
         env["RAY_DEBUG_POST_MORTEM"] = "1"
         env["DEBUG_TAGS"] = args.db
         env["RAY_record_task_actor_creation_sites"] = "true"
+        assert exp_config["astune"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"    # type: ignore
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
+        assert exp_config["astune"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"    # type: ignore
 
     if args.backbone == "trinity":
         env["ASTUNE_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
