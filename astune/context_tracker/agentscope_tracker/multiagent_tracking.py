@@ -17,7 +17,7 @@ from astune.context_tracker.agentscope_tracker.timeline_merging import (
     can_merge_steps,
 )
 
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple, Union, Dict
 from beast_logger import (
     print_nested,
     print_listofdict,
@@ -46,8 +46,26 @@ class MultiAgentContextTracking(BasicContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
 
+
+    def cleanup_messages(self, messages: List[Dict]) -> List[Dict]:
+        " A temperary fix for tool_calls being str instead of dict "
+        messages_copied = copy.deepcopy(messages)
+        for m in messages_copied:
+            if 'tool_calls' not in m:
+                continue
+            for t in m['tool_calls']:
+                if 'function' not in t or 'arguments' not in t['function']:
+                    continue
+                try:
+                    t['function']['arguments'] = json.loads(t['function']['arguments'])
+                except:
+                    pass
+        return messages_copied
+
+
     def step_prepare(self, messages: List[dict], tools: List = []):
         self.full_context = []
+        messages = self.cleanup_messages(messages)
         consider_roles = ["user", "assistant", "system", "tool"]
         disable_toolcalls = self.config.astune.rollout.agentscope_disable_toolcalls
         if disable_toolcalls:
@@ -129,7 +147,7 @@ class MultiAgentContextTracking(BasicContextTracker):
         # dummy response for now
         token_generator = "manual"
         err_type = ""
-        if (llm_output.get("tool_calls", None) is not None):
+        if llm_output.get("tool_calls", []): # is not None, and is not []
             tool_calls = llm_output["tool_calls"]
             if ("wrong_toolcall" in self.config.astune.rollout.compute_madness_checklist):
                 # check tool call formating
@@ -202,7 +220,6 @@ class MultiAgentContextTracking(BasicContextTracker):
             #     and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2]))
             # ):
             #     print(f"General Warning: merge failure discovered.")
-
         return None
 
     def process_reward(self, reward_structure: Reward):
@@ -357,13 +374,10 @@ class MultiAgentContextTracking(BasicContextTracker):
         max_seq_length: int = max_model_len - max_response_length
         if self.should_interrupt_fn():
             ret = [False, "externally_interrupted"]
-        if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
+        elif self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             ret = [False, "already_mad"]
-        if length < max_seq_length:
-            ret = [
-                True,
-                f"safe[{length} < {max_model_len} - {max_response_length}]",
-            ]
+        elif length < max_seq_length:
+            ret = [True, f"safe[{length} < {max_model_len} - {max_response_length}]"]
         else:
             ret = [False, "token_overflow"]
         return tuple(ret)

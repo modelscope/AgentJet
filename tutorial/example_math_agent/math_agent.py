@@ -59,7 +59,7 @@ class ExampleMathLearn(Workflow):
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
-            max_iters=4,
+            max_iters=2,
         )
         self.agent.set_console_output_enabled(False)
         msg = Msg("user", query, role="user")

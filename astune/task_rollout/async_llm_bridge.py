@@ -3,6 +3,7 @@ import json
 import time
 import numpy as np
 import uuid
+import asyncio
 from pydantic import BaseModel
 from typing import Dict, List, Literal, Callable, Any, Type
 from loguru import logger
@@ -75,7 +76,7 @@ class AsyncLlmBridge(object):
                     request_id=request_id,
                     prompt_ids=prompt_ids,
                     sampling_params=updated_sampling_params,
-                ), timeout=1200
+                ), timeout=1800
             )
 
             if self.config.astune.rollout.name == "vllm":
@@ -193,7 +194,7 @@ class AsyncLlmBridge(object):
                     )
                 return response
 
-            response = run_async_coro__no_matter_what(main(), timeout=1200)  # type: ignore
+            response = run_async_coro__no_matter_what(main(), timeout=1800)  # type: ignore
             # from vsdb import bp; bp("TRR")
             prompt_text = self.tokenizer.decode(response.model_extra['prompt_token_ids'])
             content = response.choices[0].message.content
@@ -204,13 +205,14 @@ class AsyncLlmBridge(object):
 
             if ('<tool_call>' in content) and (not message.get("tool_calls", None)):
                 # logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
+                from vsdb import bp; bp("TOOL_CALL_PARSE5")
                 logger.warning(f"Bad toolcall discovered: {content}")
 
             return {
                 "role": "assistant",
                 "request_id": response.id,
                 "content": content,
-                "tool_calls": message.get("tool_calls", None),
+                "tool_calls": message.get("tool_calls", []),
                 "tokens": [
                     TokenAndProb(
                         token_id=token,
@@ -265,14 +267,17 @@ class LlmProxyForAgentScope(object):
             self.context_tracker.step_prepare(messages, tools)
         )
         if not context_safe:
-            logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
+            logger.warning(f"[{info}] detected.")
             self.context_tracker.context_overflow = True
-            return ChatResponse(
-                content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
-            )
+            # return ChatResponse(
+            #     content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
+            # )
+
         # run llm inference ✨
-        # from vsdb import bp; bp("TOOL_CALL_PARSE5")
-        llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
+        llm_output = await asyncio.wait_for(
+            asyncio.to_thread(self.llm_chat_fn, converted_message, custom_sampling_params, tools),
+            timeout=1800,
+        )
 
         # begin context tracking
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
@@ -281,6 +286,7 @@ class LlmProxyForAgentScope(object):
         response = await self._parse_dashscope_generation_response(
             llm_output, structured_model=structured_model
         )
+
         return response
 
     # copied from AgentScope's DashScopeChatModule
