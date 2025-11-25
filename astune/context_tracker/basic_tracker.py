@@ -78,7 +78,7 @@ class BasicContextTracker(TrackerAttr):
 
     def check_context_token_num_safe(
         self, messages: List[dict], tools: List[dict] = []
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, bool, str]:
         def get_seq_length(messages):
             prompt_text = astune_apply_chat_templat(
                 tokenizer=self.tokenizer,
@@ -91,15 +91,14 @@ class BasicContextTracker(TrackerAttr):
                 self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]
             )
 
+        token_overflow = (get_seq_length(messages) >= self.max_seq_length)
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
-            return False, "already_mad"
+            return False, token_overflow, "already_mad"
         messages = self.prepare_previous_context(mod="raw")
-        if (
-            get_seq_length(messages) < self.max_seq_length
-        ):  # self.config.env_engine.max_seq_length = 20480
-            return True, "safe"
+        if not token_overflow:  # self.config.env_engine.max_seq_length = 20480
+            return True, token_overflow, "safe"
         else:
-            return False, "token_overflow"
+            return False, token_overflow, "token_overflow"
 
     def get_inc(self, text_frag_from, text_frag_to):
         """
