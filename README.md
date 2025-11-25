@@ -195,6 +195,7 @@ python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yam
 
 
 python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='trinity'
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='verl'
 
 
 
