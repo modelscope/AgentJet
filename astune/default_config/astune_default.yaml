@@ -134,6 +134,7 @@ astune:
           custom_rubrics: If the answer claims that it has written the output to a file, consider it an invalid response.
           temperature: 0.5
           print_reason: false
+          max_thread: 16
 
   execute_test: False # DO NOT EDIT, FOR TESTING PURPOSE ONLY
   execute_testing_lambda: ""
