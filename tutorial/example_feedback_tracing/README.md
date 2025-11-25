@@ -33,12 +33,12 @@ Once you have the tracing log (`database.sqlite`), you can use the trace-feedbac
 3. Configure other training parameters and Rewards as you would in a normal training workflow.
 
 An example database and configuration file are provided under
-`trace_feedback_training/`.
+`example_feedback_tracing/`.
 
 When everything is ready, start the training with:
 
 ```bash
-python launcher.py --conf tutorial/trace_feedback_training/trace_feedback_training.yaml --backbone='trinity' --with-ray
+python launcher.py --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 ## 3. Deploying the New Agent

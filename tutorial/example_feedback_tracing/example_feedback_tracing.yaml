@@ -3,6 +3,20 @@ astune:
   project_name: example_feedback_training
   task_reader:
     type: tracing
+    feedback_tracing:
+      base_url: ./tutorial/example_feedback_tracing/database.sqlite
+      train_output_path: ./tutorial/example_feedback_tracing/tasks.jsonl
+      alien_llm_model: qwen3-235b-a22b-instruct-2507
+      alien_llm_response_length: 2048
+      filters:
+        - type: llm_evaluate
+          enabled: true
+          params:
+            custom_rubrics: |
+              1. Check the answer and drop the task if it does not answer or answer is wrong.
+              2. Consider a response is invalid if it does not wrap the final answer in \boxed{}.
+            temperature: 0.5
+            print_reason: false
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
@@ -13,7 +27,7 @@ astune:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 
   rollout:
-    agentscope_learn_protocol: tutorial.trace_feedback_training.train->ExampleTracingFeedbackTrain
+    agentscope_learn_protocol: tutorial.example_feedback_tracing.train->ExampleTracingFeedbackTrain
     temperature: 0.7
     max_env_worker: 256
     num_repeat: 8
@@ -31,21 +45,6 @@ astune:
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
-
-  tracing:
-    base_url: ./tutorial/trace_feedback_training/database.sqlite
-    train_output_path: ./tutorial/trace_feedback_training/tasks.jsonl
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 2048
-    filters:
-      - type: llm_evaluate
-        enabled: true
-        params:
-          custom_rubrics: |
-            1. Check the answer and drop the task if it does not answer or answer is wrong.
-            2. Consider a response is invalid if it does not wrap the final answer in \boxed{}.
-          temperature: 0.5
-          print_reason: false
 
 
 # remove swanlab logger
