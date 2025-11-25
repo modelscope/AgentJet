@@ -259,15 +259,18 @@ class LlmProxyForAgentScope(object):
     ) -> ChatResponse:
 
         # prepare context tracker, check context safety
-        context_safe, info, converted_message, custom_sampling_params, tools = (
+        context_safe, token_overflow, info, converted_message, custom_sampling_params, tools = (
             self.context_tracker.step_prepare(messages, tools)
         )
         if not context_safe:
             logger.warning(f"[{info}] detected.")
             self.context_tracker.context_overflow = True
-            # return ChatResponse(
-            #     content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
-            # )
+            if token_overflow:
+                # cannot proceed due to context overflow
+                return ChatResponse(
+                    content=[{"type": "text", "text": "astune_proxy: Exceeded max model context length."}],
+                )
+            # else: # otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
         # run llm inference ✨
         llm_output = await asyncio.wait_for(

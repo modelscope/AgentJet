@@ -103,12 +103,12 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # check token overflow
         converted_message = self.to_role_content(self.full_context)
-        context_safe, info = self.check_context_token_num_safe(converted_message, tools)
+        context_safe, token_overflow, info = self.check_context_token_num_safe(converted_message, tools)
         custom_sampling_params = {}
         if not context_safe:
             self.context_overflow = True
 
-        return context_safe, info, converted_message, custom_sampling_params, tools
+        return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
 
     def step_track(
         self,
@@ -359,14 +359,18 @@ class MultiAgentContextTracking(BasicContextTracker):
         max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.astune.rollout.max_model_len
         max_seq_length: int = max_model_len - max_response_length
-        if self.should_interrupt_fn():
-            ret = [False, "externally_interrupted"]
-        elif self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
-            ret = [False, "already_mad"]
-        elif length < max_seq_length:
-            ret = [True, f"safe[{length} < {max_model_len} - {max_response_length}]"]
+        if length < max_seq_length:
+            token_overflow = False
         else:
-            ret = [False, "token_overflow"]
+            token_overflow = True
+        if self.should_interrupt_fn():
+            ret = [False, token_overflow, "externally_interrupted"]
+        elif self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
+            ret = [False, token_overflow, "already_mad"]
+        elif length < max_seq_length:
+            ret = [True, token_overflow, f"safe[{length} < {max_model_len} - {max_response_length}]"]
+        else:
+            ret = [False, token_overflow, "token_overflow"]
         return tuple(ret)
 
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
