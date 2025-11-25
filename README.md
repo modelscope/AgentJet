@@ -9,7 +9,7 @@ We recommend using `uv` to setup the dependencies, and `conda` can also do the j
 
 1. Clone the repo and trinity module:
     ```bash
-    git clone https://github.com/..../agentscope-tune.git astune
+    git clone https://github.com/..../agentscope-tuner.git astune
     git clone https://github.com/binary-husky/Trinity-RFT astune/external/trinity
     cd astune
     ```
@@ -183,7 +183,7 @@ clear && killer VLLM  && killer ray && killer python  && python launcher.py --wi
 - [x] TRINITY CONF MAP
 
 ```
- python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
 ```
 
 
@@ -194,6 +194,7 @@ python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear  && \
 python launcher.py --with-appworld --conf tutorial/example_appworld/appworld.yaml --backbone='verl'
 
 
+python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='trinity'
 python launcher.py --kill="python|ray|vllm|VLLM" && ray stop   && clear  && python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='verl'
 
 
