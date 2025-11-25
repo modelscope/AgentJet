@@ -128,6 +128,7 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # dummy response for now
         token_generator = "manual"
+        err_type = ""
         if (llm_output.get("tool_calls", None) is not None):
             tool_calls = llm_output["tool_calls"]
             if ("wrong_toolcall" in self.config.astune.rollout.compute_madness_checklist):
@@ -135,23 +136,31 @@ class MultiAgentContextTracking(BasicContextTracker):
                 copy_tool_calls = copy.deepcopy(tool_calls)
                 wrong_toolcall = False
                 for i in range(len(copy_tool_calls)):
-                    from vsdb import bp; bp("UPUP1")
                     if ('function' in copy_tool_calls[i]) and ('arguments' in copy_tool_calls[i]['function']):
                         try:
-                            copy_tool_calls[i]['function']['arguments'] = json.loads(copy_tool_calls[i]['function']['arguments'])
-                            if isinstance(copy_tool_calls[i]['function']['arguments'], str):
+                            expect_dict = json.loads(copy_tool_calls[i]['function']['arguments'])
+                            if not isinstance(expect_dict, dict):
                                 wrong_toolcall = True
+                                err_type = "cannot parse arguments"
+                                from vsdb import bp; bp("UPUP1")
                         except:
                             wrong_toolcall = True
+                            err_type = "arguments not json"
+                            from vsdb import bp; bp("UPUP3")
                     else:
                         wrong_toolcall = True
+                        err_type = "no function or no arguments"
+                        from vsdb import bp; bp("UPUP4")
                 if wrong_toolcall:
-                    logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*-*---\n{llm_output['tool_calls']}\n---*-*---\n")
+                    logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n")
                     self.already_mad_flag = True
+                else:
+                    logger.success("Toolcall format check passed.")
         elif ('<tool_call>' in llm_output["content"]):
             from vsdb import bp; bp("UPUP2")
-            logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*-*---\n{llm_output['tool_calls']}\n---*-*---\n")
+            logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n")
             self.already_mad_flag = True
+            tool_calls = []
         else:
             tool_calls = []
 

@@ -92,7 +92,7 @@ class AsyncLlmBridge(object):
 
             # if tool call
             tool_calls = None
-            if ('<tool_call>' in decoded_text) and (not self.config.astune.rollout.agentscope_disable_toolcalls):
+            if ('<tool_call>' in decoded_text) and ('</tool_call>' in decoded_text) and (not self.config.astune.rollout.agentscope_disable_toolcalls):
                 tool_parser = Hermes2ProToolParser(self.tokenizer)
                 parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
                 parsed_tool_calls = parsed_tool_calls.model_dump()
@@ -100,11 +100,20 @@ class AsyncLlmBridge(object):
                 model_called = parsed_tool_calls['tools_called']
                 if model_called:
                     tool_calls = parsed_tool_calls['tool_calls']
-                    # for i in range(len(tool_calls)):
-                    #     if 'function' in tool_calls[i] and 'arguments' in tool_calls[i]['function']:
-                    #         tool_calls[i]['function']['arguments'] = json.loads(tool_calls[i]['function']['arguments'])
-                    decoded_text = parsed_tool_calls['content']
-                    if decoded_text is None: decoded_text = ""
+                    is_bad_toolcall = False
+                    for i in range(len(tool_calls)):
+                        if 'function' in tool_calls[i] and 'arguments' in tool_calls[i]['function']:
+                            expect_dict = json.loads(tool_calls[i]['function']['arguments'])
+                            if not isinstance(expect_dict, dict):
+                                from vsdb import bp; bp("UPUP5")
+                                is_bad_toolcall = True
+                    if is_bad_toolcall:
+                        tool_calls = None
+                        decoded_text = decoded_text
+                    else:
+                        decoded_text = parsed_tool_calls['content']
+                        if decoded_text is None:
+                            decoded_text = ""
 
             return {
                 "role": "assistant",
@@ -185,12 +194,17 @@ class AsyncLlmBridge(object):
                 return response
 
             response = run_async_coro__no_matter_what(main(), timeout=1200)  # type: ignore
-
+            # from vsdb import bp; bp("TRR")
+            prompt_text = self.tokenizer.decode(response.model_extra['prompt_token_ids'])
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
 
             if content is None:
                 content = ""
+
+            if ('<tool_call>' in content) and (not message.get("tool_calls", None)):
+                logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
+                logger.warning(f"Bad toolcall discovered {content}")
 
             return {
                 "role": "assistant",
