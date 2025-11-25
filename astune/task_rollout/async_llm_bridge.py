@@ -10,6 +10,7 @@ from loguru import logger
 from omegaconf import DictConfig
 from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
 from astune.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
+from astune.utils.tokenizer import astune_apply_chat_templat
 from astune.schema.logprob import TokenAndProb
 from agentscope.model import ChatResponse
 from agentscope.message import TextBlock, ToolUseBlock
@@ -46,6 +47,8 @@ class AsyncLlmBridge(object):
             request_id: str = "",
         ) -> dict:
 
+            request_id = uuid.uuid4().hex
+
             updated_sampling_params = {}
             if sampling_params:
                 updated_sampling_params.update(sampling_params)
@@ -53,20 +56,13 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.update(custom_sampling_params)
 
             input_messages = copy.deepcopy(messages)
-            request_id = uuid.uuid4().hex
-            if tools:
-                prompt_text = self.tokenizer.apply_chat_template(
-                    input_messages,
-                    add_generation_prompt=True,
-                    tools=tools,
-                    tokenize=False
-                )
-            else:
-                prompt_text = self.tokenizer.apply_chat_template(
-                    input_messages,
-                    add_generation_prompt=True,
-                    tokenize=False
-                )
+            prompt_text = astune_apply_chat_templat(
+                tokenizer=self.tokenizer,
+                conversation=input_messages,
+                tools=tools,
+                add_generation_prompt=True,
+                tokenize=False
+            )
             prompt_ids = self.tokenizer(prompt_text)["input_ids"]
 
             _test_if_test_mode('prompt_text', prompt_text, self.config)
