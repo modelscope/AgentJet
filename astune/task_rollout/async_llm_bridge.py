@@ -203,8 +203,8 @@ class AsyncLlmBridge(object):
                 content = ""
 
             if ('<tool_call>' in content) and (not message.get("tool_calls", None)):
-                logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
-                logger.warning(f"Bad toolcall discovered {content}")
+                # logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
+                logger.warning(f"Bad toolcall discovered: {content}")
 
             return {
                 "role": "assistant",
