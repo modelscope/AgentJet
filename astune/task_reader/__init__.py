@@ -10,6 +10,7 @@ from astune.task_reader.env_service_reader import TaskReaderEnvService
 from astune.task_reader.hf_dataset_reader import TaskReaderHuggingFace
 from astune.task_reader.jsonl_reader import TaskReaderJsonl
 from astune.task_reader.task_reader_base import TaskReaderBase
+from astune.task_reader.tracing_reader import TracingReader
 
 
 class RandomDummyGenerator(TaskReaderBase):
@@ -55,6 +56,8 @@ class TaskReaderRouter(TaskReaderBase):
             self.task_reader = TaskReaderJsonl(config)
         elif self.task_reader_type == "huggingface_dat_repo":
             self.task_reader = TaskReaderHuggingFace(config)
+        elif self.task_reader_type == "tracing":
+            self.task_reader = TracingReader(config)
         elif self.task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(config)
         else:

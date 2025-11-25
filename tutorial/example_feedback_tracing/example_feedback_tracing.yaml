@@ -1,0 +1,71 @@
+# ------------------ 主要配置 ------------------
+astune:
+  project_name: example_feedback_training
+  task_reader:
+    type: tracing
+    feedback_tracing:
+      base_url: ./tutorial/example_feedback_tracing/database.sqlite
+      train_output_path: ./tutorial/example_feedback_tracing/tasks.jsonl
+      alien_llm_model: qwen3-235b-a22b-instruct-2507
+      alien_llm_response_length: 2048
+      filters:
+        - type: llm_evaluate
+          enabled: true
+          params:
+            custom_rubrics: |
+              1. Check the answer and drop the task if it does not answer or answer is wrong.
+              2. Consider a response is invalid if it does not wrap the final answer in \boxed{}.
+            temperature: 0.5
+            print_reason: false
+            max_thread: 16
+
+  task_judge:
+    # ✨✨✨✨ 编写并选择评价函数
+    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
+
+  model:
+    # ✨✨✨✨ 设置待训练的模型
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    agentscope_learn_protocol: tutorial.example_feedback_tracing.train->ExampleTracingFeedbackTrain
+    temperature: 0.7
+    max_env_worker: 256
+    num_repeat: 8
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 4
+    max_num_seqs: 256
+    multi_turn:
+      max_sample_per_task: 4
+    compute_madness_checklist:
+      - "nonsense"
+      - "wrong_toolcall"
+  data:
+    train_batch_size: 240
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+
+# remove swanlab logger
+trainer:
+  logger:
+    - console
+
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astune/default_config
+    - file://astune/default_config/verl         # verl only
+    - file://external/verl/verl/trainer/config  # verl only
+    - file://astune/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - ppo_trainer # verl inherit 1/2
+  - verl_default # verl inherit 2/2
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_
