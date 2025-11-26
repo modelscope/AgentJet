@@ -1405,9 +1405,6 @@ class ASTuneRayPPOTrainer:
                         print("=== wake up begin ===")
                         self.async_rollout_manager.wake_up()
                         print("=== wake up end ===")
-                        # time.sleep(36000)
-                        # from vsdb import bp
-                        # bp("XXX")
                         tasks = [
                             Task(
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],
@@ -1814,16 +1811,8 @@ class ASTuneRayPPOTrainer:
         return cmts, tasks, val_metrics
 
     def get_eval_dataset(self):
-        if self.config.astune.task_reader.type == "env_service":
-            if self.config.astune.task_reader.env_service.env_type == "appworld":
-                if hasattr(self, "main_val_dataset"):
-                    return self.main_val_dataset, None, None
-                else:
-                    from astune.task_reader import TaskReaderRouter
-
-                    task_reader = TaskReaderRouter(self.config)
-                    tasks = task_reader.get_validation_tasks()
-                    self.main_val_dataset = tasks
-                    return self.main_val_dataset, None, None
-        else:
-            raise NotImplementedError
+        from astune.task_reader import TaskReaderRouter
+        task_reader = TaskReaderRouter(self.config)
+        tasks = task_reader.get_validation_tasks()
+        self.main_val_dataset = tasks
+        return self.main_val_dataset, None, None

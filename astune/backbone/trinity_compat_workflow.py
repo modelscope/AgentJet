@@ -1,25 +1,43 @@
+import asyncio
 import os
 import uuid
 import openai
-import threading
+import datasets
+
+from loguru import logger
 
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
-from trinity.common.workflows.workflow import WORKFLOWS, Task, Workflow
-from typing import List, Literal, Optional
-from loguru import logger
-from astune.schema.task import Task
+from trinity.common.workflows.workflow import WORKFLOWS, Workflow
+from trinity.common.workflows.workflow import Task as TrinityTask
+
+try:
+    from trinity.buffer.reader import READER
+    from trinity.buffer.reader.file_reader import FileReader, TaskFileReader, _HFBatchReader
+    from trinity.buffer.buffer_reader import BufferReader
+    from trinity.buffer.reader.reader import READER
+    from trinity.buffer.schema.formatter import FORMATTER
+    from trinity.common.config import StorageConfig
+    logger.success("[New Trinity] Trinity imports successful.")
+except ImportError:
+    logger.success("[Old Trinity] Using old trinity.")
+    pass
+
+from typing import List, Literal, Optional, cast
 from transformers import AutoTokenizer
 from astune.task_rollout.native_parallel_worker import DynamicRollout
 from astune.schema.trajectory import Sample
 from astune.utils.config_utils import read_astune_config
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
+from typing import List, Optional, Tuple
+from datasets import Dataset, load_dataset
 
 
 class TrinityCompatWorkflow(DynamicRollout):
 
     def __init__(
         self,
+        is_eval,
         task,
         llm_handle,
         tokenizer,
@@ -28,6 +46,7 @@ class TrinityCompatWorkflow(DynamicRollout):
         **kwargs,
     ):
 
+        self.is_eval = is_eval
         self.task = task
         self.tokenizer = tokenizer
         self.config = config
@@ -43,20 +62,14 @@ class TrinityCompatWorkflow(DynamicRollout):
             **kwargs,
         )
 
-    def convert_task(self, task):
-        main_query = task.raw_task.get("main_query", "[not defined]")
-        task_id = task.raw_task.get("task_selector", str(uuid.uuid4().hex))
-        env_type = task.raw_task.get("env_type", "[not defined]")
-        metadata = task.raw_task.get("metadata", {})
-        init_messages = task.raw_task.get("init_messages", [])
-
-        return Task(
-            main_query=main_query,
-            task_id=task_id,
-            env_type=env_type,
-            metadata=metadata,
-            init_messages=init_messages,
-        )
+    def convert_task(self, task: TrinityTask):
+        from astune.schema.task import Task
+        d = {}
+        for vip_key in ["main_query", "task_id", "env_type", "metadata", "init_messages"]:
+            if vip_key not in task.raw_task:
+                raise ValueError(f"Key {vip_key} not found in task.raw_task")
+            d[vip_key] = task.raw_task[vip_key]
+        return Task(**d)
 
     def thread_worker(self):
         obs_window = {
@@ -68,31 +81,17 @@ class TrinityCompatWorkflow(DynamicRollout):
         return self.rollout_env_worker(
             task=astune_task,
             task_batch_index=0,
-            task_tag=f"T{astune_task.task_id}#R?",
-            mode="sample",
+            task_tag=f"T{astune_task.task_id}#R",
+            mode="sample" if not self.is_eval else "validate",
             task_thread_index=0,
             obs_window=obs_window,
         )
 
-    def run_in_new_thread(self) -> MultiAgentContextTracking:
-        result_holder = {}
-        exc_holder = {}
-
-        def _target():
-            try:
-                result_holder["result"] = self.thread_worker()
-            except Exception as e:
-                exc_holder["exc"] = e
-
-        t = threading.Thread(target=_target, daemon=True)
-        t.start()
-        t.join()
-
-        if "exc" in exc_holder:
-            raise exc_holder["exc"]
-
-        thread_conclusion: TrackerAttr = result_holder.get("result", None)  # type: ignore
-        return thread_conclusion
+    async def run_in_new_thread(self) -> MultiAgentContextTracking:
+        return cast(
+            MultiAgentContextTracking,
+            await asyncio.to_thread(self.thread_worker),
+        )
 
 
 @WORKFLOWS.register_module("astune_workflow")
@@ -101,9 +100,8 @@ class ASTunetWorkflowWrap(Workflow):
 
     def __init__(
         self,
-        config,
         model: ModelWrapper,
-        task: Task,
+        task: TrinityTask,
         auxiliary_models: Optional[List[openai.OpenAI]] = None,
     ):
         super().__init__(
@@ -111,18 +109,12 @@ class ASTunetWorkflowWrap(Workflow):
             model=model,
             auxiliary_models=auxiliary_models,
         )
-        self.config = config
         self.task = task
-
         self.model_client = model.get_openai_async_client()
+        self.is_eval = task.is_eval
         # extract the query and the answer from the task
         self.query = task.raw_task.get(task.format_args.prompt_key)  # type: ignore [index]
         self.answer = task.raw_task.get(task.format_args.response_key)  # type: ignore [index]
-        self.task.workflow_args = {
-            "env_type": "appworld",
-            "task_id": self.task.task_id,
-            "instance_id": uuid.uuid4().hex,
-        }
 
     async def run_async(self):
 
@@ -130,7 +122,8 @@ class ASTunetWorkflowWrap(Workflow):
         if yaml_path is None:
             raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
 
-        tracker = TrinityCompatWorkflow(
+        tracker = await TrinityCompatWorkflow(
+            is_eval=self.is_eval,
             task=self.task,
             llm_handle=self.model_client,
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
@@ -210,3 +203,58 @@ class ASTunetWorkflowWrap(Workflow):
             else:
                 logger.exception(f"Data length mismatch when converting sample to experience.")
         return exps
+
+
+
+try:
+    @READER.register_module("astune")
+    class AstuneTaskReader(TaskFileReader):
+        def __init__(self, config):
+            self.config = config
+            self.read_batch_size = config.batch_size
+            self.split = config.split
+
+            yaml_path = os.environ.get('ASTUNE_CONFIG_REDIRECT', None)
+            if yaml_path is None:
+                raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
+            astune_config = read_astune_config(yaml_path)
+
+            from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
+            task_reader = TaskReaderRouter(astune_config)
+
+            dataset_segments = []
+            if 'train' in self.split:
+                dataset_segments.append(task_to_standard_dataset(task_reader.get_training_tasks()))
+            if 'val' in self.split:
+                dataset_segments.append(task_to_standard_dataset(task_reader.get_validation_tasks()))
+            if not dataset_segments:
+                raise ValueError(f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'.")
+
+            concatenated_dataset = (
+                dataset_segments[0]
+                if len(dataset_segments) == 1
+                else datasets.concatenate_datasets(dataset_segments)
+            )
+
+            self.dataset = _HFBatchReader(
+                concatenated_dataset,
+                name=self.config.name,
+                default_batch_size=self.read_batch_size,
+                total_epochs=self.config.total_epochs if not self.config.is_eval else 1,
+                offset=self.config.index,
+                drop_last=not self.config.is_eval,
+                total_steps=self.config.total_steps,
+                enable_progress_bar=self.config.enable_progress_bar,
+            )
+            self.formatter = FORMATTER.get("task")(self.config)
+
+        def read(self, batch_size: Optional[int] = None) -> List:
+            batch_size = batch_size or self.read_batch_size
+            tasks = []
+            samples, indices = self.dataset.read_batch(batch_size)
+            for sample in samples:
+                task = self.formatter.format(sample)
+                tasks.append(task)
+            return tasks
+except:
+    pass

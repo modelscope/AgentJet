@@ -5,6 +5,7 @@ import yaml
 from loguru import logger
 from hydra import initialize, compose
 from omegaconf import DictConfig
+from best_logger import print_dict
 
 
 def read_astune_config(yaml_fp):
@@ -63,6 +64,27 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
 
     logger.success("----------------------------------------------------")
 
+    if ("trinity" in from_config) and backbone == "trinity":
+        trinity_config = from_config["trinity"]
+
+        def recursive_copy(src_dict, dst_dict, parent_key=""):
+            for key, value in src_dict.items():
+                full_key = f"{parent_key}.{key}" if parent_key else key
+                if isinstance(value, dict):
+                    if key not in dst_dict:
+                        dst_dict[key] = {}
+                    recursive_copy(value, dst_dict[key], full_key)
+                else:
+                    dst_dict[key] = value
+                    logger.info(
+                        f"[Note]: Aligned parameter from [trinity.{full_key}] to [{full_key}] with value: [{value}]"
+                    )
+
+        recursive_copy(trinity_config, to_config)
+
+    logger.success("----------------------------------------------------")
+    time.sleep(1)
+
     for from_key, to_keys in convertion_json.items():
         # get value from from_config
         keys = from_key.split(".")
@@ -93,30 +115,13 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     logger.success("----------------------------------------------------")
     time.sleep(1)
 
-    if ("trinity" in from_config) and backbone == "trinity":
-        trinity_config = from_config["trinity"]
-
-        def recursive_copy(src_dict, dst_dict, parent_key=""):
-            for key, value in src_dict.items():
-                full_key = f"{parent_key}.{key}" if parent_key else key
-                if isinstance(value, dict):
-                    if key not in dst_dict:
-                        dst_dict[key] = {}
-                    recursive_copy(value, dst_dict[key], full_key)
-                else:
-                    dst_dict[key] = value
-                    logger.info(
-                        f"[Note]: Aligned parameter from [trinity.{full_key}] to [{full_key}] with value: [{value}]"
-                    )
-
-        recursive_copy(trinity_config, to_config)
-    logger.success("----------------------------------------------------")
-    time.sleep(1)
-
     # save to_config_fp
     with open(to_config_fp, "w") as file:
         yaml.dump(to_config, file)
-    logger.success(f"Saved aligned configuration to {to_config_fp}")
+    # logger.success(f"Saved aligned configuration to {to_config_fp}")
+    print_dict({
+        "Note": f"Saved aligned configuration to {to_config_fp}"
+    })
 
 
 def read_astune_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None):

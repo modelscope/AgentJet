@@ -1,4 +1,6 @@
 {
+    "astune.trainer_common.total_epochs": "trainer.total_epochs",
+
     "astune.trainer_common.val_before_train": "trainer.val_before_train",
     "astune.trainer_common.n_gpus_per_node": "trainer.n_gpus_per_node",
     "astune.trainer_common.nnodes": "trainer.nnodes",
@@ -12,6 +14,8 @@
     "astune.trainer_common.use_kl_loss": "actor_rollout_ref.actor.use_kl_loss",
     "astune.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
     "astune.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
+    "astune.trainer_common.save_freq": "trainer.save_freq",
+    "astune.trainer_common.test_freq": "trainer.test_freq",
 
     "astune.data.max_prompt_length": "data.max_prompt_length",
     "astune.data.max_response_length": "data.max_response_length",

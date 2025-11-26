@@ -3,16 +3,17 @@
 
 """The main entry point for the werewolf game."""
 
+import os
 import numpy as np
 import dotenv
 
 dotenv.load_dotenv()
 from textwrap import dedent
 from loguru import logger
-from tutorial.werewolves.game import werewolves_game
+from tutorial.example_werewolves.game import werewolves_game
 from agentscope.agent import ReActAgent
-from agentscope.formatter import OpenAIMultiAgentFormatter
-from agentscope.model import OpenAIChatModel
+from agentscope.formatter import OpenAIMultiAgentFormatter, DashScopeMultiAgentFormatter
+from agentscope.model import OpenAIChatModel, DashScopeChatModel
 from pydantic import BaseModel, Field
 from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 
@@ -102,17 +103,23 @@ class ExampleWerewolves(Workflow):
         # initialize agents
         players = []
         for i, role in enumerate(roles):
-            default_model = OpenAIChatModel(
-                model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
-                stream=False,
-                client_args={"base_url": "http://22.16.118.255:2888/v1"},
-                api_key="1234",
+            # default_model = OpenAIChatModel(
+            #     model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
+            #     stream=False,
+            #     client_args={"base_url": "http://22.16.118.255:2888/v1"},
+            #     api_key="1234",
+            # )
+            default_model = DashScopeChatModel(
+                model_name="qwen-max",
+                api_key=os.environ.get("DASHSCOPE_API_KEY", "your-dashscope-api-key"),
+                stream=False
             )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
                 model=model_tuner.register_model(role, default_model=default_model),
-                formatter=OpenAIMultiAgentFormatter(),
+                # formatter=OpenAIMultiAgentFormatter(),
+                formatter=DashScopeMultiAgentFormatter(),
             )
             agent.set_console_output_enabled(False)
             players += [agent]

@@ -1,6 +1,7 @@
 from typing import Any, List, Dict
 import asyncio
 import copy
+import concurrent.futures
 
 
 # apply chat_template to a message, and then convert back to message
@@ -17,7 +18,7 @@ def convert_tool_to_user_message(tool_message, tokenizer, format="qwen"):
         }
 
 
-def run_async_coro__no_matter_what(coro):
+def run_async_coro__no_matter_what(coro, timeout: int = 3600) -> Any:
     try:
         asyncio.get_running_loop()
         in_loop = True
@@ -26,23 +27,15 @@ def run_async_coro__no_matter_what(coro):
     if not in_loop:
         final_res = asyncio.run(coro)
     else:
-        import threading
-
-        _res_holder = {}
-        _exc_holder = {}
-
-        def _run():
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, coro)
             try:
-                _res_holder["res"] = asyncio.run(coro)
-            except Exception as _e:
-                _exc_holder["exc"] = _e
-
-        _t = threading.Thread(target=_run, daemon=True)
-        _t.start()
-        _t.join()
-        if "exc" in _exc_holder:
-            raise _exc_holder["exc"]
-        final_res = _res_holder["res"]
+                final_res = future.result(timeout=timeout)
+            except concurrent.futures.TimeoutError:
+                future.cancel()
+                raise
+            except Exception as e:
+                raise
     return final_res
 
 
