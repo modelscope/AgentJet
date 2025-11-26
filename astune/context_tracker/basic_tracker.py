@@ -170,6 +170,7 @@ class BasicContextTracker(TrackerAttr):
                 content=llm_msg["content"],
                 token_generator="manual",
                 tokenizer=self.tokenizer,
+                first_message=(index == 0),
             )
             self.full_context += [ext_msg]
 

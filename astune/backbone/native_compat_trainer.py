@@ -1405,9 +1405,6 @@ class ASTuneRayPPOTrainer:
                         print("=== wake up begin ===")
                         self.async_rollout_manager.wake_up()
                         print("=== wake up end ===")
-                        # time.sleep(36000)
-                        # from vsdb import bp
-                        # bp("XXX")
                         tasks = [
                             Task(
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],

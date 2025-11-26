@@ -186,7 +186,6 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # take snapshot of current timeline
         if context_safe:
-            from vsdb import bp; bp("TRACK1")
             if 'prompt_text' in llm_output and 'prompt_token_ids' in llm_output:    # currently we make this patch to better compat with Trinity training backend
                 self.full_context = self.patch_prompt_tokens(
                     prompt_text = llm_output['prompt_text'],

@@ -236,7 +236,6 @@ try:
                 else datasets.concatenate_datasets(dataset_segments)
             )
 
-            # from vsdb import bp; bp("XXX")
             self.dataset = _HFBatchReader(
                 concatenated_dataset,
                 name=self.config.name,
@@ -250,7 +249,6 @@ try:
             self.formatter = FORMATTER.get("task")(self.config)
 
         def read(self, batch_size: Optional[int] = None) -> List:
-            # from vsdb import bp; bp("CCC")
             batch_size = batch_size or self.read_batch_size
             tasks = []
             samples, indices = self.dataset.read_batch(batch_size)

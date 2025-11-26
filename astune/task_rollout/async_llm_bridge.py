@@ -102,7 +102,6 @@ class AsyncLlmBridge(object):
                         if 'function' in tool_calls[i] and 'arguments' in tool_calls[i]['function']:
                             expect_dict = json.loads(tool_calls[i]['function']['arguments'])
                             if not isinstance(expect_dict, dict):
-                                from vsdb import bp; bp("UPUP5")
                                 is_bad_toolcall = True
                     if is_bad_toolcall:
                         tool_calls = None
@@ -191,7 +190,6 @@ class AsyncLlmBridge(object):
                 return response
 
             response = run_async_coro__no_matter_what(main(), timeout=1800)  # type: ignore
-            # from vsdb import bp; bp("TRR")
             prompt_text = self.tokenizer.decode(response.model_extra['prompt_token_ids'])
             prompt_token_ids = response.model_extra['prompt_token_ids']
             content = response.choices[0].message.content
@@ -202,7 +200,6 @@ class AsyncLlmBridge(object):
 
             if ('<tool_call>' in content) and (not message.get("tool_calls", None)):
                 # logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
-                from vsdb import bp; bp("TOOL_CALL_PARSE5")
                 logger.warning(f"Bad toolcall discovered: {content}")
 
             return {
