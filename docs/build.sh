@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Multiple versions to build
-VERSIONS=("preview")
+# VERSIONS=("preview")
+VERSIONS=("feature/unittest-tools")
 OUTPUT_DIR="_build"
 
 # ANSI color codes for better display
