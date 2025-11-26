@@ -68,18 +68,26 @@ class MultiAgentContextTracking(BasicContextTracker):
                 author = "env"
                 ignore = False
                 str_content = ""
-                for item in msg["content"]:
-                    if "text" not in item:
-                        logger.warning(
-                            f"Non-text content in message content detected: {item}. Ignoring."
-                        )
-                        ignore = True
-                        break
-                    if isinstance(item["text"], str):
-                        str_content += str(item["text"])
-                    else:
-                        str_content = ""
-                    msg["content"] = str_content
+
+                # fix msg content
+                if msg["content"] is None:
+                    msg["content"] = ""
+                elif isinstance(msg["content"], list):
+                    for item in msg["content"]:
+                        if "text" not in item:
+                            logger.warning(
+                                f"Non-text content in message content detected: {item}. Ignoring."
+                            )
+                            ignore = True
+                            break
+                        if isinstance(item["text"], str):
+                            str_content += str(item["text"])
+                        else:
+                            str_content = ""
+                        msg["content"] = str_content
+                else:
+                    raise ValueError(f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}")
+
                 if ignore:
                     continue
                 msg["content"] = str(msg["content"])  # TODO: better handling mm data
