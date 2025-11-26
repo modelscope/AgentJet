@@ -261,6 +261,8 @@ class ExtendedMessage:
 
             msg0 = group[0]
             merged_content = "".join(f"<tool_response>\n{msg.content}\n</tool_response>\n" for msg in group)
+            merged_content = merged_content[len("<tool_response>\n"):]
+            merged_content = merged_content[:-len("</tool_response>\n")]
             merged = ExtendedMessage(
                 author=msg0.author, role=msg0.role, content=merged_content,
                 tokenizer=tokenizer, token_generator="manual", build_from_uuid=msg0.uuid,
