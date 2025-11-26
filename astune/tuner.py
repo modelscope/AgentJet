@@ -33,7 +33,7 @@ class Agent2Proxy(DashScopeChatModel):
         )
 
     def __call__(self, *args, **kwargs):
-        if self.tuner.is_trainable(self.name):
+        if not self.tuner.is_trainable(self.name):
             # [DO-NOT-TRAIN] if `trainable_targets` is non-empty,
             # and self.name is not in it, use default model
             return self.default_model(*args, **kwargs)
@@ -81,9 +81,8 @@ class ModelTuner(DashScopeChatModel):
                 The agent type instance corresponding to the provided name.
         """
         if target_name in self.target2proxy_registry:
-            logger.warning(
-                f"Agent proxy `{target_name}` is already registered. Overwriting `default_model`."
-            )
+            if default_model.model_name != self.target2proxy_registry[target_name].default_model.model_name:
+                raise ValueError(f"Agent proxy `{target_name}` is already registered with a different model_name.\nWAS [{self.target2proxy_registry[target_name].default_model.model_name}]\nNOW [{default_model.model_name}].")
         self.target2proxy_registry[target_name] = Agent2Proxy(target_name, self, default_model)
         return self.get_model(target_name)
 
