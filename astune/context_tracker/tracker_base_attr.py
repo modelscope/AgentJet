@@ -55,6 +55,7 @@ class TrackerAttr(object):
         self.current_batch_success_rate: float = -1.0
         self.already_mad_flag = False
         self.round_cnt = 0
+        self.generation_prompt_token = None
 
         assert (
             self.config.astune.data.max_prompt_length + self.config.astune.data.max_response_length
