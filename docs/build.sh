@@ -78,6 +78,7 @@ fi
 
 # Clean previous builds
 print_step "Cleaning previous builds"
+print_info "Running Command [jupyter-book clean .]"
 if jupyter-book clean . >/dev/null 2>&1; then
   print_success "Previous builds cleaned successfully"
 else
@@ -85,57 +86,69 @@ else
   exit 1
 fi
 
+print_info "Running Command [git rev-parse --abbrev-ref HEAD]"
 INITIAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 print_step "Current branch: $INITIAL_BRANCH"
 
 # Build the Jupyter Book
 for version in "${VERSIONS[@]}"; do
-    print_step "Building version: $version"
+  print_step "Building version: $version"
 
-    if [ "$version" != "preview" ]; then
-        if git checkout "$version"; then
-            print_success "Switched to $version"
-        else
-            print_error "Failed to checkout $version"
-            git checkout "$INITIAL_BRANCH" 2>/dev/null
-            git stash pop 2>/dev/null || true
-            exit 1
-        fi
-    fi
-
-    if jupyter-book build . --path-output $OUTPUT_DIR/$version; then
-      print_success "Jupyter Book built successfully"
-      if [ "$version" != "preview" ]; then
-          print_step "Moving $version HTML to preview directory"
-
-          if mv $OUTPUT_DIR/$version/_build/html $OUTPUT_DIR/preview/_build/html/$version; then
-                print_success "Successfully moved $version to preview dir"
-          else
-              print_error "Failed to move $version to preview"
-              git checkout "$INITIAL_BRANCH" 2>/dev/null
-              git stash pop 2>/dev/null || true
-              exit 1
-          fi
-      else
-          print_step "Stash uncommitted changes."
-          git stash
-      fi
+  if [ "$version" != "preview" ]; then
+    print_info "Running Command [git checkout $version]"
+    if git checkout "$version"; then
+      print_success "Switched to $version"
     else
-      print_error "Failed to build Jupyter Book"
+      print_error "Failed to checkout $version"
+      print_info "Running Command [git checkout $INITIAL_BRANCH]"
       git checkout "$INITIAL_BRANCH" 2>/dev/null
+      print_info "Running Command [git stash pop]"
       git stash pop 2>/dev/null || true
       exit 1
     fi
+  fi
+
+  print_info "Running Command [jupyter-book build . --path-output $OUTPUT_DIR/$version]"
+  if jupyter-book build . --path-output $OUTPUT_DIR/$version; then
+    print_success "Jupyter Book built successfully"
+    if [ "$version" != "preview" ]; then
+      print_step "Moving $version HTML to preview directory"
+
+      if mv $OUTPUT_DIR/$version/_build/html $OUTPUT_DIR/preview/_build/html/$version; then
+        print_success "Successfully moved $version to preview dir"
+      else
+        print_error "Failed to move $version to preview"
+        print_info "Running Command [git checkout $INITIAL_BRANCH]"
+        git checkout "$INITIAL_BRANCH" 2>/dev/null
+        print_info "Running Command [git stash pop]"
+        git stash pop 2>/dev/null || true
+        exit 1
+      fi
+    else
+      print_step "Stash uncommitted changes."
+      print_info "Running Command [git stash]"
+      git stash
+    fi
+  else
+    print_error "Failed to build Jupyter Book"
+    print_info "Running Command [git checkout $INITIAL_BRANCH]"
+    git checkout "$INITIAL_BRANCH" 2>/dev/null
+    print_info "Running Command [git stash pop]"
+    git stash pop 2>/dev/null || true
+    exit 1
+  fi
 done
 
 # Switch back to initial branch
 print_step "Switching back to initial branch: $INITIAL_BRANCH"
+print_info "Running Command [git checkout $INITIAL_BRANCH]"
 if git checkout "$INITIAL_BRANCH"; then
-    print_success "Successfully switched back to $INITIAL_BRANCH"
-    git stash pop 2>/dev/null || true
+  print_success "Successfully switched back to $INITIAL_BRANCH"
+  print_info "Running Command [git stash pop]"
+  git stash pop 2>/dev/null || true
 else
-    print_error "Failed to switch back to $INITIAL_BRANCH"
-    exit 1
+  print_error "Failed to switch back to $INITIAL_BRANCH"
+  exit 1
 fi
 
 # Check if preview is requested
