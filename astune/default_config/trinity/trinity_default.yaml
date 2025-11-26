@@ -47,7 +47,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
       seed: 42
       tensor_parallel_size: 1
       tool_call_parser: hermes
-    runner_per_model: 8
+    runner_per_model: 36
     # runner_state_report_interval: 30
   model:
     max_model_len: 16000
