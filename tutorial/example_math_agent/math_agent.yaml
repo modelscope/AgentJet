@@ -31,7 +31,7 @@ astune:
       - "nonsense"
       - "wrong_toolcall"
   data:
-    train_batch_size: 300
+    train_batch_size: 264
 
   debug:
     debug_max_parallel: 1

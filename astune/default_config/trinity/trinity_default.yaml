@@ -56,13 +56,13 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
     monitor_type: swanlab
     # monitor_type: tensorboard
   synchronizer:
-    sync_interval: 2
+    sync_interval: 1
     sync_method: nccl
     sync_style: dynamic_by_explorer
     sync_timeout: 1200
   trainer:
     grad_clip: 1.0
-    max_token_len_per_gpu: 20000
+    max_token_len_per_gpu: 14000
     save_interval: 100
     ulysses_sequence_parallel_size: 1
     use_dynamic_bsz: true
