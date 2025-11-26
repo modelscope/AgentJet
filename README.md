@@ -71,12 +71,12 @@ Explore our rich library of examples to kickstart your journey:
 - Build a math agent specialized in GSM8K problems and [learn how to train it 🚀](tutorial/math_agent.md).
 - Create an AppWorld agent using AgentScope and [train it 🪐](tutorial/appworld.md).
 - Develop a Werewolves RPG agent and [train it 🚀](tutorial/werewolves/werewolves.md).
-- @qingxu: Building advanced multiagent workflow. [Here] (docs/en/multiagent_workflow.md)
-- @chencheng: Training using user feedback tracing. [Here] (docs/en/tracing_user_feedback.md)
-- @liuqi: Buildind dataset tasks from document materials. [Here] (docs/en/dataset_from_docs.md)
-- @yongyi: Expanding dataset from just a few samples. [Here] (docs/en/dataset_expansion.md)
-- @zhuohua/@lipeng: Writing LLM-as-Judge. [Here] (docs/en/llm_as_judge.md)
-- @lipeng: Learn to build LLM reward from few-shot example. [Here] (docs/en/rubrics_judge.md)
+- @qingxu: Building advanced multiagent workflow. [Here](docs/en/multiagent_workflow.md)
+- @chencheng: Training using user feedback tracing. [Here](docs/en/tracing_user_feedback.md)
+- @liuqi: Buildind dataset tasks from document materials. [Here](docs/en/dataset_from_docs.md)
+- @yongyi: Expanding dataset from just a few samples. [Here](docs/en/dataset_expansion.md)
+- @zhuohua/@lipeng: Writing LLM-as-Judge. [Here](docs/en/llm_as_judge.md)
+- @lipeng: Learn to build LLM reward from few-shot example. [Here](docs/en/rubrics_judge.md)
 
 ## 🏗️ Project Overview
 
