@@ -229,7 +229,8 @@ def main():
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
-        assert exp_config["astune"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"    # type: ignore
+        if args.conf:
+            assert exp_config["astune"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"    # type: ignore
 
     if args.backbone == "trinity":
         env["ASTUNE_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
