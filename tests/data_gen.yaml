@@ -1,0 +1,19 @@
+astune:
+  document_reader:
+    document_path: 'dataset/document/Anti-Money Laundering and Counter-Terrorist Financing Ordinance.pdf'
+    languages:
+      - eng
+
+  data_generator:
+    reader:
+      type: dataset_file # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
+      dataset_file:
+        training:
+          file_path: 'dataset/jsonl/finQA.jsonl'
+
+    llm_model: qwen-long
+    llm_response_length: 8192
+    sampling_params:
+      temperature: 0
+    knowledge_augmentor:
+      n: 10    # 文档生成query 的数量

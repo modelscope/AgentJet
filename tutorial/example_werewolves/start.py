@@ -81,7 +81,7 @@ class ExampleWerewolves(Workflow):
 
     trainer: str = Field(default="astune-trinity")
     trainable_targets: list = Field(
-        default=["werewolf"], description="List of agents to be fine-tuned."
+        default=["seer", "witch"], description="List of agents to be fine-tuned."
     )
 
     async def agentscope_execute(
@@ -103,23 +103,23 @@ class ExampleWerewolves(Workflow):
         # initialize agents
         players = []
         for i, role in enumerate(roles):
-            # default_model = OpenAIChatModel(
-            #     model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
-            #     stream=False,
-            #     client_args={"base_url": "http://22.16.118.255:2888/v1"},
-            #     api_key="1234",
-            # )
-            default_model = DashScopeChatModel(
-                model_name="qwen-max",
-                api_key=os.environ.get("DASHSCOPE_API_KEY", "your-dashscope-api-key"),
-                stream=False
+            default_model = OpenAIChatModel(
+                model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
+                stream=False,
+                client_args={"base_url": "http://22.17.52.4:2888/v1"},
+                api_key="1234",
             )
+            # default_model = DashScopeChatModel(
+            #     model_name="qwen-max",
+            #     api_key=os.environ.get("DASHSCOPE_API_KEY", "your-dashscope-api-key"),
+            #     stream=False
+            # )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
                 model=model_tuner.register_model(role, default_model=default_model),
-                # formatter=OpenAIMultiAgentFormatter(),
-                formatter=DashScopeMultiAgentFormatter(),
+                formatter=OpenAIMultiAgentFormatter(),
+                # formatter=DashScopeMultiAgentFormatter(),
             )
             agent.set_console_output_enabled(False)
             players += [agent]

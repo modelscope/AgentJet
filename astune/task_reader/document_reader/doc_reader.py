@@ -23,10 +23,8 @@ class DocReader(DocReaderBase):
             str: Merged text from all pages.
         """
         text_pages = []
-        try:
-            text_pages = partition(source, languages=languages)
-        except Exception as e:
-            raise RuntimeError(f"Failed to partition file: {e}")
+        print(f"reading document from {source} using languages={languages}...")
+        text_pages = partition(source, languages=languages)
 
         if not text_pages:
             raise ValueError(f"No extractable text found in file: {source}")
@@ -43,9 +41,9 @@ class DocReader(DocReaderBase):
             metadata={}
         )
 
-    
+
     def get_document(self) -> Document:
         file_path = self.config.astune.document_reader.document_path
-        raw_doc = self.load_document(file_path, languages=self.config.astune.document_reader.languages)
+        raw_doc = self.load_document(file_path, languages=list(self.config.astune.document_reader.languages))
         return self._parser_document(raw_doc)
 
