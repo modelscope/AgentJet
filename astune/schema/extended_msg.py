@@ -140,7 +140,6 @@ class ExtendedMessage:
     def content_for_future(self):
         if self._content_for_future == "":
             if not self.tool_calls:
-                # from vsdb import bp; bp("H1")
                 logger.exception("content_for_future is not set, or previous llm output is empty!")
                 self._content_for_future
         return self._content_for_future
@@ -253,8 +252,6 @@ class ExtendedMessage:
             {%- endif %}
         {%- endif %}
         """
-        from vsdb import bp; bp("CHAINS")
-        from itertools import groupby
         def merge_tool_group(group, tokenizer):
             if len(group) == 1:
                 return group[0]
