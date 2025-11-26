@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import List, Union, Tuple, Optional
 from astune.schema.trajectory import Sample, Reward
 from astune.utils.compute_madness import compute_string_madness
-from astune.utils.tokenizer import astune_apply_chat_templat
+from astune.utils.tokenizer import astune_apply_chat_template
 from astune.context_tracker.tracker_base_attr import TrackerAttr
 from astune.context_tracker.tracker_base_attr import ExtendedMessage
 from astune.context_tracker.tracker_base_attr import replace_token_ids
@@ -80,7 +80,7 @@ class BasicContextTracker(TrackerAttr):
         self, messages: List[dict], tools: List[dict] = []
     ) -> Tuple[bool, bool, str]:
         def get_seq_length(messages):
-            prompt_text = astune_apply_chat_templat(
+            prompt_text = astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=messages,
                 tools=tools,
@@ -178,7 +178,7 @@ class BasicContextTracker(TrackerAttr):
         for llm_msg, ext_msg, index in zip(
             init_input_arr, self.full_context, range(len(init_input_arr))
         ):
-            text_with_chat_template = astune_apply_chat_templat(
+            text_with_chat_template = astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=init_input_arr[: (index + 1)],
                 tools=tools,
@@ -254,7 +254,6 @@ class BasicContextTracker(TrackerAttr):
         self, input_msg_ref, llm_output, tools: List[dict] = []
     ) -> Tuple[List[int], List[int]]:
 
-        # completion_token_arr will contain generation_prompt header
         llm_output_role_content = {
             "role": llm_output["role"],
             "content": llm_output["content"],
@@ -262,13 +261,14 @@ class BasicContextTracker(TrackerAttr):
         if llm_output.get("tool_calls", None):
             llm_output_role_content.update({"tool_calls": llm_output.get("tool_calls", [])})
 
+        # completion_token_arr will contain generation_prompt header
         completion_token_arr, _ = self.get_inc(
-            astune_apply_chat_templat(
+            astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_msg_ref,
                 tokenize=False, tools=tools, add_generation_prompt=False
             ),
-            astune_apply_chat_templat(
+            astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_msg_ref + [llm_output_role_content],
                 tokenize=False, tools=tools, add_generation_prompt=False
@@ -734,14 +734,14 @@ class BasicContextTracker(TrackerAttr):
     def get_generation_prompt_token(self):
         dummy_msg = [{"role": "assistant", "content": "dummy text"}]
         self.generation_prompt_token, _ = self.get_inc(
-            astune_apply_chat_templat(
+            astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=dummy_msg,
                 tools=[],
                 add_generation_prompt=False,
                 tokenize=False,
             ),
-            astune_apply_chat_templat(
+            astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=dummy_msg,
                 tools=[],
@@ -749,4 +749,5 @@ class BasicContextTracker(TrackerAttr):
                 tokenize=False,
             ),
         )
+        self.generation_prompt = self.tokenizer.decode(self.generation_prompt_token)
         return self.generation_prompt_token

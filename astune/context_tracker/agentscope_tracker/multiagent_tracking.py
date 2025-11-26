@@ -10,7 +10,7 @@ from astune.context_tracker.basic_tracker import (
     replace_token_ids,
 )
 from astune.utils.color_hsl import adjust_color_hsl
-from astune.utils.tokenizer import astune_apply_chat_templat
+from astune.utils.tokenizer import astune_apply_chat_template
 from astune.utils.compute_madness import compute_string_madness
 from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from astune.context_tracker.agentscope_tracker.timeline_merging import (
@@ -22,6 +22,7 @@ from typing import Any, List, Tuple, Union, Dict
 from beast_logger import (
     print_nested,
     print_listofdict,
+    print_dict,
     NestedJsonItem,
     SeqItem,
 )
@@ -98,10 +99,12 @@ class MultiAgentContextTracking(BasicContextTracker):
                     tools=tools,
                     tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
                     token_generator="auto",
+                    first_message=(i==0),
                 )
             ]
 
         # check token overflow
+        self.full_context = ExtendedMessage.check_and_merge_chained_tool_response(self.full_context, self.tokenizer)
         converted_message = self.to_role_content(self.full_context)
         context_safe, token_overflow, info = self.check_context_token_num_safe(converted_message, tools)
         custom_sampling_params = {}
@@ -128,7 +131,6 @@ class MultiAgentContextTracking(BasicContextTracker):
                 self.already_mad_flag = True
 
         # dummy response for now
-        token_generator = "manual"
         err_type = ""
         if llm_output.get("tool_calls", []): # is not None, and is not []
             tool_calls = llm_output["tool_calls"]
@@ -143,28 +145,25 @@ class MultiAgentContextTracking(BasicContextTracker):
                             if not isinstance(expect_dict, dict):
                                 wrong_toolcall = True
                                 err_type = "cannot parse arguments"
-                                from vsdb import bp; bp("UPUP1")
                         except:
                             wrong_toolcall = True
                             err_type = "arguments not json"
-                            from vsdb import bp; bp("UPUP3")
                     else:
                         wrong_toolcall = True
                         err_type = "no function or no arguments"
-                        from vsdb import bp; bp("UPUP4")
                 if wrong_toolcall:
                     logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n")
                     self.already_mad_flag = True
                 else:
                     logger.success("Toolcall format check passed.")
         elif ('<tool_call>' in llm_output["content"]):
-            from vsdb import bp; bp("UPUP2")
             logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n")
             self.already_mad_flag = True
             tool_calls = []
         else:
             tool_calls = []
 
+        token_generator = "manual"
         llm_ext_msg = ExtendedMessage(
             author="llm",
             role="assistant",
@@ -173,7 +172,6 @@ class MultiAgentContextTracking(BasicContextTracker):
             tool_calls=tool_calls,
             tokenizer=self.tokenizer,
         )
-
         if token_generator == "manual":
             input_msg_ref = copy.deepcopy(converted_message)
             token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(
@@ -188,12 +186,24 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # take snapshot of current timeline
         if context_safe:
+            from vsdb import bp; bp("TRACK1")
+            if 'prompt_text' in llm_output and 'prompt_token_ids' in llm_output:    # currently we make this patch to better compat with Trinity training backend
+                self.full_context = self.patch_prompt_tokens(
+                    prompt_text = llm_output['prompt_text'],
+                    prompt_token_ids = llm_output['prompt_token_ids'],
+                    previous_ext_context = self.full_context
+                )
             self.full_context += [llm_ext_msg]
             is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
             if length > self.config.astune.rollout.max_model_len:
                 raise RuntimeError(
                     f"Unexpected token overflow after adding LLM response. Full context length {length}, generated token length {len(llm_ext_msg.token_arr)}"
                 )
+
+            assert self.full_context[0].first_message
+            # assert all other message is not first_message
+            for i in range(1, len(self.full_context)):
+                assert not self.full_context[i].first_message
             self.grouped_steps += [copy.deepcopy(self.full_context)]
 
             # DEBUG = True   # warn when merge fails
@@ -204,6 +214,46 @@ class MultiAgentContextTracking(BasicContextTracker):
             # ):
             #     print(f"General Warning: merge failure discovered.")
         return None
+
+    def patch_prompt_tokens(
+        self,
+        prompt_text: str,
+        prompt_token_ids: List[int],
+        previous_ext_context: List[ExtendedMessage],
+    ) -> List[ExtendedMessage]:
+
+        # remove tailing
+        if prompt_text.endswith(self.generation_prompt):
+            prompt_text = prompt_text[: -len(self.generation_prompt)]
+            # prompt_token_ids = prompt_token_ids[: -len(self.generation_prompt_token)]
+
+        prompt_text_split = prompt_text.split('<|im_start|>')
+        assert prompt_text_split[0] == '', "Prompt text should start with <|im_start|>"
+        prompt_text_split = prompt_text_split[1:]  # remove the first empty string
+        for i in range(len(prompt_text_split)):
+            prompt_text_split[i] = "<|im_start|>" + prompt_text_split[i]
+
+        current_prompt_text = []
+        for j in range(len(previous_ext_context)):
+            current_prompt_text += [self.tokenizer.decode(previous_ext_context[j].token_arr)]
+
+        if len(previous_ext_context) != len(prompt_text_split):
+            logger.bind(exception=True).error(f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens.")
+
+        # try to recover tokens
+        for j in range(len(previous_ext_context)):
+            if prompt_text_split[j] != current_prompt_text[j]:
+                print_dict({
+                    "expected_prompt_text": prompt_text_split[j],
+                    "current_prompt_text": current_prompt_text[j],
+                }, mod="exception", header=f"Prompt text mismatch, Please report a github issue")
+                previous_ext_context[j].token_arr = self.tokenizer(prompt_text_split[j], return_tensors="pt", padding=False)
+
+        # remove extra messages
+        if len(previous_ext_context) != len(prompt_text_split):
+            previous_ext_context = previous_ext_context[:len(prompt_text_split)]
+
+        return previous_ext_context
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
@@ -329,7 +379,7 @@ class MultiAgentContextTracking(BasicContextTracker):
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore
         dict_messages = self.to_role_content(ext_messages)
-        prompt_text = astune_apply_chat_templat(
+        prompt_text = astune_apply_chat_template(
             tokenizer=self.tokenizer,
             conversation=dict_messages,
             tools=tools,
@@ -347,8 +397,8 @@ class MultiAgentContextTracking(BasicContextTracker):
             ret = [False, length]
         return tuple(ret)
 
-    def check_context_token_num_safe(self, messages: List, tools: List = []) -> Tuple[bool, str]:
-        prompt_text = astune_apply_chat_templat(
+    def check_context_token_num_safe(self, messages: List, tools: List = []) -> Tuple[bool, bool, str]:
+        prompt_text = astune_apply_chat_template(
             tokenizer=self.tokenizer,
             conversation=messages,
             tools=tools,

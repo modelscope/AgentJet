@@ -10,7 +10,7 @@ from loguru import logger
 from omegaconf import DictConfig
 from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
 from astune.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
-from astune.utils.tokenizer import astune_apply_chat_templat
+from astune.utils.tokenizer import astune_apply_chat_template
 from astune.schema.logprob import TokenAndProb
 from agentscope.model import ChatResponse
 from agentscope.message import TextBlock, ToolUseBlock
@@ -56,7 +56,7 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.update(custom_sampling_params)
 
             input_messages = copy.deepcopy(messages)
-            prompt_text = astune_apply_chat_templat(
+            prompt_text = astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_messages,
                 tools=tools,
@@ -193,6 +193,7 @@ class AsyncLlmBridge(object):
             response = run_async_coro__no_matter_what(main(), timeout=1800)  # type: ignore
             # from vsdb import bp; bp("TRR")
             prompt_text = self.tokenizer.decode(response.model_extra['prompt_token_ids'])
+            prompt_token_ids = response.model_extra['prompt_token_ids']
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
 
@@ -208,6 +209,8 @@ class AsyncLlmBridge(object):
                 "role": "assistant",
                 "request_id": response.id,
                 "content": content,
+                "prompt_text": prompt_text,
+                "prompt_token_ids": prompt_token_ids,
                 "tool_calls": message.get("tool_calls", []),
                 "tokens": [
                     TokenAndProb(
