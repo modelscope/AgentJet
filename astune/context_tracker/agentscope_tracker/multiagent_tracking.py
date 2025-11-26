@@ -104,8 +104,8 @@ class MultiAgentContextTracking(BasicContextTracker):
             ]
 
         # check token overflow
-        self.full_context = ExtendedMessage.check_and_merge_chained_tool_response(self.full_context, self.tokenizer)
         converted_message = self.to_role_content(self.full_context)
+        self.full_context = ExtendedMessage.check_and_merge_chained_tool_response(self.full_context, self.tokenizer)
         context_safe, token_overflow, info = self.check_context_token_num_safe(converted_message, tools)
         custom_sampling_params = {}
         if not context_safe:
