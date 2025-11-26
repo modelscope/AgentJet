@@ -8,6 +8,7 @@ from astune.schema.task import Task
 from beast_logger import register_logger
 from astune.task_rollout.native_parallel_worker import ParallelEnvManager
 from astune.utils.sms_agent import send_train_message
+from astune.backbone.common_warm_up import warm_up_process
 
 
 class TokenAndProb:
@@ -83,6 +84,7 @@ class ChatCompletionScheduler:
 
 def run(config):
     # --------- fast adjustment for debugging ---------
+    warm_up_process(config)
     max_parallel = config.astune.debug.debug_max_parallel
     n_task = config.astune.debug.debug_first_n_tasks
     vllm_port = config.astune.debug.debug_vllm_port

@@ -9,12 +9,13 @@ from astune.task_reader.task_reader_base import TaskReaderBase
 
 
 class TaskReaderEnvService(TaskReaderBase):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, reader_config):
+        super().__init__(reader_config)
+        self.reader_config = reader_config
 
     def get_tasks(self, split):
-        env_url = self.config.astune.task_reader.env_service.env_url
-        env_type = self.config.astune.task_reader.env_service.env_type
+        env_url = self.reader_config.env_service.env_url
+        env_type = self.reader_config.env_service.env_type
         env_service_client = EnvClient(base_url=env_url)
         task_id_array = env_service_client.get_env_profile(env_type, split=split)
         if len(task_id_array) == 0:
@@ -34,9 +35,9 @@ class TaskReaderEnvService(TaskReaderBase):
         return tasks
 
     def get_validation_tasks(self):
-        split = self.config.astune.task_reader.env_service.validation_split
+        split = self.reader_config.env_service.validation_split
         return self.get_tasks(split=split)
 
     def get_training_tasks(self):
-        split = self.config.astune.task_reader.env_service.training_split
+        split = self.reader_config.env_service.training_split
         return self.get_tasks(split=split)

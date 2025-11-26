@@ -1,0 +1,57 @@
+astune:
+  project_name: unittest
+  experiment_name: sample
+  task_reader:
+    type: huggingface_dat_repo
+    huggingface_dat_repo:
+      dataset_path: ""
+      training_split: "train"
+      validation_split: "test"
+
+  task_judge:
+    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
+
+  model:
+    path: ""
+
+  rollout:
+    agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn"
+    temperature: 0.7
+    max_env_worker: 256
+    num_repeat: 8
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 4
+    max_num_seqs: 256
+    multi_turn:
+      max_sample_per_task: 4
+    compute_madness_checklist:
+      - "nonsense"
+      - "wrong_toolcall"
+  data:
+    train_batch_size: 120
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  trainer_common:
+    save_freq: 99999
+    test_freq: 99999
+    total_epochs: 99999
+
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astune/default_config
+    - file://astune/default_config/verl         # verl only
+    - file://external/verl/verl/trainer/config  # verl only
+    - file://astune/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - ppo_trainer # verl inherit 1/2
+  - verl_default # verl inherit 2/2
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_

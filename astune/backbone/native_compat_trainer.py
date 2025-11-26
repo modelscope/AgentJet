@@ -1306,9 +1306,10 @@ class ASTuneRayPPOTrainer:
         The light-weight advantage computation is done on the driver process.
         """
         from omegaconf import OmegaConf
-
         from verl.utils.tracking import Tracking
+        from astune.backbone.common_warm_up import warm_up_process
 
+        warm_up_process(self.config)
         logger = Tracking(
             project_name=self.config.astune.project_name,
             experiment_name=self.config.astune.experiment_name,

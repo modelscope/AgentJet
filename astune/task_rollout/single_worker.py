@@ -17,7 +17,6 @@ from astune.context_tracker.basic_tracker import (
 from astune.schema.task import Task, WorkflowTask
 from astune.task_rollout.async_llm_bridge import AsyncLlmBridge
 from astune.task_rollout.resource_keeper import ResourceKeeper
-from astune.utils.logger import init_parallel_rollout_logger
 from astune.utils.sample import get_sample_params
 from loguru import logger
 from omegaconf import DictConfig
@@ -63,7 +62,6 @@ class BaseParallelEnv:
             Additional parameters passed through for future extensions.
         """
 
-        init_parallel_rollout_logger(experiment_name=config.astune.experiment_name)
         self.llm_mode: Literal["local", "remote", "trinity"] = llm_mode
         self.config: DictConfig = config
         self.async_rollout_manager = async_rollout_manager
