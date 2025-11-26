@@ -149,22 +149,7 @@ astune:
     use_kl_loss: True
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
-    trinity_only__n_gpu_for_infer: 2
-
-  # the tracing config
-  tracing:
-    base_url: ./.trash/database.sqlite
-    train_output_path: ./.trash/tasks.jsonl
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 2048
-    filters:
-      - type: llm_evaluate
-        enabled: true
-        params:
-          custom_rubrics: If the answer claims that it has written the output to a file, consider it an invalid response.
-          temperature: 0.5
-          print_reason: false
-          max_thread: 16
+    trinity_only__n_vllm_engine: 2
 
   execute_test: False # DO NOT EDIT, FOR TESTING PURPOSE ONLY
   execute_testing_lambda: ""
