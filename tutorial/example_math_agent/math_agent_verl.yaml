@@ -23,15 +23,16 @@ astune:
     max_env_worker: 64
     num_repeat: 4
     agent_madness_reward: 0.0
-    tensor_model_parallel_size: 1
+    tensor_model_parallel_size: 4
     max_num_seqs: 40
+    enable_oversample: False
     multi_turn:
-      max_sample_per_task: 4
+      max_sample_per_task: 2
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"
   data:
-    train_batch_size: 300
+    train_batch_size: 64
 
   debug:
     debug_max_parallel: 1
@@ -41,8 +42,8 @@ astune:
     save_freq: 99999
     test_freq: 99999
     total_epochs: 99999
-    trinity_only__n_vllm_engine: 2  # must be division by tensor_model_parallel_size
 
+# python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --with-ray --backbone='verl'
 
 # ------------------ 不需要修改 ------------------
 hydra:

@@ -1,37 +1,34 @@
-# ------------------ 主要配置 ------------------
 astune:
-  project_name: example_math_agent
+  project_name: unittest
+  experiment_name: sample
   task_reader:
-    type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
-    # 如果选择 `huggingface_dat_repo` 以下配置生效
+    type: huggingface_dat_repo
     huggingface_dat_repo:
-      dataset_path: '/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main'
+      dataset_path: ""
       training_split: "train"
       validation_split: "test"
 
   task_judge:
-    # ✨✨✨✨ 编写并选择评价函数
     judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
 
   model:
-    # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: ""
 
   rollout:
-    agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
+    agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn"
     temperature: 0.7
-    max_env_worker: 64
-    num_repeat: 4
-    agent_madness_reward: 0.0
-    tensor_model_parallel_size: 1
-    max_num_seqs: 40
+    max_env_worker: 256
+    num_repeat: 8
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 4
+    max_num_seqs: 256
     multi_turn:
       max_sample_per_task: 4
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"
   data:
-    train_batch_size: 300
+    train_batch_size: 120
 
   debug:
     debug_max_parallel: 1
@@ -41,7 +38,6 @@ astune:
     save_freq: 99999
     test_freq: 99999
     total_epochs: 99999
-    trinity_only__n_vllm_engine: 2  # must be division by tensor_model_parallel_size
 
 
 # ------------------ 不需要修改 ------------------
