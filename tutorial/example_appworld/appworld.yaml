@@ -5,17 +5,26 @@ astune:
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
     judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
   rollout:
     # ✨✨✨✨ 编写并选择Agent
     use_agentscope_protocol: True
     agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     agentscope_disable_toolcalls: True
+    max_env_worker: 64
+    num_repeat: 4
+    tensor_model_parallel_size: 4
+
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
+
+  data:
+    train_batch_size: 16
 
 # ------------------ 不需要修改 ------------------
 hydra:
