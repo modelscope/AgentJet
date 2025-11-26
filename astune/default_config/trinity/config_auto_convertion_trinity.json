@@ -1,6 +1,20 @@
 {
+    "astune.trainer_common.nnodes": "cluster.node_num",
+    "astune.trainer_common.n_gpus_per_node": "cluster.gpu_per_node",
+    "astune.trainer_common.total_epochs": "buffer.total_epochs",
+    "astune.trainer_common.trinity_only__n_vllm_engine": "explorer.rollout_model.engine_num",
     "astune.model.path": "model.model_path",
     "astune.project_name": "project",
     "astune.experiment_name": "name",
-    "astune.rollout.num_repeat": "algorithm.repeat_times"
+    "astune.rollout.num_repeat": "algorithm.repeat_times",
+    "astune.trainer_common.save_freq": "trainer.save_interval",
+    "astune.trainer_common.test_freq": "explorer.eval_interval",
+    "astune.data.train_batch_size": "buffer.train_batch_size",
+    "astune.rollout.tensor_model_parallel_size": "explorer.rollout_model.tensor_parallel_size",
+    "astune.data.max_response_length": "model.max_response_tokens",
+    "astune.rollout.max_model_len": [
+        "model.max_model_len",
+        "trainer.max_token_len_per_gpu"
+    ]
+
 }

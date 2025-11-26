@@ -3,7 +3,7 @@
 """A werewolf game implemented by agentscope."""
 import numpy as np
 
-from tutorial.werewolves.utils import (
+from tutorial.example_werewolves.utils import (
     majority_vote,
     names_to_str,
     EchoAgent,
@@ -11,7 +11,7 @@ from tutorial.werewolves.utils import (
     MAX_DISCUSSION_ROUND,
     Players,
 )
-from tutorial.werewolves.structured_model import (
+from tutorial.example_werewolves.structured_model import (
     DiscussionModel,
     get_vote_model,
     get_poison_model,
@@ -19,10 +19,10 @@ from tutorial.werewolves.structured_model import (
     get_seer_model,
     get_hunter_model,
 )
-from tutorial.werewolves.prompt import EnglishPrompts as Prompts
+from tutorial.example_werewolves.prompt import EnglishPrompts as Prompts
 
 # Uncomment the following line to use Chinese prompts
-# from tutorial.werewolves.prompt import ChinesePrompts as Prompts
+# from tutorial.example_werewolves.prompt import ChinesePrompts as Prompts
 from loguru import logger
 
 from agentscope.agent import ReActAgent
@@ -34,6 +34,7 @@ from agentscope.pipeline import (
 
 
 moderator = EchoAgent()
+moderator.set_console_output_enabled(False)
 
 
 async def hunter_stage(

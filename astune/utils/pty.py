@@ -105,7 +105,7 @@ def pty_launch(service_name: str, success_std_string="Starting server on"):
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[service_script],
         dir=service_path,
-        tag="appworld_env_service",
+        tag=f"{service_name}_service",
         use_pty=True,
     )
     companion.launch(
