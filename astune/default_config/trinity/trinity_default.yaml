@@ -50,7 +50,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
     runner_per_model: 8
     # runner_state_report_interval: 30
   model:
-    max_model_len: 21000
+    max_model_len: 16000
     max_response_tokens: 16000
   monitor:
     monitor_type: swanlab

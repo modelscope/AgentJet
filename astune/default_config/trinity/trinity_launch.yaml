@@ -52,7 +52,7 @@ explorer:
     tool_call_parser: hermes
   runner_per_model: 12
 model:
-  max_model_len: 21000
+  max_model_len: 16000
   max_response_tokens: 16000
   model_path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 monitor:
@@ -66,7 +66,7 @@ synchronizer:
   sync_timeout: 1200
 trainer:
   grad_clip: 1.0
-  max_token_len_per_gpu: 24576
+  max_token_len_per_gpu: 16000
   save_interval: 100
   ulysses_sequence_parallel_size: 2
   use_dynamic_bsz: true

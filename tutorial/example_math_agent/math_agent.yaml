@@ -30,8 +30,13 @@ astune:
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"
+    max_response_length_in_one_turn: 1024
+    max_model_len: 13000
+
   data:
     train_batch_size: 264
+    max_prompt_length: 3000
+    max_response_length: 10000
 
   debug:
     debug_max_parallel: 1
@@ -42,6 +47,12 @@ astune:
     test_freq: 99999
     total_epochs: 99999
     trinity_only__n_vllm_engine: 2  # must be division by tensor_model_parallel_size
+
+
+trinity:
+  trainer:
+    max_token_len_per_gpu: 13000
+
 
 
 # ------------------ 不需要修改 ------------------
