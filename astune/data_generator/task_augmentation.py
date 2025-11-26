@@ -1,6 +1,6 @@
 import re
 import json
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from astune.schema.task import Task
 from astune.schema.document import Document
 from astune.data_generator.data_generator_base import DataGeneratorBase
@@ -10,6 +10,7 @@ class TaskAugmentor(DataGeneratorBase):
     Task Augmentation:
     - Generate new queries based on reference Query (and optional Document)
     """
+
     def _build_system_prompt(
         self,
         source_task: Optional[Task],
@@ -23,7 +24,7 @@ class TaskAugmentor(DataGeneratorBase):
             "You are a professional expert in query generation.\n"
             "Your goal is to generate ONE new user query that:\n"
             "- Is semantically related to the reference query (similar topic/domain/intent),\n"
-            "- Preserves the original query's style, task type, and approximate length,\n"
+            "- Preserves the original query's style, language, task type, and approximate length,\n"
             "- Is natural, diverse, and fluent,\n"
             "- Is NOT a direct copy or minor edit of the original query.\n"
         )
@@ -39,7 +40,7 @@ class TaskAugmentor(DataGeneratorBase):
                 "- The new query should feel naturally related to the document's theme.\n"
                 "\n"
             )
-        
+
         # Output format requirements to ensure structured response
         output_requirements = (
             "You MUST:\n"
@@ -53,6 +54,7 @@ class TaskAugmentor(DataGeneratorBase):
         )
 
         return base_prompt + document_instructions + output_requirements
+
 
     def _build_user_prompt(
         self,
@@ -100,6 +102,8 @@ class TaskAugmentor(DataGeneratorBase):
         )
 
         return user_prompt
+
+
     def _parse_llm_output_to_task(
         self,
         raw_response: Any,
@@ -147,10 +151,13 @@ class TaskAugmentor(DataGeneratorBase):
         )
         return new_task
 
-    def _parse_json_response(self, response: str) -> Optional[Dict[str, Any]]:
+
+    def _parse_json_response(self, response: str) -> Union[dict, list, str, float, int, bool, None]:
         """
         Parse LLM response string into JSON.
         """
         # Remove Markdown code block markers (```json and ```) if present
         response = re.sub(r'^```json|```$', '', response, flags=re.MULTILINE).strip()
-        return json.loads(response)
+        from agentscope._utils._common import _json_loads_with_repair
+        return _json_loads_with_repair(response)
+
