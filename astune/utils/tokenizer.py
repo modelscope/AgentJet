@@ -20,7 +20,7 @@ def cleanup_messages(messages: List[Dict]) -> List[Dict]:
     return messages_copied
 
 
-def astune_apply_chat_templat(
+def astune_apply_chat_template(
     tokenizer,
     conversation,
     tools,

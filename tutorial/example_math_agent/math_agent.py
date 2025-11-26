@@ -23,11 +23,6 @@ def extract_final_answer(result) -> str:
         return str(result)
 
 
-class FinalResult(BaseModel):
-    result: str = Field(
-        description=r"Your solution of the given math problem. Put your final answer in boxed format, e.g., \boxed{42}"
-    )
-
 
 system_prompt = """
 You are an agent specialized in solving math problems with tools.
@@ -63,6 +58,6 @@ class ExampleMathLearn(Workflow):
         )
         self.agent.set_console_output_enabled(False)
         msg = Msg("user", query, role="user")
-        result = await self.agent.reply(msg, structured_model=FinalResult)
+        result = await self.agent.reply(msg)
         final_answer = extract_final_answer(result)
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
