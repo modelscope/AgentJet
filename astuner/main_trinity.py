@@ -34,9 +34,7 @@ def get_explorer(config: Config, runtime_env: dict):
     return ray.remote(Explorer).options(
                 name=config.explorer.name,
                 namespace=ray.get_runtime_context().namespace,
-                runtime_env={
-                    "env_vars": runtime_env,
-                },
+                runtime_env=runtime_env
             ).remote(config)
 
 
@@ -44,9 +42,7 @@ def get_trainer(config: Config, runtime_env: dict):
     return ray.remote(Trainer).options(
                 name=config.trainer.name,
                 namespace=ray.get_runtime_context().namespace,
-                runtime_env={
-                    "env_vars": runtime_env,
-                },
+                runtime_env=runtime_env
             ).remote(config)
 
 
