@@ -61,6 +61,7 @@ class TrackerAttr(object):
         self.generation_prompt_token = None
 
         assert (
-            self.config.astuner.data.max_prompt_length + self.config.astuner.data.max_response_length
+            self.config.astuner.data.max_prompt_length
+            + self.config.astuner.data.max_response_length
             <= max_model_len
         )

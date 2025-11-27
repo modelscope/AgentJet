@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astuner
+astuner:
   project_name: example_feedback_training
   task_reader:
     type: tracing

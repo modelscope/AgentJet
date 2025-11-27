@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astuner
+astuner:
   project_name: example_math_agent
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
