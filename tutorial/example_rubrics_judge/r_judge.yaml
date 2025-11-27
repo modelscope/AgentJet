@@ -11,27 +11,6 @@ astune:
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
-
-  model:
-    # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
-
-  rollout:
-    agentscope_learn_protocol: "tutorial.example_rubrics_judge.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
-    temperature: 0.7
-    max_env_worker: 80
-    num_repeat: 4
-    agent_madness_reward: 0.0
-
-  data:
-    train_batch_size: 64
-
-  debug:
-    debug_max_parallel: 1
-    debug_first_n_tasks: 1
-
-  task_judge:
     judge_type: rubrics_auto_grader  # Options: 'customized_protocal', 'rubrics_auto_grader'
     rubrics_auto_grader:
       # rubrics begin
@@ -55,6 +34,27 @@ astune:
       dataset_file:
         training:
           file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
+
+
+  model:
+    # ✨✨✨✨ 设置待训练的模型
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    agentscope_learn_protocol: "tutorial.example_rubrics_judge.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
+    temperature: 0.7
+    max_env_worker: 80
+    num_repeat: 4
+    agent_madness_reward: 0.0
+
+  data:
+    train_batch_size: 64
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+
 
 
 # ------------------ 不需要修改 ------------------

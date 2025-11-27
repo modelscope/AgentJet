@@ -49,8 +49,9 @@ class HttpClient(BaseModel):
         stream: bool = False,
         http_enum: str = "post",
     ):
+        response: requests.Response
         if http_enum == "post":
-            response: requests.Response = self._client.post(
+            response = self._client.post(
                 url=self.url,
                 data=data,
                 json=json_data,
@@ -60,7 +61,7 @@ class HttpClient(BaseModel):
             )
 
         elif http_enum == "get":
-            response: requests.Response = self._client.get(
+            response = self._client.get(
                 url=self.url,
                 data=data,
                 json=json_data,

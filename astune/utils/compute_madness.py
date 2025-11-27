@@ -126,21 +126,21 @@ def compute_string_madness_format(completion, detail, format_type) -> float:
 
 
 def compute_string_madness_char(completion, detail=False, skip_non_ascii=False) -> float:
-    if detail:
-        result = {
-            "has_non_ascii": has_non_ascii(completion),
-            "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
-            "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
-            "has_wrong_sp_token": "<|im_start|>" in completion,
-            # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
-        }
-        if has_non_ascii(completion):
-            for char in completion:
-                if has_non_ascii(char):
-                    print(f"---")
-                    print(f"found non-ascii char: {char} ord={ord(char)}")
-        print(result)
-        return result
+    # if detail:
+    #     result = {
+    #         "has_non_ascii": has_non_ascii(completion),
+    #         "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
+    #         "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
+    #         "has_wrong_sp_token": "<|im_start|>" in completion,
+    #         # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
+    #     }
+    #     if has_non_ascii(completion):
+    #         for char in completion:
+    #             if has_non_ascii(char):
+    #                 print(f"---")
+    #                 print(f"found non-ascii char: {char} ord={ord(char)}")
+    #     print(result)
+    #     return result
 
     if "<|im_start|>" in completion:
         return -1.0
