@@ -266,6 +266,7 @@ class LlmProxyForAgentScope(object):
             logger.warning(f"[{info}] detected.")
             self.context_tracker.context_overflow = True
             if token_overflow:
+                # astune_action_when_overflow = self.config.astune.rollout.astune_action_when_overflow
                 # cannot proceed due to context overflow
                 return ChatResponse(
                     content=[{"type": "text", "text": "astune_proxy: Exceeded max model context length."}],

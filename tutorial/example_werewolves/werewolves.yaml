@@ -15,12 +15,12 @@ astune:
   rollout:
     use_agentscope_protocol: True
     agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
-    num_repeat: 6
+    num_repeat: 4
     max_env_worker: 64
     temperature: 0.7
     agent_madness_reward: 0.0
-    tensor_model_parallel_size: 1
-    max_num_seqs: 40
+    tensor_model_parallel_size: 4
+    max_num_seqs: 128
     compute_madness_checklist:
       - "nonsense"
     max_response_length_in_one_turn: 2048
