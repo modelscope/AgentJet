@@ -50,6 +50,9 @@ doc = [
     "furo>=2025.7.19",
 ]
 
+[project.scripts]
+astuner = "astuner.cli.launcher:main"
+
 
 [tool.setuptools.packages.find]
 where = ["."]
