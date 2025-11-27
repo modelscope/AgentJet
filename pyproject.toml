@@ -18,7 +18,7 @@ classifiers = [
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "agentscope>=1.0.7",
-    "trinity-rft>=0.3.2",
+    "trinity-rft>=0.3.3",
     "loguru",
     "pydantic",
     "beast_logger",

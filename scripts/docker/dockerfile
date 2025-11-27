@@ -19,8 +19,8 @@ RUN chmod 1777 /tmp && apt update && apt install -y \
     && ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # For aliyun users, set pip source to aliyun mirror
-ENV PIP_INDEX_URL=http://mirrors.cloud.aliyuncs.com/pypi/simple/
-ENV PIP_TRUSTED_HOST=mirrors.cloud.aliyuncs.com
+# ENV PIP_INDEX_URL=http://mirrors.cloud.aliyuncs.com/pypi/simple/
+# ENV PIP_TRUSTED_HOST=mirrors.cloud.aliyuncs.com
 
 # set uv virtual environment path to a outside-of-workspace dir
 ENV VIRTUAL_ENV=/opt/venv
@@ -32,7 +32,7 @@ COPY . .
 RUN pip install uv
 
 # use uv to create a virtual environment and install dependencies
-RUN uv venv /opt/venv --python=3.10.16 && \
+RUN uv venv /opt/venv --python=3.12 && \
     . /opt/venv/bin/activate && \
     uv pip install -e.[dev,flash_attn]
 
