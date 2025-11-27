@@ -73,7 +73,7 @@ class AgentRunner(BaseAgentRunner):
                 raise e
 
             # 4. ⚠️ check token overflow
-            is_safe, info = self.cmt.check_context_token_num_safe(step_input_message_arr)
+            is_safe, token_overflow, info = self.cmt.check_context_token_num_safe(step_input_message_arr)
             if not is_safe:
                 logger.warning(
                     f"[{info}] detected at step {act_step}. Current token count exceeds the limit."

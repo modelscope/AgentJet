@@ -39,18 +39,13 @@ def parse_args():
         help="Path to experiment directory",
     )
     parser.add_argument(
-        "--db",
+        "--debug",
         type=str,
         default="",
         required=False,
         help="Path to configuration file",
     )
-    parser.add_argument(
-        "--with-exp-maker",
-        action="store_true",
-        default=False,
-        help="Launch exp maker",
-    )
+
     parser.add_argument("--with-ray", action="store_true", default=False, help="Launch ray")
     parser.add_argument(
         "--with-appworld",
@@ -115,8 +110,74 @@ def check_debugpy_version():
     logger.info(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
 
 
+def check_avail_gpu(min_free_ratio: float = 0.95):
+    """
+    Ensure there is at least one GPU and all GPUs have >= min_free_ratio free memory.
+
+    Uses `nvidia-smi` to query total and used memory for each GPU.
+    Raises RuntimeError if no GPU is found or any GPU violates the free ratio threshold.
+    """
+    try:
+        # Query GPU memory via nvidia-smi; output in MiB
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.total,memory.used",
+                "--format=csv,noheader,nounits",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("nvidia-smi not found. NVIDIA drivers/GPU may be unavailable.")
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to query GPUs via nvidia-smi: {result.stderr.strip()}")
+
+    lines = [l.strip() for l in result.stdout.splitlines() if l.strip()]
+    if not lines:
+        raise RuntimeError("No GPUs detected by nvidia-smi.")
+
+    violations = []
+    for idx, line in enumerate(lines):
+        # Expected format: "<name>, <total>, <used>"
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 3:
+            violations.append((idx, "parse-error", line))
+            continue
+        name, total_str, used_str = parts[0], parts[1], parts[2]
+        try:
+            total = float(total_str)
+            used = float(used_str)
+        except ValueError:
+            violations.append((idx, "parse-error", line))
+            continue
+        free = max(total - used, 0.0)
+        free_ratio = free / total if total > 0 else 0.0
+        logger.info(
+            f"GPU {idx} ({name}): total={total:.0f} MiB, used={used:.0f} MiB, free_ratio={free_ratio:.3f}"
+        )
+        if free_ratio < min_free_ratio:
+            violations.append((idx, name, f"free_ratio={free_ratio:.3f} < {min_free_ratio:.3f}"))
+
+    if violations:
+        details = "; ".join([f"GPU {i} ({n}): {msg}" for i, n, msg in violations])
+        raise RuntimeError(
+            "GPU memory check failed: all GPUs must have >= "
+            f"{int(min_free_ratio*100)}% free. Violations: {details}"
+        )
+    logger.info(
+        f"✓ GPU check passed: {len(lines)} GPUs, all >= {int(min_free_ratio*100)}% free memory"
+    )
+
+
 def main():
     args = parse_args()
+
+    # Enforce GPU availability and free memory threshold before proceeding
+    check_avail_gpu(min_free_ratio=0.95)
 
     # Handle kill-keywords argument if provided
     if args.kill:
@@ -155,15 +216,16 @@ def main():
             exp_config,
         ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone)
 
-    if args.db:
+    if args.debug:
         env["RAY_DEBUG_POST_MORTEM"] = "1"
-        env["DEBUG_TAGS"] = args.db
+        env["DEBUG_TAGS"] = args.debug
         env["RAY_record_task_actor_creation_sites"] = "true"
         assert exp_config["astune"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"    # type: ignore
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
-        assert exp_config["astune"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"    # type: ignore
+        if args.conf:
+            assert exp_config["astune"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"    # type: ignore
 
     if args.backbone == "trinity":
         env["ASTUNE_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
@@ -172,9 +234,6 @@ def main():
 
     if args.with_ray:
         start_ray_service(args, env)
-
-    if args.with_exp_maker:
-        pty_launch("exp_maker", success_std_string="Uvicorn running on")
 
     if args.with_appworld:
         pty_launch("appworld")

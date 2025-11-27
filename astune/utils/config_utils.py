@@ -124,10 +124,11 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     })
 
 
-def read_astune_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None):
+def read_astune_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None, exp_dir="launcher_record"):
     with open(yaml_fp, "r") as file:
         config = yaml.safe_load(file)
     config["astune"]["experiment_name"] = exp_name
+    config["astune"]["experiment_dir"] = os.path.join(exp_dir, exp_name)
     config["astune"]["backbone"] = backbone
     # remove extra config of verl for trinity
     if backbone == "debug":
@@ -242,7 +243,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     shutil.copyfile(yaml_backup_src, yaml_backup_dst)
 
     ## 4. edit new yaml
-    config = read_astune_hierarchical_config(yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst)
+    config = read_astune_hierarchical_config(yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir)
     config_final = expand_astune_hierarchical_config(config, write_to=yaml_backup_dst)
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final
