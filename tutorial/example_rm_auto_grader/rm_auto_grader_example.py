@@ -1,5 +1,5 @@
 """
-Example: Using RM Auto Grader Judge with astune
+Example: Using RM Auto Grader Judge with astuner
 
 This example demonstrates how to use the RM Gallery AutoGrader integration
 for data-driven evaluation of workflow outputs.
@@ -12,9 +12,9 @@ The example shows two approaches:
 import asyncio
 from typing import List
 
-from astune.schema.task import Task
-from astune.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
-from astune.workflow import Workflow, WorkflowOutput, WorkflowTask
+from astuner.schema.task import Task
+from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+from astuner.workflow import Workflow, WorkflowOutput, WorkflowTask
 
 # ============================================
 # Example 1: Pre-generated Rubrics Approach
@@ -34,7 +34,7 @@ async def example_pregerated_rubrics():
 
     # Mock config object
     class MockConfig:
-        class Astune:
+        class astuner
             class TaskJudge:
                 # Model configuration
                 model_name = "qwen3-32b"
@@ -62,7 +62,7 @@ async def example_pregerated_rubrics():
 
             task_judge = TaskJudge()
 
-        astune = Astune()
+        astuner = Astune()
 
     config = MockConfig()
 
@@ -122,7 +122,7 @@ async def example_listwise_mode():
 
     # Mock config object
     class MockConfig:
-        class Astune:
+        class astuner
             class TaskJudge:
                 # Model configuration
                 model_name = "qwen3-32b"
@@ -150,7 +150,7 @@ async def example_listwise_mode():
 
             task_judge = TaskJudge()
 
-        astune = Astune()
+        astuner = Astune()
 
     config = MockConfig()
 

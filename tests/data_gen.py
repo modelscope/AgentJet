@@ -8,11 +8,11 @@ dotenv.load_dotenv()
 from loguru import logger
 from tqdm import tqdm
 
-from astune.data_generator.knowledge_augmentation import KnowledgeAugmentor
-from astune.data_generator.task_augmentation import TaskAugmentor
-from astune.task_reader import TaskReaderRouterV2
-from astune.task_reader.document_reader.doc_reader import DocReader
-from astune.utils.config_utils import read_astune_config
+from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
+from astuner.data_generator.task_augmentation import TaskAugmentor
+from astuner.task_reader import TaskReaderRouterV2
+from astuner.task_reader.document_reader.doc_reader import DocReader
+from astuner.utils.config_utils import read_astune_config
 
 
 class TestConfigUtils(unittest.TestCase):
@@ -21,8 +21,8 @@ class TestConfigUtils(unittest.TestCase):
             config = read_astune_config("tests/data_gen.yaml")
 
             task_reader = TaskReaderRouterV2(
-                reader_type=config.astune.data_generator.reader.type,
-                reader_config=config.astune.data_generator.reader,
+                reader_type=config.astuner.data_generator.reader.type,
+                reader_config=config.astuner.data_generator.reader,
             )
             Tasks = task_reader.get_training_tasks()
             Tasks = Tasks[:5]

@@ -4,8 +4,8 @@ from typing import List
 
 import pytest
 
-from astune.schema.task import Task
-from astune.task_reader.tracing_reader import TracingReader
+from astuner.schema.task import Task
+from astuner.task_reader.tracing_reader import TracingReader
 
 
 class DummyConnector:
