@@ -38,7 +38,7 @@ An example database and configuration file are provided under
 When everything is ready, start the training with:
 
 ```bash
-python launcher.py --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
+astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 ## 3. Deploying the New Agent
