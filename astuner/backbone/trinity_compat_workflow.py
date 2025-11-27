@@ -92,7 +92,7 @@ class TrinityCompatWorkflow(DynamicRollout):
         )
 
 
-@WORKFLOWS.register_module("astune_workflow")
+@WORKFLOWS.register_module("astuner_workflow")
 class ASTunetWorkflowWrap(Workflow):
     is_async: bool = True
 
@@ -206,7 +206,7 @@ class ASTunetWorkflowWrap(Workflow):
 try:
 
     @READER.register_module("astuner")
-    class AstuneTaskReader(TaskFileReader):
+    class ASTunerTaskReader(TaskFileReader):
         def __init__(self, config):
             self.config = config
             self.read_batch_size = config.batch_size
