@@ -140,3 +140,4 @@ launcher_record
 trinity_checkpoints
 astune_test
 good_trinity_checkpoints
+tutorial/example_math_agent/math_agent_debug.yaml
