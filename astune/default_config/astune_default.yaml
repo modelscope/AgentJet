@@ -80,6 +80,7 @@ astune:
     gamma: 1.0
     agent_madness_termination: True # terminate_after_gone_mad
     agent_madness_reward: -1.0  # customize the reward when agent is detected as gone mad
+    # astune_action_when_overflow: "return_warning_as_llm_output" # `return_warning_as_llm_output`, `fallback_to_default_model`
     add_special_success_reward: False
     temperature: 0.9
     top_p: 1.0

@@ -107,7 +107,7 @@ class ExampleWerewolves(Workflow):
                 model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
                 stream=False,
                 client_args={"base_url": "http://22.17.52.4:2888/v1"},
-                api_key="1234",
+                api_key="no_api_key",
             )
             # default_model = DashScopeChatModel(
             #     model_name="qwen-max",
@@ -118,24 +118,28 @@ class ExampleWerewolves(Workflow):
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
                 model=model_tuner.register_model(role, default_model=default_model),
-                formatter=OpenAIMultiAgentFormatter(),
-                # formatter=DashScopeMultiAgentFormatter(),
+                formatter=DashScopeMultiAgentFormatter() if role in self.trainable_targets else OpenAIMultiAgentFormatter(),
             )
             agent.set_console_output_enabled(False)
             players += [agent]
 
         # reward condition
-        good_guy_win = await werewolves_game(players, roles)
-        raw_reward = 0
-        is_success = False
-        if (good_guy_win and self.trainable_targets[0] != "werewolf") or (
-            not good_guy_win and self.trainable_targets[0] == "werewolf"
-        ):
-            raw_reward = 1
-            is_success = True
+        try:
+            good_guy_win = await werewolves_game(players, roles)
+            raw_reward = 0
+            is_success = False
+            if (good_guy_win and self.trainable_targets[0] != "werewolf") or (
+                not good_guy_win and self.trainable_targets[0] == "werewolf"
+            ):
+                raw_reward = 1
+                is_success = True
+            # check
+            logger.warning(f"Raw reward: {raw_reward}")
+            logger.warning(f"Is success: {is_success}")
+        except Exception as e:
+            logger.bind(exception=True).exception(f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent).")
+            raw_reward = 0.0
+            is_success = False
 
-        # check
-        logger.warning(f"Raw reward: {raw_reward}")
-        logger.warning(f"Is success: {is_success}")
 
         return WorkflowOutput(reward=raw_reward, is_success=is_success)
