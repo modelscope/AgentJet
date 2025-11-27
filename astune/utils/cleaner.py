@@ -1,10 +1,10 @@
-import subprocess
 import argparse
-import shutil
-import time
-import sys
 import os
 import shlex
+import shutil
+import subprocess
+import sys
+import time
 
 
 def fast_kill_by_keyword_bash(

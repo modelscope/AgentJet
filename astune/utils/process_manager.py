@@ -1,11 +1,11 @@
-import subprocess
 import argparse
-import shutil
-import time
-import sys
 import os
-import signal
 import shlex
+import shutil
+import signal
+import subprocess
+import sys
+import time
 
 
 def _replace_placeholder_in_config(config_obj, placeholder: str, replacement: str):

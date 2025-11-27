@@ -1,12 +1,12 @@
 import os
+
+import agentscope
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.model import DashScopeChatModel
 from agentscope.tool import Toolkit, execute_python_code
-import agentscope
-
 
 SYSTEM_PROMPT = """
 You are an agent specialized in solving math problems with tools.
@@ -17,7 +17,7 @@ You should return your final answer within \\boxed{{}}.
 
 
 def build_agent():
-    tool_kit=Toolkit()
+    tool_kit = Toolkit()
     tool_kit.register_tool_function(execute_python_code)
 
     agent = ReActAgent(
@@ -48,6 +48,7 @@ async def main():
         print(await agent.reply(Msg("user", inp, role="user")))
 
 
-if __name__=='__main__':
+if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

@@ -1,10 +1,11 @@
+import asyncio
+import os
 import random
 import time
-import os
-import asyncio
 from textwrap import dedent
-from loguru import logger
+
 from agentscope.model import DashScopeChatModel
+from loguru import logger
 
 
 class RobustDashScopeChatModel(DashScopeChatModel):

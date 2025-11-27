@@ -1,11 +1,12 @@
 # env_client.py
 
-from typing import Dict, List, Any, Optional, Callable
-import requests
-import time
-import random
 import os
+import random
+import time
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
+
+import requests
 
 LOG_PATH = os.environ.get("CLIENT_LOG_PATH", "/mnt/data/eric.czq/rl_log/error.out")
 

@@ -1,5 +1,6 @@
-import numpy as np
 from typing import Any, Dict, List, Union
+
+import numpy as np
 from pydantic import BaseModel, Field
 
 
@@ -107,7 +108,6 @@ class Sample(BaseModel):
         assert len(self.response_ids) != 0, "response_ids should not be empty"
 
     def truncate_output_ids(self) -> None:
-
         assert (
             len(self.input_ids)
             == len(self.attention_mask)

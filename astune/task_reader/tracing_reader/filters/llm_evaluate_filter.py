@@ -1,13 +1,10 @@
 from typing import Iterable, List
 
 from astune.schema.task import Task
-from astune.task_rollout.dashscope_llm_bridge import (
-    construct_alien_llm_chat_fn,
-)
+from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 
 from ..fn import Fn
 from .base import Filter
-
 
 EVALUATE_PROMPT = """You are now acting as a **strict QA quality reviewer**. You will be given a data sample containing a “query” (user question/task) and an “answer” (assistant reply). Evaluate it **only based on the text itself**, without inventing facts or performing external retrieval.
 

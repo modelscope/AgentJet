@@ -1,9 +1,10 @@
+import os
 import random
 import time
-import os
 from textwrap import dedent
-from openai import OpenAI
+
 from loguru import logger
+from openai import OpenAI
 
 
 def construct_alien_llm_chat_fn(alien_llm_model, alien_llm_response_length):

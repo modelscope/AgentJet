@@ -1,10 +1,12 @@
-from loguru import logger
-from typing import List, Union
-from omegaconf import DictConfig
-from typing import Any, Dict, Tuple, Union, Callable
-from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
-from astune.schema.task import Task, WorkflowTask
+from typing import Any, Callable, Dict, List, Tuple, Union
+
 from beast_logger import print_dict
+from loguru import logger
+from omegaconf import DictConfig
+
+from astune.schema.task import Task, WorkflowTask
+from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
+
 
 class ResourceKeeper(object):
     """
@@ -42,7 +44,6 @@ class ResourceKeeper(object):
             )
             raise e
 
-
     def prepare(self):
         """
         Prepare the environment and initial messages for the workflow task.
@@ -56,11 +57,10 @@ class ResourceKeeper(object):
             self.env,
             self.workflow_task.task_env_uuid,
             self.workflow_task.task_thread_index,
-            self.workflow_task.obs_window
+            self.workflow_task.obs_window,
         )
 
         return self.workflow_task
-
 
     def _initialize_environment_and_messages(self) -> List[dict]:
         """
@@ -73,7 +73,7 @@ class ResourceKeeper(object):
             Exception: If environment creation fails or required task data is missing
         """
 
-        if self.config.astune.task_reader.type == 'env_service':
+        if self.config.astune.task_reader.type == "env_service":
             if self.env is None:
                 raise ValueError("Environment client is None but env_service type is specified")
             try:
@@ -81,12 +81,14 @@ class ResourceKeeper(object):
                     env_type=self.env_type,
                     task_id=self.task_id,
                     instance_id=self.workflow_task.task_env_uuid,
-                    params=self.env_params
+                    params=self.env_params,
                 )
                 state_message: dict = init_response["state"]
                 _, init_messages = self._get_init_messages(state_message)
             except Exception as e:
-                logger.bind(exception=True).exception(f"encounter exception in env_worker.create_instance~ error={e.args}")
+                logger.bind(exception=True).exception(
+                    f"encounter exception in env_worker.create_instance~ error={e.args}"
+                )
                 if self.env is not None:
                     self.env.release_instance(self.workflow_task.task_env_uuid)
                 raise e
@@ -99,7 +101,6 @@ class ResourceKeeper(object):
                 init_messages = [{"role": "user", "content": task.main_query}]
 
         return init_messages
-
 
     def _get_init_messages(self, state_message) -> tuple:
         """
@@ -126,20 +127,16 @@ class ResourceKeeper(object):
 
         return query, init_messages
 
-
     def generate_gym_env(
         self, env_client: Any, task_env_uuid: str, task_thread_index: int, obs_window: Dict
     ) -> "BaseGymEnv":
         return BaseGymEnv(env_client, task_env_uuid, task_thread_index, obs_window)
 
 
-
-
 class BaseGymEnv(object):
     """
     TODO: integrate with A.S. Runtime
     """
-
 
     def __init__(
         self, env_client: EnvClientNg, task_env_uuid: str, task_thread_index: int, obs_window: Dict
@@ -151,17 +148,19 @@ class BaseGymEnv(object):
 
     def step(self, action: dict) -> Tuple[str, float, bool, dict]:
         # fix agentscope output
-        if not isinstance(action['content'], str):
+        if not isinstance(action["content"], str):
             # assert isinstance(action['content'], list)
             # assert len(action['content']) == 1
             # assert isinstance(action['content'][0], dict)
             # assert 'type' in action['content'][0]
             # assert 'text' in action['content'][0]
             try:
-                action['content'] = action['content'][0]['text']
+                action["content"] = action["content"][0]["text"]
             except:
-                logger.exception(f"Failed to parse action content from agentscope output. {action['content']}")
-                action['content'] = str(action['content'])
+                logger.exception(
+                    f"Failed to parse action content from agentscope output. {action['content']}"
+                )
+                action["content"] = str(action["content"])
 
         self.obs_window["step"][self.task_thread_index] += 1
         env_output = self.env_client.step(

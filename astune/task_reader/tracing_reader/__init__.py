@@ -1,14 +1,14 @@
-from typing import Any, List, Mapping, MutableMapping, Sequence, TypedDict
-
 import json
 import os
 import random
+from typing import Any, List, Mapping, MutableMapping, Sequence, TypedDict
 
 from loguru import logger
 
-from astune.schema.task import Task
 from astune.data_generator.filters.base import Filter
 from astune.data_generator.filters.factory import build_filters
+from astune.schema.task import Task
+
 from ..task_reader_base import TaskReaderBase
 from .connector import LocalSqliteConnectorV1, PhoenixConnector
 
@@ -33,7 +33,9 @@ class TracingReader(TaskReaderBase):
         # print("*********", config, "**********")
         self.reader_config = reader_config.feedback_tracing
 
-        logger.info(f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters'))}")
+        logger.info(
+            f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters'))}"
+        )
         self._connector = LocalSqliteConnectorV1(self.reader_config.get("base_url"))
         filters_config = self.reader_config.get("filters")
         built_filters = build_filters(filters_config)
@@ -63,7 +65,7 @@ class TracingReader(TaskReaderBase):
     def _append_tasks(self, path: str, tasks: List[Task]) -> None:
         if not tasks:
             return
-        mode = 'a' if os.path.exists(path) else 'w'
+        mode = "a" if os.path.exists(path) else "w"
         with open(path, mode) as f:
             for task in tasks:
                 obj = task.model_dump()

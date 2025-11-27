@@ -15,25 +15,26 @@
 
 import json
 import os
+import time
 import uuid
-import hydra
 import warnings
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from pprint import pprint
-from typing import Optional
+from typing import Dict, List, Optional, Type, Union
 
+import hydra
 import numpy as np
-import time
 import ray
 import torch
+from beast_logger import print_dict, register_logger
+from loguru import logger
 from omegaconf import OmegaConf, open_dict
 from torch.utils.data import Dataset, Sampler
 from torchdata.stateful_dataloader import StatefulDataLoader
 from tqdm import tqdm
-
 from verl import DataProto
 from verl.experimental.dataset.sampler import AbstractCurriculumSampler
 from verl.protocol import pad_dataproto_to_divisor, unpad_dataproto
@@ -68,17 +69,11 @@ from verl.utils.seqlen_balancing import (
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 
-
-from astune.task_rollout.native_parallel_worker import ParallelEnvManager
+from astune.context_tracker.basic_tracker import BasicContextTracker
 from astune.schema.task import Task
 from astune.schema.trajectory import Trajectory
+from astune.task_rollout.native_parallel_worker import ParallelEnvManager
 from astune.utils.message import send_train_message
-from beast_logger import register_logger, print_dict
-from astune.context_tracker.basic_tracker import BasicContextTracker
-import os
-import json
-from typing import List, Dict, Union, Type
-from loguru import logger
 
 WorkerType = type[Worker]
 
@@ -729,9 +724,7 @@ class ASTuneRayPPOTrainer:
         if train_sampler is None:
             train_sampler = create_rl_sampler(self.config.data, self.train_dataset)
         if collate_fn is None:
-            from verl.utils.dataset.rl_dataset import (
-                collate_fn as default_collate_fn,
-            )
+            from verl.utils.dataset.rl_dataset import collate_fn as default_collate_fn
 
             collate_fn = default_collate_fn
 
@@ -1044,9 +1037,9 @@ class ASTuneRayPPOTrainer:
         all_wg = {}
         wg_kwargs = {}  # Setting up kwargs for RayWorkerGroup
         if OmegaConf.select(self.config.trainer, "ray_wait_register_center_timeout") is not None:
-            wg_kwargs["ray_wait_register_center_timeout"] = (
-                self.config.trainer.ray_wait_register_center_timeout
-            )
+            wg_kwargs[
+                "ray_wait_register_center_timeout"
+            ] = self.config.trainer.ray_wait_register_center_timeout
         if OmegaConf.select(self.config.trainer, "profile_steps") is not None:
             wg_kwargs["profile_steps"] = OmegaConf.select(self.config.trainer, "profile_steps")
             assert (
@@ -1087,10 +1080,8 @@ class ASTuneRayPPOTrainer:
         self.async_rollout_mode = False
         if self.config.astune.rollout.mode == "async":
             from verl.experimental.agent_loop.agent_loop import (
-                AsyncLLMServerManager,
-            )
-            from verl.experimental.agent_loop.agent_loop import (
                 AgentLoopManager,
+                AsyncLLMServerManager,
             )
 
             self.async_rollout_mode = True
@@ -1307,6 +1298,7 @@ class ASTuneRayPPOTrainer:
         """
         from omegaconf import OmegaConf
         from verl.utils.tracking import Tracking
+
         from astune.backbone.common_warm_up import warm_up_process
 
         warm_up_process(self.config)
@@ -1517,9 +1509,7 @@ class ASTuneRayPPOTrainer:
 
                         if "rollout_log_probs" in batch.batch.keys():
                             # TODO: we may want to add diff of probs too.
-                            from verl.utils.debug.metrics import (
-                                calculate_debug_metrics,
-                            )
+                            from verl.utils.debug.metrics import calculate_debug_metrics
 
                             metrics.update(calculate_debug_metrics(batch))
 
@@ -1588,9 +1578,9 @@ class ASTuneRayPPOTrainer:
                     if self.config.trainer.critic_warmup <= self.global_steps:
                         # update actor
                         with marked_timer("update_actor", timing_raw, color="red"):
-                            batch.meta_info["multi_turn"] = (
-                                self.config.astune.rollout.multi_turn.enable
-                            )
+                            batch.meta_info[
+                                "multi_turn"
+                            ] = self.config.astune.rollout.multi_turn.enable
                             actor_output = self.actor_rollout_wg.update_actor(batch)
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
                         metrics.update(actor_output_metrics)
@@ -1742,9 +1732,15 @@ class ASTuneRayPPOTrainer:
                 num_pass_n_tasks += 1
             repeated_success_tasks += task_outcomes["tag_arr"].count("success")
 
-        num_all_success_scenarios = 0  # 如果一个 scenario 的所有 task 都在 n 次实验中全部 success，则 num_all_success_scenarios +1
-        num_pass_n_scenarios = 0  # 如果一个 scenario 的所有 task 都在 n 次实验中至少有一次 success，则 num_pass_n_scenarios +1
-        repeated_num_pass_1_scenarios = 0  # 按顺序排列，如果一个 scenario 的所有 task 都在第 x 次实验中 success，则 repeated_num_pass_1_scenarios +1
+        num_all_success_scenarios = (
+            0  # 如果一个 scenario 的所有 task 都在 n 次实验中全部 success，则 num_all_success_scenarios +1
+        )
+        num_pass_n_scenarios = (
+            0  # 如果一个 scenario 的所有 task 都在 n 次实验中至少有一次 success，则 num_pass_n_scenarios +1
+        )
+        repeated_num_pass_1_scenarios = (
+            0  # 按顺序排列，如果一个 scenario 的所有 task 都在第 x 次实验中 success，则 repeated_num_pass_1_scenarios +1
+        )
         for scenario in set_scenarios:
             scenario_task_results = {
                 task_id: task_outcomes
@@ -1813,6 +1809,7 @@ class ASTuneRayPPOTrainer:
 
     def get_eval_dataset(self):
         from astune.task_reader import TaskReaderRouter
+
         task_reader = TaskReaderRouter(self.config)
         tasks = task_reader.get_validation_tasks()
         self.main_val_dataset = tasks

@@ -4,8 +4,8 @@ from typing import List
 
 import pytest
 
-from astune.task_reader.tracing_reader import TracingReader
 from astune.schema.task import Task
+from astune.task_reader.tracing_reader import TracingReader
 
 
 class DummyConnector:
@@ -13,7 +13,9 @@ class DummyConnector:
         self._tasks = tasks
         self.called = 0
 
-    def load_tasks_from_conversation(self, projects_limit: int = 100, spans_limit: int = 100) -> List[Task]:
+    def load_tasks_from_conversation(
+        self, projects_limit: int = 100, spans_limit: int = 100
+    ) -> List[Task]:
         self.called += 1
         return self._tasks
 
@@ -57,7 +59,7 @@ def test_get_training_tasks_new_file(config: dict):
     connector = DummyConnector(tasks)
     flt = DummyFilter(kept=tasks)
 
-    reader = TracingReader(config) # type: ignore
+    reader = TracingReader(config)  # type: ignore
     reader._connector = connector  # type: ignore[attr-defined]
     reader._filters = [flt]  # type: ignore[attr-defined]
 
@@ -100,7 +102,7 @@ def test_get_training_tasks_dedup_and_missing_hash_ignored(config: dict):
     flt = DummyFilter(kept=[new])
     connector = DummyConnector(connector_tasks)
 
-    reader = TracingReader(config) # type: ignore
+    reader = TracingReader(config)  # type: ignore
     reader._connector = connector  # type: ignore[attr-defined]
     reader._filters = [flt]  # type: ignore[attr-defined]
 

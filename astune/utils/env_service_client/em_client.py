@@ -5,7 +5,7 @@ from typing import List
 from loguru import logger
 from pydantic import Field
 
-from astune.schema.trajectory import Trajectory, Reward
+from astune.schema.trajectory import Reward, Trajectory
 from astune.utils.http_client import HttpClient
 
 
@@ -18,7 +18,7 @@ class EMClient(HttpClient):
         trajectory: Trajectory,
         retrieve_top_k: int = 1,
         workspace_id: str = "default",
-        **kwargs
+        **kwargs,
     ) -> str:
         start_time = time.time()
         self.url = self.base_url + "/context_generator"

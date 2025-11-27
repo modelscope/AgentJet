@@ -4,31 +4,28 @@ Modified from trinity.cli.launcher
 
 import argparse
 import asyncio
+import atexit
 import os
 import sys
 import traceback
-import ray
-import atexit
 from pathlib import Path
 from pprint import pprint
-from astune.utils.sms_agent import send_train_message
-from astune.utils.core_env_vars import get_runtime_env
+
+import ray
 from trinity.buffer.pipelines.task_pipeline import check_and_run_task_pipeline
 from trinity.common.config import Config, load_config
 from trinity.common.constants import DEBUG_NAMESPACE, PLUGIN_DIRS_ENV_VAR
 from trinity.explorer.explorer import Explorer
 from trinity.manager.state_manager import StateManager
 from trinity.trainer.trainer import Trainer
-from trinity.utils.dlc_utils import (
-    is_running,
-    setup_ray_cluster,
-    stop_ray_cluster,
-)
+from trinity.utils.dlc_utils import is_running, setup_ray_cluster, stop_ray_cluster
 from trinity.utils.log import get_logger
 from trinity.utils.plugin_loader import load_plugins
 
 # register trinity backbone modules
 import astune.backbone.trinity_compat_workflow  # noqa: F401
+from astune.utils.core_env_vars import get_runtime_env
+from astune.utils.sms_agent import send_train_message
 
 logger = get_logger(__name__)
 
@@ -177,9 +174,9 @@ def run_stage(config: Config) -> None:
 
 
 def run(config_path: str, dlc: bool = False, plugin_dir: str = None):
-
     if os.path.exists(".env"):
         from dotenv import load_dotenv
+
         load_dotenv(".env")
 
     atexit.register(lambda: send_train_message("0000"))
