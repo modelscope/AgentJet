@@ -53,8 +53,8 @@
 
 - 全链路调试（脱离ray快速调试:--backbone='debug'）
     ```bash
-    # （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( python launcher.py --kill="python|ray" )
-    python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
+    # （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( astuner --kill="python|ray" )
+    astuner --kill="python|ray|vllm|VLLM" && ray stop && clear && astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
 
     ```
     备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置:
@@ -67,7 +67,7 @@
                 "name": "Python Debugger: Launch rollout",
                 "type": "debugpy",
                 "request": "launch",
-                "program": "launcher.py",
+                "program": "astuner/cli/launcher.py",
                 "console": "integratedTerminal",
                 "args": [
                     "--backbone",  "debug",
@@ -83,9 +83,9 @@
 
 - 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
     ```bash
-    # 建议开始前杀死所有ray、vllm、env_service进程 ( python launcher.py --kill="python|ray|vllm" )
-    python launcher.py --kill="python|ray|vllm|VLLM" && ray stop && clear && \
-    python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+    # 建议开始前杀死所有ray、vllm、env_service进程 ( astuner --kill="python|ray|vllm" )
+    astuner --kill="python|ray|vllm|VLLM" && ray stop && clear && \
+    astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
     ```
 
 
