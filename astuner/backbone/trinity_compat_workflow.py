@@ -138,20 +138,20 @@ class ASTunetWorkflowWrap(Workflow):
         sample_final += sample_arr
 
         exps = []
-        for index, sample in enumerate(sample_final):
+        for _, sample in enumerate(sample_final):
             sample: Sample
             input_ids = sample.input_ids
             prompt_ids = sample.prompt_ids
             response_ids = sample.response_ids
-            attention_mask = sample.attention_mask
-            prompt_attention_mask = sample.prompt_attention_mask
-            response_attention_mask = sample.response_attention_mask
-            loss_mask = sample.loss_mask
-            prompt_loss_mask = sample.prompt_loss_mask
+            # attention_mask = sample.attention_mask
+            # prompt_attention_mask = sample.prompt_attention_mask
+            # response_attention_mask = sample.response_attention_mask
+            # loss_mask = sample.loss_mask
+            # prompt_loss_mask = sample.prompt_loss_mask
             response_loss_mask = sample.response_loss_mask
-            position_ids = sample.position_ids
-            prompt_position_ids = sample.prompt_position_ids
-            response_position_ids = sample.response_position_ids
+            # position_ids = sample.position_ids
+            # prompt_position_ids = sample.prompt_position_ids
+            # response_position_ids = sample.response_position_ids
             # tracker_tokenized["step_reward"] = self.reward_structure.step_reward[index]
 
             logprobs = sample.response_logprobs

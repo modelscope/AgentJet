@@ -1,19 +1,18 @@
-import os
-
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"  # 必须放在第一行
 import argparse
 import glob
+import os
 import time
 
+from beast_logger import print_list
 from huggingface_hub import snapshot_download
 
 parser = argparse.ArgumentParser(description="download Hugging Face dataset")
-parser.add_argument("--target", default="openai/gsm8k", type=str, help="要下载的数据集仓库名称")
+parser.add_argument("--target", default="openai/gsm8k", type=str, help="HuggingFace dataset name")
 parser.add_argument(
     "--path",
-    default="/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k",
+    default="./dataset/openai/gsm8k",
     type=str,
-    help="路径到下载的本地目录",
+    help="Path to the local directory where the dataset will be downloaded",
 )
 args = parser.parse_args()
 
@@ -26,7 +25,6 @@ snapshot_download(
 
 time.sleep(2)
 
-from beast_logger import print_list
 
 downloaded = []
 for item in glob.glob(os.path.join(args.path, "**", "*")):
@@ -55,4 +53,4 @@ except Exception as e:
     print(f"Error loading dataset {args.target}: {e}")
 
 
-# python -m scripts.download_dataset --path='/root/data/gsm8k' --target='openai/gsm8k'
+# python -m scripts.download_dataset --path='./dataset/openai/gsm8k' --target='openai/gsm8k'
