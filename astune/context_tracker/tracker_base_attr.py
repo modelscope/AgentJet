@@ -56,7 +56,7 @@ class TrackerAttr(object):
         self.context_time_cost = 0
         self.tag = ""
         self.current_batch_success_rate: float = -1.0
-        self.already_mad_flag = False
+        self.already_mad_flag: bool = False
         self.round_cnt = 0
         self.generation_prompt_token = None
 

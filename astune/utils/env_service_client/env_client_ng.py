@@ -32,7 +32,7 @@ def retry_call(
     max_backoff: float = 10.0,
     fail_return: Any = None,
     err_prefix: str = "",
-    instance_id: str = "",
+    instance_id: str | None = "",
     action_name: str = "",
 ):
     last_exception = None
@@ -68,10 +68,10 @@ class EnvClient:
         self,
         endpoint: str,
         env_type: str = "default",
-        task_id: str = None,
-        instance_id: str = None,
-        messages: Dict[str, Any] = None,
-        params: Dict[str, Any] = None,
+        task_id: str | None = None,
+        instance_id: str | None = None,
+        messages: Dict[str, Any] | None = None,
+        params: Dict[str, Any] | None = None,
     ) -> Dict:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
