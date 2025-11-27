@@ -3,7 +3,7 @@
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Literal
+from typing import Dict, List, Literal
 from urllib.parse import quote
 
 import numpy as np
@@ -197,7 +197,7 @@ class DynamicRollout(StaticRollout):
             rollout_n < rollout_n_confirm < rollout_n_oversample
         ), f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
 
-        obs_window = {
+        obs_window: Dict[str, List[int | bool]] = {
             "step": [0 for _ in range(len(tasks) * rollout_n_oversample)],
             "stop": [False for _ in range(len(tasks) * rollout_n_oversample)],
             "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],

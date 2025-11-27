@@ -1,4 +1,5 @@
 import re
+from typing import List
 
 
 def preserve_chinese(text):
@@ -28,7 +29,7 @@ def get_repetition_penalty_reward(ngram_size: int, max_penalty: float):
         # print(seg_list)
         return zip(*[seg_list[i:] for i in range(ngram_size)])
 
-    def repetition_penalty_reward(completions, **kwargs) -> float:
+    def repetition_penalty_reward(completions, **kwargs) -> List[float]:
         """
         reward function the penalizes repetitions
         ref implementation: https://github.com/eddycmu/demystify-long-cot/blob/release/openrlhf/openrlhf/reward/repetition.py

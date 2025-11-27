@@ -184,6 +184,7 @@ class LaunchWhenAbsent:
 
         if is_running:
             if force_restart:
+                assert pgid is not None
                 logger.warning(f"Force restarting")
                 self._kill_existing_process_group(pgid)
             else:

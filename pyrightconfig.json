@@ -4,10 +4,10 @@
     "astune/**/*.py",
     "external/trinity/**/*.py",
     "external/verl/**/*.py",
-    // ".venv/lib/python3.10/site-packages/**/*.py",
-    // ".venv/lib/python3.10/site-packages/agentscope/**/*.py"
+    ".venv/lib/python3.10/site-packages/**/*.py"
   ],
   "exclude": [
+    "**/__pycache__",
     "node_modules",
     "build",
     "checkpoints",
@@ -19,9 +19,5 @@
     "wanlog",
     "wandb",
     "dist"
-    // "**/.vscode-server",
-    // "**/__pycache__",
-    // "**/*.log",
-    // "**/*"
   ]
 }
