@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astuner
+astuner:
   project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:

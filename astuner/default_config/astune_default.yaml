@@ -1,5 +1,5 @@
 # ------------------ main configuration ------------------
-astuner
+astuner:
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
   experiment_dir: "auto"  # {exp-dir}/{experiment_name}

@@ -1,4 +1,4 @@
-astuner
+astuner:
   project_name: unittest
   experiment_name: sample
   task_reader:

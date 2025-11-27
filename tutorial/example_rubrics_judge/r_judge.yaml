@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astuner
+astuner:
   project_name: example_rubrics_judge
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
