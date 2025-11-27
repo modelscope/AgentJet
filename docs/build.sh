@@ -2,7 +2,7 @@
 
 # Multiple versions to build
 # VERSIONS=("preview")
-VERSIONS=("feature/unittest-tools")
+VERSIONS=("main")
 OUTPUT_DIR="_build"
 
 # ANSI color codes for better display
