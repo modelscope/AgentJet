@@ -34,7 +34,7 @@ async def example_pregerated_rubrics():
 
     # Mock config object
     class MockConfig:
-        class astuner
+        class Astuner:
             class TaskJudge:
                 # Model configuration
                 model_name = "qwen3-32b"
@@ -62,7 +62,7 @@ async def example_pregerated_rubrics():
 
             task_judge = TaskJudge()
 
-        astuner = Astune()
+        astuner = Astuner()
 
     config = MockConfig()
 
@@ -122,7 +122,7 @@ async def example_listwise_mode():
 
     # Mock config object
     class MockConfig:
-        class astuner
+        class Astuner:
             class TaskJudge:
                 # Model configuration
                 model_name = "qwen3-32b"
@@ -150,7 +150,7 @@ async def example_listwise_mode():
 
             task_judge = TaskJudge()
 
-        astuner = Astune()
+        astuner = Astuner()
 
     config = MockConfig()
 
