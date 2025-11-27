@@ -30,11 +30,31 @@ from astuner.utils.sms_agent import send_train_message
 logger = get_logger(__name__)
 
 
+def get_explorer(config: Config, runtime_env: dict):
+    return ray.remote(Explorer).options(
+                name=config.explorer.name,
+                namespace=ray.get_runtime_context().namespace,
+                runtime_env={
+                    "env_vars": runtime_env,
+                },
+            ).remote(config)
+
+
+def get_trainer(config: Config, runtime_env: dict):
+    return ray.remote(Trainer).options(
+                name=config.trainer.name,
+                namespace=ray.get_runtime_context().namespace,
+                runtime_env={
+                    "env_vars": runtime_env,
+                },
+            ).remote(config)
+
+
 def bench(config: Config) -> None:
     """Evaluate model."""
     config.explorer.name = "benchmark"
     try:
-        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
+        explorer = get_explorer(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(explorer.prepare.remote())
         ray.get(explorer.benchmark.remote())
         logger.info("Benchmark finished.")
@@ -46,7 +66,7 @@ def bench(config: Config) -> None:
 def explore(config: Config) -> None:
     """Run explorer."""
     try:
-        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
+        explorer = get_explorer(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(explorer.prepare.remote())
         ray.get(explorer.sync_weight.remote())
         ray.get(explorer.explore.remote())
@@ -58,7 +78,7 @@ def explore(config: Config) -> None:
 def train(config: Config) -> None:
     """Run trainer."""
     try:
-        trainer = Trainer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
+        trainer = get_trainer(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(trainer.prepare.remote())
         ray.get(trainer.sync_weight.remote())
         ray.get(trainer.train.remote())
@@ -70,7 +90,7 @@ def train(config: Config) -> None:
 def serve(config: Config) -> None:
     """Run explorer in server mode."""
     try:
-        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
+        explorer = get_explorer(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(explorer.prepare.remote())
         ray.get(explorer.sync_weight.remote())
         ray.get(explorer.serve.remote())
@@ -90,8 +110,8 @@ def both(config: Config) -> None:
     algorithms and tasks.
     """
     try:
-        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
-        trainer = Trainer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
+        explorer = get_explorer(config, runtime_env=get_runtime_env(is_trinity=True))
+        trainer = get_trainer(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get([explorer.__ray_ready__.remote(), trainer.__ray_ready__.remote()])
         ray.get(
             [
