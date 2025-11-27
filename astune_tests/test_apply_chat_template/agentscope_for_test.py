@@ -1,9 +1,11 @@
-from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
-from astune.utils.testing_utils import GoodbyeException, TestFailException
 from agentscope.message import Msg
-from pydantic import BaseModel, Field
-from loguru import logger
 from beast_logger import print_dict
+from loguru import logger
+from pydantic import BaseModel, Field
+
+from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from astune.utils.testing_utils import GoodbyeException, TestFailException
+
 
 def extract_final_answer(result) -> str:
     """Extract the final answer from the agent's response."""
@@ -39,7 +41,6 @@ You should return your final answer within \\boxed{{}}.
 
 
 class ExampleMathLearn(Workflow):
-
     name: str = "math_agent_workflow"
 
     async def agentscope_execute(
@@ -74,13 +75,15 @@ class TEST_LAMBDA(object):
 
     def __call__(self, key, value):
         if key == "prompt_text":
-            expected =  '<|im_start|>system\n\nYou are an agent specialized in solving math problems with tools.\nPlease solve the math problem given to you.\nYou can write and execute Python code to perform calculation or verify your answer.\nYou should return your final answer within \\boxed{{}}.\n\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>\n{"type": "function", "function": {"name": "execute_python_code", "parameters": {"properties": {"code": {"description": "The Python code to be executed.", "type": "string"}, "timeout": {"default": 300, "description": "The maximum time (in seconds) allowed for the code to run.", "type": "number"}}, "required": ["code"], "type": "object"}, "description": "Execute the given python code in a temp file and capture the return\\n\\ncode, standard output and error. Note you must `print` the output to get\\nthe result, and the tmp file will be removed right after the execution."}}\n{"type": "function", "function": {"name": "generate_response", "parameters": {"properties": {"response": {"description": "Your response to the user.", "type": "string"}, "result": {"description": "Your solution of the given math problem. Put your final answer in boxed format, e.g., \\\\boxed{42}", "type": "string"}}, "required": ["response", "result"], "type": "object"}, "description": "Generate a response. Note only the input argument `response` is\\n\\nvisible to the others, you should include all the necessary\\ninformation in the `response` argument."}}\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call><|im_end|>\n<|im_start|>user\nA robe takes 2 bolts of blue fiber and half that much white fiber.  How many bolts in total does it take?<|im_end|>\n<|im_start|>assistant\n'
+            expected = '<|im_start|>system\n\nYou are an agent specialized in solving math problems with tools.\nPlease solve the math problem given to you.\nYou can write and execute Python code to perform calculation or verify your answer.\nYou should return your final answer within \\boxed{{}}.\n\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>\n{"type": "function", "function": {"name": "execute_python_code", "parameters": {"properties": {"code": {"description": "The Python code to be executed.", "type": "string"}, "timeout": {"default": 300, "description": "The maximum time (in seconds) allowed for the code to run.", "type": "number"}}, "required": ["code"], "type": "object"}, "description": "Execute the given python code in a temp file and capture the return\\n\\ncode, standard output and error. Note you must `print` the output to get\\nthe result, and the tmp file will be removed right after the execution."}}\n{"type": "function", "function": {"name": "generate_response", "parameters": {"properties": {"response": {"description": "Your response to the user.", "type": "string"}, "result": {"description": "Your solution of the given math problem. Put your final answer in boxed format, e.g., \\\\boxed{42}", "type": "string"}}, "required": ["response", "result"], "type": "object"}, "description": "Generate a response. Note only the input argument `response` is\\n\\nvisible to the others, you should include all the necessary\\ninformation in the `response` argument."}}\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call><|im_end|>\n<|im_start|>user\nA robe takes 2 bolts of blue fiber and half that much white fiber.  How many bolts in total does it take?<|im_end|>\n<|im_start|>assistant\n'
             if value != expected:
-                print_dict({
-                    "expected": expected,
-                    "value": value,
-                    "key": key,
-                })
+                print_dict(
+                    {
+                        "expected": expected,
+                        "value": value,
+                        "key": key,
+                    }
+                )
                 raise TestFailException("Prompt text does not match expected value.")
         elif key == "parsed_tool_calls":
             if len(value) > 0:

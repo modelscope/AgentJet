@@ -1,12 +1,14 @@
 import os
 import subprocess
 import sys
+
 from beast_logger import print_dict
 
 TEST_TARGET = "astune_tests/test_apply_chat_template/test.yaml"
 cmd = [sys.executable, "launcher.py", "--conf", TEST_TARGET, "--backbone", "verl"]
 
 from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+
 service_path = os.path.dirname(__file__)
 companion = LaunchCommandWhenAbsent(
     full_argument_list=cmd,
@@ -28,7 +30,9 @@ except Exception as e:
 finally:
     companion.kill_self()
 
-print_dict({
-    "TestTarget": TEST_TARGET,
-    "TestSuccessful": test_successful,
-})
+print_dict(
+    {
+        "TestTarget": TEST_TARGET,
+        "TestSuccessful": test_successful,
+    }
+)

@@ -1,25 +1,28 @@
 import os
-import yaml
 import unittest
-import dotenv; dotenv.load_dotenv()
-from tqdm import tqdm
+
+import dotenv
+import yaml
+
+dotenv.load_dotenv()
 from loguru import logger
-from astune.utils.config_utils import read_astune_config
-from astune.task_reader import TaskReaderRouterV2
-from astune.task_reader.document_reader.doc_reader import DocReader
+from tqdm import tqdm
+
 from astune.data_generator.knowledge_augmentation import KnowledgeAugmentor
 from astune.data_generator.task_augmentation import TaskAugmentor
+from astune.task_reader import TaskReaderRouterV2
+from astune.task_reader.document_reader.doc_reader import DocReader
+from astune.utils.config_utils import read_astune_config
 
 
 class TestConfigUtils(unittest.TestCase):
-
     def test_data_gen_main(self):
         try:
-            config = read_astune_config('tests/data_gen.yaml')
+            config = read_astune_config("tests/data_gen.yaml")
 
             task_reader = TaskReaderRouterV2(
                 reader_type=config.astune.data_generator.reader.type,
-                reader_config=config.astune.data_generator.reader
+                reader_config=config.astune.data_generator.reader,
             )
             Tasks = task_reader.get_training_tasks()
             Tasks = Tasks[:5]

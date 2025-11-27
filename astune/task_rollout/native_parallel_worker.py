@@ -99,7 +99,8 @@ class StaticRollout(StepPrinter):
                 if any(future.exception() for future in futures):
                     executor.shutdown(wait=False, cancel_futures=True)
                     for f in futures:
-                        if not f.done(): f.cancel()
+                        if not f.done():
+                            f.cancel()
                     raise RuntimeError("One of the rollout threads has encountered an exception.")
                 self.step_status_printer(obs_window)
                 time.sleep(10)
@@ -243,17 +244,17 @@ class DynamicRollout(StaticRollout):
                     if not all_equal:
                         if num_finished >= rollout_n:
                             can_terminate[j] = True
-                            terminate_status[j] = (
-                                f"early_end({len(completed_results)}/{reward_std:.2f})"
-                            )
+                            terminate_status[
+                                j
+                            ] = f"early_end({len(completed_results)}/{reward_std:.2f})"
                         else:
                             pass
                     else:
                         if num_finished >= rollout_n_confirm:
                             can_terminate[j] = True
-                            terminate_status[j] = (
-                                f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
-                            )
+                            terminate_status[
+                                j
+                            ] = f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
                             if allow_force_stop:
                                 for k in range(
                                     j * rollout_n_oversample,

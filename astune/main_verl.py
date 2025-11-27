@@ -15,13 +15,13 @@
 Note that we don't combine the main with ray_trainer as ray_trainer is used by other main.
 """
 
+import atexit
 import os
 import socket
+
 import hydra
 import ray
-import atexit
-from astune.utils.sms_agent import send_train_message
-from astune.utils.core_env_vars import get_runtime_env
+from beast_logger import print_dict, register_logger
 from omegaconf import OmegaConf
 from verl.experimental.dataset.sampler import AbstractSampler
 from verl.trainer.constants_ppo import get_ppo_ray_runtime_env
@@ -29,7 +29,9 @@ from verl.trainer.ppo.ray_trainer import RayPPOTrainer
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
 from verl.utils.import_utils import load_extern_type
-from beast_logger import register_logger, print_dict
+
+from astune.utils.core_env_vars import get_runtime_env
+from astune.utils.sms_agent import send_train_message
 
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
@@ -111,7 +113,6 @@ class TaskRunner:
         from pprint import pprint
 
         from omegaconf import OmegaConf
-
         from verl.utils.fs import copy_to_local
 
         print(f"TaskRunner hostname: {socket.gethostname()}, PID: {os.getpid()}")
@@ -164,9 +165,7 @@ class TaskRunner:
 
         elif config.actor_rollout_ref.actor.strategy == "megatron":
             assert config.actor_rollout_ref.actor.strategy == config.critic.strategy
-            from verl.single_controller.ray.megatron import (
-                NVMegatronRayWorkerGroup,
-            )
+            from verl.single_controller.ray.megatron import NVMegatronRayWorkerGroup
             from verl.workers.megatron_workers import (
                 ActorRolloutRefWorker,
                 AsyncActorRolloutRefWorker,
@@ -183,10 +182,7 @@ class TaskRunner:
         else:
             raise NotImplementedError
 
-        from astune.backbone.native_compat_trainer import (
-            ResourcePoolManager,
-            Role,
-        )
+        from astune.backbone.native_compat_trainer import ResourcePoolManager, Role
 
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
@@ -244,13 +240,10 @@ class TaskRunner:
         )
 
         from verl.utils.dataset.rl_dataset import collate_fn
-        from astune.utils.process_dataset import create_rl_sampler
 
         # Create training and validation datasets.
-        from astune.task_reader import (
-            TaskReaderRouter,
-            task_to_standard_dataset,
-        )
+        from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
+        from astune.utils.process_dataset import create_rl_sampler
 
         task_reader = TaskReaderRouter(config)
         val_dataset = task_to_standard_dataset(task_reader.get_validation_tasks())

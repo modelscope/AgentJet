@@ -3,7 +3,6 @@ from astune.workflow import WorkflowOutput, WorkflowTask
 
 
 class EnvServiceJudge(JudgeBase):
-
     def __init__(self, config):
         self.config = config
 

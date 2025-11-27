@@ -1,7 +1,8 @@
-from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
-from pydantic import BaseModel, Field
 from loguru import logger
+from pydantic import BaseModel, Field
+
+from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 def extract_final_answer(result) -> str:
@@ -23,7 +24,6 @@ def extract_final_answer(result) -> str:
         return str(result)
 
 
-
 system_prompt = """
 You are an agent specialized in solving math problems with tools.
 Please solve the math problem given to you.
@@ -33,7 +33,6 @@ You should return your final answer within \\boxed{{}}.
 
 
 class ExampleMathLearn(Workflow):
-
     name: str = "math_agent_workflow"
 
     async def agentscope_execute(

@@ -1,10 +1,10 @@
-from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from pydantic import Field
 
+from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+
 
 class ExampleAgentScopeLearnProtocol(Workflow):
-
     trainer: str = Field(default="astune-trinity")
 
     async def agentscope_execute(

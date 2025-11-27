@@ -2,36 +2,30 @@
 # pylint: disable=too-many-branches, too-many-statements, no-name-in-module
 """A werewolf game implemented by agentscope."""
 import numpy as np
-
-from tutorial.example_werewolves.utils import (
-    majority_vote,
-    names_to_str,
-    EchoAgent,
-    MAX_GAME_ROUND,
-    MAX_DISCUSSION_ROUND,
-    Players,
-)
-from tutorial.example_werewolves.structured_model import (
-    DiscussionModel,
-    get_vote_model,
-    get_poison_model,
-    WitchResurrectModel,
-    get_seer_model,
-    get_hunter_model,
-)
-from tutorial.example_werewolves.prompt import EnglishPrompts as Prompts
+from agentscope.agent import ReActAgent
+from agentscope.pipeline import MsgHub, fanout_pipeline, sequential_pipeline
 
 # Uncomment the following line to use Chinese prompts
 # from tutorial.example_werewolves.prompt import ChinesePrompts as Prompts
 from loguru import logger
 
-from agentscope.agent import ReActAgent
-from agentscope.pipeline import (
-    MsgHub,
-    sequential_pipeline,
-    fanout_pipeline,
+from tutorial.example_werewolves.prompt import EnglishPrompts as Prompts
+from tutorial.example_werewolves.structured_model import (
+    DiscussionModel,
+    WitchResurrectModel,
+    get_hunter_model,
+    get_poison_model,
+    get_seer_model,
+    get_vote_model,
 )
-
+from tutorial.example_werewolves.utils import (
+    MAX_DISCUSSION_ROUND,
+    MAX_GAME_ROUND,
+    EchoAgent,
+    Players,
+    majority_vote,
+    names_to_str,
+)
 
 moderator = EchoAgent()
 moderator.set_console_output_enabled(False)

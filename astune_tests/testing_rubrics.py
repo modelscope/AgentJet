@@ -1,18 +1,14 @@
-import pytest
 import json
-from pathlib import Path
-from typing import List
-from astune.task_reader.tracing_reader import TracingReader
-from astune.schema.task import Task, WorkflowTask, WorkflowOutput
 from pathlib import Path
 from types import SimpleNamespace
 from typing import List
-from astune.task_reader.tracing_reader import TracingReader
-from astune.schema.task import Task
-from astune.utils.config_utils import read_astune_config
+
+import pytest
+
+from astune.schema.task import Task, WorkflowOutput, WorkflowTask
 from astune.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
-
-
+from astune.task_reader.tracing_reader import TracingReader
+from astune.utils.config_utils import read_astune_config
 
 # @pytest.fixture
 # def config(tmp_path: Path) -> SimpleNamespace:
@@ -48,6 +44,7 @@ from astune.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
 #     }
 #     return a
 
+
 def create_math_reference_samples(num_samples: int = 10) -> List[WorkflowTask]:
     """
     Create reference math problem samples for Pointwise rubric generation.
@@ -77,10 +74,7 @@ def create_math_reference_samples(num_samples: int = 10) -> List[WorkflowTask]:
         task = Task(
             main_query=query,
             task_id=f"ref_sample_{i}",
-            metadata={
-                "answer": answer,
-                "score": score  # Pointwise label
-            }
+            metadata={"answer": answer, "score": score},  # Pointwise label
         )
 
         workflow_task = WorkflowTask(
@@ -91,6 +85,7 @@ def create_math_reference_samples(num_samples: int = 10) -> List[WorkflowTask]:
         samples.append(workflow_task)
 
     return samples
+
 
 def create_math_test_samples(num_samples: int = 5) -> List[tuple[WorkflowTask, WorkflowOutput]]:
     """Create test samples (task + output pairs) for evaluation."""
@@ -118,20 +113,14 @@ def create_math_test_samples(num_samples: int = 5) -> List[tuple[WorkflowTask, W
     for i in range(min(num_samples, len(test_cases))):
         query, reference, model_output, _ = test_cases[i]
 
-        task = Task(
-            main_query=query,
-            task_id=f"test_sample_{i}",
-            metadata={"answer": reference}
-        )
+        task = Task(main_query=query, task_id=f"test_sample_{i}", metadata={"answer": reference})
 
         workflow_task = WorkflowTask(
             task_id=f"test_sample_{i}",
             task=task,
         )
 
-        workflow_output = WorkflowOutput(
-            metadata={"final_answer": model_output}
-        )
+        workflow_output = WorkflowOutput(metadata={"final_answer": model_output})
 
         samples.append((workflow_task, workflow_output))
 
@@ -176,4 +165,5 @@ async def test_get_training_tasks_new_file():
 
 
 import asyncio
+
 asyncio.run(test_get_training_tasks_new_file())

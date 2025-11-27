@@ -1,11 +1,11 @@
 import argparse
-import torch
 import os
 import sys
 
+import torch
+
 sys.path.append(os.getcwd())
 from astune.utils.smart_daemon import LaunchCommandWhenAbsent
-
 
 parser = argparse.ArgumentParser(description="deploy Hugging Face model")
 parser.add_argument(
@@ -19,7 +19,6 @@ args = parser.parse_args()
 
 
 def companion_launch():
-
     print("Launching companion process for async LLM server...")
     model_path = args.target
     n_avail_gpus = torch.cuda.device_count()

@@ -49,7 +49,6 @@ class HttpClient(BaseModel):
         stream: bool = False,
         http_enum: str = "post",
     ):
-
         if http_enum == "post":
             response: requests.Response = self._client.post(
                 url=self.url,
@@ -92,7 +91,6 @@ class HttpClient(BaseModel):
         http_enum: str = "post",
         **kwargs,
     ):
-
         retry_sleep_time = self.retry_sleep_time
         for i in range(self.retry_max_count):
             try:
@@ -136,7 +134,6 @@ class HttpClient(BaseModel):
         http_enum: str = "post",
         **kwargs,
     ):
-
         retry_sleep_time = self.retry_sleep_time
         for i in range(self.retry_max_count):
             try:

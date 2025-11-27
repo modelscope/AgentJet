@@ -4,34 +4,25 @@ import os
 import time
 import uuid
 from functools import wraps
-from typing import Any, Callable, Literal, Optional, TypeVar, List, Union
+from typing import Any, Callable, List, Literal, Optional, TypeVar, Union
 
 from loguru import logger
 from omegaconf import DictConfig
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from astune.context_tracker.basic_tracker import (
-    BasicContextTracker,
-    TrackerAttr,
-)
+from astune.context_tracker.basic_tracker import BasicContextTracker, TrackerAttr
 from astune.schema.task import Task, WorkflowTask
 from astune.task_rollout.async_llm_bridge import AsyncLlmBridge
 from astune.task_rollout.resource_keeper import ResourceKeeper
-from astune.utils.sample import get_sample_params
-from loguru import logger
-from omegaconf import DictConfig
-from astune.task_runner.classic_runner import AgentRunner, BaseAgentRunner
 from astune.task_runner.agentscope_runner import AgentScopeRunner
-from astune.context_tracker.basic_tracker import BasicContextTracker
-from astune.utils.testing_utils import GoodbyeException, TestFailException
-from astune.utils.env_service_client.env_client_ng import (
-    EnvClient as EnvClientNg,
-)
+from astune.task_runner.classic_runner import AgentRunner, BaseAgentRunner
+from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
 from astune.utils.retry import retry_with_backoff
+from astune.utils.sample import get_sample_params
+from astune.utils.testing_utils import GoodbyeException, TestFailException
 
 
 class BaseParallelEnv:
-
     def __init__(
         self,
         config: DictConfig,
@@ -115,8 +106,14 @@ class BaseParallelEnv:
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
-                Runner = AgentScopeRunner if self.config.astune.rollout.use_agentscope_protocol else AgentRunner
-                agent_runner: AgentScopeRunner = Runner(llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config) # type:ignore
+                Runner = (
+                    AgentScopeRunner
+                    if self.config.astune.rollout.use_agentscope_protocol
+                    else AgentRunner
+                )
+                agent_runner: AgentScopeRunner = Runner(
+                    llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config
+                )  # type:ignore
                 cmt = agent_runner.execute(
                     workflow_task=workflow_task,
                 )

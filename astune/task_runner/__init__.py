@@ -1,13 +1,13 @@
+from typing import Any, Callable, Dict, Tuple, Union
+
 from astune.context_tracker.basic_tracker import BasicContextTracker
-from typing import Any, Dict, Tuple, Union, Callable
 from astune.task_judge.judge_base import JudgeBase
 from astune.utils.dynamic_import import dynamic_import
-from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
 from astune.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
+from astune.utils.utils import remove_fields, run_async_coro__no_matter_what
 
 
 class BaseAgentRunner(object):
-
     def __init__(self, llm_chat_fn: Callable, tokenizer: Any, config, **kwargs):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
@@ -21,7 +21,6 @@ class BaseAgentRunner(object):
         self.max_env_len: int = self.config.astune.rollout.max_env_len
 
     def agentscope_runner_hooks(self, obs_window, task_thread_index, workflow_task):
-
         def should_interrupt_fn() -> bool:
             if (obs_window["stop"] is not None) and obs_window["stop"][
                 task_thread_index
@@ -38,14 +37,14 @@ class BaseAgentRunner(object):
         }
 
     def get_judge(self) -> JudgeBase:  # type: ignore
-
-        if self.config.astune.task_judge.judge_type == 'customized_protocal':
+        if self.config.astune.task_judge.judge_type == "customized_protocal":
             judge_protocol = self.config.astune.task_judge.judge_protocol
             return dynamic_import(judge_protocol)(self.config)  # type: ignore
 
-        elif self.config.astune.task_judge.judge_type == 'rubrics_auto_grader':
+        elif self.config.astune.task_judge.judge_type == "rubrics_auto_grader":
             # astune/task_judge/rm_auto_grader_judge.py
             from astune.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+
             judge = RMAutoGraderJudge(self.config)
             run_async_coro__no_matter_what(judge.load_rubrics_from_cache())
             return judge

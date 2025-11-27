@@ -1,10 +1,14 @@
-from typing import List, Union, Tuple
-from transformers.tokenization_utils import PreTrainedTokenizer
-from astune.schema.extended_msg import ExtendedMessage
-from astune.schema.extended_msg import find_sublist_indices
-from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
-from astune.schema.trajectory import Reward
+from typing import List, Tuple, Union
+
 from loguru import logger
+from transformers.tokenization_utils import PreTrainedTokenizer
+
+from astune.schema.extended_msg import (
+    INVALID_LOG_PROB_VALUE,
+    ExtendedMessage,
+    find_sublist_indices,
+)
+from astune.schema.trajectory import Reward
 
 
 def replace_token_ids(
@@ -30,7 +34,6 @@ def replace_token_ids(
 
 
 class TrackerAttr(object):
-
     def __init__(self, config, tokenizer, **kwargs):
         self.task_batch_index = kwargs.get("task_batch_index", "undefined")
         self.task_tag = kwargs.get("task_tag", "undefined")

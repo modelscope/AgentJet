@@ -4,11 +4,10 @@ from collections import defaultdict
 from typing import Any
 
 import numpy as np
+from agentscope.agent import AgentBase, ReActAgent
+from agentscope.message import Msg
 
 from tutorial.example_werewolves.prompt import EnglishPrompts as Prompts
-
-from agentscope.message import Msg
-from agentscope.agent import ReActAgent, AgentBase
 
 # MAX_GAME_ROUND = 30
 # MAX_DISCUSSION_ROUND = 3

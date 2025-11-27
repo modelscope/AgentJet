@@ -1,20 +1,20 @@
 import copy
 import json
-from typing import List, Dict
+from typing import Dict, List
 
 
 def cleanup_messages(messages: List[Dict]) -> List[Dict]:
-    " A temperary fix for tool_calls being str instead of dict "
+    "A temperary fix for tool_calls being str instead of dict"
     messages_copied = copy.deepcopy(messages)
     for m in messages_copied:
-        if 'tool_calls' not in m:
+        if "tool_calls" not in m:
             continue
-        for t in m['tool_calls']:
-            if 'function' not in t or 'arguments' not in t['function']:
+        for t in m["tool_calls"]:
+            if "function" not in t or "arguments" not in t["function"]:
                 continue
-            if isinstance(t['function']['arguments'], str):
+            if isinstance(t["function"]["arguments"], str):
                 try:
-                    t['function']['arguments'] = json.loads(t['function']['arguments'])
+                    t["function"]["arguments"] = json.loads(t["function"]["arguments"])
                 except:
                     pass
     return messages_copied

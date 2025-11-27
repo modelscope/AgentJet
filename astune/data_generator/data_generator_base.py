@@ -1,7 +1,9 @@
-from typing import List, Optional, Dict, Any, Union
-from astune.schema.task import Task
+from typing import Any, Dict, List, Optional, Union
+
 from astune.schema.document import Document
+from astune.schema.task import Task
 from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
+
 
 class DataGeneratorBase:
     def __init__(self, config):
@@ -15,7 +17,7 @@ class DataGeneratorBase:
         self.sampling_params = self.config.astune.data_generator.sampling_params or {}
         self.llm_client = construct_alien_llm_chat_fn(
             alien_llm_model=self.config.astune.data_generator.llm_model,
-            alien_llm_response_length=self.config.astune.data_generator.llm_response_length
+            alien_llm_response_length=self.config.astune.data_generator.llm_response_length,
         )
 
     def generate_task(
@@ -45,13 +47,12 @@ class DataGeneratorBase:
 
         # Call the new LLM client
         # Returns: {"role": "assistant", "content": "..."}
-        response = self.llm_client(
-            messages=messages,
-            sampling_params_override=self.sampling_params
-        )
+        response = self.llm_client(messages=messages, sampling_params_override=self.sampling_params)
         # Extract content from response
         raw_response = response.get("content", "")
-        new_task = self._parse_llm_output_to_task(raw_response, source_task, document, extra_metadata)
+        new_task = self._parse_llm_output_to_task(
+            raw_response, source_task, document, extra_metadata
+        )
         return new_task
 
     def _build_system_prompt(

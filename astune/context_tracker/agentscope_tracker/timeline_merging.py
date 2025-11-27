@@ -1,14 +1,11 @@
 from typing import List, Type
+
+from beast_logger import NestedJsonItem, SeqItem, print_listofdict, print_nested
+
 from astune.context_tracker.basic_tracker import (
     BasicContextTracker,
     ExtendedMessage,
     replace_token_ids,
-)
-from beast_logger import (
-    print_nested,
-    print_listofdict,
-    NestedJsonItem,
-    SeqItem,
 )
 
 
@@ -17,7 +14,6 @@ def can_merge_steps(
     target_timeline: List[ExtendedMessage],
     debug=False,
 ) -> bool:
-
     can_merge = False
     compare_level = "text"  # relaxed compare with text, more easier to match, at very little cost
     if len(source_timeline) >= len(target_timeline):
@@ -67,7 +63,6 @@ def can_merge_steps(
 def merge_tracker_timelines(
     timelines: List[List[ExtendedMessage]],
 ) -> List[List[ExtendedMessage]]:
-
     def toggle_author(
         source_timeline: List[ExtendedMessage],
         target_timeline: List[ExtendedMessage],
