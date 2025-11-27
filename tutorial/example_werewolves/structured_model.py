@@ -2,8 +2,8 @@
 """The structured output models used in the werewolf game."""
 from typing import Literal
 
-from pydantic import BaseModel, Field
 from agentscope.agent import AgentBase
+from pydantic import BaseModel, Field
 
 
 class DiscussionModel(BaseModel):

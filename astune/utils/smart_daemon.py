@@ -1,15 +1,16 @@
-import os
-import sys
-import psutil
-import subprocess
 import hashlib
-import time
 import json
 import logging
-from loguru import logger
+import os
+import subprocess
+import sys
+import time
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
+
+import psutil
 from beast_logger import print_dict
+from loguru import logger
 
 
 class LaunchWhenAbsent:
@@ -183,6 +184,7 @@ class LaunchWhenAbsent:
 
         if is_running:
             if force_restart:
+                assert pgid is not None
                 logger.warning(f"Force restarting")
                 self._kill_existing_process_group(pgid)
             else:
@@ -204,11 +206,13 @@ class LaunchWhenAbsent:
                 raise NotImplementedError("Windows support is not implemented yet.")
             else:  # Unix-like systems
                 # Use nohup and redirect output
-                print_dict({
-                    "Action": "Launching command",
-                    "Command": " ".join(self.cmd),
-                    "LogFile": str(log_file),
-                })
+                print_dict(
+                    {
+                        "Action": "Launching command",
+                        "Command": " ".join(self.cmd),
+                        "LogFile": str(log_file),
+                    }
+                )
                 # logger.warning("\nlaunching: " + " ".join(self.cmd))
                 # logger.warning(f"\nlogging to {log_file}\n")
                 # Open log file
@@ -314,11 +318,13 @@ class LaunchWhenAbsent:
                             )
 
                 logger.success(f"Successfully launched {self.cmd} with PID {proc.pid}")
-                print_dict({
-                    "Result": "Successfully launched",
-                    "Command": " ".join(self.cmd),
-                    "PID": proc.pid,
-                })
+                print_dict(
+                    {
+                        "Result": "Successfully launched",
+                        "Command": " ".join(self.cmd),
+                        "PID": proc.pid,
+                    }
+                )
 
         except Exception as e:
             logging.error(f"Error launching script: {e}")

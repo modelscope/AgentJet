@@ -1,16 +1,13 @@
-from typing import Iterable, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Iterable, List
 
 from tqdm import tqdm
 
 from astune.schema.task import Task
-from astune.task_rollout.dashscope_llm_bridge import (
-    construct_alien_llm_chat_fn,
-)
-
+from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 from astune.utils.fn import Fn
-from .base import Filter
 
+from .base import Filter
 
 EVALUATE_PROMPT = """You are now acting as a **strict QA quality reviewer**. You will be given a data sample containing a “query” (user question/task) and an “answer” (assistant reply). Evaluate it **only based on the text itself**, without inventing facts or performing external retrieval.
 
@@ -97,9 +94,7 @@ class LlmEvaluateFilter(Filter):
             return res
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_task = {
-                executor.submit(_evaluate, task): task for task in tasks_list
-            }
+            future_to_task = {executor.submit(_evaluate, task): task for task in tasks_list}
             for future in as_completed(future_to_task):
                 task = future_to_task[future]
                 res = future.result()

@@ -1,15 +1,17 @@
+from typing import TYPE_CHECKING, Any, Literal, Type
+
+from agentscope._utils._common import (
+    _create_tool_from_base_model,
+    _json_loads_with_repair,
+)
+from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
 from loguru import logger
-from typing import Literal, Any, TYPE_CHECKING, Type
 from pydantic import BaseModel, Field
-from astune.task_rollout.async_llm_bridge import LlmProxyForAgentScope
+
 from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracking,
 )
-from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
-from agentscope._utils._common import (
-    _json_loads_with_repair,
-    _create_tool_from_base_model,
-)
+from astune.task_rollout.async_llm_bridge import LlmProxyForAgentScope
 
 if TYPE_CHECKING:
     from astune import Workflow
@@ -81,8 +83,13 @@ class ModelTuner(DashScopeChatModel):
                 The agent type instance corresponding to the provided name.
         """
         if target_name in self.target2proxy_registry:
-            if default_model.model_name != self.target2proxy_registry[target_name].default_model.model_name:
-                raise ValueError(f"Agent proxy `{target_name}` is already registered with a different model_name.\nWAS [{self.target2proxy_registry[target_name].default_model.model_name}]\nNOW [{default_model.model_name}].")
+            if (
+                default_model.model_name
+                != self.target2proxy_registry[target_name].default_model.model_name
+            ):
+                raise ValueError(
+                    f"Agent proxy `{target_name}` is already registered with a different model_name.\nWAS [{self.target2proxy_registry[target_name].default_model.model_name}]\nNOW [{default_model.model_name}]."
+                )
         self.target2proxy_registry[target_name] = Agent2Proxy(target_name, self, default_model)
         return self.get_model(target_name)
 
@@ -108,7 +115,6 @@ class ModelTuner(DashScopeChatModel):
         structured_model: Type[BaseModel] | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
-
         # For qvq and qwen-vl models, the content field cannot be `None` or
         # `[{"text": None}]`, so we need to convert it to an empty list.
         if self.model_name.startswith("qvq") or "-vl" in self.model_name:

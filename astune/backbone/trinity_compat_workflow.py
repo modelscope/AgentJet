@@ -1,43 +1,48 @@
 import asyncio
 import os
 import uuid
-import openai
+
 import datasets
-
+import openai
 from loguru import logger
-
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
-from trinity.common.workflows.workflow import WORKFLOWS, Workflow
+from trinity.common.workflows.workflow import WORKFLOWS
 from trinity.common.workflows.workflow import Task as TrinityTask
+from trinity.common.workflows.workflow import Workflow
 
 try:
-    from trinity.buffer.reader import READER
-    from trinity.buffer.reader.file_reader import FileReader, TaskFileReader, _HFBatchReader
     from trinity.buffer.buffer_reader import BufferReader
+    from trinity.buffer.reader import READER
+    from trinity.buffer.reader.file_reader import (
+        FileReader,
+        TaskFileReader,
+        _HFBatchReader,
+    )
     from trinity.buffer.reader.reader import READER
     from trinity.buffer.schema.formatter import FORMATTER
     from trinity.common.config import StorageConfig
+
     logger.success("[New Trinity] Trinity imports successful.")
 except ImportError:
     logger.success("[Old Trinity] Using old trinity.")
     pass
 
-from typing import List, Literal, Optional, cast
-from transformers import AutoTokenizer
-from astune.task_rollout.native_parallel_worker import DynamicRollout
-from astune.schema.trajectory import Sample
-from astune.utils.config_utils import read_astune_config
-from astune.context_tracker.agentscope_tracker.multiagent_tracking import MultiAgentContextTracking
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple, cast
+
 from datasets import Dataset, load_dataset
+from transformers import AutoTokenizer
+
 from astune.backbone.common_warm_up import warm_up_process
-
-
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
+    MultiAgentContextTracking,
+)
+from astune.schema.trajectory import Sample
+from astune.task_rollout.native_parallel_worker import DynamicRollout
+from astune.utils.config_utils import read_astune_config
 
 
 class TrinityCompatWorkflow(DynamicRollout):
-
     def __init__(
         self,
         is_eval,
@@ -48,7 +53,6 @@ class TrinityCompatWorkflow(DynamicRollout):
         llm_mode: Literal["local", "remote", "trinity"] = "trinity",
         **kwargs,
     ):
-
         self.is_eval = is_eval
         self.task = task
         self.tokenizer = tokenizer
@@ -67,6 +71,7 @@ class TrinityCompatWorkflow(DynamicRollout):
 
     def convert_task(self, task: TrinityTask):
         from astune.schema.task import Task
+
         d = {}
         for vip_key in ["main_query", "task_id", "env_type", "metadata", "init_messages"]:
             if vip_key not in task.raw_task:
@@ -97,8 +102,6 @@ class TrinityCompatWorkflow(DynamicRollout):
         )
 
 
-
-
 @WORKFLOWS.register_module("astune_workflow")
 class ASTunetWorkflowWrap(Workflow):
     is_async: bool = True
@@ -122,7 +125,6 @@ class ASTunetWorkflowWrap(Workflow):
         self.answer = task.raw_task.get(task.format_args.response_key)  # type: ignore [index]
 
     async def run_async(self):
-
         yaml_path = os.environ.get("ASTUNE_CONFIG_REDIRECT", None)
         if yaml_path is None:
             raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
@@ -142,7 +144,7 @@ class ASTunetWorkflowWrap(Workflow):
         except Exception as e:
             raise e
         finally:
-            tracker.generate_log(global_step='NA')
+            tracker.generate_log(global_step="NA")
         sample_final += sample_arr
 
         exps = []
@@ -211,8 +213,8 @@ class ASTunetWorkflowWrap(Workflow):
         return exps
 
 
-
 try:
+
     @READER.register_module("astune")
     class AstuneTaskReader(TaskFileReader):
         def __init__(self, config):
@@ -220,21 +222,26 @@ try:
             self.read_batch_size = config.batch_size
             self.split = config.split
 
-            yaml_path = os.environ.get('ASTUNE_CONFIG_REDIRECT', None)
+            yaml_path = os.environ.get("ASTUNE_CONFIG_REDIRECT", None)
             if yaml_path is None:
                 raise ValueError("ASTUNE_CONFIG_REDIRECT is not set in environment variables")
             astune_config = read_astune_config(yaml_path)
 
             from astune.task_reader import TaskReaderRouter, task_to_standard_dataset
+
             task_reader = TaskReaderRouter(astune_config)
 
             dataset_segments = []
-            if 'train' in self.split:
+            if "train" in self.split:
                 dataset_segments.append(task_to_standard_dataset(task_reader.get_training_tasks()))
-            if 'val' in self.split:
-                dataset_segments.append(task_to_standard_dataset(task_reader.get_validation_tasks()))
+            if "val" in self.split:
+                dataset_segments.append(
+                    task_to_standard_dataset(task_reader.get_validation_tasks())
+                )
             if not dataset_segments:
-                raise ValueError(f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'.")
+                raise ValueError(
+                    f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'."
+                )
 
             concatenated_dataset = (
                 dataset_segments[0]
@@ -262,5 +269,6 @@ try:
                 task = self.formatter.format(sample)
                 tasks.append(task)
             return tasks
+
 except:
     pass

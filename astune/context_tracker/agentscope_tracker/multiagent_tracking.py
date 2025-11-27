@@ -1,35 +1,35 @@
 import copy
-from loguru import logger
+import json
+from typing import Any, Dict, List, Tuple, Union
 
 from agentscope.model import DashScopeChatModel
-from astune.schema.trajectory import Reward
+from beast_logger import (
+    NestedJsonItem,
+    SeqItem,
+    print_dict,
+    print_listofdict,
+    print_nested,
+)
+from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
+
+from astune.context_tracker.agentscope_tracker.timeline_merging import (
+    can_merge_steps,
+    merge_tracker_timelines,
+)
 from astune.context_tracker.basic_tracker import (
     BasicContextTracker,
     ExtendedMessage,
     replace_token_ids,
 )
-from astune.utils.color_hsl import adjust_color_hsl
-from astune.utils.tokenizer import astune_apply_chat_template
-from astune.utils.compute_madness import compute_string_madness
 from astune.schema.extended_msg import INVALID_LOG_PROB_VALUE
-from astune.context_tracker.agentscope_tracker.timeline_merging import (
-    merge_tracker_timelines,
-    can_merge_steps,
-)
+from astune.schema.trajectory import Reward
+from astune.utils.color_hsl import adjust_color_hsl
+from astune.utils.compute_madness import compute_string_madness
+from astune.utils.tokenizer import astune_apply_chat_template
 
-from typing import Any, List, Tuple, Union, Dict
-from beast_logger import (
-    print_nested,
-    print_listofdict,
-    print_dict,
-    NestedJsonItem,
-    SeqItem,
-)
-import json
 
 class MultiAgentContextTracking(BasicContextTracker):
-
     def __init__(
         self,
         llm_chat_fn,
@@ -57,7 +57,8 @@ class MultiAgentContextTracking(BasicContextTracker):
             tools = []
         else:
             # rerank tool parameters to improve compatibility
-            for i in range(len(tools)): tools[i]['function']['parameters'] = tools[i]['function'].pop('parameters')
+            for i in range(len(tools)):
+                tools[i]["function"]["parameters"] = tools[i]["function"].pop("parameters")
 
         for i, msg in enumerate(messages):
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
@@ -86,7 +87,9 @@ class MultiAgentContextTracking(BasicContextTracker):
                             str_content = ""
                         msg["content"] = str_content
                 else:
-                    raise ValueError(f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}")
+                    raise ValueError(
+                        f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}"
+                    )
 
                 if ignore:
                     continue
@@ -107,14 +110,18 @@ class MultiAgentContextTracking(BasicContextTracker):
                     tools=tools,
                     tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
                     token_generator="auto",
-                    first_message=(i==0),
+                    first_message=(i == 0),
                 )
             ]
 
         # check token overflow
         converted_message = self.to_role_content(self.full_context)
-        self.full_context = ExtendedMessage.check_and_merge_chained_tool_response(self.full_context, self.tokenizer)
-        context_safe, token_overflow, info = self.check_context_token_num_safe(converted_message, tools)
+        self.full_context = ExtendedMessage.check_and_merge_chained_tool_response(
+            self.full_context, self.tokenizer
+        )
+        context_safe, token_overflow, info = self.check_context_token_num_safe(
+            converted_message, tools
+        )
         custom_sampling_params = {}
         if not context_safe:
             self.context_overflow = True
@@ -140,16 +147,18 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # dummy response for now
         err_type = ""
-        if llm_output.get("tool_calls", []): # is not None, and is not []
+        if llm_output.get("tool_calls", []):  # is not None, and is not []
             tool_calls = llm_output["tool_calls"]
-            if ("wrong_toolcall" in self.config.astune.rollout.compute_madness_checklist):
+            if "wrong_toolcall" in self.config.astune.rollout.compute_madness_checklist:
                 # check tool call formating
                 copy_tool_calls = copy.deepcopy(tool_calls)
                 wrong_toolcall = False
                 for i in range(len(copy_tool_calls)):
-                    if ('function' in copy_tool_calls[i]) and ('arguments' in copy_tool_calls[i]['function']):
+                    if ("function" in copy_tool_calls[i]) and (
+                        "arguments" in copy_tool_calls[i]["function"]
+                    ):
                         try:
-                            expect_dict = json.loads(copy_tool_calls[i]['function']['arguments'])
+                            expect_dict = json.loads(copy_tool_calls[i]["function"]["arguments"])
                             if not isinstance(expect_dict, dict):
                                 wrong_toolcall = True
                                 err_type = "cannot parse arguments"
@@ -160,12 +169,16 @@ class MultiAgentContextTracking(BasicContextTracker):
                         wrong_toolcall = True
                         err_type = "no function or no arguments"
                 if wrong_toolcall:
-                    logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n")
+                    logger.bind(exception=True).error(
+                        f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
+                    )
                     self.already_mad_flag = True
                 else:
                     logger.success("Toolcall format check passed.")
-        elif ('<tool_call>' in llm_output["content"]):
-            logger.bind(exception=True).error(f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n")
+        elif "<tool_call>" in llm_output["content"]:
+            logger.bind(exception=True).error(
+                f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
+            )
             self.already_mad_flag = True
             tool_calls = []
         else:
@@ -194,11 +207,13 @@ class MultiAgentContextTracking(BasicContextTracker):
 
         # take snapshot of current timeline
         if context_safe:
-            if 'prompt_text' in llm_output and 'prompt_token_ids' in llm_output:    # currently we make this patch to better compat with Trinity training backend
+            if (
+                "prompt_text" in llm_output and "prompt_token_ids" in llm_output
+            ):  # currently we make this patch to better compat with Trinity training backend
                 self.full_context = self.patch_prompt_tokens(
-                    prompt_text = llm_output['prompt_text'],
-                    prompt_token_ids = llm_output['prompt_token_ids'],
-                    previous_ext_context = self.full_context
+                    prompt_text=llm_output["prompt_text"],
+                    prompt_token_ids=llm_output["prompt_token_ids"],
+                    previous_ext_context=self.full_context,
                 )
             self.full_context += [llm_ext_msg]
             is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
@@ -228,14 +243,13 @@ class MultiAgentContextTracking(BasicContextTracker):
         prompt_token_ids: List[int],
         previous_ext_context: List[ExtendedMessage],
     ) -> List[ExtendedMessage]:
-
         # remove tailing
         if prompt_text.endswith(self.generation_prompt):
             prompt_text = prompt_text[: -len(self.generation_prompt)]
             # prompt_token_ids = prompt_token_ids[: -len(self.generation_prompt_token)]
 
-        prompt_text_split = prompt_text.split('<|im_start|>')
-        assert prompt_text_split[0] == '', "Prompt text should start with <|im_start|>"
+        prompt_text_split = prompt_text.split("<|im_start|>")
+        assert prompt_text_split[0] == "", "Prompt text should start with <|im_start|>"
         prompt_text_split = prompt_text_split[1:]  # remove the first empty string
         for i in range(len(prompt_text_split)):
             prompt_text_split[i] = "<|im_start|>" + prompt_text_split[i]
@@ -245,20 +259,28 @@ class MultiAgentContextTracking(BasicContextTracker):
             current_prompt_text += [self.tokenizer.decode(previous_ext_context[j].token_arr)]
 
         if len(previous_ext_context) != len(prompt_text_split):
-            logger.bind(exception=True).error(f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens.")
+            logger.bind(exception=True).error(
+                f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens."
+            )
 
         # try to recover tokens
         for j in range(len(previous_ext_context)):
             if prompt_text_split[j] != current_prompt_text[j]:
-                print_dict({
-                    "expected_prompt_text": prompt_text_split[j],
-                    "current_prompt_text": current_prompt_text[j],
-                }, mod="exception", header=f"Prompt text mismatch, Please report a github issue")
-                previous_ext_context[j].token_arr = self.tokenizer(prompt_text_split[j], return_tensors="pt", padding=False)
+                print_dict(
+                    {
+                        "expected_prompt_text": prompt_text_split[j],
+                        "current_prompt_text": current_prompt_text[j],
+                    },
+                    mod="exception",
+                    header=f"Prompt text mismatch, Please report a github issue",
+                )
+                previous_ext_context[j].token_arr = self.tokenizer(
+                    prompt_text_split[j], return_tensors="pt", padding=False
+                )
 
         # remove extra messages
         if len(previous_ext_context) != len(prompt_text_split):
-            previous_ext_context = previous_ext_context[:len(prompt_text_split)]
+            previous_ext_context = previous_ext_context[: len(prompt_text_split)]
 
         return previous_ext_context
 
@@ -391,7 +413,7 @@ class MultiAgentContextTracking(BasicContextTracker):
             conversation=dict_messages,
             tools=tools,
             add_generation_prompt=True,
-            tokenize=False
+            tokenize=False,
         )
         length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
         max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
@@ -399,18 +421,19 @@ class MultiAgentContextTracking(BasicContextTracker):
         max_seq_length: int = max_model_len - max_response_length
 
         if length < max_seq_length:
-            ret = [True, length]
+            return True, length
         else:
-            ret = [False, length]
-        return tuple(ret)
+            return False, length
 
-    def check_context_token_num_safe(self, messages: List, tools: List = []) -> Tuple[bool, bool, str]:
+    def check_context_token_num_safe(
+        self, messages: List, tools: List = []
+    ) -> Tuple[bool, bool, str]:
         prompt_text = astune_apply_chat_template(
             tokenizer=self.tokenizer,
             conversation=messages,
             tools=tools,
             add_generation_prompt=True,
-            tokenize=False
+            tokenize=False,
         )
         length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
         max_response_length = self.config.astune.rollout.max_response_length_in_one_turn
@@ -421,14 +444,18 @@ class MultiAgentContextTracking(BasicContextTracker):
         else:
             token_overflow = True
         if self.should_interrupt_fn():
-            ret = [False, token_overflow, "externally_interrupted"]
+            ret = (False, token_overflow, "externally_interrupted")
         elif self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
-            ret = [False, token_overflow, "already_mad"]
+            ret = (False, token_overflow, "already_mad")
         elif length < max_seq_length:
-            ret = [True, token_overflow, f"safe[{length} < {max_model_len} - {max_response_length}]"]
+            ret = (
+                True,
+                token_overflow,
+                f"safe[{length} < {max_model_len} - {max_response_length}]",
+            )
         else:
-            ret = [False, token_overflow, "token_overflow"]
-        return tuple(ret)
+            ret = (False, token_overflow, "token_overflow")
+        return ret
 
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
         result = []

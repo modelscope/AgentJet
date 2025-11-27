@@ -1,7 +1,7 @@
-from typing import Any, List, Dict
 import asyncio
-import copy
 import concurrent.futures
+import copy
+from typing import Any, Dict, List
 
 
 # apply chat_template to a message, and then convert back to message

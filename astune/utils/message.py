@@ -1,4 +1,6 @@
-import requests, os
+import os
+
+import requests
 
 
 def send_train_message(message: str):

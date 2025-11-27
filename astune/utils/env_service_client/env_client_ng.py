@@ -1,11 +1,12 @@
 # env_client.py
 
-from typing import Dict, List, Any, Optional, Callable
-import requests
-import time
-import random
 import os
+import random
+import time
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
+
+import requests
 
 LOG_PATH = os.environ.get("CLIENT_LOG_PATH", "/mnt/data/eric.czq/rl_log/error.out")
 
@@ -31,7 +32,7 @@ def retry_call(
     max_backoff: float = 10.0,
     fail_return: Any = None,
     err_prefix: str = "",
-    instance_id: str = "",
+    instance_id: str | None = "",
     action_name: str = "",
 ):
     last_exception = None
@@ -67,10 +68,10 @@ class EnvClient:
         self,
         endpoint: str,
         env_type: str = "default",
-        task_id: str = None,
-        instance_id: str = None,
-        messages: Dict[str, Any] = None,
-        params: Dict[str, Any] = None,
+        task_id: str | None = None,
+        instance_id: str | None = None,
+        messages: Dict[str, Any] | None = None,
+        params: Dict[str, Any] | None = None,
     ) -> Dict:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 

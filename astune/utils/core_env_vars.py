@@ -1,9 +1,10 @@
 import os
-from dotenv import load_dotenv
+
 from beast_logger import print_dict
+from dotenv import load_dotenv
+
 
 def get_runtime_env(is_trinity: bool = False) -> dict:
-
     if os.path.exists(".env"):
         load_dotenv(".env")
 
@@ -29,9 +30,7 @@ def get_runtime_env(is_trinity: bool = False) -> dict:
     if os.getenv("BEST_LOGGER_WEB_SERVICE_URL"):
         runtime_env["env_vars"].update(
             {
-                "BEST_LOGGER_WEB_SERVICE_URL": os.getenv(
-                    "BEST_LOGGER_WEB_SERVICE_URL", ""
-                ),
+                "BEST_LOGGER_WEB_SERVICE_URL": os.getenv("BEST_LOGGER_WEB_SERVICE_URL", ""),
             }
         )
 

@@ -1,7 +1,6 @@
+import base64
 import os
 import pty
-import base64
-
 
 
 def run_command_with_pty(cmd, working_dir, env_dict):
@@ -98,6 +97,7 @@ def pty_wrapper_final(human_cmd, dir, env_dict):
 
 def pty_launch(service_name: str, success_std_string="Starting server on"):
     from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+
     service_path = os.environ.get(f"{service_name.upper()}_PATH")
     service_script = os.environ.get(f"{service_name.upper()}_SCRIPT")
     if service_path is None or service_script is None:
@@ -112,8 +112,6 @@ def pty_launch(service_name: str, success_std_string="Starting server on"):
         launch_wait_time=1800,
         success_std_string=success_std_string,
     )
-
-
 
 
 if __name__ == "__main__":

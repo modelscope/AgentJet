@@ -4,18 +4,21 @@
 """The main entry point for the werewolf game."""
 
 import os
-import numpy as np
+
 import dotenv
+import numpy as np
 
 dotenv.load_dotenv()
 from textwrap import dedent
-from loguru import logger
-from tutorial.example_werewolves.game import werewolves_game
+
 from agentscope.agent import ReActAgent
-from agentscope.formatter import OpenAIMultiAgentFormatter, DashScopeMultiAgentFormatter
-from agentscope.model import OpenAIChatModel, DashScopeChatModel
+from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
+from agentscope.model import DashScopeChatModel, OpenAIChatModel
+from loguru import logger
 from pydantic import BaseModel, Field
-from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+
+from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from tutorial.example_werewolves.game import werewolves_game
 
 
 def get_official_agent_prompt(name) -> str:
@@ -78,7 +81,6 @@ def get_official_agent_prompt(name) -> str:
 
 
 class ExampleWerewolves(Workflow):
-
     trainer: str = Field(default="astune-trinity")
     trainable_targets: list = Field(
         default=["seer", "witch"], description="List of agents to be fine-tuned."
@@ -87,7 +89,6 @@ class ExampleWerewolves(Workflow):
     async def agentscope_execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
-
         # ensure trainable targets is legal
         if "werewolf" in self.trainable_targets:
             assert len(self.trainable_targets) == 1, "Cannot train hostile roles simultaneously."
@@ -118,7 +119,9 @@ class ExampleWerewolves(Workflow):
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
                 model=model_tuner.register_model(role, default_model=default_model),
-                formatter=DashScopeMultiAgentFormatter() if role in self.trainable_targets else OpenAIMultiAgentFormatter(),
+                formatter=DashScopeMultiAgentFormatter()
+                if role in self.trainable_targets
+                else OpenAIMultiAgentFormatter(),
             )
             agent.set_console_output_enabled(False)
             players += [agent]
@@ -137,9 +140,10 @@ class ExampleWerewolves(Workflow):
             logger.warning(f"Raw reward: {raw_reward}")
             logger.warning(f"Is success: {is_success}")
         except Exception as e:
-            logger.bind(exception=True).exception(f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent).")
+            logger.bind(exception=True).exception(
+                f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
+            )
             raw_reward = 0.0
             is_success = False
-
 
         return WorkflowOutput(reward=raw_reward, is_success=is_success)

@@ -1,14 +1,18 @@
-import json, re
-from typing import Optional, Dict, Any, List
-from astune.schema.task import Task
-from astune.schema.document import Document
+import json
+import re
+from typing import Any, Dict, List, Optional
+
 from astune.data_generator.data_generator_base import DataGeneratorBase
+from astune.schema.document import Document
+from astune.schema.task import Task
+
 
 class KnowledgeAugmentor(DataGeneratorBase):
     """
     Knowledge Augmentation:
     - Generate new tasks from Document
     """
+
     def _build_system_prompt(
         self,
         source_task: Optional[Task] = None,
@@ -31,30 +35,37 @@ class KnowledgeAugmentor(DataGeneratorBase):
             "8. Non-repetition: Ensure no two questions are duplicates or paraphrases of the same idea. If content overlaps, merge rather than replicate.\n"
             "Always strictly follow these rules in every output."
         )
-    
+
     def _build_user_prompt(
         self,
         source_task: Optional[Task] = None,
         document: Optional[Document] = None,
     ) -> str:
-
         if document is None or not document.content:
             raise ValueError("KnowledgeAugmentor requires a document for reference.")
-        
+
         ref_doc = document.content
 
         user_part = []
         N = self.config.astune.data_generator.knowledge_augmentor.n
-        user_part.append(f"Generate exactly {N} unique, high-quality questions from the following document according to the rules in the system prompt above.")
-        user_part.append(f"For each question, provide the corresponding reference excerpt from the document in the `related_doc` field.")
+        user_part.append(
+            f"Generate exactly {N} unique, high-quality questions from the following document according to the rules in the system prompt above."
+        )
+        user_part.append(
+            f"For each question, provide the corresponding reference excerpt from the document in the `related_doc` field."
+        )
         user_part.append(f"[DOCUMENT START]")
         user_part.append(ref_doc)
         user_part.append(f"[DOCUMENT END]")
         user_part.append(f"Now generate queries that is suitable for the JSON format.")
         user_part.append(f"Return your output strictly in JSON format as follows:")
         user_part.append(f"[")
-        user_part.append("  {\"query\": \"Question text here?\", \"related_doc\": \"Direct excerpt from the document here.\"},")
-        user_part.append("  {\"query\": \"Question text here?\", \"related_doc\": \"Direct excerpt from the document here.\"},")
+        user_part.append(
+            '  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},'
+        )
+        user_part.append(
+            '  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},'
+        )
         user_part.append(f"]")
         return "\n".join(user_part)
 
@@ -84,7 +95,6 @@ class KnowledgeAugmentor(DataGeneratorBase):
         # data: List[Dict[str, str]]
         all_generated_tasks = []
         for task in data:
-            
             # Extract the generated query from parsed JSON
             new_query = task.get("query", "").strip()
             if not new_query:
@@ -101,7 +111,7 @@ class KnowledgeAugmentor(DataGeneratorBase):
             new_task = Task(
                 main_query=new_query,
                 init_messages=[],
-                task_id="", # Will be assigned by the system later
+                task_id="",  # Will be assigned by the system later
                 env_type=source_task.env_type if source_task else "no_env",
                 metadata=new_metadata,
             )
@@ -113,9 +123,5 @@ class KnowledgeAugmentor(DataGeneratorBase):
         Parse LLM response string into JSON.
         """
         # Remove Markdown code block markers (```json and ```) if present
-        response = re.sub(r'^```json|```$', '', response, flags=re.MULTILINE).strip()
+        response = re.sub(r"^```json|```$", "", response, flags=re.MULTILINE).strip()
         return json.loads(response)
-
-
-    
-        

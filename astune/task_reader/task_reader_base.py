@@ -1,8 +1,10 @@
 import json
 import uuid
-import torch
+from typing import Dict, List, Optional
+
 import datasets
-from typing import List, Dict, Optional
+import torch
+
 from astune.schema.task import Task
 
 
