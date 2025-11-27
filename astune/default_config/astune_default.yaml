@@ -29,7 +29,7 @@ astune:
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
 
-    rubrics_auto_grader:
+    rubrics_auto_grader: # only active when `judge_type: rubrics_auto_grader`
       # rubrics begin
       model_name: qwen-max
       grader_mode: pointwise
