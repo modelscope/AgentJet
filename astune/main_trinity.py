@@ -12,6 +12,7 @@ import atexit
 from pathlib import Path
 from pprint import pprint
 from astune.utils.sms_agent import send_train_message
+from astune.utils.core_env_vars import get_runtime_env
 from trinity.buffer.pipelines.task_pipeline import check_and_run_task_pipeline
 from trinity.common.config import Config, load_config
 from trinity.common.constants import DEBUG_NAMESPACE, PLUGIN_DIRS_ENV_VAR
@@ -36,7 +37,7 @@ def bench(config: Config) -> None:
     """Evaluate model."""
     config.explorer.name = "benchmark"
     try:
-        explorer = Explorer.get_actor(config)
+        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(explorer.prepare.remote())
         ray.get(explorer.benchmark.remote())
         logger.info("Benchmark finished.")
@@ -48,7 +49,7 @@ def bench(config: Config) -> None:
 def explore(config: Config) -> None:
     """Run explorer."""
     try:
-        explorer = Explorer.get_actor(config)
+        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(explorer.prepare.remote())
         ray.get(explorer.sync_weight.remote())
         ray.get(explorer.explore.remote())
@@ -60,7 +61,7 @@ def explore(config: Config) -> None:
 def train(config: Config) -> None:
     """Run trainer."""
     try:
-        trainer = Trainer.get_actor(config)
+        trainer = Trainer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(trainer.prepare.remote())
         ray.get(trainer.sync_weight.remote())
         ray.get(trainer.train.remote())
@@ -72,7 +73,7 @@ def train(config: Config) -> None:
 def serve(config: Config) -> None:
     """Run explorer in server mode."""
     try:
-        explorer = Explorer.get_actor(config)
+        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get(explorer.prepare.remote())
         ray.get(explorer.sync_weight.remote())
         ray.get(explorer.serve.remote())
@@ -92,8 +93,8 @@ def both(config: Config) -> None:
     algorithms and tasks.
     """
     try:
-        explorer = Explorer.get_actor(config)
-        trainer = Trainer.get_actor(config)
+        explorer = Explorer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
+        trainer = Trainer.get_actor(config, runtime_env=get_runtime_env(is_trinity=True))
         ray.get([explorer.__ray_ready__.remote(), trainer.__ray_ready__.remote()])
         ray.get(
             [
@@ -179,7 +180,6 @@ def run(config_path: str, dlc: bool = False, plugin_dir: str = None):
 
     if os.path.exists(".env"):
         from dotenv import load_dotenv
-
         load_dotenv(".env")
 
     atexit.register(lambda: send_train_message("0000"))

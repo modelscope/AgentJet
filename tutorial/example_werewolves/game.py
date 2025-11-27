@@ -80,8 +80,6 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
         )
 
     # Assign roles to the agents
-    np.random.shuffle(agents)
-
     for agent, role in zip(agents, roles):
         # Tell the agent its role
         await agent.observe(

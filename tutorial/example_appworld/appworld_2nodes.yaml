@@ -8,7 +8,7 @@ astune:
 
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 
   rollout:
     # ✨✨✨✨ 编写并选择Agent
@@ -39,9 +39,11 @@ astune:
     save_freq: 99999
     test_freq: 99999
     total_epochs: 99999
-    trinity_only__n_vllm_engine: 2  # must be division by tensor_model_parallel_size
+    trinity_only__n_vllm_engine: 8  # must be division by tensor_model_parallel_size
     trinity_only__explorer_batchsize: 32  # for best parallel performance, make sure that (trinity_only__explorer_batchsize * num_repeat) <= (trinity_only__n_vllm_engine * runner_per_model)
     trinity_only__runner_per_model: 100   # for best parallel performance, make sure that (trinity_only__explorer_batchsize * num_repeat) <= (trinity_only__n_vllm_engine * runner_per_model)
+    nnodes: 2
+    n_gpus_per_node: 8
 
 
 # ------------------ 不需要修改 ------------------
