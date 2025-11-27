@@ -1,11 +1,20 @@
 from typing import List, Union, Tuple
 from transformers.tokenization_utils import PreTrainedTokenizer
+from astune.utils.tokenizer import astune_apply_chat_template
 from astune.schema.trajectory import Reward
 from loguru import logger
 import uuid
 
 INVALID_LOG_PROB_VALUE = 0.0
-
+NEED_TRAIN_AUTHORS = ["llm"]
+NON_TRAIN_AUTHORS = [
+    "env",
+    "initialization",
+    "user",
+    "memory",
+    "llm(do_not_train)",
+]
+DUMMY_MSG = [{"role": "assistant", "content": "dummy text"}]
 
 def find_sublist_indices(large_list, small_list, reverse=False):
     small_len = len(small_list)
@@ -37,6 +46,7 @@ class ExtendedMessage:
         tools=[],
         tool_calls=[],
         token_logprob_arr=[],
+        first_message=False,
     ):
         self.author = author
         self.role = role
@@ -53,6 +63,7 @@ class ExtendedMessage:
         self.tool_calls = tool_calls
         self.uuid = uuid.uuid4().hex
         self.build_from_uuid = build_from_uuid
+        self.first_message = first_message
 
         if not clip:
             self.generate_content_for_future(tokenizer=None, clip=False)
@@ -63,52 +74,78 @@ class ExtendedMessage:
                 clip_token_limit=clip_token_limit,
             )
         self.eos_token_id = tokenizer.eos_token_id
+
         if token_generator == "auto":
-            dummy_msg = [{"role": "assistant", "content": "dummy text"}]
-            try:
-                # completion_token_arr will contain generation_prompt header
-                auto_tokenize_target = {
-                    "role": self.role,
-                    "content": self.content_for_future,
-                }
-                if self.tool_calls:
-                    auto_tokenize_target.update({"tool_calls": self.tool_calls})
-                text_frag_to = tokenizer.apply_chat_template(
-                    dummy_msg + [auto_tokenize_target],
-                    tokenize=False,
-                    tools=tools,
-                )
-            except Exception as e:
-                raise ValueError(
-                    f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}"
-                )
-            self.token_arr, _ = self.get_inc_simple(
-                text_frag_from=tokenizer.apply_chat_template(
-                    dummy_msg, tokenize=False, tools=tools
-                ),
-                text_frag_to=text_frag_to,
+            self.token_arr = self.auto_tokenize(
                 tokenizer=tokenizer,
+                tools=tools,
             )
+
+
+    def auto_tokenize(self, tokenizer, tools):
+        if (not self.first_message) and (self.role == "system"):
+            raise ValueError("The system message is usually the first message, check program bugs.")
+        elif (self.first_message) and (self.role != "system"):
+            raise ValueError("The first message is supposed to be the system message, check program bugs, or remove this warning.")
+        if not self.first_message:
+            self.token_arr = self.auto_tokenize_non_first_message(tokenizer=tokenizer, tools=tools)
+        else:
+            auto_tokenize_target = {
+                "role": self.role,
+                "content": self.content_for_future,
+            }
+            if self.tool_calls:
+                auto_tokenize_target.update({"tool_calls": self.tool_calls})
+            self.token_arr = astune_apply_chat_template(
+                tokenizer=tokenizer,
+                conversation=[auto_tokenize_target],
+                tokenize=True,
+                tools=tools,
+            )
+        return self.token_arr
+
+
+    def auto_tokenize_non_first_message(self, tokenizer, tools):
+        try:
+            # completion_token_arr will contain generation_prompt header
+            auto_tokenize_target = {
+                "role": self.role,
+                "content": self.content_for_future,
+            }
+            if self.tool_calls:
+                auto_tokenize_target.update({"tool_calls": self.tool_calls})
+            text_frag_to = astune_apply_chat_template(
+                tokenizer=tokenizer,
+                conversation=DUMMY_MSG + [auto_tokenize_target],
+                tokenize=False,
+                tools=tools,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}"
+            )
+        self.token_arr, _ = self.get_inc_simple(
+            text_frag_from=astune_apply_chat_template(
+                tokenizer=tokenizer,
+                conversation=DUMMY_MSG,
+                tokenize=False,
+                tools=tools,
+            ),
+            text_frag_to=text_frag_to,
+            tokenizer=tokenizer,
+        )
+        return self.token_arr
 
     @property
     def content_for_future(self):
         if self._content_for_future == "":
             if not self.tool_calls:
-                # from vsdb import bp; bp("H1")
                 logger.exception("content_for_future is not set, or previous llm output is empty!")
                 self._content_for_future
         return self._content_for_future
 
     @property
     def need_training(self):
-        NEED_TRAIN_AUTHORS = ["llm"]
-        NON_TRAIN_AUTHORS = [
-            "env",
-            "initialization",
-            "user",
-            "memory",
-            "llm(do_not_train)",
-        ]
         assert (
             (self.author in NEED_TRAIN_AUTHORS)
             or (self.author in NON_TRAIN_AUTHORS)
@@ -170,15 +207,86 @@ class ExtendedMessage:
 
         tokenizer_output = tokenizer(text_frag_to, return_tensors="pt", padding=False)
         input_ids = tokenizer_output["input_ids"][0].tolist()
+        # get the new tokens added in this step
         input_id_increment = input_ids[
             len(token_ids_acc) :
-        ]  # get the new tokens added in this step
-        overlap_length = 0
-        for i in range(len(token_ids_acc)):
-            if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
-                overlap_length += 1
-            else:
-                break
-        msg = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
-        # print(msg)
+        ]
+        FN_DEBUG = False
+        if FN_DEBUG:
+            overlap_length = 0
+            for i in range(len(token_ids_acc)):
+                if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
+                    overlap_length += 1
+                else:
+                    break
+            msg = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
+        else:
+            msg = ""
         return input_id_increment, msg
+
+
+    @staticmethod
+    def check_and_merge_chained_tool_response(
+        ext_msg_array: List["ExtendedMessage"],
+        tokenizer: PreTrainedTokenizer
+    ) -> List["ExtendedMessage"]:
+        """
+        Inside a list of ExtendedMessage,
+        Find consecutive ext msg with role=="tool", then merge them into one ExtendedMessage
+
+        Jinja2 template logic for reference:
+
+        {%- elif message.role == \"tool\" %}
+            {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}
+                {{- '<|im_start|>user' }}
+            {%- endif %}
+            {{- '\
+                <tool_response>\
+            ' }}
+            {{- message.content }}
+            {{- '\
+                </tool_response>' }}
+                        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}
+                            {{- '<|im_end|>\
+            ' }}
+            {%- endif %}
+        {%- endif %}
+        """
+        def merge_tool_group(group, tokenizer):
+            if len(group) == 1:
+                return group[0]
+
+            msg0 = group[0]
+            merged_content = "".join(f"<tool_response>\n{msg.content}\n</tool_response>\n" for msg in group)
+            merged_content = merged_content[len("<tool_response>\n"):]
+            merged_content = merged_content[:-len("</tool_response>\n")]
+            merged = ExtendedMessage(
+                author=msg0.author, role=msg0.role, content=merged_content,
+                tokenizer=tokenizer, token_generator="manual", build_from_uuid=msg0.uuid,
+                tools=msg0.tools, tool_calls=msg0.tool_calls, token_logprob_arr=msg0.token_logprob_arr,
+                first_message=msg0.first_message
+            )
+            # re-compute token_arr
+            auto_tokenize_targets = [{"role": msg.role, "content": msg.content_for_future} for msg in group]
+            merged.token_arr, _ = merged.get_inc_simple(
+                text_frag_from=astune_apply_chat_template(tokenizer=tokenizer, conversation=DUMMY_MSG, tokenize=False, tools=merged.tools, add_generation_prompt=False),
+                text_frag_to=astune_apply_chat_template(tokenizer, conversation=DUMMY_MSG + auto_tokenize_targets, tokenize=False, tools=merged.tools, add_generation_prompt=False),
+                tokenizer=tokenizer
+            )
+            return merged
+
+        groups = []
+        current_tool_group = []
+        for msg in ext_msg_array:
+            if msg.role == "tool":
+                current_tool_group.append(msg)
+            else:
+                if current_tool_group:
+                    groups.append(current_tool_group)
+                    current_tool_group = []
+                groups.append([msg])
+        if current_tool_group:
+            groups.append(current_tool_group)
+
+        result_ext_msg_array = [merge_tool_group(group, tokenizer) for group in groups]
+        return result_ext_msg_array

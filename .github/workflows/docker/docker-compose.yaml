@@ -1,0 +1,26 @@
+services:
+
+  astune-node-1:
+    image: agentscope-tuner-unittest:latest
+    pull_policy: never
+    command: bash -c "uv pip install -e .[dev] && ray start --head --dashboard-host 0.0.0.0 --include-dashboard true --block"
+    environment:
+      - PATH=/opt/venv/bin:$PATH
+      - HF_ENDPOINT=https://hf-mirror.com
+      - RAY_ADDRESS=auto
+    working_dir: /workspace
+    volumes:
+      - astune-volume:/mnt
+      - ../../..:/workspace
+    shm_size: "64G"
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            device_ids: ['0', '1', '2', '3']
+            capabilities: [gpu]
+
+volumes:
+  astune-volume:
+    external: true

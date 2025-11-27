@@ -15,8 +15,9 @@ class TaskReaderHuggingFace(TaskReaderBase):
     It supports configuring the dataset name and split names for training and validation.
     """
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, reader_config):
+        super().__init__(reader_config)
+        self.reader_config = reader_config
 
     def _load_dataset_split(self, dataset_name: str, split: str) -> List[Task]:
         """
@@ -60,8 +61,8 @@ class TaskReaderHuggingFace(TaskReaderBase):
         Returns:
             List[Task]: List of training Task objects.
         """
-        dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_path
-        split = self.config.astune.task_reader.huggingface_dat_repo.training_split
+        dataset_name = self.reader_config.huggingface_dat_repo.dataset_path
+        split = self.reader_config.huggingface_dat_repo.training_split
         return self._load_dataset_split(dataset_name, split)
 
     def get_validation_tasks(self) -> List[Task]:
@@ -71,6 +72,6 @@ class TaskReaderHuggingFace(TaskReaderBase):
         Returns:
             List[Task]: List of validation Task objects.
         """
-        dataset_name = self.config.astune.task_reader.huggingface_dat_repo.dataset_path
-        split = self.config.astune.task_reader.huggingface_dat_repo.validation_split
+        dataset_name = self.reader_config.huggingface_dat_repo.dataset_path
+        split = self.reader_config.huggingface_dat_repo.validation_split
         return self._load_dataset_split(dataset_name, split)

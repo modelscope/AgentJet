@@ -2,6 +2,7 @@
 astune:
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
+  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
   backbone: debug # debug or trinity or verl
 
   task_reader:
@@ -23,9 +24,38 @@ astune:
       validation_split: "validation"
 
   task_judge:
+    judge_type: customized_protocal  # Options: 'customized_protocal', 'rubrics_auto_grader'
     judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
+
+    rubrics_auto_grader: # only active when `judge_type: rubrics_auto_grader`
+      # rubrics begin
+      model_name: qwen-max
+      grader_mode: pointwise
+      language: en
+      min_score: 0
+      max_score: 1
+      success_threshold: 0.7
+      sampling_mode: all_samples
+      generate_number: 1
+      max_epochs: 2
+      max_retries: 3
+      aggregation_mode: keep_all
+      grader_name: Math Auto Grader
+      num_reference_samples: 20
+
+      query_field: main_query
+      answer_field: final_answer
+      reference_field: answer
+
+      input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
+      dataset_file:
+        training:
+          file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
+
+
+      # rubrics end
 
   model:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -50,6 +80,7 @@ astune:
     gamma: 1.0
     agent_madness_termination: True # terminate_after_gone_mad
     agent_madness_reward: -1.0  # customize the reward when agent is detected as gone mad
+    # astune_action_when_overflow: "return_warning_as_llm_output" # `return_warning_as_llm_output`, `fallback_to_default_model`
     add_special_success_reward: False
     temperature: 0.9
     top_p: 1.0
@@ -119,21 +150,7 @@ astune:
     use_kl_loss: True
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
-    trinity_only__n_gpu_for_infer: 2
-
-  # the tracing config
-  tracing:
-    base_url: ./.trash/database.sqlite
-    train_output_path: ./.trash/tasks.jsonl
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 2048
-    filters:
-      - type: llm_evaluate
-        enabled: true
-        params:
-          custom_rubrics: If the answer claims that it has written the output to a file, consider it an invalid response.
-          temperature: 0.5
-          print_reason: false
+    trinity_only__n_vllm_engine: 2
 
   execute_test: False # DO NOT EDIT, FOR TESTING PURPOSE ONLY
   execute_testing_lambda: ""

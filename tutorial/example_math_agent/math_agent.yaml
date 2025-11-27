@@ -20,18 +20,23 @@ astune:
   rollout:
     agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 0.7
-    max_env_worker: 256
-    num_repeat: 8
-    agent_madness_reward: -1.0
-    tensor_model_parallel_size: 4
-    max_num_seqs: 256
+    max_env_worker: 64
+    num_repeat: 4
+    agent_madness_reward: 0.0
+    tensor_model_parallel_size: 1
+    max_num_seqs: 40
     multi_turn:
       max_sample_per_task: 4
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"
+    max_response_length_in_one_turn: 1024
+    max_model_len: 13000
+
   data:
-    train_batch_size: 120
+    train_batch_size: 264
+    max_prompt_length: 3000
+    max_response_length: 10000
 
   debug:
     debug_max_parallel: 1
@@ -41,6 +46,13 @@ astune:
     save_freq: 99999
     test_freq: 99999
     total_epochs: 99999
+    trinity_only__n_vllm_engine: 2  # must be division by tensor_model_parallel_size
+
+
+trinity:
+  trainer:
+    max_token_len_per_gpu: 13000
+
 
 
 # ------------------ 不需要修改 ------------------

@@ -3,12 +3,14 @@ import json
 import time
 import numpy as np
 import uuid
+import asyncio
 from pydantic import BaseModel
 from typing import Dict, List, Literal, Callable, Any, Type
 from loguru import logger
 from omegaconf import DictConfig
 from astune.utils.utils import run_async_coro__no_matter_what, remove_fields
 from astune.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
+from astune.utils.tokenizer import astune_apply_chat_template
 from astune.schema.logprob import TokenAndProb
 from agentscope.model import ChatResponse
 from agentscope.message import TextBlock, ToolUseBlock
@@ -45,6 +47,8 @@ class AsyncLlmBridge(object):
             request_id: str = "",
         ) -> dict:
 
+            request_id = uuid.uuid4().hex
+
             updated_sampling_params = {}
             if sampling_params:
                 updated_sampling_params.update(sampling_params)
@@ -52,20 +56,13 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.update(custom_sampling_params)
 
             input_messages = copy.deepcopy(messages)
-            request_id = uuid.uuid4().hex
-            if tools:
-                prompt_text = self.tokenizer.apply_chat_template(
-                    input_messages,
-                    add_generation_prompt=True,
-                    tools=tools,
-                    tokenize=False
-                )
-            else:
-                prompt_text = self.tokenizer.apply_chat_template(
-                    input_messages,
-                    add_generation_prompt=True,
-                    tokenize=False
-                )
+            prompt_text = astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=input_messages,
+                tools=tools,
+                add_generation_prompt=True,
+                tokenize=False
+            )
             prompt_ids = self.tokenizer(prompt_text)["input_ids"]
 
             _test_if_test_mode('prompt_text', prompt_text, self.config)
@@ -75,7 +72,7 @@ class AsyncLlmBridge(object):
                     request_id=request_id,
                     prompt_ids=prompt_ids,
                     sampling_params=updated_sampling_params,
-                ), timeout=1200
+                ), timeout=1800
             )
 
             if self.config.astune.rollout.name == "vllm":
@@ -105,7 +102,6 @@ class AsyncLlmBridge(object):
                         if 'function' in tool_calls[i] and 'arguments' in tool_calls[i]['function']:
                             expect_dict = json.loads(tool_calls[i]['function']['arguments'])
                             if not isinstance(expect_dict, dict):
-                                from vsdb import bp; bp("UPUP5")
                                 is_bad_toolcall = True
                     if is_bad_toolcall:
                         tool_calls = None
@@ -193,9 +189,9 @@ class AsyncLlmBridge(object):
                     )
                 return response
 
-            response = run_async_coro__no_matter_what(main(), timeout=1200)  # type: ignore
-            # from vsdb import bp; bp("TRR")
+            response = run_async_coro__no_matter_what(main(), timeout=1800)  # type: ignore
             prompt_text = self.tokenizer.decode(response.model_extra['prompt_token_ids'])
+            prompt_token_ids = response.model_extra['prompt_token_ids']
             content = response.choices[0].message.content
             message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
 
@@ -210,7 +206,9 @@ class AsyncLlmBridge(object):
                 "role": "assistant",
                 "request_id": response.id,
                 "content": content,
-                "tool_calls": message.get("tool_calls", None),
+                "prompt_text": prompt_text,
+                "prompt_token_ids": prompt_token_ids,
+                "tool_calls": message.get("tool_calls", []),
                 "tokens": [
                     TokenAndProb(
                         token_id=token,
@@ -261,18 +259,25 @@ class LlmProxyForAgentScope(object):
     ) -> ChatResponse:
 
         # prepare context tracker, check context safety
-        context_safe, info, converted_message, custom_sampling_params, tools = (
+        context_safe, token_overflow, info, converted_message, custom_sampling_params, tools = (
             self.context_tracker.step_prepare(messages, tools)
         )
         if not context_safe:
-            logger.warning(f"[{info}] detected. Current token count exceeds the limit.")
+            logger.warning(f"[{info}] detected.")
             self.context_tracker.context_overflow = True
-            return ChatResponse(
-                content=[{"type": "text", "text": "astune_proxy:[context_overflow]"}]
-            )
+            if token_overflow:
+                # astune_action_when_overflow = self.config.astune.rollout.astune_action_when_overflow
+                # cannot proceed due to context overflow
+                return ChatResponse(
+                    content=[{"type": "text", "text": "astune_proxy: Exceeded max model context length."}],
+                )
+            # else: # otherwise, for abnormal output, can still proceed, but we do not track output anymore
+
         # run llm inference ✨
-        # from vsdb import bp; bp("TOOL_CALL_PARSE5")
-        llm_output = self.llm_chat_fn(converted_message, custom_sampling_params, tools)
+        llm_output = await asyncio.wait_for(
+            asyncio.to_thread(self.llm_chat_fn, converted_message, custom_sampling_params, tools),
+            timeout=1800,
+        )
 
         # begin context tracking
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
@@ -281,6 +286,7 @@ class LlmProxyForAgentScope(object):
         response = await self._parse_dashscope_generation_response(
             llm_output, structured_model=structured_model
         )
+
         return response
 
     # copied from AgentScope's DashScopeChatModule

@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import List, Union, Tuple, Optional
 from astune.schema.trajectory import Sample, Reward
 from astune.utils.compute_madness import compute_string_madness
+from astune.utils.tokenizer import astune_apply_chat_template
 from astune.context_tracker.tracker_base_attr import TrackerAttr
 from astune.context_tracker.tracker_base_attr import ExtendedMessage
 from astune.context_tracker.tracker_base_attr import replace_token_ids
@@ -33,17 +34,10 @@ class BasicContextTracker(TrackerAttr):
         terminal_rewards_dict (dict): Dictionary storing terminal rewards
     """
 
-    """
-    1. prepare_next_llm_context
-    2. check_context_token_num_safe
-    3. prepare_world_interaction
-    4. save_init_input
-    5. save_llm_output
-    6. save_env_output
-    7. remove_last_context
-    8. generate_log
-    9. group_tokenize
-    """
+    def __init__(self, config, tokenizer, **kwargs):
+        super().__init__(config, tokenizer, **kwargs)
+        self.generation_prompt_token = self.get_generation_prompt_token()
+
 
     def prepare_previous_context(self, mod="future"):
         """
@@ -84,27 +78,27 @@ class BasicContextTracker(TrackerAttr):
 
     def check_context_token_num_safe(
         self, messages: List[dict], tools: List[dict] = []
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, bool, str]:
         def get_seq_length(messages):
-            prompt_text = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
+            prompt_text = astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=messages,
                 tools=tools,
+                add_generation_prompt=False,
+                tokenize=False,
             )
             return len(
                 self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]
             )
 
+        token_overflow = (get_seq_length(messages) >= self.max_seq_length)
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
-            return False, "already_mad"
+            return False, token_overflow, "already_mad"
         messages = self.prepare_previous_context(mod="raw")
-        if (
-            get_seq_length(messages) < self.max_seq_length
-        ):  # self.config.env_engine.max_seq_length = 20480
-            return True, "safe"
+        if not token_overflow:  # self.config.env_engine.max_seq_length = 20480
+            return True, token_overflow, "safe"
         else:
-            return False, "token_overflow"
+            return False, token_overflow, "token_overflow"
 
     def get_inc(self, text_frag_from, text_frag_to):
         """
@@ -176,6 +170,7 @@ class BasicContextTracker(TrackerAttr):
                 content=llm_msg["content"],
                 token_generator="manual",
                 tokenizer=self.tokenizer,
+                first_message=(index == 0),
             )
             self.full_context += [ext_msg]
 
@@ -184,8 +179,12 @@ class BasicContextTracker(TrackerAttr):
         for llm_msg, ext_msg, index in zip(
             init_input_arr, self.full_context, range(len(init_input_arr))
         ):
-            text_with_chat_template = self.tokenizer.apply_chat_template(
-                init_input_arr[: (index + 1)], tokenize=False, tools=tools
+            text_with_chat_template = astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=init_input_arr[: (index + 1)],
+                tools=tools,
+                add_generation_prompt=False,
+                tokenize=False,
             )
             tokenizer_output = self.tokenizer(
                 text_with_chat_template, return_tensors="pt", padding=False
@@ -255,21 +254,7 @@ class BasicContextTracker(TrackerAttr):
     def get_token_inc_from_vllm_response(
         self, input_msg_ref, llm_output, tools: List[dict] = []
     ) -> Tuple[List[int], List[int]]:
-        generation_prompt_token, msg = self.get_inc(
-            self.tokenizer.apply_chat_template(
-                input_msg_ref,
-                tokenize=False,
-                add_generation_prompt=False,
-                tools=tools,
-            ),
-            self.tokenizer.apply_chat_template(
-                input_msg_ref,
-                tokenize=False,
-                add_generation_prompt=True,
-                tools=tools,
-            ),
-        )
-        # completion_token_arr will contain generation_prompt header
+
         llm_output_role_content = {
             "role": llm_output["role"],
             "content": llm_output["content"],
@@ -277,21 +262,28 @@ class BasicContextTracker(TrackerAttr):
         if llm_output.get("tool_calls", None):
             llm_output_role_content.update({"tool_calls": llm_output.get("tool_calls", [])})
 
-        completion_token_arr, msg2 = self.get_inc(
-            self.tokenizer.apply_chat_template(input_msg_ref, tokenize=False, tools=tools),
-            self.tokenizer.apply_chat_template(
-                input_msg_ref + [llm_output_role_content],
-                tokenize=False,
-                tools=tools,
+        # completion_token_arr will contain generation_prompt header
+        completion_token_arr, _ = self.get_inc(
+            astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=input_msg_ref,
+                tokenize=False, tools=tools, add_generation_prompt=False
+            ),
+            astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=input_msg_ref + [llm_output_role_content],
+                tokenize=False, tools=tools, add_generation_prompt=False
             ),
         )
         vllm_output_raw_token = [t.token_id for t in llm_output["tokens"]]
         vllm_output_raw_logprob = [t.logprob for t in llm_output["tokens"]]
         self.generated_token_cnt += len(vllm_output_raw_token)
+        if not self.generation_prompt_token:
+            self.generation_prompt_token = self.get_generation_prompt_token()
         final_token_arr, token_logprob_arr = replace_token_ids(
             place_holder=completion_token_arr,
             replace_with=vllm_output_raw_token,
-            begin=generation_prompt_token,
+            begin=self.generation_prompt_token,
             end=[self.tokenizer.eos_token_id],
             raw_logprob=vllm_output_raw_logprob,
         )
@@ -738,3 +730,25 @@ class BasicContextTracker(TrackerAttr):
                     ]
 
         return
+
+
+    def get_generation_prompt_token(self):
+        dummy_msg = [{"role": "assistant", "content": "dummy text"}]
+        self.generation_prompt_token, _ = self.get_inc(
+            astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=dummy_msg,
+                tools=[],
+                add_generation_prompt=False,
+                tokenize=False,
+            ),
+            astune_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=dummy_msg,
+                tools=[],
+                add_generation_prompt=True,
+                tokenize=False,
+            ),
+        )
+        self.generation_prompt = self.tokenizer.decode(self.generation_prompt_token)
+        return self.generation_prompt_token

@@ -21,6 +21,7 @@ import hydra
 import ray
 import atexit
 from astune.utils.sms_agent import send_train_message
+from astune.utils.core_env_vars import get_runtime_env
 from omegaconf import OmegaConf
 from verl.experimental.dataset.sampler import AbstractSampler
 from verl.trainer.constants_ppo import get_ppo_ray_runtime_env
@@ -53,31 +54,7 @@ def run_ppo(config) -> None:
     # Check if Ray is not initialized
     if not ray.is_initialized():
         # this is for local ray cluster
-        runtime_env = {
-            "env_vars": {
-                "TOKENIZERS_PARALLELISM": "true",
-                "NCCL_DEBUG": "WARN",
-                "VLLM_LOGGING_LEVEL": "WARN",
-                "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
-                "VLLM_USE_V1": "1",
-                "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY"),
-            }
-        }
-
-        if os.getenv("RAY_record_task_actor_creation_sites"):
-            runtime_env["env_vars"].update(
-                {
-                    "RAY_record_task_actor_creation_sites": os.getenv(
-                        "RAY_record_task_actor_creation_sites"
-                    ),
-                }
-            )
-        if os.getenv("BEST_LOGGER_WEB_SERVICE_URL"):
-            runtime_env["env_vars"].update(
-                {
-                    "BEST_LOGGER_WEB_SERVICE_URL": os.getenv("BEST_LOGGER_WEB_SERVICE_URL"),
-                }
-            )
+        runtime_env = get_runtime_env()
         print_dict(runtime_env["env_vars"], "runtime_env")
         ray.init(
             runtime_env=runtime_env,

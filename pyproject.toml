@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name =  "AgentScope-Tuner"
+version = "0.1.0"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "agentscope>=1.0.7",
+    "trinity-rft>=0.3.2",
+    "loguru",
+    "pydantic",
+    "beast_logger",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=2.17.0",
+    "black>=23.7.0",
+    "flake8>=6.1.0",
+    "flake8-docstrings>=1.6.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "pytest>=8.0.0",
+    "pytest-json-ctrf",
+]
+
+reward = [
+    "rm_gallery>=0.1.5",
+]
+
+flash_attn = [
+    "flash-attn==2.8.1"
+]
+
+doc = [
+    "jupyter-book>=1.0.4.post1,<2.0.0",
+    "furo>=2025.7.19",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["astune*"]
+exclude = ["tests*", "docs*", "scripts*"]
+
+[tool.setuptools.package-data]
+my_package = ["*.md", "*.rst"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+    | \.git
+    | \.github
+    | \.vscode
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | build
+    | dist
+)/
+'''
+
+[tool.isort]
+known_third_party = ["wandb"]
+
+[tool.uv.extra-build-dependencies]
+flash-attn = ["torch", "numpy", "setuptools"]
+
+[project.urls]
+"Homepage" = "https://github.com/agentscope-ai/AgentScope-Tuner"

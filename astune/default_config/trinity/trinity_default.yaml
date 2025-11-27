@@ -5,7 +5,7 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
       lr: 1e-6
     repeat_times: 6
   buffer:
-    batch_size: 8
+    batch_size: 32
     explorer_input:
       eval_tasksets: []
       taskset:
@@ -47,22 +47,22 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
       seed: 42
       tensor_parallel_size: 1
       tool_call_parser: hermes
-    runner_per_model: 8
+    runner_per_model: 36
     # runner_state_report_interval: 30
   model:
-    max_model_len: 21000
+    max_model_len: 16000
     max_response_tokens: 16000
   monitor:
     monitor_type: swanlab
     # monitor_type: tensorboard
   synchronizer:
-    sync_interval: 2
+    sync_interval: 1
     sync_method: nccl
     sync_style: dynamic_by_explorer
     sync_timeout: 1200
   trainer:
     grad_clip: 1.0
-    max_token_len_per_gpu: 20000
+    max_token_len_per_gpu: 14000
     save_interval: 100
     ulysses_sequence_parallel_size: 1
     use_dynamic_bsz: true
