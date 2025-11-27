@@ -4,11 +4,9 @@ import sys
 from types import SimpleNamespace
 
 import hydra
-from beast_logger import register_logger
 from openai import OpenAI
 
 from astuner.backbone.common_warm_up import warm_up_process
-from astuner.schema.task import Task
 from astuner.task_rollout.native_parallel_worker import ParallelEnvManager
 from astuner.utils.sms_agent import send_train_message
 
@@ -20,7 +18,7 @@ class TokenAndProb:
         self.logprob = t.logprob
         try:
             self.decoded_string = bytes(t.bytes).decode("utf-8")
-        except:
+        except Exception:
             self.decoded_string = "<cannot decode>" + str(t.bytes)
 
 
@@ -111,7 +109,7 @@ def run(config):
     cmt = parallel_env.rollout(
         tasks=tasks[:n_task], mode="sample", epoch="1"
     )  # "sample" or "validate"
-    gen_batch_output = parallel_env.to_dataproto(cmt)
+    _ = parallel_env.to_dataproto(cmt)
     print("Generated batch output")
 
 
@@ -149,31 +147,31 @@ def main(config):
             full_argument_list=[
                 sys.executable,
                 "-m",
-                f"vllm.entrypoints.cli.main",
-                f"serve",
+                "vllm.entrypoints.cli.main",
+                "serve",
                 f"{model_path}",
-                f"--tensor-parallel-size",
+                "--tensor-parallel-size",
                 f"{tensor_parallel_size}",
-                f"--dtype",
-                f"auto",
-                f"--enforce-eager",
-                f"--gpu-memory-utilization",
-                f"{gpu_memory_utilization}",
-                f"--disable-custom-all-reduce",
-                f"--max-num-seqs",
-                f"{max_num_seqs}",
-                f"--max-model-len",
-                f"{max_model_len}",
-                f"--load-format",
+                "--dtype",
                 "auto",
-                f"--enable-chunked-prefill",
-                f"--enable-auto-tool-choice",
-                f"--tool-call-parser",
+                "--enforce-eager",
+                "--gpu-memory-utilization",
+                f"{gpu_memory_utilization}",
+                "--disable-custom-all-reduce",
+                "--max-num-seqs",
+                f"{max_num_seqs}",
+                "--max-model-len",
+                f"{max_model_len}",
+                "--load-format",
+                "auto",
+                "--enable-chunked-prefill",
+                "--enable-auto-tool-choice",
+                "--tool-call-parser",
                 "hermes",
-                f"--enable-prefix-caching",
-                f"--seed",
+                "--enable-prefix-caching",
+                "--seed",
                 f"{seed}",
-                f"--port",
+                "--port",
                 f"{vllm_port}",
             ],
             dir="./",

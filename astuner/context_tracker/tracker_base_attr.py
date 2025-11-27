@@ -1,8 +1,5 @@
 from typing import List, Tuple, Union
 
-from loguru import logger
-from transformers.tokenization_utils import PreTrainedTokenizer
-
 from astuner.schema.extended_msg import (
     INVALID_LOG_PROB_VALUE,
     ExtendedMessage,

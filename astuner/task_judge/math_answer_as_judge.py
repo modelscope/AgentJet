@@ -48,7 +48,7 @@ class MathAnswerAndLlmAsJudge(JudgeBase):
         messages = [
             {
                 "role": "system",
-                "content": f"Is my result correct? If correct, say <Correct>, otherwise say <NotCorrect>.",
+                "content": "Is my result correct? If correct, say <Correct>, otherwise say <NotCorrect>.",
             },
             {
                 "role": "user",

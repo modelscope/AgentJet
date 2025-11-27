@@ -3,7 +3,6 @@
 
 """The main entry point for the werewolf game."""
 
-import os
 
 import dotenv
 import numpy as np
@@ -13,9 +12,9 @@ from textwrap import dedent
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
-from agentscope.model import DashScopeChatModel, OpenAIChatModel
+from agentscope.model import OpenAIChatModel
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 from tutorial.example_werewolves.game import werewolves_game

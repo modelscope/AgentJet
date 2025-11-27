@@ -1,10 +1,9 @@
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Union
 
 from astuner.context_tracker.basic_tracker import BasicContextTracker
 from astuner.task_judge.judge_base import JudgeBase
 from astuner.utils.dynamic_import import dynamic_import
-from astuner.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
-from astuner.utils.utils import remove_fields, run_async_coro__no_matter_what
+from astuner.utils.utils import run_async_coro__no_matter_what
 
 
 class BaseAgentRunner(object):

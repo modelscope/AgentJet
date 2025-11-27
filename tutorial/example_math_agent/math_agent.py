@@ -1,6 +1,5 @@
 from agentscope.message import Msg
 from loguru import logger
-from pydantic import BaseModel, Field
 
 from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 

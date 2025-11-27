@@ -1,8 +1,7 @@
 import json
 import os
 import time
-from abc import ABC, abstractmethod
-from typing import Any, Generator, Iterator, Optional, Protocol, cast
+from typing import Any, Generator, Optional, cast
 
 import requests
 from loguru import logger
@@ -153,9 +152,9 @@ class DashScopeClient:
                     raise LlmException("inappropriate content")
                 if "limit" in error_json["message"]:
                     raise LlmException("hit limit")
-            except LlmException as e:
+            except LlmException:
                 raise
-            except:
+            except Exception:
                 logger.error(f"API request failed: {response.text}")
                 response.raise_for_status()
 
@@ -190,9 +189,9 @@ class DashScopeClient:
                     raise LlmException("inappropriate content")
                 if "limit" in error_json["message"]:
                     raise LlmException("hit limit")
-            except LlmException as e:
+            except LlmException:
                 raise
-            except:
+            except Exception:
                 logger.error(f"API request failed: {response.text}")
                 response.raise_for_status()
 
@@ -245,7 +244,7 @@ class DashScopeClient:
             except LlmException as e:
                 if e.typ == "inappropriate content":
                     logger.warning(
-                        f"llm return inappropriate content, which is blocked by the remote"
+                        "llm return inappropriate content, which is blocked by the remote"
                     )
                     return "[inappropriate content]"
             except Exception as e:
@@ -293,7 +292,7 @@ class DashScopeClient:
             except LlmException as e:
                 if e.typ == "inappropriate content":
                     logger.warning(
-                        f"llm return inappropriate content, which is blocked by the remote"
+                        "llm return inappropriate content, which is blocked by the remote"
                     )
                     yield "[inappropriate content]"
                     return

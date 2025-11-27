@@ -1,9 +1,6 @@
-import json
-import uuid
-from typing import Dict, List, Optional
+from typing import List
 
 import datasets
-import torch
 
 from astuner.schema.task import Task
 from astuner.task_reader.task_reader_base import TaskReaderBase
@@ -49,7 +46,7 @@ class TaskReaderHuggingFace(TaskReaderBase):
                 main_query=example["question"],
                 init_messages=[],  # Dataset examples typically don't have init messages
                 task_id=str(idx),
-                env_type=f"no_env",
+                env_type="no_env",
                 metadata=example,
             )
             tasks.append(task)

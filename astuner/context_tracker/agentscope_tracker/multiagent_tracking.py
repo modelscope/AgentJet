@@ -1,27 +1,15 @@
 import copy
 import json
-from typing import Any, Dict, List, Tuple, Union
+from typing import List, Tuple
 
-from agentscope.model import DashScopeChatModel
-from beast_logger import (
-    NestedJsonItem,
-    SeqItem,
-    print_dict,
-    print_listofdict,
-    print_nested,
-)
+from beast_logger import NestedJsonItem, SeqItem, print_dict, print_nested
 from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from astuner.context_tracker.agentscope_tracker.timeline_merging import (
-    can_merge_steps,
     merge_tracker_timelines,
 )
-from astuner.context_tracker.basic_tracker import (
-    BasicContextTracker,
-    ExtendedMessage,
-    replace_token_ids,
-)
+from astuner.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage
 from astuner.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from astuner.schema.trajectory import Reward
 from astuner.utils.color_hsl import adjust_color_hsl
@@ -162,7 +150,7 @@ class MultiAgentContextTracking(BasicContextTracker):
                             if not isinstance(expect_dict, dict):
                                 wrong_toolcall = True
                                 err_type = "cannot parse arguments"
-                        except:
+                        except Exception:
                             wrong_toolcall = True
                             err_type = "arguments not json"
                     else:
@@ -273,7 +261,7 @@ class MultiAgentContextTracking(BasicContextTracker):
                         "current_prompt_text": current_prompt_text[j],
                     },
                     mod="exception",
-                    header=f"Prompt text mismatch, Please report a github issue",
+                    header="Prompt text mismatch, Please report a github issue",
                 )
                 previous_ext_context[j].token_arr = self.tokenizer(
                     prompt_text_split[j], return_tensors="pt", padding=False
@@ -339,7 +327,7 @@ class MultiAgentContextTracking(BasicContextTracker):
             try:
                 step_advantage = self.reward_structure.step_advantage[index]
                 step_advantage_simple = self.reward_structure.step_advantage_simple[index]
-            except:
+            except Exception:
                 step_advantage = 0.0
                 step_advantage_simple = 0.0
             task_outcome = str(self.reward_structure.success_rate)
@@ -350,8 +338,8 @@ class MultiAgentContextTracking(BasicContextTracker):
             assert (
                 len_prompt_ids + len_response_ids == len_input_ids
             ), "len_prompt_ids + len_response_ids should equal to len_input_ids"
-            nested_items_print_buffer[f".".join(selectors)] = NestedJsonItem(
-                item_id=f"item",  # type: ignore
+            nested_items_print_buffer[".".join(selectors)] = NestedJsonItem(
+                item_id="item",  # type: ignore
                 outcome=task_outcome,  # type: ignore
                 len_prompt_ids=len_prompt_ids,  # type: ignore
                 len_response_ids=len_response_ids,  # type: ignore

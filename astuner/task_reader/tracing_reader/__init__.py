@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Any, List, Mapping, MutableMapping, Sequence, TypedDict
+from typing import Any, List, Mapping, TypedDict
 
 from loguru import logger
 
@@ -10,7 +10,7 @@ from astuner.data_generator.filters.factory import build_filters
 from astuner.schema.task import Task
 
 from ..task_reader_base import TaskReaderBase
-from .connector import LocalSqliteConnectorV1, PhoenixConnector
+from .connector import LocalSqliteConnectorV1
 
 
 class Config(TypedDict):

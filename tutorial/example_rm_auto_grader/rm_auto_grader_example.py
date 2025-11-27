@@ -14,7 +14,7 @@ from typing import List
 
 from astuner.schema.task import Task
 from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
-from astuner.workflow import Workflow, WorkflowOutput, WorkflowTask
+from astuner.workflow import WorkflowOutput, WorkflowTask
 
 # ============================================
 # Example 1: Pre-generated Rubrics Approach

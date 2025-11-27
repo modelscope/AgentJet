@@ -1,11 +1,9 @@
-import argparse
 import os
 import shutil
 import subprocess
 import sys
 import time
 
-import yaml
 from beast_logger import print_dict
 from loguru import logger
 
@@ -41,7 +39,6 @@ def launch_logview(exp_name=None):
         webbrowser.open("http://127.0.0.1:8181/")
     except Exception as e:
         logger.error(f"Error opening web browser: {e}")
-        pass
 
 
 def start_ray_service(args, env):

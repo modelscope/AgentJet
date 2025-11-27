@@ -1,10 +1,7 @@
-import json
-import uuid
-from typing import Dict, List, Optional
+from typing import List
 
 import datasets
 import numpy as np
-import torch
 
 from astuner.schema.task import Task
 from astuner.task_reader.env_service_reader import TaskReaderEnvService
@@ -31,7 +28,7 @@ class RandomDummyGenerator(TaskReaderBase):
                 main_query=f"[dummy task @ {idx}]",
                 init_messages=[],
                 task_id=str(idx),
-                env_type=f"no_env",
+                env_type="no_env",
                 metadata={"random_number": idx},
             )
             tasks.append(task)

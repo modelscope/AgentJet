@@ -1,12 +1,9 @@
 from typing import TYPE_CHECKING, Any, Literal, Type
 
-from agentscope._utils._common import (
-    _create_tool_from_base_model,
-    _json_loads_with_repair,
-)
+from agentscope._utils._common import _create_tool_from_base_model
 from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracking,

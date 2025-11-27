@@ -52,21 +52,21 @@ class KnowledgeAugmentor(DataGeneratorBase):
             f"Generate exactly {N} unique, high-quality questions from the following document according to the rules in the system prompt above."
         )
         user_part.append(
-            f"For each question, provide the corresponding reference excerpt from the document in the `related_doc` field."
+            "For each question, provide the corresponding reference excerpt from the document in the `related_doc` field."
         )
-        user_part.append(f"[DOCUMENT START]")
+        user_part.append("[DOCUMENT START]")
         user_part.append(ref_doc)
-        user_part.append(f"[DOCUMENT END]")
-        user_part.append(f"Now generate queries that is suitable for the JSON format.")
-        user_part.append(f"Return your output strictly in JSON format as follows:")
-        user_part.append(f"[")
+        user_part.append("[DOCUMENT END]")
+        user_part.append("Now generate queries that is suitable for the JSON format.")
+        user_part.append("Return your output strictly in JSON format as follows:")
+        user_part.append("[")
         user_part.append(
             '  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},'
         )
         user_part.append(
             '  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},'
         )
-        user_part.append(f"]")
+        user_part.append("]")
         return "\n".join(user_part)
 
     def _parse_llm_output_to_task(
