@@ -5,7 +5,7 @@ import sys
 import torch
 
 sys.path.append(os.getcwd())
-from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+from astuner.utils.smart_daemon import LaunchCommandWhenAbsent
 
 parser = argparse.ArgumentParser(description="deploy Hugging Face model")
 parser.add_argument(
@@ -30,9 +30,9 @@ def companion_launch():
         tensor_parallel_size = n_avail_gpus
     gpu_memory_utilization = 0.95
     # max_num_seqs = config.actor_rollout_ref.rollout.max_num_seqs
-    # max_model_len = config.astune.rollout.max_model_len
-    # seed = config.astune.debug.debug_vllm_seed
-    # vllm_port = config.astune.debug.debug_vllm_port
+    # max_model_len = config.astuner.rollout.max_model_len
+    # seed = config.astuner.debug.debug_vllm_seed
+    # vllm_port = config.astuner.debug.debug_vllm_port
     vllm_port = args.port
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[

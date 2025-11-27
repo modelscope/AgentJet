@@ -9,15 +9,15 @@ import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from astune.utils.cleaner import fast_kill_by_keyword_bash
-from astune.utils.config_utils import prepare_experiment_config
-from astune.utils.launch_utils import (
+from astuner.utils.cleaner import fast_kill_by_keyword_bash
+from astuner.utils.config_utils import prepare_experiment_config
+from astuner.utils.launch_utils import (
     execute_training_process,
     launch_logview,
     start_ray_service,
 )
-from astune.utils.pty import pty_launch
-from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+from astuner.utils.pty import pty_launch
+from astuner.utils.smart_daemon import LaunchCommandWhenAbsent
 
 load_dotenv()
 
@@ -199,18 +199,18 @@ def main():
         return  # Exit after killing processes
 
     # Initialize variables with default values to avoid "possibly unbound" errors
-    backbone_target = "astune.main_trinity"  # Default to trinity
+    backbone_target = "astuner.main_trinity"  # Default to trinity
     main_yaml_fp = None
     exe_exp_base = None
     exp_name = None
     env = os.environ.copy()
 
     if args.backbone == "verl":
-        backbone_target = "astune.main_verl"
+        backbone_target = "astuner.main_verl"
     if args.backbone == "debug":
-        backbone_target = "astune.main_vllm"
+        backbone_target = "astuner.main_vllm"
     if args.backbone == "trinity":
-        backbone_target = "astune.main_trinity"
+        backbone_target = "astuner.main_trinity"
 
     exp_config = None
     exp_dir = args.exp_dir or "launcher_record"
@@ -227,17 +227,17 @@ def main():
         env["RAY_DEBUG_POST_MORTEM"] = "1"
         env["DEBUG_TAGS"] = args.debug
         env["RAY_record_task_actor_creation_sites"] = "true"
-        assert exp_config["astune"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
+        assert exp_config["astuner"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
         if args.conf:
-            assert exp_config["astune"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
+            assert exp_config["astuner"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
 
     if args.backbone == "trinity":
-        env["ASTUNE_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
+        env["ASTUNER_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
     if args.backbone == "debug":
-        env["ASTUNE_DEBUG"] = "1"  # type: ignore
+        env["ASTUNER_DEBUG"] = "1"  # type: ignore
 
     if args.with_ray:
         start_ray_service(args, env)
@@ -264,7 +264,7 @@ def main():
                 "yaml": main_yaml_fp,
                 "exp_base": exe_exp_base,
                 "exp_yaml_name": os.path.basename(main_yaml_fp),
-                "exp_name": exp_config.get("astune", {}).get("experiment_name"),
+                "exp_name": exp_config.get("astuner", {}).get("experiment_name"),
             }
         else:
             execute_training_process(

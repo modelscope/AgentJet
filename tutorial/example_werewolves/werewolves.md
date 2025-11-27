@@ -8,7 +8,7 @@
 - 定义 AgentScope 的工作流 （把agent的model修改为`astune_proxy`）
     ```python
     class ExampleWerewolves(AgentScopeLearnProtocol):
-        trainer: str = Field(default="astune-trinity")
+        trainer: str = Field(default="astuner-trinity")
         async def agentscope_execute(self, init_messages, astune_proxy: ModelTuner, config) -> WorkflowOutput:
 
             train_which_role = "witch"
@@ -37,7 +37,7 @@
 
 - 复制并修改 [tutorial/example_werewolves/werewolves.yaml](../tutorial/example_werewolves/werewolves.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
     ```yaml
-    astune:
+    astuner
     task_reader:
         type: random_dummy # `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
     task_judge:
@@ -105,9 +105,9 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
 - 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
-    - /mnt/data/qingxu.fu/astune/astune/launcher_record
-    - /mnt/data/qingxu.fu/astune/astune/launcher_record/exp_yaml_file_name
-    - /mnt/data/qingxu.fu/astune/astune/launcher_record/exp_yaml_file_name/2025_11_10_02_52/rollout
+    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record
+    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record/exp_yaml_file_name
+    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record/exp_yaml_file_name/2025_11_10_02_52/rollout
 
 - 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
 

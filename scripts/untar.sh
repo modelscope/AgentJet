@@ -1,1 +1,1 @@
-rm -rf ASTune && tar -xzvf ASTune.tar.gz
+rm -rf ASTune && tar -xzvf astuner.tar.gz

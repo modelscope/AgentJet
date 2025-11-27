@@ -1,0 +1,38 @@
+{
+    "astuner.trainer_common.total_epochs": "trainer.total_epochs",
+
+    "astuner.trainer_common.val_before_train": "trainer.val_before_train",
+    "astuner.trainer_common.n_gpus_per_node": "trainer.n_gpus_per_node",
+    "astuner.trainer_common.nnodes": "trainer.nnodes",
+    "astuner.trainer_common.logger": "trainer.logger",
+    "astuner.trainer_common.algorithm.task_norm_patch": "algorithm.task_norm_patch",
+    "astuner.trainer_common.algorithm.adv_estimator": "algorithm.adv_estimator",
+    "astuner.trainer_common.algorithm.use_kl_in_reward": "algorithm.use_kl_in_reward",
+    "astuner.trainer_common.mini_batch_num": "actor_rollout_ref.actor.override_ppo_mini_batch_num",
+    "astuner.trainer_common.fsdp_config": "actor_rollout_ref.actor.fsdp_config",
+    "astuner.trainer_common.optim": "actor_rollout_ref.actor.optim",
+    "astuner.trainer_common.use_kl_loss": "actor_rollout_ref.actor.use_kl_loss",
+    "astuner.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
+    "astuner.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
+    "astuner.trainer_common.save_freq": "trainer.save_freq",
+    "astuner.trainer_common.test_freq": "trainer.test_freq",
+
+    "astuner.data.max_prompt_length": "data.max_prompt_length",
+    "astuner.data.max_response_length": "data.max_response_length",
+    "astuner.data.train_batch_size": "data.train_batch_size",
+
+    "astuner.rollout.max_model_len": [
+        "actor_rollout_ref.rollout.max_model_len",
+        "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu",
+        "actor_rollout_ref.actor.ppo_max_token_len_per_gpu",
+        "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu"
+    ],
+
+    "astuner.rollout.mode": "actor_rollout_ref.rollout.mode",
+    "astuner.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
+    "astuner.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
+
+    "astuner.model.path": "actor_rollout_ref.model.path",
+    "astuner.project_name": "trainer.project_name",
+    "astuner.experiment_name": "trainer.experiment_name"
+}

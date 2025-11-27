@@ -23,7 +23,7 @@ agent = ReActAgent(
     print_hint_msg=False,
 )
 
-for _ in range(config.astune.rollout.multi_turn.max_steps):
+for _ in range(config.astuner.rollout.multi_turn.max_steps):
     # agentscope deal with interaction message
     reply_message = await agent(interaction_message)
     # env service protocol
@@ -42,7 +42,7 @@ for _ in range(config.astune.rollout.multi_turn.max_steps):
 
 ### 3. 准备Judge (奖励模块)
 
-在 `astune/task_judge/env_service_as_judge.py` 中，我们直接向 env_service 发送http请求，读取奖励。
+在 `astuner/task_judge/env_service_as_judge.py` 中，我们直接向 env_service 发送http请求，读取奖励。
 
 Judge的返回值： raw_reward, is_success
 
@@ -52,21 +52,21 @@ Judge的返回值： raw_reward, is_success
 
 4.1 复制并修改 [tutorial/example_appworld/appworld.yaml](../tutorial/example_appworld/appworld.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
-1. 读取task（对应配置字段 astune.task_reader）
-2. 定义 Workflow（对应配置字段 astune.rollout.agentscope_learn_protocol ）
+1. 读取task（对应配置字段 astuner.task_reader）
+2. 定义 Workflow（对应配置字段 astuner.rollout.agentscope_learn_protocol ）
     - 举例如果 agentscope workflow 定义在 `tutorial/appworld.py` 的`ExampleAgentScopeLearnProtocol` 类
-    - 则填写 astune.rollout.agentscope_learn_protocol=`tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol`
-3. 定义评分函数（对应配置字段 astune.task_judge.judge_protocol ）
-    - 填写 astune.task_judge.judge_protocol=`astune.task_judge.env_service_as_judge->EnvServiceJudge`
-4. 指定模型（对应配置字段 astune.model.path ）
+    - 则填写 astuner.rollout.agentscope_learn_protocol=`tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol`
+3. 定义评分函数（对应配置字段 astuner.task_judge.judge_protocol ）
+    - 填写 astuner.task_judge.judge_protocol=`astuner.task_judge.env_service_as_judge->EnvServiceJudge`
+4. 指定模型（对应配置字段 astuner.model.path ）
 
 ```yaml
-astune:
+astuner
   project_name: appworld_astune
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -135,9 +135,9 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
 - 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
-    - /mnt/data/qingxu.fu/astune/astune/launcher_record
-    - /mnt/data/qingxu.fu/astune/astune/launcher_record/exp_yaml_file_name
-    - /mnt/data/qingxu.fu/astune/astune/launcher_record/exp_yaml_file_name/2025_11_10_02_52/rollout
+    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record
+    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record/exp_yaml_file_name
+    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record/exp_yaml_file_name/2025_11_10_02_52/rollout
 
 - 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
 

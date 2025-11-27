@@ -53,7 +53,7 @@ doc = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["astune*"]
+include = ["astuner*"]
 exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]
