@@ -1,14 +1,17 @@
-import subprocess
 import argparse
-import shutil
-import yaml
-import time
-import sys
 import os
-from loguru import logger
+import shutil
+import subprocess
+import sys
+import time
+
+import yaml
 from beast_logger import print_dict
+from loguru import logger
+
 from astune.utils.config_utils import align_parameters
 from astune.utils.smart_daemon import LaunchCommandWhenAbsent
+
 
 def launch_logview(exp_name=None):
     """
@@ -33,6 +36,7 @@ def launch_logview(exp_name=None):
     )
     try:
         import webbrowser
+
         time.sleep(2.5)
         webbrowser.open("http://127.0.0.1:8181/")
     except Exception as e:
@@ -49,7 +53,7 @@ def start_ray_service(args, env):
     """
     # 获取当前 Python 解释器目录
     python_dir = os.path.dirname(sys.executable)
-    ray_path = os.path.join(python_dir, 'ray')
+    ray_path = os.path.join(python_dir, "ray")
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[f"{ray_path} start --head --block"],
         dir="./",
@@ -61,7 +65,6 @@ def start_ray_service(args, env):
         success_std_string="Ray runtime started",
         env_dict=env,
     )
-
 
 
 def execute_training_process(
@@ -86,13 +89,11 @@ def execute_training_process(
     """
 
     # Fixed config asset locations
-    TRINITY_BOOT_YAML = \
-        "astune/default_config/trinity/trinity_launch.yaml"  # THIS FILE IS READ ONLY, and ALWAYS FIXED
-    TRINITY_CONFIG_AUTO_CONVERSION = \
+    TRINITY_BOOT_YAML = "astune/default_config/trinity/trinity_launch.yaml"  # THIS FILE IS READ ONLY, and ALWAYS FIXED
+    TRINITY_CONFIG_AUTO_CONVERSION = (
         "astune/default_config/trinity/config_auto_convertion_trinity.json"
-    VERL_CONFIG_AUTO_CONVERSION = \
-        "astune/default_config/verl/config_auto_convertion_verl.json"
-
+    )
+    VERL_CONFIG_AUTO_CONVERSION = "astune/default_config/verl/config_auto_convertion_verl.json"
 
     # let's begin the training process
     if args.backbone == "trinity":
@@ -141,11 +142,13 @@ def execute_training_process(
 
     try:
         logger.info(f"Running command: {' '.join(cmd)}")
-        print_dict({
-            "Running Command": ' '.join(cmd),
-            "Experiment Base": exe_exp_base,
-            "YAML Config": exe_yaml_path,
-        })
+        print_dict(
+            {
+                "Running Command": " ".join(cmd),
+                "Experiment Base": exe_exp_base,
+                "YAML Config": exe_yaml_path,
+            }
+        )
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")

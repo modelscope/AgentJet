@@ -3,7 +3,7 @@
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Literal
+from typing import Dict, List, Literal
 from urllib.parse import quote
 
 import numpy as np
@@ -99,7 +99,8 @@ class StaticRollout(StepPrinter):
                 if any(future.exception() for future in futures):
                     executor.shutdown(wait=False, cancel_futures=True)
                     for f in futures:
-                        if not f.done(): f.cancel()
+                        if not f.done():
+                            f.cancel()
                     raise RuntimeError("One of the rollout threads has encountered an exception.")
                 self.step_status_printer(obs_window)
                 time.sleep(10)
@@ -196,7 +197,7 @@ class DynamicRollout(StaticRollout):
             rollout_n < rollout_n_confirm < rollout_n_oversample
         ), f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
 
-        obs_window = {
+        obs_window: Dict[str, List[int | bool]] = {
             "step": [0 for _ in range(len(tasks) * rollout_n_oversample)],
             "stop": [False for _ in range(len(tasks) * rollout_n_oversample)],
             "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],
@@ -243,17 +244,17 @@ class DynamicRollout(StaticRollout):
                     if not all_equal:
                         if num_finished >= rollout_n:
                             can_terminate[j] = True
-                            terminate_status[j] = (
-                                f"early_end({len(completed_results)}/{reward_std:.2f})"
-                            )
+                            terminate_status[
+                                j
+                            ] = f"early_end({len(completed_results)}/{reward_std:.2f})"
                         else:
                             pass
                     else:
                         if num_finished >= rollout_n_confirm:
                             can_terminate[j] = True
-                            terminate_status[j] = (
-                                f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
-                            )
+                            terminate_status[
+                                j
+                            ] = f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
                             if allow_force_stop:
                                 for k in range(
                                     j * rollout_n_oversample,
@@ -435,10 +436,15 @@ class ParallelEnvManager(DynamicRollout):
         return sample_arr_final
 
     def samples_to_dataproto(self, samples: list[Sample]) -> DataProto:
-        prompt_ids, response_ids = [], []
-        prompt_attention_mask, response_attention_mask = [], []
-        prompt_position_ids, response_position_ids = [], []
-        prompt_loss_mask, response_loss_mask = [], []
+        prompt_ids: torch.Tensor | List[torch.Tensor] = []
+        response_ids: torch.Tensor | List[torch.Tensor] = []
+        prompt_attention_mask: torch.Tensor | List[torch.Tensor] = []
+        response_attention_mask: torch.Tensor | List[torch.Tensor] = []
+        prompt_position_ids: torch.Tensor | List[torch.Tensor] = []
+        response_position_ids: torch.Tensor | List[torch.Tensor] = []
+        prompt_loss_mask: torch.Tensor | List[torch.Tensor] = []
+        response_loss_mask: torch.Tensor | List[torch.Tensor] = []
+
         messages = []
         step_reward_scores = []
         task_ids = []

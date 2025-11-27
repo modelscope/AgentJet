@@ -1,8 +1,10 @@
 import time
 from functools import wraps
 from typing import Any, Callable, Literal, Optional, TypeVar
-from astune.utils.testing_utils import GoodbyeException, TestFailException
+
 from loguru import logger
+
+from astune.utils.testing_utils import GoodbyeException, TestFailException
 
 T = TypeVar("T")
 

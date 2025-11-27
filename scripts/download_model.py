@@ -1,9 +1,8 @@
 ms = input("modelscope ? (Y/n)")
 
 if ms == "Y" or ms == "y":
-
-    from modelscope import snapshot_download
     from loguru import logger
+    from modelscope import snapshot_download
 
     cache_dir = input("model path ( /mnt/data/model_cache/modelscope/hub/Qwen ): ").strip()
     if not cache_dir:
@@ -12,7 +11,6 @@ if ms == "Y" or ms == "y":
     logger.success(res)
 
 else:
-
     import os
     import subprocess
 

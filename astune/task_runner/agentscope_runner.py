@@ -1,29 +1,28 @@
-import threading
-import importlib
-import torch
-import copy
 import asyncio
+import copy
+import importlib
+import threading
+from typing import Any, Dict, List, Tuple, Union
+
+import torch
+
 from astune import ModelTuner, Workflow, WorkflowOutput
-from astune.utils.env_service_client.env_client import EnvClient
-from astune.task_runner import BaseAgentRunner
+from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
+    MultiAgentContextTracking,
+)
 from astune.context_tracker.basic_tracker import (
     BasicContextTracker,
     ExtendedMessage,
     replace_token_ids,
-    BasicContextTracker,
 )
-from astune.context_tracker.agentscope_tracker.multiagent_tracking import (
-    MultiAgentContextTracking,
-)
-from astune.schema.trajectory import Reward, Trajectory
-from astune.schema.trajectory import Sample, Reward
 from astune.schema.task import Task, WorkflowTask
+from astune.schema.trajectory import Reward, Sample, Trajectory
+from astune.task_runner import BaseAgentRunner
 from astune.utils.dynamic_import import dynamic_import
-from typing import Any, Dict, List, Union, Tuple
+from astune.utils.env_service_client.env_client import EnvClient
 
 
 class AgentScopeRunner(BaseAgentRunner):
-
     def execute(self, workflow_task: WorkflowTask) -> BasicContextTracker:
         obs_window = workflow_task.obs_window
         task_thread_index = workflow_task.task_thread_index
@@ -47,7 +46,7 @@ class AgentScopeRunner(BaseAgentRunner):
             task_batch_index=task_batch_index,
             task_tag=task_tag,
             task_id=task_id,
-            **hooks
+            **hooks,
         )
         m_tuner = ModelTuner(
             context_tracker=context_tracker,

@@ -4,8 +4,8 @@ from typing import List
 
 import pytest
 
-from astune.task_reader.tracing_reader import TracingReader
 from astune.schema.task import Task
+from astune.task_reader.tracing_reader import TracingReader
 
 
 @pytest.fixture

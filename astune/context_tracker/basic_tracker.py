@@ -1,22 +1,26 @@
-import torch
 import copy
-from loguru import logger
 from collections import defaultdict
-from typing import List, Union, Tuple, Optional
-from astune.schema.trajectory import Sample, Reward
-from astune.utils.compute_madness import compute_string_madness
-from astune.utils.tokenizer import astune_apply_chat_template
-from astune.context_tracker.tracker_base_attr import TrackerAttr
-from astune.context_tracker.tracker_base_attr import ExtendedMessage
-from astune.context_tracker.tracker_base_attr import replace_token_ids
+from typing import List, Optional, Tuple, Union
+
+import torch
 from beast_logger import (
-    register_logger,
+    NestedJsonItem,
+    SeqItem,
     print_dict,
     print_listofdict,
     print_nested,
-    NestedJsonItem,
-    SeqItem,
+    register_logger,
 )
+from loguru import logger
+
+from astune.context_tracker.tracker_base_attr import (
+    ExtendedMessage,
+    TrackerAttr,
+    replace_token_ids,
+)
+from astune.schema.trajectory import Reward, Sample
+from astune.utils.compute_madness import compute_string_madness
+from astune.utils.tokenizer import astune_apply_chat_template
 
 
 class BasicContextTracker(TrackerAttr):
@@ -37,7 +41,6 @@ class BasicContextTracker(TrackerAttr):
     def __init__(self, config, tokenizer, **kwargs):
         super().__init__(config, tokenizer, **kwargs)
         self.generation_prompt_token = self.get_generation_prompt_token()
-
 
     def prepare_previous_context(self, mod="future"):
         """
@@ -91,7 +94,7 @@ class BasicContextTracker(TrackerAttr):
                 self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]
             )
 
-        token_overflow = (get_seq_length(messages) >= self.max_seq_length)
+        token_overflow = get_seq_length(messages) >= self.max_seq_length
         if self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
             return False, token_overflow, "already_mad"
         messages = self.prepare_previous_context(mod="raw")
@@ -254,7 +257,6 @@ class BasicContextTracker(TrackerAttr):
     def get_token_inc_from_vllm_response(
         self, input_msg_ref, llm_output, tools: List[dict] = []
     ) -> Tuple[List[int], List[int]]:
-
         llm_output_role_content = {
             "role": llm_output["role"],
             "content": llm_output["content"],
@@ -267,12 +269,16 @@ class BasicContextTracker(TrackerAttr):
             astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_msg_ref,
-                tokenize=False, tools=tools, add_generation_prompt=False
+                tokenize=False,
+                tools=tools,
+                add_generation_prompt=False,
             ),
             astune_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_msg_ref + [llm_output_role_content],
-                tokenize=False, tools=tools, add_generation_prompt=False
+                tokenize=False,
+                tools=tools,
+                add_generation_prompt=False,
             ),
         )
         vllm_output_raw_token = [t.token_id for t in llm_output["tokens"]]
@@ -316,9 +322,9 @@ class BasicContextTracker(TrackerAttr):
         if ("content" not in env_output) and ("error" in env_output):
             env_output["content"] = f"[Error from environment: {env_output['error']}]"
         elif ("content" not in env_output) or (not env_output["content"]):
-            env_output["content"] = (
-                "Warning: the environment does not provide any feedback, please provide valid inpu and try again."
-            )
+            env_output[
+                "content"
+            ] = "Warning: the environment does not provide any feedback, please provide valid inpu and try again."
         if add_nothink:
             env_output["content"] += " /no_think"
         ext_msg = ExtendedMessage(
@@ -730,7 +736,6 @@ class BasicContextTracker(TrackerAttr):
                     ]
 
         return
-
 
     def get_generation_prompt_token(self):
         dummy_msg = [{"role": "assistant", "content": "dummy text"}]

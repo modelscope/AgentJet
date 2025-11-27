@@ -1,13 +1,11 @@
 import re
-from astune.workflow import WorkflowOutput, WorkflowTask
+
 from astune.task_judge.judge_base import JudgeBase
-from astune.task_rollout.dashscope_llm_bridge import (
-    construct_alien_llm_chat_fn,
-)
+from astune.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
+from astune.workflow import WorkflowOutput, WorkflowTask
 
 
 class MathAnswerAsJudge(JudgeBase):
-
     def __init__(self, config):
         self.config = config
 
@@ -32,7 +30,6 @@ class MathAnswerAsJudge(JudgeBase):
 
 
 class MathAnswerAndLlmAsJudge(JudgeBase):
-
     def __init__(self, config):
         self.config = config
 

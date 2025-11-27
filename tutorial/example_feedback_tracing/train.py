@@ -1,16 +1,16 @@
-from astune import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
-from agentscope.message import Msg
-from pydantic import BaseModel, Field
-from loguru import logger
 import os
+
+import agentscope
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
 from agentscope.model import DashScopeChatModel
 from agentscope.tool import Toolkit, execute_python_code
-import agentscope
+from loguru import logger
+from pydantic import BaseModel, Field
 
+from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 SYSTEM_PROMPT = """
 You are an agent specialized in solving math problems with tools.
@@ -39,7 +39,6 @@ def extract_final_answer(result) -> str:
         return str(result)
 
 
-
 class FinalResult(BaseModel):
     result: str = Field(
         description="Your solution of the given math problem. Put your final answer in boxed format, e.g., \\boxed{42}"
@@ -49,12 +48,14 @@ class FinalResult(BaseModel):
 class ExampleTracingFeedbackTrain(Workflow):
     name: str = "tracing_feedback_train"
 
-    async def agentscope_execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def agentscope_execute(
+        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
+    ) -> WorkflowOutput:
         query = workflow_task.task.main_query
-        
-        tool_kit=Toolkit()
+
+        tool_kit = Toolkit()
         tool_kit.register_tool_function(execute_python_code)
-        
+
         agent = ReActAgent(
             name="Qwen",
             sys_prompt=SYSTEM_PROMPT,
@@ -64,9 +65,8 @@ class ExampleTracingFeedbackTrain(Workflow):
             toolkit=tool_kit,
             print_hint_msg=False,
         )
-        
+
         msg = Msg("user", query, role="user")
         result = await agent.reply(msg, structured_model=FinalResult)
         final_answer = extract_final_answer(result)
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-

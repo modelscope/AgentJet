@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Union
+from typing import Any, Dict, List, Union
 
+from pydantic import BaseModel, Field
 
 """
 The basic schema for task_reader module

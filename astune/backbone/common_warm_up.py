@@ -1,10 +1,13 @@
-import os
 import asyncio
+import os
+
 
 def init_parallel_rollout_logger(experiment_name):
     """Initialize the logger with the given configuration."""
-    from beast_logger import register_logger
     from datetime import datetime
+
+    from beast_logger import register_logger
+
     final_log_path = os.path.join(
         "launcher_record",
         experiment_name,
@@ -19,7 +22,6 @@ def init_parallel_rollout_logger(experiment_name):
         base_log_path=final_log_path,
         debug=False,
     )
-
 
 
 def warm_up_process(config):
@@ -38,17 +40,18 @@ def warm_up_process(config):
     slightly longer initialization times for certain components in each process.
     """
 
-    if "PROCESS_LEVEL_WARMUP_INIT" in os.environ: return
+    if "PROCESS_LEVEL_WARMUP_INIT" in os.environ:
+        return
     os.environ["PROCESS_LEVEL_WARMUP_INIT"] = "1"
     experiment_name = config.astune.experiment_name
     init_parallel_rollout_logger(experiment_name)
     warm_up_task_judge_when_needed(config)
 
 
-
 def warm_up_task_judge_when_needed(config):
     if config.astune.task_judge.judge_type == "rubrics_auto_grader":
         from astune.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+
         judge = RMAutoGraderJudge(config)
         asyncio.run(judge.generate_rubrics_from_samples())
         asyncio.run(judge.load_rubrics_from_cache())

@@ -4,6 +4,7 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"  # 必须放在第一行
 import argparse
 import glob
 import time
+
 from huggingface_hub import snapshot_download
 
 parser = argparse.ArgumentParser(description="download Hugging Face dataset")

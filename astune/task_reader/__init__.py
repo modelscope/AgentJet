@@ -1,11 +1,12 @@
 import json
 import uuid
-import torch
+from typing import Dict, List, Optional
+
 import datasets
 import numpy as np
-from typing import List, Dict, Optional
-from astune.schema.task import Task
+import torch
 
+from astune.schema.task import Task
 from astune.task_reader.env_service_reader import TaskReaderEnvService
 from astune.task_reader.hf_dataset_reader import TaskReaderHuggingFace
 from astune.task_reader.jsonl_reader import TaskReaderJsonl
@@ -14,7 +15,6 @@ from astune.task_reader.tracing_reader import TracingReader
 
 
 class RandomDummyGenerator(TaskReaderBase):
-
     def __init__(self, reader_config):
         super().__init__(reader_config)
 

@@ -1,14 +1,16 @@
+import atexit
 import os
 import sys
-import hydra
-import atexit
-from openai import OpenAI
 from types import SimpleNamespace
-from astune.schema.task import Task
+
+import hydra
 from beast_logger import register_logger
+from openai import OpenAI
+
+from astune.backbone.common_warm_up import warm_up_process
+from astune.schema.task import Task
 from astune.task_rollout.native_parallel_worker import ParallelEnvManager
 from astune.utils.sms_agent import send_train_message
-from astune.backbone.common_warm_up import warm_up_process
 
 
 class TokenAndProb:
@@ -23,7 +25,6 @@ class TokenAndProb:
 
 
 class ChatCompletionScheduler:
-
     def __init__(self, url, config):
         from transformers import AutoTokenizer
 
@@ -126,8 +127,9 @@ def main(config):
     print("*" * 20)
 
     def companion_launch():
-        from astune.utils.smart_daemon import LaunchCommandWhenAbsent
         import torch
+
+        from astune.utils.smart_daemon import LaunchCommandWhenAbsent
 
         print("Launching companion process for async LLM server...")
         model_path = config.astune.model.path

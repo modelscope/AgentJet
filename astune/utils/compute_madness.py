@@ -44,7 +44,7 @@ def build_pattern(white_list):
             allowed_parts.append(WHITE_LIST_REGEX_PARTS[name])
     # Merge allowed ranges into one character class, then use a negated class to match disallowed characters
     allowed_class = "".join(allowed_parts)
-    pattern = f'[^{allowed_class}]'  # Match disallowed characters
+    pattern = f"[^{allowed_class}]"  # Match disallowed characters
     return re.compile(pattern)
 
 
@@ -80,7 +80,8 @@ def compute_string_madness(completion, detail=False, checklist=["nonsense"]) -> 
 
     return all_reward
 
-def compute_string_madness_format(completion, detail, format_type)->float:
+
+def compute_string_madness_format(completion, detail, format_type) -> float:
     if format_type == "type_1":
         """
 
@@ -125,22 +126,21 @@ def compute_string_madness_format(completion, detail, format_type)->float:
 
 
 def compute_string_madness_char(completion, detail=False, skip_non_ascii=False) -> float:
-
-    if detail:
-        result = {
-            "has_non_ascii": has_non_ascii(completion),
-            "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
-            "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
-            "has_wrong_sp_token": "<|im_start|>" in completion,
-            # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
-        }
-        if has_non_ascii(completion):
-            for char in completion:
-                if has_non_ascii(char):
-                    print(f"---")
-                    print(f"found non-ascii char: {char} ord={ord(char)}")
-        print(result)
-        return result
+    # if detail:
+    #     result = {
+    #         "has_non_ascii": has_non_ascii(completion),
+    #         "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
+    #         "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
+    #         "has_wrong_sp_token": "<|im_start|>" in completion,
+    #         # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
+    #     }
+    #     if has_non_ascii(completion):
+    #         for char in completion:
+    #             if has_non_ascii(char):
+    #                 print(f"---")
+    #                 print(f"found non-ascii char: {char} ord={ord(char)}")
+    #     print(result)
+    #     return result
 
     if "<|im_start|>" in completion:
         return -1.0
@@ -174,7 +174,9 @@ if __name__ == "__main__":
     # print(compute_string_madness("Hello world! Hello world!"))  # -1.0
     # print(compute_string_madness("你好，世界！"))  # -1.0
     # print(compute_string_madness("Hello <|im_start|> world!"))  # -1.0
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         playlist_songs` API to get the list of songs in a playlist.
 
         Let's first call `show_playlist_songs` to get the list of songs for a playlist and then calculate the total duration.
@@ -200,14 +202,23 @@ if __name__ == "__main__":
         ```
 
         Let's execute this code to find the suitable playlist.  🚀🚀 😄😄
-    """) == 0
+    """
+        )
+        == 0
+    )
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         Hello <|im_start|> world!
-    """) == -1
+    """
+        )
+        == -1
+    )
 
-
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         def has_non_ascii(text):
         non_ascii_but_normal = ['‘', '’', '“', '”', '–', '—', '…', '•', '™', '©', '®', '°', '±', 'µ', '°', '′', '″', '℉', '℃']
         for t in non_ascii_but_normal:
@@ -222,26 +233,44 @@ if __name__ == "__main__":
         3. chinese
         4. chinese 标点
         5. other normal chars you can think of
-    """) == 0
+    """
+        )
+        == 0
+    )
 
-
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-    """) == -1
+    """
+        )
+        == -1
+    )
 
-
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         fewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwefewfwe
-    """) == -1
+    """
+        )
+        == -1
+    )
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd wqd
-    """) == -1
+    """
+        )
+        == -1
+    )
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         1
         游戏科学在科隆游戏展上发布新作品《黑神话：钟馗》，视频中有哪些信息值得关注？
         世上何尝有鬼？妖魔皆从心生。 台下魑魅台上仙，好煞两副面！ 门内一滩子糊涂账，门外哪个喊青天？ 日月朝暮空空悬，凭谁掌那生死权。 不顺人情不合道，不争功名不趋炎。 提剑也，提剑也， 要把这清浊辨！ 由游戏科学开发的黑神话系列第二部作品《黑神话：钟馗》，今日正式公布首支 CG 先导预告片，并已在 2025 科隆游戏展的展前发布会同步亮相。 本作是以中国民间传说中的著名角色「钟馗」为主要创意来源的单机·动作·角色扮演游戏。因尚处早期开发阶段，暂无实机内容展示。
@@ -264,23 +293,37 @@ if __name__ == "__main__":
         新
         微软 Win11 最新 KB5063878 更新导致特定情况下 SSD 和 HDD 故障，如何解决？
         IT 之家 8 月 17 日消息，微软上周发布了一个非常重要的
-    """) == 0
+    """
+        )
+        == 0
+    )
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         <think>_the output indicates that the variable\_name\_error\_is\_ spotify\_\_access\_\_token\_\_,is\_not\_\_defined\_，\_but\_accord\_\_to\_\_the\_\_previous\_\_conversation\_\_record\_\_matchCondition\_\_spotify\_\_access\_\_token\_\_has\_\_been\_\_successfully\_\_获得\_\_取得以及\_\_可以\_\_正常使用\_\_matchCondition\_\_，\_所以\_\_问题\_\_应该\_\_出\_\_在\_\_上次\_\_对话\_\_记录\_\_沒有\_\_正确\_\_继承\_\_或\_\_上\_\_次\_\_对话\_\_记录\_\_无法\_\_正确\_\_匹配\_\_本次\_\_对话\_\_继续\_\_matchCondition\_\_，\_因此\_\_需要\_\_重新\_\_获得\_\_ spotify\_\_登录\_\_所需的\_\_电子邮件\_\_和\_\_密码\_\_matchCondition\_\_，\_并\_\_再次\_\_获得\_\_ spotify\_\_访问\_\_令牌\_\_matchCondition\_\_，\_以便\_\_可以\_\_正常使用\_\_ spotify\_\_api\_\_matchCondition\_\_。\_</think\>
         ```python
         passwords = apis.supervisor. show\_account\_passwords ()
         print ( passwords )
         ```<|im_end|>
-    """) == 0   # exclude chinese
+    """
+        )
+        == 0
+    )  # exclude chinese
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         <think\> the\_ last\_ try\_ to\_ get\_ the\_ supervisor\_\_ account\_ passwords\_ using\_ the\_ supervisor\_ api\_ failed\_ again\_ for\_ unknown\_ reason\_,\_ but\_ from\_ the\_ previous\_ conversation\_ record\_ we\_ already\_ know\_ the\_ api\_ response\_\__marker\= \[\_ \{\_ "account\_ name\_\_ marker\= \":\_ \"spotify\_\_",\_ "password\_\_ marker\= \":\_ \"dummy\_ spotify\_ pass\"\_\_\_\_ marker\},\_ \{\_ "account\_ name\_\_ marker\= \":\_ \"file\_ system\_\_",\_ "password\_\_ marker\= \":\_ \"dummy\_ fs\_ pass\"\_\_\_\_\_ marker\}\_\_\_\]\_\_ already\_,\_ so\_ we\_ can\_ reuse\_ the\_\_marker\_ known\_ information\_ instead\_ of\_ trying\_ to\_ call\_ the\_ api\_ again\_ which\_ fails\_ for\_ unknown\_ reason\_matchCondition\_，\_next\_ we\_ should\_ use\_ the\_ known\_ spotify\_ password\_ to\_ login\_ to\_ get\_ the\_ spotify\_ access\_ token\_ again\_matchCondition\_。\_</think\>\_\`\`\_python\_\_marker\}\_ spotify\_ password\_\_ marker\= "dummy\_ spotify\_ pass"\_\_ login\_ result\_\_ marker\= apis\. spotify\. login\_ marker\(\_ username\_\_ marker\= \'joseharr@gmail\. com\'\_\_,\_ password\_\_ marker\= spotify\_ password\_\_\_\)\_ print\_\_ marker\(\_ login\_ result\_\_\_\)\_\_\`\`\_ bezpo\_ marker\}<|im_start|>
         <|endoftext|><|im_end|>
-    """) == -1 # <|im_start|> in the text
+    """
+        )
+        == -1
+    )  # <|im_start|> in the text
 
-
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         <think>
         From the API documentation, we can see that the `show_recommendations` API provides personalized song recommendations for the user. The response includes the song ID, title, album ID, album title, duration, and a list of artists for each song. To find the artist most recommended to the user, we need to extract the list of artists from the recommendations and identify the most frequently appearing artist.
         </think>
@@ -310,19 +353,28 @@ if __name__ == "__main__":
         print(most_recommended_artist)
         apis.supervisor.complete_task(answer=most_recommended_artist)
         ```คะแน limburg<|im_end|>
-    """) == -1
+    """
+        )
+        == -1
+    )
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         <think>Though file_system app has no login api, it may need supervisor app's login, so I will try that.</think>
         ```python
         supervisor_password = [account_password["password"] for account_password in passwords if account_password["account_name"] == "supervisor"][0]
         login_result = apis.supervisor.login(username='jennifer.powell@example.com', password=supervisor_password)
         print(login_result)
         ```<|im_end|>
-    """) == 0
+    """
+        )
+        == 0
+    )
 
-
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
 <think>
 
 
@@ -344,11 +396,15 @@ for content in movie_recommendations:
             movie_titles.append(line.strip())
 print(movie_titles)
 ```<|im_end|>
-    """) == -1 # too many `line.startswith`
+    """
+        )
+        == -1
+    )  # too many `line.startswith`
 
     # part 2
-    assert compute_string_madness_format(
-    """
+    assert (
+        compute_string_madness_format(
+            """
     <think>Though file_system app has no login api, it may need supervisor app's login, so I will try that.</think>
     ```python
     supervisor_password = [account_password["password"] for account_password in passwords if account_password["account_name"] == "supervisor"][0]
@@ -356,12 +412,15 @@ print(movie_titles)
     print(login_result)
     ```
     """,
-    detail=False,
-    format_type="type_1"
-    ) == 0.0
+            detail=False,
+            format_type="type_1",
+        )
+        == 0.0
+    )
 
-    assert compute_string_madness_format(
-    """
+    assert (
+        compute_string_madness_format(
+            """
 <think>So,this `422` status code means this directory path `/home/user/photographs/` is not available in supervisor's account,so I must get home directory path of supervisor,namely nicholas weber,first,so I must call.```python
 profile = apis.supervisor.show_profile()
 print(profile)
@@ -373,12 +432,15 @@ profile = apis.supervisor.show_profile()
 print(profile)
 ```
     """,
-    detail=False,
-    format_type="type_1"
-    ) == -1.0
+            detail=False,
+            format_type="type_1",
+        )
+        == -1.0
+    )
 
-    assert compute_string_madness_format(
-    """
+    assert (
+        compute_string_madness_format(
+            """
 <think>
 From the list of liked songs, we have the artists who have songs liked by the user. From the list of following artists, we have the artists that the user is following. To unfollow artists who have not sung any song that the user has liked, we need to:
 
@@ -407,8 +469,10 @@ Output:
 {12, 14, 8, 36, 23, 25, 28, 33, 2, 9, 11, 18}
 ```
     """,
-    detail=False,
-    format_type="type_1"
-    ) == -1.0
+            detail=False,
+            format_type="type_1",
+        )
+        == -1.0
+    )
 
     print("All tests passed!")

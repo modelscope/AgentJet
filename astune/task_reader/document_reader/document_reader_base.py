@@ -1,7 +1,9 @@
 import json
 import uuid
+from typing import Dict, List, Optional
+
 import datasets
-from typing import List, Dict, Optional
+
 from astune.schema.document import Document
 
 

@@ -1,19 +1,21 @@
-import os
-import sqlite3
 import ast
-import re
-from loguru import logger
-import requests
-import json
 import hashlib
-from typing import List, Protocol
+import json
+import os
+import re
+import sqlite3
 from datetime import datetime
+from typing import List, Protocol
+
+import requests
+from loguru import logger
 
 from astune.schema.task import Task
 
 
 class TracingConnector(Protocol):
-    def load_tasks_from_conversation(self) -> List[Task]: ...
+    def load_tasks_from_conversation(self) -> List[Task]:
+        ...
 
 
 class PhoenixConnector:
@@ -162,10 +164,10 @@ class LocalSqliteConnectorV1:
                 query = parse_msg_line(query)
                 output = parse_msg_line(output)
                 # patch
-                if isinstance(output['content'],list):
-                    output['content']=output['content'][-1]
-                if isinstance(output['content'],dict):
-                    output['content']=output['content']['text']
+                if isinstance(output["content"], list):
+                    output["content"] = output["content"][-1]
+                if isinstance(output["content"], dict):
+                    output["content"] = output["content"]["text"]
                 if query is not None and output is not None:
                     if query["role"] == "user" and output["role"] == "assistant":
                         if query["content"] is not None and output["content"] is not None:

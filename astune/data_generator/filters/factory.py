@@ -5,7 +5,6 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Sequence
 from .base import Filter
 from .llm_evaluate_filter import LlmEvaluateFilter
 
-
 FILTER_REGISTRY: Dict[str, type[Filter]] = {
     "llm_evaluate": LlmEvaluateFilter,
 }

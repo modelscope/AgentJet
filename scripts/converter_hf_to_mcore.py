@@ -22,11 +22,8 @@ from megatron.core import dist_checkpointing
 from megatron.core import parallel_state as mpu
 from megatron.core.dist_checkpointing.serialization import StrictHandling
 from megatron.core.models.gpt.gpt_model import ModelType
-from megatron.core.tensor_parallel.random import (
-    model_parallel_cuda_manual_seed,
-)
+from megatron.core.tensor_parallel.random import model_parallel_cuda_manual_seed
 from transformers import AutoConfig, AutoModelForCausalLM
-
 from verl.models.mcore import hf_to_mcore_config
 from verl.utils.megatron_utils import get_model
 
@@ -355,9 +352,7 @@ def convert_hf_to_mcore(
         convert_checkpoint_from_transformers_to_megatron(hf_model, model[0].module, hf_config)
     else:
         assert not use_cpu_initialization, "use_cpu_initialization is only supported for MoE model"
-        from verl.models.mcore.loader import (
-            load_state_dict_to_megatron_gptmodel,
-        )
+        from verl.models.mcore.loader import load_state_dict_to_megatron_gptmodel
 
         load_state_dict_to_megatron_gptmodel(
             state_dict=hf_state_dict,

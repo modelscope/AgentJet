@@ -1,11 +1,12 @@
 import os
 import shutil
 import time
+
 import yaml
-from loguru import logger
-from hydra import initialize, compose
-from omegaconf import DictConfig
 from best_logger import print_dict
+from hydra import compose, initialize
+from loguru import logger
+from omegaconf import DictConfig
 
 
 def read_astune_config(yaml_fp):
@@ -24,7 +25,6 @@ def read_astune_config(yaml_fp):
     return load_hydra_config(config_path=dir_path, config_name=file_name)
 
 
-
 def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
     """Persist the provided OmegaConf config to ``yaml_fp``."""
     from omegaconf import OmegaConf
@@ -32,8 +32,6 @@ def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
     with open(yaml_fp, "w") as f:
         OmegaConf.save(cfg, f)
     return yaml_fp
-
-
 
 
 def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone):
@@ -119,12 +117,12 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     with open(to_config_fp, "w") as file:
         yaml.dump(to_config, file)
     # logger.success(f"Saved aligned configuration to {to_config_fp}")
-    print_dict({
-        "Note": f"Saved aligned configuration to {to_config_fp}"
-    })
+    print_dict({"Note": f"Saved aligned configuration to {to_config_fp}"})
 
 
-def read_astune_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None, exp_dir="launcher_record"):
+def read_astune_hierarchical_config(
+    yaml_fp, exp_name, backbone, write_to=None, exp_dir="launcher_record"
+):
     with open(yaml_fp, "r") as file:
         config = yaml.safe_load(file)
     config["astune"]["experiment_name"] = exp_name
@@ -151,9 +149,11 @@ def read_astune_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None, 
             yaml.dump(config, file)
     return config
 
+
 def expand_astune_hierarchical_config(config, write_to=None):
     # create temp yaml file
     import tempfile
+
     with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".yaml") as temp_yaml:
         yaml_path = temp_yaml.name
         with open(yaml_path, "w") as file:
@@ -171,7 +171,6 @@ def expand_astune_hierarchical_config(config, write_to=None):
             yaml.dump(config_final, file)
 
     return config_final
-
 
 
 def prepare_experiment_config(yaml_path, exp_dir, backbone):
@@ -243,7 +242,9 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     shutil.copyfile(yaml_backup_src, yaml_backup_dst)
 
     ## 4. edit new yaml
-    config = read_astune_hierarchical_config(yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir)
+    config = read_astune_hierarchical_config(
+        yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir
+    )
     config_final = expand_astune_hierarchical_config(config, write_to=yaml_backup_dst)
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final

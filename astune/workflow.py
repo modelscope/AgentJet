@@ -1,11 +1,12 @@
 from typing import List
+
 from pydantic import BaseModel, Field
+
 from astune import ModelTuner
-from astune.schema.task import WorkflowTask, WorkflowOutput
+from astune.schema.task import WorkflowOutput, WorkflowTask
 
 
 class Workflow(BaseModel):
-
     model_config = {"extra": "allow"}
     name: str = Field(default="default_workflow", description="Name of the workflow.")
     trainable_targets: List[str] = Field(default=[], description="List of agents to be fine-tuned.")

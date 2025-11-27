@@ -7,7 +7,6 @@ from typing import Literal
 
 import pytest
 from mistral_common.tokens.tokenizers.base import SpecialTokenPolicy
-
 from vllm.assets.audio import AudioAsset
 from vllm.assets.image import ImageAsset
 from vllm.assets.video import VideoAsset

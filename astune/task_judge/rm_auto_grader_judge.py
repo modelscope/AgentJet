@@ -13,23 +13,25 @@ Key Features:
 """
 
 import asyncio
-import os
 import json
+import os
+from typing import Any, Dict, List, Optional
 
-from typing import List, Optional, Dict, Any
-from loguru import logger
 from beast_logger import print_dict
-
-from astune.schema.task import Task, WorkflowOutput
-from astune.task_judge.judge_base import JudgeBase
-
+from loguru import logger
 from rm_gallery.core.grader.auto.auto_grader import AutoGrader, AutoGraderConfig
-from rm_gallery.core.grader.auto.auto_rubrics import AutoRubricsConfig, SamplingMode, AggregationMode
-from rm_gallery.core.grader.base import GraderMode, LLMGrader
+from rm_gallery.core.grader.auto.auto_rubrics import (
+    AggregationMode,
+    AutoRubricsConfig,
+    SamplingMode,
+)
+from rm_gallery.core.grader.base import GraderMode, LLMGrader, aevaluate_with_cases
 from rm_gallery.core.model.openai_llm import OpenAIChatModel
 from rm_gallery.core.schema.data import EvalCase
 from rm_gallery.core.schema.template import LanguageEnum
-from rm_gallery.core.grader.base import aevaluate_with_cases
+
+from astune.schema.task import Task, WorkflowOutput
+from astune.task_judge.judge_base import JudgeBase
 
 
 class RMAutoGraderJudge(JudgeBase):
@@ -85,16 +87,26 @@ class RMAutoGraderJudge(JudgeBase):
         self.grader_config = self._parse_config()
 
         # Initialize the model
-        self.model = OpenAIChatModel(model=config.astune.task_judge.rubrics_auto_grader.model_name, base_url='https://dashscope.aliyuncs.com/compatible-mode/v1', stream=False)
+        self.model = OpenAIChatModel(
+            model=config.astune.task_judge.rubrics_auto_grader.model_name,
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            stream=False,
+        )
 
         # Storage for generated grader
         self.llm_grader: Optional[LLMGrader] = None
         self.rubrics_generated = False
 
         # Field mappings for data extraction
-        self.query_field = getattr(config.astune.task_judge.rubrics_auto_grader, 'query_field', 'main_query')
-        self.answer_field = getattr(config.astune.task_judge.rubrics_auto_grader, 'answer_field', 'final_answer')
-        self.reference_field = getattr(config.astune.task_judge.rubrics_auto_grader, 'reference_field', 'answer')
+        self.query_field = getattr(
+            config.astune.task_judge.rubrics_auto_grader, "query_field", "main_query"
+        )
+        self.answer_field = getattr(
+            config.astune.task_judge.rubrics_auto_grader, "answer_field", "final_answer"
+        )
+        self.reference_field = getattr(
+            config.astune.task_judge.rubrics_auto_grader, "reference_field", "answer"
+        )
 
         logger.info(
             f"RMAutoGraderJudge initialized with mode={self.grader_config.method_config.grader_mode.value}, "
@@ -106,33 +118,43 @@ class RMAutoGraderJudge(JudgeBase):
         judge_config = self.config.astune.task_judge.rubrics_auto_grader
 
         # Parse grader mode
-        grader_mode_str = getattr(judge_config, 'grader_mode', 'pointwise').lower()
-        grader_mode = GraderMode.POINTWISE if grader_mode_str == 'pointwise' else GraderMode.LISTWISE
+        grader_mode_str = getattr(judge_config, "grader_mode", "pointwise").lower()
+        grader_mode = (
+            GraderMode.POINTWISE if grader_mode_str == "pointwise" else GraderMode.LISTWISE
+        )
 
         # Parse language
-        language_str = getattr(judge_config, 'language', 'en').upper()
-        language = LanguageEnum.ZH if language_str == 'ZH' else LanguageEnum.EN
+        language_str = getattr(judge_config, "language", "en").upper()
+        language = LanguageEnum.ZH if language_str == "ZH" else LanguageEnum.EN
 
         # Parse sampling mode
-        sampling_mode_str = getattr(judge_config, 'sampling_mode', 'all_samples')
-        sampling_mode = SamplingMode.ALL_SAMPLES if sampling_mode_str == 'all_samples' else SamplingMode.SMART_SAMPLING
+        sampling_mode_str = getattr(judge_config, "sampling_mode", "all_samples")
+        sampling_mode = (
+            SamplingMode.ALL_SAMPLES
+            if sampling_mode_str == "all_samples"
+            else SamplingMode.SMART_SAMPLING
+        )
 
         # Parse aggregation mode
-        aggregation_mode_str = getattr(judge_config, 'aggregation_mode', 'keep_all')
-        aggregation_mode = AggregationMode.KEEP_ALL if aggregation_mode_str == 'keep_all' else AggregationMode.MERGE_SIMILAR
+        aggregation_mode_str = getattr(judge_config, "aggregation_mode", "keep_all")
+        aggregation_mode = (
+            AggregationMode.KEEP_ALL
+            if aggregation_mode_str == "keep_all"
+            else AggregationMode.MERGE_SIMILAR
+        )
 
         # Create AutoRubricsConfig
         rubrics_config = AutoRubricsConfig(
             sampling_mode=sampling_mode,
             grader_mode=grader_mode,
             language=language,
-            generate_number=getattr(judge_config, 'generate_number', 3),
-            max_retries=getattr(judge_config, 'max_retries', 5),
-            max_epochs=getattr(judge_config, 'max_epochs', 3),
-            min_score=getattr(judge_config, 'min_score', 0),
-            max_score=getattr(judge_config, 'max_score', 10),
-            batch_size=getattr(judge_config, 'batch_size', 10),
-            mcr_batch_size=getattr(judge_config, 'mcr_batch_size', 10),
+            generate_number=getattr(judge_config, "generate_number", 3),
+            max_retries=getattr(judge_config, "max_retries", 5),
+            max_epochs=getattr(judge_config, "max_epochs", 3),
+            min_score=getattr(judge_config, "min_score", 0),
+            max_score=getattr(judge_config, "max_score", 10),
+            batch_size=getattr(judge_config, "batch_size", 10),
+            mcr_batch_size=getattr(judge_config, "mcr_batch_size", 10),
             aggregation_mode=aggregation_mode,
         )
 
@@ -140,7 +162,7 @@ class RMAutoGraderJudge(JudgeBase):
         auto_grader_config = AutoGraderConfig(
             method="auto_rubrics",
             method_config=rubrics_config,
-            grader_name=getattr(judge_config, 'grader_name', 'RM Auto Grader'),
+            grader_name=getattr(judge_config, "grader_name", "RM Auto Grader"),
         )
 
         return auto_grader_config
@@ -148,12 +170,12 @@ class RMAutoGraderJudge(JudgeBase):
     async def read_reference_samples_from_dataset(self) -> List[Task]:
         # read dataset from config
         from astune.task_reader import TaskReaderRouterV2
+
         reader = TaskReaderRouterV2(
-            reader_type  =self.config.astune.task_judge.rubrics_auto_grader.input_data_type,
-            reader_config=self.config.astune.task_judge.rubrics_auto_grader
+            reader_type=self.config.astune.task_judge.rubrics_auto_grader.input_data_type,
+            reader_config=self.config.astune.task_judge.rubrics_auto_grader,
         )
         return reader.task_reader.get_training_tasks()
-
 
     async def generate_rubrics_from_samples(self, reference_samples: List[Task] = []) -> None:
         """
@@ -169,14 +191,15 @@ class RMAutoGraderJudge(JudgeBase):
         if len(reference_samples) == 0:
             reference_samples = await self.read_reference_samples_from_dataset()
 
-
         logger.info(f"Generating rubrics from {len(reference_samples)} reference samples...")
 
         # Convert Task samples to EvalCase format for rubric generation
         # Use reference answers as example "good" outputs
         eval_cases = []
         for sample in reference_samples:
-            eval_case = self._task_to_eval_case(sample, workflow_output=None, for_rubric_generation=True)
+            eval_case = self._task_to_eval_case(
+                sample, workflow_output=None, for_rubric_generation=True
+            )
             if eval_case:
                 eval_cases.append(eval_case)
 
@@ -198,11 +221,13 @@ class RMAutoGraderJudge(JudgeBase):
         grader_save_dir = os.path.join(experiment_dir, "auto_grader.json")
         # make dirs if not exist
         os.makedirs(experiment_dir, exist_ok=True)
-        print_dict({
-            "message": "Saving generated grader config to",
-            "path": grader_save_dir
-        })
-        json.dump(self.llm_grader.to_dict(), open(grader_save_dir, "w", encoding="utf-8"), indent=4, ensure_ascii=False)
+        print_dict({"message": "Saving generated grader config to", "path": grader_save_dir})
+        json.dump(
+            self.llm_grader.to_dict(),
+            open(grader_save_dir, "w", encoding="utf-8"),
+            indent=4,
+            ensure_ascii=False,
+        )
 
         # Load grader config and inject model
         # grader_config = json.load(open("my_grader.json", "r", encoding="utf-8"))
@@ -213,7 +238,6 @@ class RMAutoGraderJudge(JudgeBase):
 
         logger.info("Rubrics generated successfully!")
         logger.info(f"Generated rubrics:\n{self.llm_grader.rubrics}")
-
 
     async def load_rubrics_from_cache(self) -> None:
         """
@@ -234,13 +258,11 @@ class RMAutoGraderJudge(JudgeBase):
             logger.exception(f"Failed to load grader config from")
             await self.generate_rubrics_from_samples([])
 
-
-
     def _task_to_eval_case(
         self,
         task: Task,
         workflow_output: Optional[WorkflowOutput | List[WorkflowOutput]] = None,
-        for_rubric_generation: bool = False
+        for_rubric_generation: bool = False,
     ) -> Optional[EvalCase]:
         """
         Convert Task (and optionally WorkflowOutput) to EvalCase format.
@@ -256,15 +278,17 @@ class RMAutoGraderJudge(JudgeBase):
         try:
             # Extract query
             query = getattr(task, self.query_field, "")
-            if not query and hasattr(task, 'metadata'):
+            if not query and hasattr(task, "metadata"):
                 query = task.metadata.get(self.query_field, "")
 
             # Extract reference answer
             reference = ""
-            if hasattr(task, 'metadata') and self.reference_field in task.metadata:
+            if hasattr(task, "metadata") and self.reference_field in task.metadata:
                 reference = task.metadata[self.reference_field]
             if not reference:
-                raise ValueError(f"Reference field '{self.reference_field}' not found in task metadata")
+                raise ValueError(
+                    f"Reference field '{self.reference_field}' not found in task metadata"
+                )
 
             # Build input dict - reference should always be in input for comparison
             input_dict = {
@@ -279,28 +303,28 @@ class RMAutoGraderJudge(JudgeBase):
                 # Metadata should contain pre-labeled data (with score/rank)
 
                 grader_mode = self.grader_config.method_config.grader_mode
-                metadata = task.metadata if hasattr(task, 'metadata') else {}
+                metadata = task.metadata if hasattr(task, "metadata") else {}
 
                 if grader_mode == GraderMode.POINTWISE:
                     # Pointwise: expect metadata with "answer" and "score"
-                    if 'answer' in metadata and 'score' in metadata:
-                        outputs.append({
-                            "answer": metadata['answer'],
-                            "score": metadata['score']
-                        })
+                    if "answer" in metadata and "score" in metadata:
+                        outputs.append({"answer": metadata["answer"], "score": metadata["score"]})
                     else:
-                        raise ValueError(f"Metadata must contain 'answer' and 'score' for pointwise rubric generation in task {task.task_id}")
+                        raise ValueError(
+                            f"Metadata must contain 'answer' and 'score' for pointwise rubric generation in task {task.task_id}"
+                        )
 
                 else:  # LISTWISE
                     # Listwise: expect metadata with "candidates" containing list of {answer, rank}
-                    if 'candidates' in metadata and isinstance(metadata['candidates'], list):
-                        for candidate in metadata['candidates']:
-                            outputs.append({
-                                "answer": candidate['answer'],
-                                "rank": candidate['rank']
-                            })
+                    if "candidates" in metadata and isinstance(metadata["candidates"], list):
+                        for candidate in metadata["candidates"]:
+                            outputs.append(
+                                {"answer": candidate["answer"], "rank": candidate["rank"]}
+                            )
                     else:
-                        logger.warning(f"No labeled data found for listwise rubric generation in task {task.task_id}")
+                        logger.warning(
+                            f"No labeled data found for listwise rubric generation in task {task.task_id}"
+                        )
                         return None
             else:
                 # For evaluation: use the actual model output (no labels)
@@ -314,7 +338,9 @@ class RMAutoGraderJudge(JudgeBase):
                         answer = workflow_output.metadata.get(self.answer_field, "")
                         outputs.append({"answer": answer})
                 else:
-                    logger.warning(f"No workflow output provided for evaluation of task {task.task_id}")
+                    logger.warning(
+                        f"No workflow output provided for evaluation of task {task.task_id}"
+                    )
                     return None
 
             if not outputs:
@@ -328,9 +354,7 @@ class RMAutoGraderJudge(JudgeBase):
             return None
 
     async def _async_compute_reward(
-        self,
-        task: Task,
-        workflow_output: WorkflowOutput | List[WorkflowOutput]
+        self, task: Task, workflow_output: WorkflowOutput | List[WorkflowOutput]
     ):
         """
         Asynchronously compute reward using the generated rubrics.
@@ -366,11 +390,7 @@ class RMAutoGraderJudge(JudgeBase):
             logger.error(f"Error during evaluation: {e}")
             return None
 
-    def compute_reward(
-        self,
-        task: Task,
-        workflow_output: WorkflowOutput
-    ) -> tuple:
+    def compute_reward(self, task: Task, workflow_output: WorkflowOutput) -> tuple:
         """
         Compute reward for a workflow output (synchronous wrapper).
 
@@ -390,10 +410,9 @@ class RMAutoGraderJudge(JudgeBase):
             # We need to use nest_asyncio or raise an error
             try:
                 import nest_asyncio
+
                 nest_asyncio.apply()
-                return loop.run_until_complete(
-                    self._async_compute_reward(task, workflow_output)
-                )
+                return loop.run_until_complete(self._async_compute_reward(task, workflow_output))
             except ImportError:
                 raise RuntimeError(
                     "compute_reward() was called from an async context. "
@@ -405,9 +424,6 @@ class RMAutoGraderJudge(JudgeBase):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                return loop.run_until_complete(
-                    self._async_compute_reward(task, workflow_output)
-                )
+                return loop.run_until_complete(self._async_compute_reward(task, workflow_output))
             finally:
                 loop.close()
-

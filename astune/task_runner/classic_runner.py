@@ -1,22 +1,19 @@
 import os
-import time
 import threading
+import time
+from typing import Any, Callable, Dict, List, Union
 
+from beast_logger import print_listofdict
 from loguru import logger
+
+from astune.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage
+from astune.schema.trajectory import Reward
+from astune.task_runner import BaseAgentRunner
 from astune.utils.env_service_client.env_client import EnvClient
 from astune.utils.utils import convert_tool_to_user_message
-from astune.schema.trajectory import Reward
-from astune.context_tracker.basic_tracker import (
-    BasicContextTracker,
-    ExtendedMessage,
-)
-from astune.task_runner import BaseAgentRunner
-from typing import Any, Dict, List, Union, Callable
-from beast_logger import print_listofdict
 
 
 class AgentRunner(BaseAgentRunner):
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.use_step_reward_from_env: bool = self.config.astune.rollout.get(
@@ -73,7 +70,9 @@ class AgentRunner(BaseAgentRunner):
                 raise e
 
             # 4. ⚠️ check token overflow
-            is_safe, token_overflow, info = self.cmt.check_context_token_num_safe(step_input_message_arr)
+            is_safe, token_overflow, info = self.cmt.check_context_token_num_safe(
+                step_input_message_arr
+            )
             if not is_safe:
                 logger.warning(
                     f"[{info}] detected at step {act_step}. Current token count exceeds the limit."
