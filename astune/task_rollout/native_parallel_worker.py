@@ -436,10 +436,15 @@ class ParallelEnvManager(DynamicRollout):
         return sample_arr_final
 
     def samples_to_dataproto(self, samples: list[Sample]) -> DataProto:
-        prompt_ids, response_ids = [], []
-        prompt_attention_mask, response_attention_mask = [], []
-        prompt_position_ids, response_position_ids = [], []
-        prompt_loss_mask, response_loss_mask = [], []
+        prompt_ids: torch.Tensor | List[torch.Tensor] = []
+        response_ids: torch.Tensor | List[torch.Tensor] = []
+        prompt_attention_mask: torch.Tensor | List[torch.Tensor] = []
+        response_attention_mask: torch.Tensor | List[torch.Tensor] = []
+        prompt_position_ids: torch.Tensor | List[torch.Tensor] = []
+        response_position_ids: torch.Tensor | List[torch.Tensor] = []
+        prompt_loss_mask: torch.Tensor | List[torch.Tensor] = []
+        response_loss_mask: torch.Tensor | List[torch.Tensor] = []
+
         messages = []
         step_reward_scores = []
         task_ids = []

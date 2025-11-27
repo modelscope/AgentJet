@@ -421,10 +421,9 @@ class MultiAgentContextTracking(BasicContextTracker):
         max_seq_length: int = max_model_len - max_response_length
 
         if length < max_seq_length:
-            ret = [True, length]
+            return True, length
         else:
-            ret = [False, length]
-        return tuple(ret)
+            return False, length
 
     def check_context_token_num_safe(
         self, messages: List, tools: List = []
@@ -445,18 +444,18 @@ class MultiAgentContextTracking(BasicContextTracker):
         else:
             token_overflow = True
         if self.should_interrupt_fn():
-            ret = [False, token_overflow, "externally_interrupted"]
+            ret = (False, token_overflow, "externally_interrupted")
         elif self.already_mad_flag and self.config.astune.rollout.agent_madness_termination:
-            ret = [False, token_overflow, "already_mad"]
+            ret = (False, token_overflow, "already_mad")
         elif length < max_seq_length:
-            ret = [
+            ret = (
                 True,
                 token_overflow,
                 f"safe[{length} < {max_model_len} - {max_response_length}]",
-            ]
+            )
         else:
-            ret = [False, token_overflow, "token_overflow"]
-        return tuple(ret)
+            ret = (False, token_overflow, "token_overflow")
+        return ret
 
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
         result = []
