@@ -15,7 +15,7 @@ def cleanup_messages(messages: List[Dict]) -> List[Dict]:
             if isinstance(t["function"]["arguments"], str):
                 try:
                     t["function"]["arguments"] = json.loads(t["function"]["arguments"])
-                except:
+                except Exception:
                     pass
     return messages_copied
 

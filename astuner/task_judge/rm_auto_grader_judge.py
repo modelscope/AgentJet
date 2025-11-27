@@ -15,7 +15,7 @@ Key Features:
 import asyncio
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from beast_logger import print_dict
 from loguru import logger
@@ -254,8 +254,8 @@ class RMAutoGraderJudge(JudgeBase):
             grader_config = json.load(open(grader_save_dir, "r", encoding="utf-8"))
             grader_config["model"] = self.model
             self.llm_grader = LLMGrader.from_config(grader_config)
-        except Exception as e:
-            logger.exception(f"Failed to load grader config from")
+        except Exception:
+            logger.exception("Failed to load grader config from")
             await self.generate_rubrics_from_samples([])
 
     def _task_to_eval_case(

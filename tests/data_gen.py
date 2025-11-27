@@ -1,12 +1,9 @@
-import os
 import unittest
 
 import dotenv
-import yaml
 
 dotenv.load_dotenv()
 from loguru import logger
-from tqdm import tqdm
 
 from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
 from astuner.data_generator.task_augmentation import TaskAugmentor

@@ -1,10 +1,9 @@
 import uuid
-from typing import List, Tuple, Union
+from typing import List
 
 from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from astuner.schema.trajectory import Reward
 from astuner.utils.tokenizer import astune_apply_chat_template
 
 INVALID_LOG_PROB_VALUE = 0.0

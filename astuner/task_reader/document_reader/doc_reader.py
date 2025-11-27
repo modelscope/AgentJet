@@ -1,5 +1,4 @@
 import uuid
-from typing import Dict, List
 
 from unstructured.partition.auto import partition
 

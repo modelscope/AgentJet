@@ -139,13 +139,13 @@ class Sample(BaseModel):
         if len(self.prompt_ids) > self.max_prompt_len:
             truncate_any = True
             print(
-                f"-------------------------------------------------------------------------------------------------------"
+                "-------------------------------------------------------------------------------------------------------"
             )
             print(
                 f"Warning: prompt_ids length {len(self.prompt_ids)} exceeds max_prompt_len {self.max_prompt_len}, truncating."
             )
             print(
-                f"-------------------------------------------------------------------------------------------------------"
+                "-------------------------------------------------------------------------------------------------------"
             )
             raise RuntimeError(
                 "Prompt length exceeds maximum allowed length. Please adjust the input data."
@@ -159,13 +159,13 @@ class Sample(BaseModel):
         if len(self.response_ids) > self.max_response_len:
             truncate_any = True
             print(
-                f"-------------------------------------------------------------------------------------------------------"
+                "-------------------------------------------------------------------------------------------------------"
             )
             print(
                 f"Warning: response_ids length {len(self.response_ids)} exceeds max_response_len {self.max_response_len}, truncating."
             )
             print(
-                f"-------------------------------------------------------------------------------------------------------"
+                "-------------------------------------------------------------------------------------------------------"
             )
             self.response_ids = self.response_ids[: self.max_response_len]
             self.response_attention_mask = self.response_attention_mask[: self.max_response_len]

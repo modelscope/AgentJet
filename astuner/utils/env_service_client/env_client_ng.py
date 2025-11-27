@@ -35,7 +35,6 @@ def retry_call(
     instance_id: str | None = "",
     action_name: str = "",
 ):
-    last_exception = None
     for i in range(max_retry):
         try:
             res = fn()
@@ -45,7 +44,6 @@ def retry_call(
                 )
             return res
         except Exception as e:
-            last_exception = e
             safe_log(
                 f"{err_prefix} {action_name} [instance={instance_id}] retry {i+1}/{max_retry} failed: {e}"
             )
@@ -143,7 +141,7 @@ class EnvClient:
             call,
             max_retry=max_retry,
             fail_return=None,
-            err_prefix=f"[get_tools_info]",
+            err_prefix="[get_tools_info]",
             instance_id=instance_id,
             action_name="get_tools_info",
         )
@@ -190,7 +188,7 @@ class EnvClient:
             call,
             max_retry=max_retry,
             fail_return=fallback,
-            err_prefix=f"[create_instance]",
+            err_prefix="[create_instance]",
             instance_id=instance_id,
             action_name="create_instance",
         )
@@ -227,7 +225,7 @@ class EnvClient:
             call,
             max_retry=max_retry,
             fail_return=fallback,
-            err_prefix=f"[step]",
+            err_prefix="[step]",
             instance_id=instance_id,
             action_name="step",
         )
@@ -254,7 +252,7 @@ class EnvClient:
             call,
             max_retry=max_retry,
             fail_return=0.0,
-            err_prefix=f"[evaluate]",
+            err_prefix="[evaluate]",
             instance_id=instance_id,
             action_name="evaluate",
         )
@@ -268,7 +266,7 @@ class EnvClient:
             call,
             max_retry=max_retry,
             fail_return=False,
-            err_prefix=f"[release_instance]",
+            err_prefix="[release_instance]",
             instance_id=instance_id,
             action_name="release_instance",
         )

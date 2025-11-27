@@ -1,8 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable, List
 
-from tqdm import tqdm
-
 from astuner.schema.task import Task
 from astuner.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 from astuner.utils.fn import Fn

@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Union
 
-import datasets
 import torch
-from datasets import Dataset
 from omegaconf import DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from torch.utils.data import RandomSampler, SequentialSampler

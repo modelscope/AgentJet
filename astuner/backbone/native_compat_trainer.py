@@ -15,29 +15,25 @@
 
 import json
 import os
-import time
 import uuid
 import warnings
 from collections import defaultdict
-from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from pprint import pprint
-from typing import Dict, List, Optional, Type, Union
+from typing import List, Optional
 
 import hydra
 import numpy as np
 import ray
 import torch
-from beast_logger import print_dict, register_logger
-from loguru import logger
+from beast_logger import print_dict
 from omegaconf import OmegaConf, open_dict
 from torch.utils.data import Dataset, Sampler
 from torchdata.stateful_dataloader import StatefulDataLoader
 from tqdm import tqdm
 from verl import DataProto
 from verl.experimental.dataset.sampler import AbstractCurriculumSampler
-from verl.protocol import pad_dataproto_to_divisor, unpad_dataproto
 from verl.single_controller.base import Worker
 from verl.single_controller.ray import (
     RayClassWithInitArgs,
@@ -52,9 +48,8 @@ from verl.trainer.ppo.metric_utils import (
     compute_data_metrics,
     compute_throughout_metrics,
     compute_timing_metrics,
-    process_validation_metrics,
 )
-from verl.trainer.ppo.reward import compute_reward, compute_reward_async
+from verl.trainer.ppo.reward import compute_reward
 from verl.utils.checkpoint.checkpoint_manager import (
     find_latest_ckpt_path,
     should_save_ckpt_esi,
@@ -71,9 +66,7 @@ from verl.utils.tracking import ValidationGenerationsLogger
 
 from astuner.context_tracker.basic_tracker import BasicContextTracker
 from astuner.schema.task import Task
-from astuner.schema.trajectory import Trajectory
 from astuner.task_rollout.native_parallel_worker import ParallelEnvManager
-from astuner.utils.message import send_train_message
 
 WorkerType = type[Worker]
 
@@ -642,9 +635,9 @@ class ASTuneRayPPOTrainer:
                 config.astuner.data.train_batch_size,
                 config.actor_rollout_ref.model,
             )
-        except hydra.errors.InstantiationException as e:
+        except hydra.errors.InstantiationException:
             raise ValueError(
-                f"You are using an unsupported VERL version. Please read `documents/backbones.md`"
+                "You are using an unsupported VERL version. Please read `documents/backbones.md`"
             )
         if not config.actor_rollout_ref.actor.use_dynamic_bsz:
             if self.use_reference_policy:
@@ -911,7 +904,7 @@ class ASTuneRayPPOTrainer:
                 target_dataset=main_val_dataset,
                 target_dataset_name="main_val_dataset",
                 mode="validate",
-                epoch=f"test.1",
+                epoch="test.1",
             )
             print("=" * 10 + "end validate rollout" + "=" * 10)
             test_output_gen_batch = self.parallel_env.to_dataproto(trajectories)
@@ -1094,7 +1087,6 @@ class ASTuneRayPPOTrainer:
 
         self.reward_fn = parse_reward_from_dataproto
         self.val_reward_fn = parse_reward_from_dataproto
-        from concurrent.futures import ThreadPoolExecutor
 
         self.parallel_env = ParallelEnvManager(
             config=self.config,
@@ -1791,7 +1783,7 @@ class ASTuneRayPPOTrainer:
             "TGC@1": repeated_success_tasks / (num_tasks * pass_n),
             f"TGC@{pass_n}": num_pass_n_tasks / num_tasks,
             f"TGC@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
-            f"SGC@1": repeated_num_pass_1_scenarios / (num_scenarios * pass_n),
+            "SGC@1": repeated_num_pass_1_scenarios / (num_scenarios * pass_n),
             f"SGC@{pass_n}": num_pass_n_scenarios / num_scenarios,
             f"SGC@{pass_n}-all-pass": num_all_success_scenarios / num_scenarios,
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,

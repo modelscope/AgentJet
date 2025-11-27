@@ -1,16 +1,9 @@
 import copy
 from collections import defaultdict
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import torch
-from beast_logger import (
-    NestedJsonItem,
-    SeqItem,
-    print_dict,
-    print_listofdict,
-    print_nested,
-    register_logger,
-)
+from beast_logger import NestedJsonItem, SeqItem, print_nested
 from loguru import logger
 
 from astuner.context_tracker.tracker_base_attr import (
@@ -492,13 +485,13 @@ class BasicContextTracker(TrackerAttr):
         try:
             step_advantage = self.reward_structure.step_advantage[0]
             step_advantage_simple = self.reward_structure.step_advantage_simple[0]
-        except:
+        except Exception:
             step_advantage = 0.0
             step_advantage_simple = 0.0
         task_outcome = str(self.reward_structure.success_rate)
         selectors = [task_id, task_outcome]
-        nested_items_print_buffer[f".".join(selectors)] = NestedJsonItem(
-            item_id=f"item",  # type: ignore
+        nested_items_print_buffer[".".join(selectors)] = NestedJsonItem(
+            item_id="item",  # type: ignore
             outcome=task_outcome,  # type: ignore
             len_prompt_ids=len_prompt_ids,  # type: ignore
             len_response_ids=len_response_ids,  # type: ignore
@@ -532,7 +525,6 @@ class BasicContextTracker(TrackerAttr):
 
     def ensure_terminate_rollout_stage(self):
         """Nothing need to be done for basic linear cmt at `ensure_terminate_rollout_stage`"""
-        pass
 
     def compute_step_level_reward(
         self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
@@ -617,10 +609,10 @@ class BasicContextTracker(TrackerAttr):
                 if input_ids_len[-1] > self.config.astuner.data.max_prompt_length:
                     message_dict = self.to_role_content(ext_steps)
                     logger.warning(
-                        f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix..."
+                        "Input ids exceeded max_prompt_length before encountering any training message! trying to fix..."
                     )
                     logger.bind(exception=True).exception(
-                        f"Input ids exceeded max_prompt_length before encountering any training message! trying to fix...\n\n"
+                        "Input ids exceeded max_prompt_length before encountering any training message! trying to fix...\n\n"
                         + str(message_dict)
                     )
                     assert (
@@ -674,7 +666,7 @@ class BasicContextTracker(TrackerAttr):
         cmt_tokenized["prompt_logprobs"] = prompt_logprobs
         try:
             cmt_tokenized["reference_advantage"] = self.reward_structure.step_advantage[index]
-        except:
+        except Exception:
             cmt_tokenized["reference_advantage"] = 0
 
         return cmt_tokenized

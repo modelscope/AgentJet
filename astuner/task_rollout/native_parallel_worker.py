@@ -373,14 +373,12 @@ class DynamicRollout(StaticRollout):
                 need_amend = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                 if need_amend and (num_task_to_amend > 0):
                     num_task_to_amend -= 1
-                    print_buffer += f"/(amend)"
+                    print_buffer += "/(amend)"
                     continue
                 else:
                     if need_amend:
-                        num_completed = len(completed_results)
                         num_to_be_selected = rollout_n
                     else:
-                        num_completed = len(completed_results)
                         num_to_be_selected = rollout_n + avail_extra_cnt
                     selected_cmt_array = self.greedy_max_std_selection(
                         completed_results, num_to_be_selected

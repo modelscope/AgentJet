@@ -34,7 +34,7 @@ def run_async_coro__no_matter_what(coro, timeout: int = 3600) -> Any:
             except concurrent.futures.TimeoutError:
                 future.cancel()
                 raise
-            except Exception as e:
+            except Exception:
                 raise
     return final_res
 

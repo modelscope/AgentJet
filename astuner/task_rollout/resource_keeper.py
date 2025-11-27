@@ -1,10 +1,9 @@
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
-from beast_logger import print_dict
 from loguru import logger
 from omegaconf import DictConfig
 
-from astuner.schema.task import Task, WorkflowTask
+from astuner.schema.task import WorkflowTask
 from astuner.utils.env_service_client.env_client_ng import EnvClient as EnvClientNg
 
 
@@ -156,7 +155,7 @@ class BaseGymEnv(object):
             # assert 'text' in action['content'][0]
             try:
                 action["content"] = action["content"][0]["text"]
-            except:
+            except Exception:
                 logger.exception(
                     f"Failed to parse action content from agentscope output. {action['content']}"
                 )

@@ -5,7 +5,6 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Literal, Type
 
-import numpy as np
 from agentscope._utils._common import _json_loads_with_repair
 from agentscope.message import TextBlock, ToolUseBlock
 from agentscope.model import ChatResponse
@@ -21,7 +20,7 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
 from astuner.schema.logprob import TokenAndProb
 from astuner.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
 from astuner.utils.tokenizer import astune_apply_chat_template
-from astuner.utils.utils import remove_fields, run_async_coro__no_matter_what
+from astuner.utils.utils import run_async_coro__no_matter_what
 
 
 class AsyncLlmBridge(object):

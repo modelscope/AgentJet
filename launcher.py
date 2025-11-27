@@ -1,11 +1,7 @@
 import argparse
 import os
-import shutil
 import subprocess
-import sys
-import time
 
-import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -17,7 +13,6 @@ from astuner.utils.launch_utils import (
     start_ray_service,
 )
 from astuner.utils.pty import pty_launch
-from astuner.utils.smart_daemon import LaunchCommandWhenAbsent
 
 load_dotenv()
 
@@ -143,7 +138,7 @@ def check_avail_gpu(min_free_ratio: float = 0.95):
     if result.returncode != 0:
         raise RuntimeError(f"Failed to query GPUs via nvidia-smi: {result.stderr.strip()}")
 
-    lines = [l.strip() for l in result.stdout.splitlines() if l.strip()]
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
     if not lines:
         raise RuntimeError("No GPUs detected by nvidia-smi.")
 

@@ -1,6 +1,5 @@
 import asyncio
 import os
-import uuid
 
 import datasets
 import openai
@@ -12,25 +11,16 @@ from trinity.common.workflows.workflow import Task as TrinityTask
 from trinity.common.workflows.workflow import Workflow
 
 try:
-    from trinity.buffer.buffer_reader import BufferReader
     from trinity.buffer.reader import READER
-    from trinity.buffer.reader.file_reader import (
-        FileReader,
-        TaskFileReader,
-        _HFBatchReader,
-    )
-    from trinity.buffer.reader.reader import READER
+    from trinity.buffer.reader.file_reader import TaskFileReader, _HFBatchReader
     from trinity.buffer.schema.formatter import FORMATTER
-    from trinity.common.config import StorageConfig
 
     logger.success("[New Trinity] Trinity imports successful.")
 except ImportError:
     logger.success("[Old Trinity] Using old trinity.")
-    pass
 
-from typing import List, Literal, Optional, Tuple, cast
+from typing import List, Literal, Optional, cast
 
-from datasets import Dataset, load_dataset
 from transformers import AutoTokenizer
 
 from astuner.backbone.common_warm_up import warm_up_process
@@ -169,7 +159,7 @@ class ASTunetWorkflowWrap(Workflow):
                 reward = tracker.reward_structure.step_reward
                 if isinstance(reward, list):
                     reward = reward[0]
-            except Exception as e:
+            except Exception:
                 reward = tracker.reward_structure.raw_reward
             if not isinstance(
                 reward, (float, int)
@@ -209,7 +199,7 @@ class ASTunetWorkflowWrap(Workflow):
                 )
                 exps += [exp]
             else:
-                logger.exception(f"Data length mismatch when converting sample to experience.")
+                logger.exception("Data length mismatch when converting sample to experience.")
         return exps
 
 
@@ -270,5 +260,5 @@ try:
                 tasks.append(task)
             return tasks
 
-except:
+except Exception:
     pass
