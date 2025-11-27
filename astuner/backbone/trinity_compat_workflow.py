@@ -93,7 +93,7 @@ class TrinityCompatWorkflow(DynamicRollout):
 
 
 @WORKFLOWS.register_module("astuner_workflow")
-class ASTunetWorkflowWrap(Workflow):
+class ASTunerWorkflowWrap(Workflow):
     is_async: bool = True
 
     def __init__(
