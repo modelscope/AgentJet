@@ -1,9 +1,0 @@
-[submodule "external/envservice"]
-	path = external/envservice
-	url = http://gitlab.alibaba-inc.com/EconML/EnvService.git
-[submodule "external/verl"]
-	path = external/verl
-	url = https://github.com/volcengine/verl.git
-[submodule "external/experiencemaker"]
-	path = external/experiencemaker
-	url = http://gitlab.alibaba-inc.com/OpenRepo/ExperienceMaker.git
