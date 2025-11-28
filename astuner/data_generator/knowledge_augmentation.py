@@ -18,7 +18,7 @@ class KnowledgeAugmentor(DataGeneratorBase):
         source_task: Optional[Task] = None,
         document: Optional[Document] = None,
     ) -> str:
-        # 可从 self.config 中读取模板，这里先写死一个示例
+        # The template can be read from self.config, but here we hardcode an example for now
         return (
             "You are an Expert Question Generation Assistant.\n"
             "Your task is to read long, complex documents and generate a large set of high-quality, non-repetitive questions that thoroughly cover all aspects of the provided content.\n"
