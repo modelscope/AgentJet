@@ -3,9 +3,9 @@ import colorsys
 
 def adjust_color_hsl(base_color, logprob):
     """
-    使用HSL颜色空间根据logprob调整颜色饱和度
+    Adjust color saturation using the HSL color space based on logprob
     """
-    # 将logprob映射到[sat_min, sat_max]的饱和度调整因子
+    # Map logprob to a saturation adjustment factor in the range [sat_min, sat_max]
     sat_min = 0.333
     sat_max = 1.0
     lp_min = -7
@@ -18,19 +18,19 @@ def adjust_color_hsl(base_color, logprob):
     else:
         saturation_factor = sat_min + (logprob - lp_min) / (lp_max - lp_min) * (sat_max - sat_min)
 
-    # 将十六进制颜色转换为RGB
+    # Convert hexadecimal color to RGB
     r = int(base_color[1:3], 16) / 255.0
     g = int(base_color[3:5], 16) / 255.0
     b = int(base_color[5:7], 16) / 255.0
 
-    # 转换为HSL
+    # Convert to HSL
     h, l, s = colorsys.rgb_to_hls(r, g, b)
 
-    # 调整饱和度
+    # Adjust saturation
     s_adjusted = s * saturation_factor
 
-    # 转换回RGB
+    # Convert back to RGB
     r_adjusted, g_adjusted, b_adjusted = colorsys.hls_to_rgb(h, l, s_adjusted)
 
-    # 转换回十六进制
+    # Convert back to hexadecimal
     return f"#{int(r_adjusted*255):02x}{int(g_adjusted*255):02x}{int(b_adjusted*255):02x}"

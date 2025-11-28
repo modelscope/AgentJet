@@ -3,17 +3,15 @@
 import os
 import random
 import time
+import tempfile
+import requests
+
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-import requests
 
-LOG_PATH = os.environ.get("CLIENT_LOG_PATH", "/mnt/data/eric.czq/rl_log/error.out")
+LOG_PATH = os.environ.get("CLIENT_LOG_PATH", os.path.join(tempfile.gettempdir(), "app_logs", "error.out"))
 
-
-# map_env_type = {
-#     'appworld2': 'appworld',
-# }
 def safe_log(msg: str):
     try:
         os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
@@ -22,7 +20,7 @@ def safe_log(msg: str):
             f.flush()
             os.fsync(f.fileno())
     except Exception:
-        pass  # 防止日志写失败影响RL主进程
+        pass
 
 
 def retry_call(
@@ -99,7 +97,6 @@ class EnvClient:
         max_retry: int = 3,
     ) -> List[str]:
         def call():
-            # 使用新的变量名，避免修改外部参数
             # resolved_env_type = map_env_type.get(env_type, env_type)
             response = self._make_request(
                 endpoint="/get_env_profile",

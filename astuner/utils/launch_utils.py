@@ -48,7 +48,7 @@ def start_ray_service(args, env):
     Args:
         args: Command line arguments containing debug settings
     """
-    # 获取当前 Python 解释器目录
+    # Get the current Python interpreter directory
     python_dir = os.path.dirname(sys.executable)
     ray_path = os.path.join(python_dir, "ray")
     companion = LaunchCommandWhenAbsent(
