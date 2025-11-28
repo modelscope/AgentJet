@@ -10,6 +10,7 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: detect-private-key
+
   - repo: https://github.com/psf/black
     rev: 23.7.0
     hooks:
@@ -22,6 +23,18 @@ repos:
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+    - id: flake8
+      additional_dependencies: [flake8-docstrings]
+      args: [
+        "--max-line-length=100",
+        "--max-complexity=20",
+        "--select=C,E,F,W,B,B950",
+        "--ignore=E203,E266,E501,W503",
+      ]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.7.0

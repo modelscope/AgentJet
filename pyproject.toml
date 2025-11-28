@@ -18,7 +18,7 @@ classifiers = [
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "agentscope>=1.0.7",
-    "trinity-rft>=0.3.2",
+    "trinity-rft>=0.3.3",
     "loguru",
     "pydantic",
     "beast_logger",
@@ -50,10 +50,13 @@ doc = [
     "furo>=2025.7.19",
 ]
 
+[project.scripts]
+astuner = "astuner.cli.launcher:main"
+
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["astune*"]
+include = ["astuner*"]
 exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]

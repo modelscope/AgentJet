@@ -1,7 +1,7 @@
 {
   "logLevel": "Debug",
   "include": [
-    "astune/**/*.py",
+    "astuner/**/*.py",
     "external/trinity/**/*.py",
     "external/verl/**/*.py",
     ".venv/lib/python3.10/site-packages/**/*.py"

@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astune:
+astuner:
   project_name: example_werewolves
   task_reader:
     type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
@@ -44,10 +44,10 @@ astune:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astune/default_config
-    - file://astune/default_config/verl         # verl only
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
     - file://external/verl/verl/trainer/config  # verl only
-    - file://astune/default_config/trinity      # trinity only
+    - file://astuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
