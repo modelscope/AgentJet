@@ -31,19 +31,27 @@ logger = get_logger(__name__)
 
 
 def get_explorer(config: Config, runtime_env: dict):
-    return ray.remote(Explorer).options(
-                name=config.explorer.name,
-                namespace=ray.get_runtime_context().namespace,
-                runtime_env=runtime_env
-            ).remote(config)
+    return (
+        ray.remote(Explorer)
+        .options(
+            name=config.explorer.name,
+            namespace=ray.get_runtime_context().namespace,
+            runtime_env=runtime_env,
+        )
+        .remote(config)
+    )
 
 
 def get_trainer(config: Config, runtime_env: dict):
-    return ray.remote(Trainer).options(
-                name=config.trainer.name,
-                namespace=ray.get_runtime_context().namespace,
-                runtime_env=runtime_env
-            ).remote(config)
+    return (
+        ray.remote(Trainer)
+        .options(
+            name=config.trainer.name,
+            namespace=ray.get_runtime_context().namespace,
+            runtime_env=runtime_env,
+        )
+        .remote(config)
+    )
 
 
 def bench(config: Config) -> None:
