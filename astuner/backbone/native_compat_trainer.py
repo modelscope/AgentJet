@@ -102,7 +102,7 @@ def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | to
         reward_scores_list, device=reward_tensor.device, dtype=torch.float32
     )  # (bs, )
 
-    # Use advanced indexing to assign rewards (把reward放到response的最后一个token位置)
+    # Use advanced indexing to assign rewards (placing reward at the last token position)
     reward_tensor[torch.arange(len(data)), response_lengths - 1] = reward_scores
 
     if return_dict:
@@ -1712,11 +1712,11 @@ class ASTuneRayPPOTrainer:
         num_scenarios = len(set_scenarios)
 
         repeated_success_tasks = 0
-        num_all_success_tasks = 0  # n 次实验中全部success的任务数
-        num_pass_n_tasks = 0  # n 次实验中至少有一次success的任务数
+        num_all_success_tasks = 0  # number of tasks that is successful among all n attempts
+        num_pass_n_tasks = 0  # number of tasks that is successful at least once among n attempts
         for task_id, task_outcomes in task_results.items():
-            # 计算 num_all_success_tasks  # n 次实验中全部success的任务数
-            # 计算 num_pass_n_tasks   # n 次实验中至少有一次success的任务数
+            # Calculate num_all_success_tasks  # The number of tasks where all were successful in n experiments
+            # Calculate num_pass_n_tasks       # The number of tasks where at least one was successful in n experiments
             assert len(task_outcomes["tag_arr"]) == pass_n
             if all(tag == "success" for tag in task_outcomes["tag_arr"]):
                 num_all_success_tasks += 1
@@ -1725,13 +1725,13 @@ class ASTuneRayPPOTrainer:
             repeated_success_tasks += task_outcomes["tag_arr"].count("success")
 
         num_all_success_scenarios = (
-            0  # 如果一个 scenario 的所有 task 都在 n 次实验中全部 success，则 num_all_success_scenarios +1
+            0  # If all tasks in a scenario are successful in all n experiments, then num_all_success_scenarios +1
         )
         num_pass_n_scenarios = (
-            0  # 如果一个 scenario 的所有 task 都在 n 次实验中至少有一次 success，则 num_pass_n_scenarios +1
+            0  # If all tasks in a scenario are successful in at least one of the n experiments, then num_pass_n_scenarios +1
         )
         repeated_num_pass_1_scenarios = (
-            0  # 按顺序排列，如果一个 scenario 的所有 task 都在第 x 次实验中 success，则 repeated_num_pass_1_scenarios +1
+            0  # In sequential order, if all tasks in a scenario are successful in the x-th experiment, then repeated_num_pass_1_scenarios +1
         )
         for scenario in set_scenarios:
             scenario_task_results = {
@@ -1759,7 +1759,7 @@ class ASTuneRayPPOTrainer:
                 ):
                     repeated_num_pass_1_scenarios += 1
 
-        # 记录日志
+        # record logs
         task_scenario_for_cmts = [_cmt.task_id.split("_")[0] for _cmt in cmts]
         for _cmt, scenario in zip(cmts, task_scenario_for_cmts):
             task_outcome = _cmt.tag
