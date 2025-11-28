@@ -1,11 +1,11 @@
 from agentscope.message import Msg
 from pydantic import Field
 
-from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 class ExampleAgentScopeLearnProtocol(Workflow):
-    trainer: str = Field(default="astune-trinity")
+    trainer: str = Field(default="astuner-trinity")
 
     async def agentscope_execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
@@ -41,7 +41,7 @@ class ExampleAgentScopeLearnProtocol(Workflow):
         agent.set_console_output_enabled(False)
         env = workflow_task.gym_env
         step = 0
-        for step in range(model_tuner.config.astune.rollout.multi_turn.max_steps):
+        for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol

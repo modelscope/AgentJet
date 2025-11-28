@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=too-many-branches, too-many-statements, no-name-in-module
 """A werewolf game implemented by agentscope."""
-import numpy as np
 from agentscope.agent import ReActAgent
 from agentscope.pipeline import MsgHub, fanout_pipeline, sequential_pipeline
 
@@ -337,6 +336,6 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
 
     alive_wolves = players.werewolves
     good_guy_win = len(alive_wolves) == 0
-    logger.warning(f"**********************************")
+    logger.warning("**********************************")
     logger.warning(f"Good guy win: {good_guy_win}, alive werewolves: {alive_wolves}")
     return good_guy_win

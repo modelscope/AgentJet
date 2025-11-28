@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astune:
+astuner:
   project_name: example_math_agent
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
@@ -11,7 +11,7 @@ astune:
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAsJudge
+    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
 
   model:
     # ✨✨✨✨ 设置待训练的模型
@@ -58,10 +58,10 @@ trinity:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astune/default_config
-    - file://astune/default_config/verl         # verl only
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
     - file://external/verl/verl/trainer/config  # verl only
-    - file://astune/default_config/trinity      # trinity only
+    - file://astuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:

@@ -1,10 +1,10 @@
 # ------------------ 主要配置 ------------------
-astune:
+astuner:
   project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
 
   model:
     # ✨✨✨✨ 设置待训练的模型
@@ -47,10 +47,10 @@ astune:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astune/default_config
-    - file://astune/default_config/verl         # verl only
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
     - file://external/verl/verl/trainer/config  # verl only
-    - file://astune/default_config/trinity      # trinity only
+    - file://astuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:

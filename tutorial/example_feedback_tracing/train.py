@@ -1,16 +1,12 @@
-import os
-
-import agentscope
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.memory import InMemoryMemory
 from agentscope.message import Msg
-from agentscope.model import DashScopeChatModel
 from agentscope.tool import Toolkit, execute_python_code
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from astune import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 SYSTEM_PROMPT = """
 You are an agent specialized in solving math problems with tools.
