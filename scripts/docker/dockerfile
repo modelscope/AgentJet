@@ -34,7 +34,8 @@ RUN pip install uv
 # use uv to create a virtual environment and install dependencies
 RUN uv venv /opt/venv --python=3.12 && \
     . /opt/venv/bin/activate && \
-    uv pip install -e.[dev,flash_attn]
+    uv pip install -e.[dev] && \
+    uv pip install flash_attn==2.8.1 --no-deps --no-cache-dir
 
 # set entrypoint to activate the virtual environment
 ENTRYPOINT ["/bin/bash", "-c", "source /opt/venv/bin/activate && exec \"$@\"", "--"]
