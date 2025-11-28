@@ -1,4 +1,8 @@
-trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `astuner/default_config/astune_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `astuner/default_config/astune_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `astuner/default_config/astune_default.yaml` INSTEAD
+
+trinity:
   algorithm:
     algorithm_type: multi_step_grpo
     optimizer:
@@ -52,8 +56,11 @@ trinity:  # 修改trinity训练参数，如果使用verl则忽略该部分
   model:
     max_model_len: 16000
     max_response_tokens: 16000
+    model_path: /path/to/your/model/such/as/Qwen/Qwen2___5-14B-Instruct
   monitor:
-    monitor_type: tensorboard
+    monitor_type: swanlab
+  name: dummy_name
+  project: dummy_project
   synchronizer:
     sync_interval: 1
     sync_method: nccl

@@ -120,7 +120,7 @@ def parse_msg_line(line: str):
     try:
         data = ast.literal_eval(dict_like)
     except Exception as e:
-        print("解析失败:", e)
+        print("Parse failed:", e)
         return None
 
     role = data.get("role")
