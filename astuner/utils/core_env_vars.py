@@ -1,5 +1,4 @@
 import os
-
 from pathlib import Path
 
 from beast_logger import print_dict
