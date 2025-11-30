@@ -107,8 +107,8 @@ Explore our rich library of examples to kickstart your journey:
      - `astuner/default_config/default.yaml` (default VERL training config, overridden by `--conf` YAML)
      - `astuner/default_config/trinity_default.yaml` (default Trinity config, overridden via `trinity.xxx` in `--conf` YAML)
    - Auto-Alignment:
-     - `astuner/default_config/config_auto_convertion_verl.json`
-     - `astuner/default_config/config_auto_convertion_trinity.json`
+     - `astuner/default_config/config_auto_convertion_verl.jsonc`
+     - `astuner/default_config/config_auto_convertion_trinity.jsonc`
 
 6. **ASTuner & AgentScope Interaction System V0.5**
    - Managed by `astuner/context_tracker/agentscope.py`:

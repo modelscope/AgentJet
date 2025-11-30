@@ -1,23 +1,25 @@
 {
-
     "astuner.trainer_common.nnodes": "cluster.node_num",
     "astuner.trainer_common.n_gpus_per_node": "cluster.gpu_per_node",
     "astuner.trainer_common.total_epochs": "buffer.total_epochs",
-    "astuner.trainer_common.trinity_only__n_vllm_engine": "explorer.rollout_model.engine_num",
-    "astuner.trainer_common.trinity_only__explorer_batchsize": "buffer.batch_size",
-    "astuner.trainer_common.trinity_only__runner_per_model": "explorer.runner_per_model",
-    "astuner.trainer_common.save_freq": "trainer.save_interval",
     "astuner.trainer_common.test_freq": "explorer.eval_interval",
+    "astuner.trainer_common.save_freq": "trainer.save_interval",
+    "astuner.trainer_common.ulysses_sequence_parallel_size": "trainer.ulysses_sequence_parallel_size",
+    "astuner.trainer_common.optim.lr": "algorithm.optimizer.lr",
+    "astuner.rollout.n_vllm_engine": "explorer.rollout_model.engine_num",
     "astuner.model.path": "model.model_path",
     "astuner.project_name": "project",
     "astuner.experiment_name": "name",
-    "astuner.data.train_batch_size": "buffer.train_batch_size",
     "astuner.data.max_response_length": "model.max_response_tokens",
     "astuner.rollout.num_repeat": "algorithm.repeat_times",
     "astuner.rollout.tensor_model_parallel_size": "explorer.rollout_model.tensor_parallel_size",
     "astuner.rollout.max_model_len": [
         "model.max_model_len",
         "trainer.max_token_len_per_gpu"
-    ]
+    ],
 
+
+    "(astuner.data.train_batch_size * astuner.rollout.num_repeat)": "buffer.batch_size",
+    "(astuner.data.train_batch_size * astuner.rollout.num_repeat * astuner.rollout.multi_turn.expected_steps)": "buffer.train_batch_size",
+    "(astuner.rollout.max_env_worker // astuner.rollout.n_vllm_engine)": "explorer.runner_per_model"
 }

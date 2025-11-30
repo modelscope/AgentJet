@@ -5,38 +5,14 @@
 trinity:
   algorithm:
     algorithm_type: multi_step_grpo
-    optimizer:
-      lr: 1e-6
-    repeat_times: 6
   buffer:
-    batch_size: 32
-    explorer_input:
-      eval_tasksets: []
-      taskset:
-        default_workflow_type: astuner_workflow
-        format:
-          prompt_key: question
-          response_key: answer
-        name: gsm8k
-        path: http://localhost:8080
-        rollout_args:
-          temperature: 1.0
-        split: train
-        storage_type: astuner
-        subset_name: appworld
-    total_epochs: 1000
-    train_batch_size: 36
     trainer_input:
       experience_buffer:
         max_read_timeout: 18000
-        name: agentscope_gsm8k_buffer
+        name: astuner_buffer
         storage_type: queue
   checkpoint_root_dir: ./trinity_checkpoints
-  cluster:
-    gpu_per_node: 8
-    node_num: 1
   explorer:
-    eval_interval: 999999
     max_repeat_times_per_runner: 1
     max_timeout: 7200
     rollout_model:
@@ -47,16 +23,9 @@ trinity:
       enable_prefix_caching: false
       enable_thinking: false
       enforce_eager: true
-      engine_num: 2
       seed: 42
-      tensor_parallel_size: 1
       tool_call_parser: hermes
-    runner_per_model: 36
     # runner_state_report_interval: 30
-  model:
-    max_model_len: 16000
-    max_response_tokens: 16000
-    model_path: /path/to/your/model/such/as/Qwen/Qwen2___5-14B-Instruct
   monitor:
     monitor_type: swanlab
   name: dummy_name
@@ -68,7 +37,4 @@ trinity:
     sync_timeout: 1200
   trainer:
     grad_clip: 1.0
-    max_token_len_per_gpu: 14000
-    save_interval: 100
-    ulysses_sequence_parallel_size: 1
     use_dynamic_bsz: true

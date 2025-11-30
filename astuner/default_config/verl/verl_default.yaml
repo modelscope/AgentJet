@@ -1,30 +1,32 @@
 trainer:
+  experiment_name: "read_yaml_name"
+  project_name: "astune_default_project"
   val_before_train: False
   hfmodelpath: ""
-  experiment_name: "read_yaml_name"
   n_gpus_per_node: 8
   nnodes: 1
   save_freq: 20
   test_freq: 20
   total_epochs: 50
-  project_name: appworldnew
   critic_warmup: 0
   val_pass_n: 4
   logger:
     - console
     - swanlab
 
+
 data:
   val_batch_size: 100000000000
   return_raw_chat: True
   filter_overlong_prompts: True
   truncation: error
-  fast_eval: True
+
 
 algorithm:
   task_norm_patch: False
   adv_estimator: grpo
   use_kl_in_reward: False
+
 
 actor_rollout_ref:
   hybrid_engine: True
@@ -46,10 +48,10 @@ actor_rollout_ref:
       param_offload: True
       optimizer_offload: True
 
+
   rollout:
     name: vllm
     mode: async
-    max_env_len: 3000
     ppo_micro_batch_size_per_gpu: 1
     tensor_model_parallel_size: 1
     max_num_seqs: 10
@@ -61,9 +63,16 @@ actor_rollout_ref:
     gamma: 1.0
     enforce_eager: True
     log_prob_micro_batch_size_per_gpu: 4
+
+    # skip action generation every N steps, 0 means never skip
+    step_skip_action: 0
+    submit_oversample_multiplier: 1.5
+    enable_oversample: False
+
     custom_dataflow_cls:
       path: ""
       name: ""
+
 
   ref:
     use_dynamic_bsz: True
@@ -71,6 +80,7 @@ actor_rollout_ref:
     log_prob_max_token_len_per_gpu: 18000
     fsdp_config:
       param_offload: True
+
 
   model:
     use_remove_padding: True

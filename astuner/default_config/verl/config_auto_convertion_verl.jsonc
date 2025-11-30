@@ -14,6 +14,8 @@
     "astuner.trainer_common.use_kl_loss": "actor_rollout_ref.actor.use_kl_loss",
     "astuner.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
     "astuner.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
+    "astuner.trainer_common.ulysses_sequence_parallel_size": "actor_rollout_ref.actor.ulysses_sequence_parallel_size",
+
     "astuner.trainer_common.save_freq": "trainer.save_freq",
     "astuner.trainer_common.test_freq": "trainer.test_freq",
 

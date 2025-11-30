@@ -8,6 +8,8 @@ from hydra import compose, initialize
 from loguru import logger
 from omegaconf import DictConfig
 
+from astuner.utils.config_computer import split_keys_and_operators
+
 
 def read_astune_config(yaml_fp):
     """Load a Hydra configuration relative to this module."""
@@ -32,6 +34,28 @@ def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
     with open(yaml_fp, "w") as f:
         OmegaConf.save(cfg, f)
     return yaml_fp
+
+
+def _dive_to_fetch_value(config, dotted_key):
+    keys = dotted_key.split(".")
+    value = config
+    for key in keys:
+        value = value.get(key, None)
+        if value is None:
+            break
+    if value is None:
+        raise ValueError(f"[Warning]: Cannot find value for key: {dotted_key} in {config}")
+    return value
+
+
+def _dive_to_set_value(config, dotted_key, value):
+    keys = dotted_key.split(".")
+    sub_config = config
+    for key in keys[:-1]:
+        if key not in sub_config:
+            sub_config[key] = {}
+        sub_config = sub_config[key]
+    sub_config[keys[-1]] = value
 
 
 def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone):
@@ -61,7 +85,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
         convertion_json = json.load(file)
 
     logger.success("----------------------------------------------------")
-
+    # align trinity.* to to_config
     if ("trinity" in from_config) and backbone == "trinity":
         trinity_config = from_config["trinity"]
 
@@ -83,29 +107,20 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     logger.success("----------------------------------------------------")
     time.sleep(1)
 
+    # align based on convertion_json
     for from_key, to_keys in convertion_json.items():
-        # get value from from_config
-        keys = from_key.split(".")
-        value = from_config
-        for key in keys:
-            value = value.get(key, None)
-            if value is None:
-                break
-        if value is None:
-            logger.warning(
-                f"[Warning]: Cannot find value for key: {from_key} in {from_config_fp}, skip aligning {to_keys}"
+        if from_key.startswith("("):
+            keys_array, config_computer = split_keys_and_operators(
+                from_key, ["+", "-", "*", "/", "//", "%"]
             )
-            continue
+            value = config_computer({k: _dive_to_fetch_value(from_config, k) for k in keys_array})
+        else:
+            value = _dive_to_fetch_value(from_config, from_key)
 
         to_keys = to_keys if isinstance(to_keys, list) else [to_keys]
+
         for to_key in to_keys:
-            keys = to_key.split(".")
-            sub_config = to_config
-            for key in keys[:-1]:
-                if key not in sub_config:
-                    sub_config[key] = {}
-                sub_config = sub_config[key]
-            sub_config[keys[-1]] = value
+            _dive_to_set_value(to_config, to_key, value)
             logger.success(
                 f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]"
             )
@@ -121,7 +136,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
 
 
 def read_astune_hierarchical_config(
-    yaml_fp, exp_name, backbone, write_to=None, exp_dir="launcher_record"
+    yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments"
 ):
     with open(yaml_fp, "r") as file:
         config = yaml.safe_load(file)
@@ -206,6 +221,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     backup_dir = os.path.join(exp_dir, exp_name, "backup")
     yaml_backup_dst = os.path.join(exp_dir, exp_name, "yaml_backup.yaml")
     exe_exp_base = os.path.dirname(yaml_backup_dst)
+
     logger.info("----------------------------------------")
     logger.info(f"Experiment Name: {exp_name}")
     logger.info(f"Experiment Backup Dir: {backup_dir}")

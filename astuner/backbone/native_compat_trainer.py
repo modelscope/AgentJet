@@ -1281,7 +1281,7 @@ class ASTuneRayPPOTrainer:
         )
         metrics.update(global_balance_stats)
 
-    def fit(self):
+    def fit(self):  # noqa: C901
         """
         The training loop of PPO.
         The driver process only need to call the compute functions of the worker group through RPC
@@ -1523,8 +1523,6 @@ class ASTuneRayPPOTrainer:
                     with marked_timer("adv", timing_raw, color="brown"):
                         # we combine with rule-based rm
                         reward_extra_infos_dict: dict[str, list]
-                        if self.config.reward_model.launch_reward_fn_async:
-                            reward_tensor, reward_extra_infos_dict = ray.get(future_reward)
                         batch.batch["token_level_scores"] = reward_tensor
 
                         if reward_extra_infos_dict:
@@ -1570,9 +1568,7 @@ class ASTuneRayPPOTrainer:
                     if self.config.trainer.critic_warmup <= self.global_steps:
                         # update actor
                         with marked_timer("update_actor", timing_raw, color="red"):
-                            batch.meta_info[
-                                "multi_turn"
-                            ] = self.config.astuner.rollout.multi_turn.enable
+                            batch.meta_info["multi_turn"] = True
                             actor_output = self.actor_rollout_wg.update_actor(batch)
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
                         metrics.update(actor_output_metrics)
@@ -1724,15 +1720,9 @@ class ASTuneRayPPOTrainer:
                 num_pass_n_tasks += 1
             repeated_success_tasks += task_outcomes["tag_arr"].count("success")
 
-        num_all_success_scenarios = (
-            0  # If all tasks in a scenario are successful in all n experiments, then num_all_success_scenarios +1
-        )
-        num_pass_n_scenarios = (
-            0  # If all tasks in a scenario are successful in at least one of the n experiments, then num_pass_n_scenarios +1
-        )
-        repeated_num_pass_1_scenarios = (
-            0  # In sequential order, if all tasks in a scenario are successful in the x-th experiment, then repeated_num_pass_1_scenarios +1
-        )
+        num_all_success_scenarios = 0  # If all tasks in a scenario are successful in all n experiments, then num_all_success_scenarios +1
+        num_pass_n_scenarios = 0  # If all tasks in a scenario are successful in at least one of the n experiments, then num_pass_n_scenarios +1
+        repeated_num_pass_1_scenarios = 0  # In sequential order, if all tasks in a scenario are successful in the x-th experiment, then repeated_num_pass_1_scenarios +1
         for scenario in set_scenarios:
             scenario_task_results = {
                 task_id: task_outcomes
@@ -1762,8 +1752,6 @@ class ASTuneRayPPOTrainer:
         # record logs
         task_scenario_for_cmts = [_cmt.task_id.split("_")[0] for _cmt in cmts]
         for _cmt, scenario in zip(cmts, task_scenario_for_cmts):
-            task_outcome = _cmt.tag
-            selectors = [scenario, _cmt.task_id, task_outcome]
             _cmt.generate_log()
             reward = _cmt.reward_structure.raw_reward
 

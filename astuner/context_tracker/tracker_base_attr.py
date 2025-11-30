@@ -43,7 +43,7 @@ class TrackerAttr(object):
         max_response_length = self.config.astuner.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.astuner.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
-        self.max_env_output_length: int = self.config.astuner.rollout.max_env_len
+        self.max_env_output_length: int = self.config.astuner.context_tracker.max_env_len
         self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
         self.generated_token_cnt = 0
         self.terminal_rewards_dict = {}

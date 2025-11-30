@@ -88,9 +88,9 @@ def execute_training_process(
     # Fixed config asset locations
     TRINITY_BOOT_YAML = "astuner/default_config/trinity/trinity_launch.yaml"  # THIS FILE IS READ ONLY, and ALWAYS FIXED
     TRINITY_CONFIG_AUTO_CONVERSION = (
-        "astuner/default_config/trinity/config_auto_convertion_trinity.json"
+        "astuner/default_config/trinity/config_auto_convertion_trinity.jsonc"
     )
-    VERL_CONFIG_AUTO_CONVERSION = "astuner/default_config/verl/config_auto_convertion_verl.json"
+    VERL_CONFIG_AUTO_CONVERSION = "astuner/default_config/verl/config_auto_convertion_verl.jsonc"
 
     # let's begin the training process
     if args.backbone == "trinity":

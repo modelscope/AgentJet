@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument(
         "--exp-dir",
         type=str,
-        default="launcher_record",
+        default="saved_experiments",
         required=False,
         help="Path to experiment directory",
     )
@@ -247,7 +247,7 @@ def main():
     backbone_target = get_backbone_target(args.backbone)
 
     exp_config = None
-    exp_dir = args.exp_dir or "launcher_record"
+    exp_dir = args.exp_dir or "saved_experiments"
     if args.conf:
         yaml_path = args.conf
         (

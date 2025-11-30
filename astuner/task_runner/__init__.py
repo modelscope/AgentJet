@@ -17,7 +17,7 @@ class BaseAgentRunner(object):
         self.config = config
         self.max_steps: int = self.config.astuner.rollout.multi_turn.max_steps
         self.max_model_len: int = self.config.astuner.rollout.max_model_len
-        self.max_env_len: int = self.config.astuner.rollout.max_env_len
+        self.max_env_len: int = self.config.astuner.context_tracker.max_env_len
 
     def agentscope_runner_hooks(self, obs_window, task_thread_index, workflow_task):
         def should_interrupt_fn() -> bool:
@@ -36,7 +36,7 @@ class BaseAgentRunner(object):
         }
 
     def get_judge(self) -> JudgeBase:  # type: ignore
-        if self.config.astuner.task_judge.judge_type == "customized_protocal":
+        if self.config.astuner.task_judge.judge_type == "customized_protocol":
             judge_protocol = self.config.astuner.task_judge.judge_protocol
             return dynamic_import(judge_protocol)(self.config)  # type: ignore
 

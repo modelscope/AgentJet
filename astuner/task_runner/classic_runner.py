@@ -10,9 +10,6 @@ from astuner.utils.utils import convert_tool_to_user_message
 class AgentRunner(BaseAgentRunner):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.use_step_reward_from_env: bool = self.config.astuner.rollout.get(
-            "use_step_reward_from_env", False
-        )
         self.step_reward = []
 
     def execute(self, workflow_task) -> BasicContextTracker:
@@ -35,11 +32,7 @@ class AgentRunner(BaseAgentRunner):
                 f"Unsupported context template: {self.config.astuner.context_tracker.context_tracker_type}"
             )
 
-        assert not (
-            self.config.astuner.rollout.force_think and self.config.astuner.rollout.force_no_think
-        ), "Cannot force both think and no_think"
-        add_nothink = self.config.astuner.rollout.force_no_think
-
+        add_nothink = False
         self.cmt.save_init_input(init_messages, add_nothink)
 
         request_id: str = ""
@@ -122,8 +115,6 @@ class AgentRunner(BaseAgentRunner):
             state.pop("tool_calls", None)  # type: ignore
             self.cmt.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink)  # type: ignore
             self.cmt.round_cnt += 1
-            if self.use_step_reward_from_env:
-                self.step_reward += [env_output["reward"]]
 
             # 9. 🔚 determine if the episode is terminated
             self.cmt.is_terminated = env_output["is_terminated"]
@@ -138,34 +129,15 @@ class AgentRunner(BaseAgentRunner):
             success_rate = 1.0
         else:
             success_rate = 0.0
-        if not self.use_step_reward_from_env:
-            if self.config.astuner.rollout.add_special_success_reward:
-                if success_rate == 1:
-                    raw_reward = 1.0 + raw_reward * 0.5
-                else:
-                    raw_reward = 0.0 + raw_reward * 0.5
-            if self.config.astuner.rollout.binary_reward:
-                raw_reward = success_rate
-            self.cmt.process_reward(
-                reward_structure=Reward(
-                    raw_reward=raw_reward,
-                    raw_step_reward=None,
-                    success_rate=success_rate,
-                    madness=0,
-                    description="Success=1, Failure=0",
-                )
+        self.cmt.process_reward(
+            reward_structure=Reward(
+                raw_reward=raw_reward,
+                raw_step_reward=None,
+                success_rate=success_rate,
+                madness=0,
+                description="Success=1, Failure=0",
             )
-        else:
-            self.cmt.process_reward(
-                reward_structure=Reward(
-                    raw_reward=raw_reward,
-                    raw_step_reward=self.step_reward,
-                    success_rate=success_rate,
-                    madness=0,
-                    description="Step Reward from Environment",
-                )
-            )
-
+        )
         self.cmt.remove_last_context()
 
         return self.cmt
