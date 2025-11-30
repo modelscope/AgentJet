@@ -3,7 +3,12 @@
 AgentScope Tune, or **ASTuner**, is an advanced agent training framework designed to optimize AgentScope workflows and agents.
 Simply provide your AgentScope workflow, training data, and reward function to enhance your agents to their optimal performance.
 
-
+<div align="center">
+<img width="480" alt="image" src="https://github.com/user-attachments/assets/441dc0bc-34e0-43a7-b5ab-895f695104a4"/>
+    <p style="margin-top: 10px; color: #666; font-size: 10px;">
+    <em>Deep-Tune Your AgentScope Workflow and Unleash Its Full Potential.</em>
+  </p>
+</div>
 
 ## ✨ Features
 
