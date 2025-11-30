@@ -25,7 +25,7 @@ from transformers import AutoTokenizer
 
 from astuner.backbone.common_warm_up import warm_up_process
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
-    MultiAgentContextTracking,
+    MultiAgentContextTracker,
 )
 from astuner.schema.trajectory import Sample
 from astuner.task_rollout.native_parallel_worker import DynamicRollout
@@ -85,9 +85,9 @@ class TrinityCompatWorkflow(DynamicRollout):
             obs_window=obs_window,
         )
 
-    async def run_in_new_thread(self) -> MultiAgentContextTracking:
+    async def run_in_new_thread(self) -> MultiAgentContextTracker:
         return cast(
-            MultiAgentContextTracking,
+            MultiAgentContextTracker,
             await asyncio.to_thread(self.thread_worker),
         )
 

@@ -3,12 +3,11 @@ from collections import defaultdict
 from typing import List, Optional, Tuple
 
 import torch
-from beast_logger import NestedJsonItem, SeqItem, print_nested
 from loguru import logger
 
 from astuner.context_tracker.tracker_base_attr import (
+    BaseTracker,
     ExtendedMessage,
-    TrackerAttr,
     replace_token_ids,
 )
 from astuner.schema.trajectory import Reward, Sample
@@ -16,7 +15,7 @@ from astuner.utils.compute_madness import compute_string_madness
 from astuner.utils.tokenizer import astune_apply_chat_template
 
 
-class BasicContextTracker(TrackerAttr):
+class BasicContextTracker(BaseTracker):
     """
     A linear context tracker template that handles the conversation flow between LLM and environment.
     This class manages the context window, tokenization, and message history in a linear fashion.
@@ -71,53 +70,6 @@ class BasicContextTracker(TrackerAttr):
             if not message_arr[i]["tool_calls"]:
                 message_arr[i].pop("tool_calls")
         return message_arr
-
-    def check_context_token_num_safe(
-        self, messages: List[dict], tools: List[dict] = []
-    ) -> Tuple[bool, bool, str]:
-        def get_seq_length(messages):
-            prompt_text = astune_apply_chat_template(
-                tokenizer=self.tokenizer,
-                conversation=messages,
-                tools=tools,
-                add_generation_prompt=False,
-                tokenize=False,
-            )
-            return len(
-                self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0]
-            )
-
-        token_overflow = get_seq_length(messages) >= self.max_seq_length
-        if self.already_mad_flag and self.config.astuner.rollout.agent_madness_termination:
-            return False, token_overflow, "already_mad"
-        messages = self.prepare_previous_context(mod="raw")
-        if not token_overflow:  # self.config.env_engine.max_seq_length = 20480
-            return True, token_overflow, "safe"
-        else:
-            return False, token_overflow, "token_overflow"
-
-    def get_inc(self, text_frag_from, text_frag_to):
-        """
-        Get the incremental token array from text_frag_from to text_frag_to.
-        """
-        tokenizer_output = self.tokenizer(text_frag_from, return_tensors="pt", padding=False)
-        tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist()
-        token_ids_acc = tokenizer_input_ids
-
-        tokenizer_output = self.tokenizer(text_frag_to, return_tensors="pt", padding=False)
-        input_ids = tokenizer_output["input_ids"][0].tolist()
-        input_id_increment = input_ids[
-            len(token_ids_acc) :
-        ]  # get the new tokens added in this step
-        overlap_length = 0
-        for i in range(len(token_ids_acc)):
-            if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
-                overlap_length += 1
-            else:
-                break
-        msg = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
-        # print(msg)
-        return input_id_increment, msg
 
     def remove_last_context(self):
         if len(self.full_context) > 0:
@@ -332,18 +284,6 @@ class BasicContextTracker(TrackerAttr):
         self.full_context += [ext_msg]
         return
 
-    def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List[dict]:
-        result = []
-        for ext_msg in ext_msg_array:
-            d = {
-                "role": ext_msg.role,
-                "content": ext_msg.content_for_future,
-            }
-            if ext_msg.tool_calls:
-                raise RuntimeError("Not expected, contact developer")
-            result.append(d)
-        return result
-
     def prepare_world_interaction(self) -> str:
         """
         Process the latest model content before environment interaction.
@@ -461,67 +401,6 @@ class BasicContextTracker(TrackerAttr):
             sample_arr = random.sample(sample_arr, max_num_group)  # preserve max_num_group groups
 
         return sample_arr
-
-    def generate_log(self, task_id=None, global_step="NA"):
-        task_id = self.task_id
-        nested_items_print_buffer = {}
-        ext_steps = self.full_context
-        cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
-        text_arr = [self.tokenizer.decode(t) for t in cmt_tokenized["input_ids"]]
-        input_id_arr = [str(t) for t in cmt_tokenized["input_ids"]]
-        loss_mask_color_arr = [
-            "#09ABCF" if mask == 1 else "#D98510" for mask in cmt_tokenized["loss_mask"]
-        ]
-        buffer = {
-            "text_arr": text_arr,
-            "input_id_arr": input_id_arr,
-            "loss_mask_color_arr": loss_mask_color_arr,
-        }
-        len_prompt_ids = len(cmt_tokenized["prompt_ids"])
-        len_response_ids = len(cmt_tokenized["response_ids"])
-        len_input_ids = len(cmt_tokenized["input_ids"])
-        raw_reward = self.reward_structure.raw_reward
-        step_reward = self.reward_structure.step_reward[0]
-        try:
-            step_advantage = self.reward_structure.step_advantage[0]
-            step_advantage_simple = self.reward_structure.step_advantage_simple[0]
-        except Exception:
-            step_advantage = 0.0
-            step_advantage_simple = 0.0
-        task_outcome = str(self.reward_structure.success_rate)
-        selectors = [task_id, task_outcome]
-        nested_items_print_buffer[".".join(selectors)] = NestedJsonItem(
-            item_id="item",  # type: ignore
-            outcome=task_outcome,  # type: ignore
-            len_prompt_ids=len_prompt_ids,  # type: ignore
-            len_response_ids=len_response_ids,  # type: ignore
-            len_input_ids=len_input_ids,  # type: ignore
-            raw_reward=f"{float(raw_reward):.3f}",  # type: ignore
-            step_reward=f"{float(step_reward):.3f}",  # type: ignore
-            step_advantage=f"{float(step_advantage):.3f}",  # type: ignore
-            step_advantage_simple=f"{float(step_advantage_simple):.3f}",  # type: ignore
-            content=SeqItem(
-                text=buffer["text_arr"],  # text content
-                title=buffer["text_arr"],  # mouse hover text
-                count=buffer["input_id_arr"],  # h highlight text
-                color=buffer["loss_mask_color_arr"],  # color
-            ),
-        )
-        print_nested(
-            nested_items_print_buffer,
-            main_content="This is the main content of the nested JSON",
-            header=f"[{global_step}] Task {task_id} (Reward {float(step_reward):.3f})",
-            mod="rollout",
-            narrow=False,
-        )
-
-    def process_reward(self, reward_structure: Reward):
-        self.reward_structure = reward_structure
-        ext_steps = self.full_context
-        # linear mode has only one trajectory
-        self.reward_structure.step_reward = [
-            self.compute_step_level_reward(ext_steps=ext_steps, index=0, total_steps=1)
-        ]
 
     def ensure_terminate_rollout_stage(self):
         """Nothing need to be done for basic linear cmt at `ensure_terminate_rollout_stage`"""
@@ -726,7 +605,6 @@ class BasicContextTracker(TrackerAttr):
                     cmt.reward_structure.step_advantage_simple += [
                         (cmt.reward_structure.step_reward[i] - reward_mean) / (reward_std + 1e-6)
                     ]
-
         return
 
     def get_generation_prompt_token(self):

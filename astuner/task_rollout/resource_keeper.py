@@ -146,7 +146,7 @@ class BaseGymEnv(object):
         self.task_env_uuid = task_env_uuid
 
     def step(self, action: dict) -> Tuple[str, float, bool, dict]:
-        # fix agentscope output
+        """Take a step in the gym environment."""
         if not isinstance(action["content"], str):
             # assert isinstance(action['content'], list)
             # assert len(action['content']) == 1
@@ -180,7 +180,9 @@ class BaseGymEnv(object):
         return obs, reward, terminate, info
 
     def reset(self) -> str:
+        """Reset gym environment."""
         raise RuntimeError("Reset is not supported")
 
     def evaluate(self, task_env_uuid, params):
+        """Evaluate and get reward."""
         return self.env_client.evaluate(task_env_uuid, params)

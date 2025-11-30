@@ -6,7 +6,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
-    MultiAgentContextTracking,
+    MultiAgentContextTracker,
 )
 from astuner.task_rollout.async_llm_bridge import LlmProxyForAgentScope
 
@@ -51,7 +51,7 @@ class ModelTuner(DashScopeChatModel):
     def __init__(
         self,
         config,
-        context_tracker: MultiAgentContextTracking,
+        context_tracker: MultiAgentContextTracker,
         agentscope_workflow: "Workflow",
         **kwargs,
     ) -> None:
@@ -182,7 +182,7 @@ class ModelTuner(DashScopeChatModel):
         """
         return self.llm_proxy
 
-    def get_context_tracker(self) -> MultiAgentContextTracking:
+    def get_context_tracker(self) -> MultiAgentContextTracker:
         """Get the context tracker instance.
         Returns:
             LlmProxyForAgentScope:

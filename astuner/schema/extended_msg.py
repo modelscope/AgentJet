@@ -2,6 +2,7 @@ import uuid
 from typing import List
 
 from loguru import logger
+from pydantic import BaseModel
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from astuner.utils.tokenizer import astune_apply_chat_template
@@ -30,7 +31,7 @@ def find_sublist_indices(large_list, small_list, reverse=False):
     return -1
 
 
-class ExtendedMessage:
+class ExtendedMessage(BaseModel):
     def __init__(
         self,
         author,

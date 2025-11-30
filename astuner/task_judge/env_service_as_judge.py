@@ -1,4 +1,4 @@
-from astuner.task_judge.judge_base import JudgeBase
+from astuner.task_judge.base_judge import JudgeBase
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 

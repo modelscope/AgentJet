@@ -2,7 +2,7 @@ import asyncio
 
 from astuner import ModelTuner, Workflow, WorkflowOutput
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
-    MultiAgentContextTracking,
+    MultiAgentContextTracker,
 )
 from astuner.context_tracker.basic_tracker import BasicContextTracker
 from astuner.schema.task import WorkflowTask
@@ -23,12 +23,12 @@ class AgentScopeRunner(BaseAgentRunner):
         workflow_cls = dynamic_import(workflow_import)
         agentscope_workflow: Workflow = workflow_cls(name="astuner-trinity")
 
-        hooks = self.agentscope_runner_hooks(
+        hooks = self.runner_hooks(
             obs_window=obs_window,
             task_thread_index=task_thread_index,
             workflow_task=workflow_task,
         )
-        context_tracker = MultiAgentContextTracking(
+        context_tracker = MultiAgentContextTracker(
             llm_chat_fn=self.llm_chat_fn,
             tokenizer=self.tokenizer,
             config=self.config,

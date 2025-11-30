@@ -31,7 +31,7 @@ from rm_gallery.core.schema.data import EvalCase
 from rm_gallery.core.schema.template import LanguageEnum
 
 from astuner.schema.task import Task, WorkflowOutput
-from astuner.task_judge.judge_base import JudgeBase
+from astuner.task_judge.base_judge import JudgeBase
 
 
 class RMAutoGraderJudge(JudgeBase):

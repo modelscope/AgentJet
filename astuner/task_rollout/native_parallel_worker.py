@@ -21,10 +21,11 @@ from astuner.schema.trajectory import Sample
 from astuner.task_rollout.single_worker import BaseParallelEnv
 
 
-class StepPrinter(BaseParallelEnv):
-    """Utility mixin providing periodic progress / throughput printing."""
+class ClassicRolloutManager(BaseParallelEnv):
+    """Static (non-dynamic) rollout manager."""
 
     def step_status_printer(self, obs_window):
+        """Pretty-print thread progress statistics for the shared obs window."""
         # Histogram buckets: obs_window['step'] 0~5 / 5~10 / 10~15 / ...
         step_counter = {}
         current_token = sum(obs_window["token"])
@@ -59,16 +60,13 @@ class StepPrinter(BaseParallelEnv):
                 print_buf += [f"[finished]:{count} threads"]
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
 
-
-class StaticRollout(StepPrinter):
-    """Static (non-dynamic) rollout manager."""
-
     def rollout(
         self,
         tasks: List[Task],
         mode: Literal["sample", "validate"],
         epoch: str,
     ) -> List[BasicContextTracker]:
+        """Execute non-dynamic rollouts in parallel and return collected trackers."""
         self.current_token_count_time = time.time()
         cmt_array: List[BasicContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
@@ -116,7 +114,7 @@ class StaticRollout(StepPrinter):
             return cmt_array
 
 
-class DynamicRollout(StaticRollout):
+class DynamicRolloutManager(ClassicRolloutManager):
     """Dynamic rollout supporting oversampling and early termination."""
 
     def rollout(
@@ -125,6 +123,7 @@ class DynamicRollout(StaticRollout):
         mode: Literal["sample", "validate"],
         epoch: str,
     ) -> List[BasicContextTracker]:
+        """Delegate to dynamic rollout when oversampling is enabled."""
         if (
             mode == "sample"
             and (self.rollout_n != 1)
@@ -135,6 +134,7 @@ class DynamicRollout(StaticRollout):
             return super().rollout(tasks, mode, epoch)
 
     def greedy_max_std_selection(self, samples: List[BasicContextTracker], n):
+        """Select samples whose rewards maximize spread to cover diverse rollouts."""
         if len(samples) < n:
             additional_n = n - len(samples)
             n = len(samples)
@@ -178,7 +178,7 @@ class DynamicRollout(StaticRollout):
         )
         return sorted_selected_samples
 
-    def rollout_dynamic(
+    def rollout_dynamic(  # noqa: C901
         self,
         tasks: List[Task],
         mode: Literal["sample", "validate"],
@@ -186,6 +186,8 @@ class DynamicRollout(StaticRollout):
         allow_sample_num_change=True,
         allow_force_stop=True,
     ) -> List[BasicContextTracker]:
+        """Perform oversampled rollouts with optional early termination heuristics."""
+
         cmt_array: List[BasicContextTracker] = []
         assert mode != "validate"
         rollout_n = self.rollout_n
@@ -394,15 +396,17 @@ class DynamicRollout(StaticRollout):
             return cmt_array
 
 
-class ParallelEnvManager(DynamicRollout):
+class ParallelEnvManager(DynamicRolloutManager):
     """High-level manager orchestrating rollouts and batch conversion."""
 
     def to_dataproto(self, cmt_array) -> DataProto:
+        """Convert completed context trackers into a `DataProto` minibatch."""
         samples = self.trajectories_to_samples(cmt_array)
         dataproto = self.samples_to_dataproto(samples)
         return dataproto
 
     def trajectories_to_samples(self, cmt_array: List[BasicContextTracker]) -> List[Sample]:
+        """Tokenize each tracker into `Sample` objects ready for tensorization."""
         sample_arr_final = []
         BasicContextTracker.compute_reference_advantage(cmt_array)
         for cmt in cmt_array:
@@ -434,6 +438,7 @@ class ParallelEnvManager(DynamicRollout):
         return sample_arr_final
 
     def samples_to_dataproto(self, samples: list[Sample]) -> DataProto:
+        """Pad sample fields and pack them into the `DataProto` structure expected by VERL."""
         prompt_ids: torch.Tensor | List[torch.Tensor] = []
         response_ids: torch.Tensor | List[torch.Tensor] = []
         prompt_attention_mask: torch.Tensor | List[torch.Tensor] = []

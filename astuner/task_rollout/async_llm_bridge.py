@@ -15,7 +15,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
-    MultiAgentContextTracking,
+    MultiAgentContextTracker,
 )
 from astuner.schema.logprob import TokenAndProb
 from astuner.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
@@ -38,7 +38,7 @@ class AsyncLlmBridge(object):
         self.llm_mode = llm_mode
         self.max_llm_retries = max_llm_retries
 
-    def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:
+    def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
         def llm_chat(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
@@ -244,7 +244,7 @@ class LlmProxyForAgentScope(object):
         self,
         llm_chat_fn,
         tokenizer: PreTrainedTokenizer,
-        context_tracker: MultiAgentContextTracking,
+        context_tracker: MultiAgentContextTracker,
         config,
     ) -> None:
         self.context_tracker = context_tracker
