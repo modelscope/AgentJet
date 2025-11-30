@@ -74,12 +74,6 @@ def parse_args():
         default=False,
         help="Launch Crafters Env Simulation",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        default=False,
-        help="Skip launching services and training (test/smoke mode)",
-    )
     parser.add_argument("--reboot", action="store_true", default=False, help="reboot flag")
     parser.add_argument(
         "--kill",
@@ -175,11 +169,62 @@ def check_avail_gpu(min_free_ratio: float = 0.95):
     )
 
 
+def get_backbone_target(backbone):
+    """
+    Determine the appropriate backbone target module based on the backbone name.
+
+    Args:
+        backbone (str): The backbone name (e.g., "verl", "debug", "trinity")
+
+    Returns:
+        str: The full module path for the specified backbone
+    """
+    backbone_target = "astuner.main_trinity"  # Default to trinity
+    if backbone == "verl":
+        backbone_target = "astuner.main_verl"
+    if backbone == "debug":
+        backbone_target = "astuner.main_vllm"
+    if backbone == "trinity":
+        backbone_target = "astuner.main_trinity"
+    return backbone_target
+
+
+def setup_environment_vars(args, exp_config, main_yaml_fp):
+    """
+    Configure environment variables based on command line arguments.
+
+    Args:
+        args: Command line arguments
+        exp_config: Experiment configuration dictionary
+        main_yaml_fp: Path to main YAML configuration file
+
+    Returns:
+        dict: Configured environment variables dictionary
+    """
+    env = os.environ.copy()
+    if args.debug:
+        env["RAY_DEBUG_POST_MORTEM"] = "1"
+        env["DEBUG_TAGS"] = args.debug
+        env["RAY_record_task_actor_creation_sites"] = "true"
+        assert exp_config["astuner"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
+        logger.warning("Debug mode is ON")
+    else:
+        logger.warning("Debug mode is OFF")
+        if args.conf:
+            assert exp_config["astuner"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
+    if args.backbone == "trinity":
+        env["ASTUNER_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
+    if args.backbone == "debug":
+        env["ASTUNER_DEBUG"] = "1"  # type: ignore
+    return env
+
+
 def main():
     args = parse_args()
 
     # Enforce GPU availability and free memory threshold before proceeding
-    check_avail_gpu(min_free_ratio=0.95)
+    if (args.backbone != "debug") and (not args.kill):
+        check_avail_gpu(min_free_ratio=0.95)
 
     # Handle kill-keywords argument if provided
     if args.kill:
@@ -194,18 +239,12 @@ def main():
         return  # Exit after killing processes
 
     # Initialize variables with default values to avoid "possibly unbound" errors
-    backbone_target = "astuner.main_trinity"  # Default to trinity
     main_yaml_fp = None
     exe_exp_base = None
     exp_name = None
-    env = os.environ.copy()
 
-    if args.backbone == "verl":
-        backbone_target = "astuner.main_verl"
-    if args.backbone == "debug":
-        backbone_target = "astuner.main_vllm"
-    if args.backbone == "trinity":
-        backbone_target = "astuner.main_trinity"
+    # switch backbone target
+    backbone_target = get_backbone_target(args.backbone)
 
     exp_config = None
     exp_dir = args.exp_dir or "launcher_record"
@@ -218,22 +257,7 @@ def main():
             exp_config,
         ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone)
 
-    if args.debug:
-        env["RAY_DEBUG_POST_MORTEM"] = "1"
-        env["DEBUG_TAGS"] = args.debug
-        env["RAY_record_task_actor_creation_sites"] = "true"
-        assert exp_config["astuner"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
-        logger.warning("Debug mode is ON")
-    else:
-        logger.warning("Debug mode is OFF")
-        if args.conf:
-            assert exp_config["astuner"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
-
-    if args.backbone == "trinity":
-        env["ASTUNER_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
-    if args.backbone == "debug":
-        env["ASTUNER_DEBUG"] = "1"  # type: ignore
-
+    env = setup_environment_vars(args, exp_config, main_yaml_fp)
     if args.with_ray:
         start_ray_service(args, env)
 
@@ -253,24 +277,15 @@ def main():
         launch_logview(exp_name)
 
     if args.conf and main_yaml_fp and exe_exp_base and exp_config:
-        if args.dry_run:
-            logger.info("Dry-run enabled: skipping training process launch.")
-            return {
-                "yaml": main_yaml_fp,
-                "exp_base": exe_exp_base,
-                "exp_yaml_name": os.path.basename(main_yaml_fp),
-                "exp_name": exp_config.get("astuner", {}).get("experiment_name"),
-            }
-        else:
-            execute_training_process(
-                args,
-                backbone_target,
-                main_yaml_fp,
-                exe_exp_base,
-                main_yaml_fp,
-                env,
-                exp_config,
-            )
+        execute_training_process(
+            args,
+            backbone_target,
+            main_yaml_fp,
+            exe_exp_base,
+            main_yaml_fp,
+            env,
+            exp_config,
+        )
 
 
 if __name__ == "__main__":
