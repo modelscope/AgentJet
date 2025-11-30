@@ -20,7 +20,7 @@ trinity:
 ## 配置映射修改 🔄
 
 某些 ASTune 配置与 Trinity 存在重叠，
-可通过 `astuner/default_config/trinity/config_auto_convertion_trinity.json` 文件进行映射配置
+可通过 `astuner/default_config/trinity/config_auto_convertion_trinity.jsonc` 文件进行映射配置
 
 ## Trinity 超参数简明指南 📊
 

@@ -143,3 +143,5 @@ good_trinity_checkpoints
 _resources
 auto/auto_grader.json
 tutorial/example_math_agent/math_agent_debug.yaml
+saved_experiments
+tests/temp

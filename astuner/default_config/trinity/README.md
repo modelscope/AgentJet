@@ -19,7 +19,7 @@ trinity:
 ## Configuration Mapping Modification 🔄
 
 Some ASTune configurations overlap with Trinity.
-You can configure mappings via the `astuner/default_config/trinity/config_auto_convertion_trinity.json` file.
+You can configure mappings via the `astuner/default_config/trinity/config_auto_convertion_trinity.jsonc` file.
 
 ## Trinity Hyperparameter Quick Guide 📊
 

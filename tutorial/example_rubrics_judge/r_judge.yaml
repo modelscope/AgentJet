@@ -11,7 +11,7 @@ astuner:
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_type: rubrics_auto_grader  # Options: 'customized_protocal', 'rubrics_auto_grader'
+    judge_type: rubrics_auto_grader  # Options: 'customized_protocol', 'rubrics_auto_grader'
     rubrics_auto_grader:
       # rubrics begin
       model_name: qwen-max

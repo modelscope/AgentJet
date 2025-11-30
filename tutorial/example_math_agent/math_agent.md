@@ -150,7 +150,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
   <img src="tutorial/figure/best-logger.png" alt="日志界面">
 </div>
 
-- 找到日志文件夹，默认在 `./launcher_record/exp_yaml_file_name/*` 下面
+- 找到日志文件夹，默认在 `./saved_experiments/exp_yaml_file_name/*` 下面
 - 运行 `beast_logger_go` 启动日志浏览器，vscode端口映射8181端口
 ```bash
 root@xxxx:/xxx/xxx/xxx# beast_logger_go
@@ -160,9 +160,9 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
 - 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
-    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record
-    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record/exp_yaml_file_name
-    - /mnt/data/qingxu.fu/astuner/astuner/launcher_record/exp_yaml_file_name/2025_11_10_02_52/rollout
+    - /mnt/data/qingxu.fu/astuner/astuner/saved_experiments
+    - /mnt/data/qingxu.fu/astuner/astuner/saved_experiments/exp_yaml_file_name
+    - /mnt/data/qingxu.fu/astuner/astuner/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
 
 - 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
 

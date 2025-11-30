@@ -61,7 +61,7 @@ class LaunchWhenAbsent:
         else:
             self.cmd = ["nohup"] + [self.exe] + full_argument_list
 
-        log_dir = Path("launcher_record/companion_logs/companion")
+        log_dir = Path("saved_experiments/companion_logs/companion")
         log_dir.mkdir(parents=True, exist_ok=True)
         hostname = os.uname().nodename
         if tag:
@@ -195,7 +195,7 @@ class LaunchWhenAbsent:
         try:
             # Set up process creation flags and environment
             # Create logs directory
-            log_dir = Path("launcher_record/companion_logs/companion")
+            log_dir = Path("saved_experiments/companion_logs/companion")
             log_dir.mkdir(parents=True, exist_ok=True)
 
             # Open log file
@@ -354,7 +354,7 @@ class LaunchCommandWhenAbsent(LaunchWhenAbsent):
             self.cmd = ["nohup"] + full_argument_list
         # raise ValueError(self.script_hash)
 
-        log_dir = Path("launcher_record/companion_logs/companion")
+        log_dir = Path("saved_experiments/companion_logs/companion")
         log_dir.mkdir(parents=True, exist_ok=True)
         hostname = os.uname().nodename
         if tag:

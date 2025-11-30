@@ -16,13 +16,9 @@ class EnvServiceJudge(JudgeBase):
         else:
             is_success = False
 
-        if self.config.astuner.rollout.add_special_success_reward:
-            if is_success:
-                raw_reward = 1.0 + raw_reward * 0.5
-            else:
-                raw_reward = 0.0 + raw_reward * 0.5
-
-        if self.config.astuner.rollout.binary_reward:
-            raw_reward = 1.0 if is_success else 0.0
+        if is_success:
+            raw_reward = 1.0 + raw_reward * 0.5
+        else:
+            raw_reward = 0.0 + raw_reward * 0.5
 
         return raw_reward, is_success

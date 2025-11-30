@@ -9,7 +9,7 @@ def init_parallel_rollout_logger(experiment_name):
     from beast_logger import register_logger
 
     final_log_path = os.path.join(
-        "launcher_record",
+        "saved_experiments",
         experiment_name,
         datetime.now().strftime("%Y_%m_%d_%H_%M"),
     )
