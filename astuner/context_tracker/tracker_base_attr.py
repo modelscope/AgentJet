@@ -30,7 +30,7 @@ def replace_token_ids(
     return final, final_logprob
 
 
-class TrackerAttr(object):
+class BaseTracker(object):
     def __init__(self, config, tokenizer, **kwargs):
         self.task_batch_index = kwargs.get("task_batch_index", "undefined")
         self.task_tag = kwargs.get("task_tag", "undefined")
@@ -62,3 +62,14 @@ class TrackerAttr(object):
             + self.config.astuner.data.max_response_length
             <= max_model_len
         )
+
+    def group_tokenize(self):
+        raise NotImplementedError
+
+    def group_tokenize_multi_group(self):
+        raise NotImplementedError
+
+    def tokenize_steps(
+        self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
+    ) -> dict:
+        raise NotImplementedError

@@ -1,6 +1,6 @@
 import re
 
-from astuner.task_judge.judge_base import JudgeBase
+from astuner.task_judge.base_judge import JudgeBase
 from astuner.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 from astuner.workflow import WorkflowOutput, WorkflowTask
 

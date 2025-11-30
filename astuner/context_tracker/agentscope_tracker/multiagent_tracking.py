@@ -17,7 +17,7 @@ from astuner.utils.compute_madness import compute_string_madness
 from astuner.utils.tokenizer import astune_apply_chat_template
 
 
-class MultiAgentContextTracking(BasicContextTracker):
+class MultiAgentContextTracker(BasicContextTracker):
     def __init__(
         self,
         llm_chat_fn,

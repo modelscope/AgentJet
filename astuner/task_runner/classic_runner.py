@@ -21,12 +21,6 @@ class AgentRunner(BaseAgentRunner):
         # 1. 🚀 Initialize messages
         if self.config.astuner.context_tracker.context_tracker_type == "linear":
             self.cmt = BasicContextTracker(self.config, self.tokenizer)
-        # elif self.config.astuner.context_tracker.context_tracker_type == "linear_think":
-        #     self.cmt = LinearThinkCMT(self.config, self.tokenizer)
-        # elif self.config.astuner.context_tracker.context_tracker_type == "context_selfclip":
-        #     self.cmt = SelfContextClipCMT(self.config, self.tokenizer, self.llm_chat_fn)
-        # elif self.config.astuner.context_tracker.context_tracker_type == "sliding_window":
-        #     self.cmt = SlidingWindowCMT(self.config, self.tokenizer, self.llm_chat_fn)
         else:
             raise ValueError(
                 f"Unsupported context template: {self.config.astuner.context_tracker.context_tracker_type}"
@@ -93,13 +87,6 @@ class AgentRunner(BaseAgentRunner):
                     env_output["state"] = convert_tool_to_user_message(
                         env_output["state"], self.tokenizer, format="qwen"
                     )
-                # if self.console_debug_mode:
-                #     if isinstance(env_output["state"], dict):
-                #         print_listofdict(
-                #             step_input_message_arr +
-                #             [{'role': 'llm_latest', 'content': llm_output['content']}] +
-                #             [{'role': 'env',        'content': env_output["state"]['content']}]
-                #         , mod='c')
             except Exception as e:
                 logger.bind(exception=True).exception(f"call env.step error with {e}")
                 self.cmt.is_terminated = True
@@ -139,5 +126,4 @@ class AgentRunner(BaseAgentRunner):
             )
         )
         self.cmt.remove_last_context()
-
         return self.cmt
