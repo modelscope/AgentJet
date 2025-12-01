@@ -44,5 +44,14 @@ Significant role-playing improvement is observed during the experiment.
   </p>
 </div>
 
+### Expanding Qwen2-7B to Qwen2-14B
+
+
+<div align="center">
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/02739f10-7bba-4bc9-a689-711efb3ba91b"/>
+    <p style="margin-top: 10px; color: #666; font-size: 14px;">
+    <em>The training process of Qwen2-14B is more robust than Qwen2-7B</em>
+  </p>
+</div>
 
 
