@@ -4,7 +4,6 @@ Modified from trinity.cli.launcher
 
 import argparse
 import asyncio
-import atexit
 import os
 import sys
 import traceback
@@ -25,7 +24,6 @@ from trinity.utils.plugin_loader import load_plugins
 # register trinity backbone modules
 import astuner.backbone.trinity_compat_workflow  # noqa: F401
 from astuner.utils.core_env_vars import get_runtime_env
-from astuner.utils.sms_agent import send_train_message
 
 logger = get_logger(__name__)
 
@@ -202,8 +200,6 @@ def run(config_path: str, dlc: bool = False, plugin_dir: str = None):
         from dotenv import load_dotenv
 
         load_dotenv(".env")
-
-    atexit.register(lambda: send_train_message("0000"))
 
     if plugin_dir:
         os.environ[PLUGIN_DIRS_ENV_VAR] = plugin_dir

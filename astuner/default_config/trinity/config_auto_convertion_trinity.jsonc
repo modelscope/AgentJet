@@ -6,6 +6,7 @@
     "astuner.trainer_common.save_freq": "trainer.save_interval",
     "astuner.trainer_common.ulysses_sequence_parallel_size": "trainer.ulysses_sequence_parallel_size",
     "astuner.trainer_common.optim.lr": "algorithm.optimizer.lr",
+    "astuner.trainer_common.logger": "monitor.monitor_type",
     "astuner.rollout.n_vllm_engine": "explorer.rollout_model.engine_num",
     "astuner.model.path": "model.model_path",
     "astuner.project_name": "project",

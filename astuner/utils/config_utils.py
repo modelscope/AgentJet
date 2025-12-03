@@ -127,6 +127,9 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
 
     logger.success("----------------------------------------------------")
     time.sleep(1)
+    # special: logger
+    if backbone == "verl" and isinstance(to_config["trainer"]["logger"], str):
+        to_config["trainer"]["logger"] = ["console" + to_config["trainer"]["logger"]]
 
     # save to_config_fp
     with open(to_config_fp, "w") as file:

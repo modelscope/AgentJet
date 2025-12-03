@@ -12,6 +12,8 @@ def init_parallel_rollout_logger(experiment_name):
         "saved_experiments",
         experiment_name,
         datetime.now().strftime("%Y_%m_%d_%H_%M"),
+        # machine host name
+        os.uname().nodename,
     )
     os.environ["BEST_LOGGER_PATH"] = final_log_path
     non_console_mods = ["rollout", "token_clip", "bad_case", "env_clip"]

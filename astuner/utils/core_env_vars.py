@@ -17,7 +17,7 @@ def get_runtime_env(is_trinity: bool = False) -> dict:
             "TOKENIZERS_PARALLELISM": "true",
             # use astuner.backbone as plugin directory
             "TRINITY_PLUGIN_DIRS": str((Path(__file__).parent.parent / "backbone").resolve()),
-            "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
+            # "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
             "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
             "ASTUNER_CONFIG_REDIRECT": os.getenv("ASTUNER_CONFIG_REDIRECT", ""),
         }
