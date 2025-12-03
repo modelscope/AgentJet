@@ -17,7 +17,9 @@ def can_merge_steps(
         for i in range(len(target_timeline)):
             if compare_level == "text":
                 same = (
-                    source_timeline[i].content_for_future == target_timeline[i].content_for_future
+                    # TODO: does not consider tools, may aggressively merge responses with different tool calls
+                    source_timeline[i].content_for_future
+                    == target_timeline[i].content_for_future
                 )
             elif compare_level == "token":
                 same = source_timeline[i].token_arr == target_timeline[i].token_arr
@@ -56,23 +58,24 @@ def can_merge_steps(
     return can_merge
 
 
+def toggle_author_and_mask(
+    source_timeline: List[ExtendedMessage],
+    target_timeline: List[ExtendedMessage],
+) -> List[ExtendedMessage]:
+    # if any message in `target_timeline` is author == 'llm', but same-index message in `source_timeline` is author != 'llm'
+    # change source_timeline's message author to 'llm'
+    for i in range(len(target_timeline)):
+        if target_timeline[i].author == "llm" and source_timeline[i].author != "llm":
+            source_timeline[i].author = target_timeline[i].author
+            source_timeline[i].token_arr = target_timeline[i].token_arr
+            source_timeline[i].token_logprob_arr = target_timeline[i].token_logprob_arr
+            assert source_timeline[i].need_training
+    return source_timeline
+
+
 def merge_tracker_timelines(
     timelines: List[List[ExtendedMessage]],
 ) -> List[List[ExtendedMessage]]:
-    def toggle_author(
-        source_timeline: List[ExtendedMessage],
-        target_timeline: List[ExtendedMessage],
-    ) -> List[ExtendedMessage]:
-        # if any message in `target_timeline` is author == 'llm', but same-index message in `source_timeline` is author != 'llm'
-        # change source_timeline's message author to 'llm'
-        for i in range(len(target_timeline)):
-            if target_timeline[i].author == "llm" and source_timeline[i].author != "llm":
-                source_timeline[i].author = target_timeline[i].author
-                source_timeline[i].token_arr = target_timeline[i].token_arr
-                source_timeline[i].token_logprob_arr = target_timeline[i].token_logprob_arr
-                assert source_timeline[i].need_training
-        return source_timeline
-
     absorbed_step_indices = []
     reversed_timelines = list(reversed(timelines))
     for i in range(len(reversed_timelines)):
@@ -85,7 +88,7 @@ def merge_tracker_timelines(
             source_timeline = reversed_timelines[i]
             target_timeline = reversed_timelines[j]
             if can_merge_steps(source_timeline, target_timeline):
-                source_timeline = toggle_author(source_timeline, target_timeline)
+                source_timeline = toggle_author_and_mask(source_timeline, target_timeline)
                 reversed_timelines[i] = source_timeline
                 absorbed_step_indices += [j]
 

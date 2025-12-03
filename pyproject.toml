@@ -21,6 +21,7 @@ dependencies = [
     "trinity-rft>=0.3.3",
     "loguru",
     "debugpy",
+    "swanlab",
     "modelscope>=1.18.1",
     "pydantic",
     "beast_logger",

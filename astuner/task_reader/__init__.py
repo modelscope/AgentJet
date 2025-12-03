@@ -92,10 +92,14 @@ class TaskReaderRouterV2(TaskReaderBase):
             raise ValueError(f"Unsupported task reader type: {task_reader_type}")
 
     def get_training_tasks(self) -> List[Task]:
-        return self.task_reader.get_training_tasks()
+        result = self.task_reader.get_training_tasks()
+        np.random.shuffle(result)
+        return result
 
     def get_validation_tasks(self) -> List[Task]:
-        return self.task_reader.get_validation_tasks()
+        result = self.task_reader.get_validation_tasks()
+        np.random.shuffle(result)
+        return result
 
 
 def task_to_standard_dataset(tasks: List[Task]) -> datasets.Dataset:

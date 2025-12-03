@@ -108,7 +108,6 @@ class AgentRunner(BaseAgentRunner):
             if self.cmt.is_terminated:
                 break
 
-        self.cmt.ensure_terminate_rollout_stage()
         obs_window["step"][task_thread_index] = -1
         raw_reward = 0
         raw_reward = env.evaluate(workflow_task.task_env_uuid, params={"sparse": False})

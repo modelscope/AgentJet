@@ -4,25 +4,14 @@ import os
 import random
 import tempfile
 import time
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 import requests
+from loguru import logger
 
 LOG_PATH = os.environ.get(
     "CLIENT_LOG_PATH", os.path.join(tempfile.gettempdir(), "app_logs", "error.out")
 )
-
-
-def safe_log(msg: str):
-    try:
-        os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-        with open(LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}] {msg}\n")
-            f.flush()
-            os.fsync(f.fileno())
-    except Exception:
-        pass
 
 
 def retry_call(
@@ -39,19 +28,19 @@ def retry_call(
         try:
             res = fn()
             if i > 0:
-                safe_log(
+                logger.info(
                     f"{err_prefix} {action_name} [instance={instance_id}] succeed at try {i+1}/{max_retry}"
                 )
             return res
         except Exception as e:
-            safe_log(
+            logger.info(
                 f"{err_prefix} {action_name} [instance={instance_id}] retry {i+1}/{max_retry} failed: {e}"
             )
             if i + 1 == max_retry:
-                safe_log(
+                logger.exception(
                     f"{err_prefix} {action_name} [instance={instance_id}] max retries exceeded, fallback used."
                 )
-                return fail_return
+                raise RuntimeError("Env Service Timeout")
             wait = random.uniform(min_backoff, max_backoff)
             time.sleep(wait)
     return fail_return
@@ -60,7 +49,7 @@ def retry_call(
 class EnvClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url.rstrip("/")
-        self.timeout = 150.0 + random.uniform(50, 200)
+        self.timeout = 30.0
 
     def _make_request(
         self,
@@ -86,7 +75,7 @@ class EnvClient:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            safe_log(
+            logger.exception(
                 f"[{endpoint}] _make_request failed (instance={instance_id}): {e}, data: {data}"
             )
             raise Exception(f"Request failed: {str(e)}, data: {data}")
@@ -96,7 +85,7 @@ class EnvClient:
         env_type: str,
         split: str = "train",
         params: Optional[dict] = None,
-        max_retry: int = 3,
+        max_retry: int = 1,
     ) -> List[str]:
         def call():
             # resolved_env_type = map_env_type.get(env_type, env_type)

@@ -183,15 +183,22 @@ class MultiAgentContextTracker(BasicContextTracker):
         )
         if token_generator == "manual":
             input_msg_ref = copy.deepcopy(converted_message)
-            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(
-                input_msg_ref, llm_output, tools=tools
-            )
-            assert (
-                len(token_arr_method2)
-                <= self.config.astuner.rollout.max_response_length_in_one_turn
-            ), f"Generated token length {len(token_arr_method2)} exceeds max_response_length_in_one_turn {self.config.astuner.rollout.max_response_length_in_one_turn}"
-            llm_ext_msg.token_arr = token_arr_method2
+
+            (
+                precise_manual_token,
+                token_logprob_arr,
+                loss_mask,
+                lack_normal_eos,
+            ) = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output, tools=tools)
+            llm_ext_msg.token_arr = precise_manual_token
             llm_ext_msg.token_logprob_arr = token_logprob_arr
+            llm_ext_msg.lack_normal_eos = lack_normal_eos
+            llm_ext_msg.manual_loss_mask_override = loss_mask
+
+            assert (
+                len(precise_manual_token)
+                <= self.config.astuner.rollout.max_response_length_in_one_turn
+            ), f"Generated token length {len(precise_manual_token)} exceeds max_response_length_in_one_turn {self.config.astuner.rollout.max_response_length_in_one_turn}"
             self.generated_token_callback_fn(llm_ext_msg.token_arr)
 
         # take snapshot of current timeline
@@ -237,6 +244,19 @@ class MultiAgentContextTracker(BasicContextTracker):
             prompt_text = prompt_text[: -len(self.generation_prompt)]
             # prompt_token_ids = prompt_token_ids[: -len(self.generation_prompt_token)]
 
+        # split prompt token ids into message level
+        split_prompt_token_ids = []
+        tmp = []
+        for i in range(len(prompt_token_ids)):
+            if prompt_token_ids[i] != self._im_start_token_id:
+                tmp += [prompt_token_ids[i]]
+            else:
+                if len(tmp) > 0:
+                    split_prompt_token_ids += [tmp]
+                tmp = [prompt_token_ids[i]]
+        if len(tmp) > 0:
+            split_prompt_token_ids += [tmp]
+        # split prompt text into message level
         prompt_text_split = prompt_text.split("<|im_start|>")
         assert prompt_text_split[0] == "", "Prompt text should start with <|im_start|>"
         prompt_text_split = prompt_text_split[1:]  # remove the first empty string
@@ -255,6 +275,7 @@ class MultiAgentContextTracker(BasicContextTracker):
         # try to recover tokens
         for j in range(len(previous_ext_context)):
             if prompt_text_split[j] != current_prompt_text[j]:
+                # if prompt text mismatch, we can replace the tokens
                 print_dict(
                     {
                         "expected_prompt_text": prompt_text_split[j],
@@ -266,7 +287,24 @@ class MultiAgentContextTracker(BasicContextTracker):
                 previous_ext_context[j].token_arr = self.tokenizer(
                     prompt_text_split[j], return_tensors="pt", padding=False
                 )
-
+            else:
+                # if prompt text match
+                # we further check whether all token ids matches
+                vllm_token_array = split_prompt_token_ids[j]
+                tracker_token_array = previous_ext_context[j].token_arr
+                if vllm_token_array == tracker_token_array:
+                    # good, everything is perfect
+                    continue
+                else:
+                    # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
+                    print_dict(
+                        {
+                            "expected_token_ids": split_prompt_token_ids[j],
+                            "current_token_ids": previous_ext_context[j].token_arr,
+                        },
+                        mod="exception",
+                        header="Prompt token ids mismatch, Please report a github issue",
+                    )
         # remove extra messages
         if len(previous_ext_context) != len(prompt_text_split):
             previous_ext_context = previous_ext_context[: len(prompt_text_split)]
@@ -372,29 +410,6 @@ class MultiAgentContextTracker(BasicContextTracker):
     def group_tokenize(self):
         return self.group_tokenize_multi_group()
 
-    def get_inc(self, text_frag_from, text_frag_to):
-        """
-        Get the incremental token array from text_frag_from to text_frag_to.
-        """
-        tokenizer_output = self.tokenizer(text_frag_from, return_tensors="pt", padding=False)
-        tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist()  # type: ignore
-        token_ids_acc = tokenizer_input_ids
-
-        tokenizer_output = self.tokenizer(text_frag_to, return_tensors="pt", padding=False)
-        input_ids = tokenizer_output["input_ids"][0].tolist()  # type: ignore
-        input_id_increment = input_ids[
-            len(token_ids_acc) :
-        ]  # get the new tokens added in this step
-        overlap_length = 0
-        for i in range(len(token_ids_acc)):
-            if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
-                overlap_length += 1
-            else:
-                break
-        msg = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
-        # print(msg)
-        return input_id_increment, msg
-
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore
         dict_messages = self.to_role_content(ext_messages)
         prompt_text = astune_apply_chat_template(
@@ -445,15 +460,3 @@ class MultiAgentContextTracker(BasicContextTracker):
         else:
             ret = (False, token_overflow, "token_overflow")
         return ret
-
-    def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
-        result = []
-        for ext_msg in ext_msg_array:
-            d = {
-                "role": ext_msg.role,
-                "content": ext_msg.content_for_future,
-            }
-            if ext_msg.tool_calls:
-                d.update({"tool_calls": ext_msg.tool_calls})
-            result.append(d)
-        return result

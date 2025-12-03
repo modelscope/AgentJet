@@ -58,7 +58,7 @@ We recommend using `uv` for dependency management, though `conda` is also suppor
     uv pip install -r scripts/requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow  #  for conda, remove `--prerelease=allow` option
     uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
     uv pip install agentscope==1.0.7 -i https://mirrors.aliyun.com/pypi/simple/
-    uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation  # Install flash attention (must be executed at last)
+    uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation --no-cache # Install flash attention (must be executed at last)
     ```
 </details>
 

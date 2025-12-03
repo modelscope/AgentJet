@@ -6,10 +6,27 @@ trinity:
   algorithm:
     algorithm_type: multi_step_grpo
   buffer:
+    batch_size: 32
+    explorer_input:
+      eval_tasksets: []
+      taskset:
+        default_workflow_type: astuner_workflow
+        format:
+          prompt_key: question
+          response_key: answer
+        name: ""
+        path: http://localhost:8080
+        rollout_args:
+          temperature: 1.0
+        split: train
+        storage_type: astuner
+        subset_name: ""
+    total_epochs: 1000
+    train_batch_size: 36
     trainer_input:
       experience_buffer:
-        max_read_timeout: 3600
-        name: astuner_buffer
+        max_read_timeout: 18000
+        name: "astuner_experience_buffer"
         storage_type: queue
         replay_buffer:
           enable: false

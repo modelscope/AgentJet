@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import List, Optional, Tuple
 
 import torch
-from loguru import logger
 
 from astuner.context_tracker.tracker_base_attr import (
     BaseTracker,
@@ -190,18 +189,45 @@ class BasicContextTracker(BaseTracker):
                     self.already_mad_flag = True
 
         if token_generator == "manual":
-            token_arr_method2, token_logprob_arr = self.get_token_inc_from_vllm_response(
-                input_msg_ref, llm_output
-            )
-            ext_msg.token_arr = token_arr_method2
+            (
+                precise_manual_token,
+                token_logprob_arr,
+                loss_mask,
+                lack_normal_eos,
+            ) = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output)
+            ext_msg.token_arr = precise_manual_token
             ext_msg.token_logprob_arr = token_logprob_arr
+            ext_msg.lack_normal_eos = lack_normal_eos
+            ext_msg.manual_loss_mask_override = loss_mask
 
         return ext_msg
+
+    def get_inc(self, text_frag_from, text_frag_to):
+        """
+        Get the incremental token array from text_frag_from to text_frag_to.
+        """
+        tokenizer_output = self.tokenizer(text_frag_from, return_tensors="pt", padding=False)
+        tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist()  # type: ignore
+        token_ids_acc = tokenizer_input_ids
+
+        tokenizer_output = self.tokenizer(text_frag_to, return_tensors="pt", padding=False)
+        input_ids = tokenizer_output["input_ids"][0].tolist()  # type: ignore
+        input_id_increment = input_ids[
+            len(token_ids_acc) :
+        ]  # get the new tokens added in this step
+        overlap_length = 0
+        for i in range(len(token_ids_acc)):
+            if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
+                overlap_length += 1
+            else:
+                break
+        msg = f"previous token length: {len(token_ids_acc)}, overlap token length: {(overlap_length)}, increment token length: {len(input_id_increment)}"
+        return input_id_increment, msg
 
     # generate token
     def get_token_inc_from_vllm_response(
         self, input_msg_ref, llm_output, tools: List[dict] = []
-    ) -> Tuple[List[int], List[int]]:
+    ) -> Tuple[List[int], List[int], List[int], bool]:
         llm_output_role_content = {
             "role": llm_output["role"],
             "content": llm_output["content"],
@@ -231,14 +257,14 @@ class BasicContextTracker(BaseTracker):
         self.generated_token_cnt += len(vllm_output_raw_token)
         if not self.generation_prompt_token:
             self.generation_prompt_token = self.get_generation_prompt_token()
-        final_token_arr, token_logprob_arr = replace_token_ids(
-            place_holder=completion_token_arr,
-            replace_with=vllm_output_raw_token,
-            begin=self.generation_prompt_token,
-            end=[self.tokenizer.eos_token_id],
-            raw_logprob=vllm_output_raw_logprob,
+        final_token_arr, token_logprob_arr, loss_mask, lack_normal_eos = replace_token_ids(
+            token_container=completion_token_arr,
+            precise_token=vllm_output_raw_token,
+            precise_logprob=vllm_output_raw_logprob,
+            begin_ids=self.generation_prompt_token,
+            end_ids=[self.tokenizer.eos_token_id],
         )
-        return final_token_arr, token_logprob_arr
+        return final_token_arr, token_logprob_arr, loss_mask, lack_normal_eos
 
     def save_llm_output_do_not_register_full_context(self, llm_output, input_msg_ref):
         return BasicContextTracker.save_llm_output(
@@ -402,9 +428,6 @@ class BasicContextTracker(BaseTracker):
 
         return sample_arr
 
-    def ensure_terminate_rollout_stage(self):
-        """Nothing need to be done for basic linear cmt at `ensure_terminate_rollout_stage`"""
-
     def compute_step_level_reward(
         self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
     ) -> float:
@@ -422,6 +445,18 @@ class BasicContextTracker(BaseTracker):
             self.reward_structure.madness = -1.0
 
         return step_reward
+
+    def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
+        result = []
+        for ext_msg in ext_msg_array:
+            d = {
+                "role": ext_msg.role,
+                "content": ext_msg.content_for_future,
+            }
+            if ext_msg.tool_calls:
+                d.update({"tool_calls": ext_msg.tool_calls})
+            result.append(d)
+        return result
 
     def tokenize_steps(
         self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
@@ -483,26 +518,19 @@ class BasicContextTracker(BaseTracker):
             attention_mask += [1] * len(ext_msg.token_arr)
             loss_mask += ext_msg.get_loss_mask(blackout_token_combo=self.blackout_token_combo)
 
-            if split_prompt_reponse_index == -1:
-                # should we begin split point early?
-                if input_ids_len[-1] > self.config.astuner.data.max_prompt_length:
-                    message_dict = self.to_role_content(ext_steps)
-                    logger.warning(
-                        "Input ids exceeded max_prompt_length before encountering any training message! trying to fix..."
-                    )
-                    logger.bind(exception=True).exception(
-                        "Input ids exceeded max_prompt_length before encountering any training message! trying to fix...\n\n"
-                        + str(message_dict)
-                    )
-                    assert (
-                        i >= 1
-                    ), "There should be at least one message before exceeding max_prompt_length"
-                    assert (
-                        input_ids_len[-2] <= self.config.astuner.data.max_prompt_length
-                    ), "The previous message should be within max_prompt_length, something is wrong"
-                    split_point_message_left_index = i - 1
-                    assert split_point_message_left_index == (len(input_ids_len) - 2), "what?"
-                    split_prompt_reponse_index = input_ids_len[split_point_message_left_index]
+        # if [prompt_token | response_token] is splited at a place where loss_mask == 0,
+        # move the split index forward
+        MAX_FORWARD_STEPS = 100
+        for i in range(MAX_FORWARD_STEPS):
+            if loss_mask[split_prompt_reponse_index] == 0:
+                split_prompt_reponse_index += 1
+            else:
+                break
+
+        # no matter what, the split index should not exceed max prompt length
+        # make sure that the prompt length does not exceed `config.astuner.data.max_prompt_length`
+        if split_prompt_reponse_index > self.config.astuner.data.max_prompt_length:
+            split_prompt_reponse_index = self.config.astuner.data.max_prompt_length
 
         # check
         assert len(ext_steps) == len(
