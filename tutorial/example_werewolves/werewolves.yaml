@@ -1,47 +1,67 @@
-# ------------------ 主要配置 ------------------
+# ------------------ main config ------------------
 astuner:
   project_name: example_werewolves
   task_reader:
     type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
 
   task_judge:
-    # ✨✨✨✨ 编写并选择评价函数
+    # ✨✨✨✨ select evaluation function
     judge_protocol: null
 
   model:
-    # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    # ✨✨✨✨ select model to be trained
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+
 
   rollout:
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
-    num_repeat: 4
-    max_env_worker: 64
+    # the path to the workflow class
+    agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ select agent
+
     temperature: 0.7
+
+    max_env_worker: 64
+
+    num_repeat: 6
+
     agent_madness_reward: 0.0
-    tensor_model_parallel_size: 4
-    max_num_seqs: 128
+
+    tensor_model_parallel_size: 1
+
+    # the number of vllm engines, number of gpus for infer is `n_vllm_engine*tensor_model_parallel_size`, this argument is NOT effective when NOT using trinity
+    n_vllm_engine: 8
+
+    max_num_seqs: 40
+
+    # monitor LLM's abormal behaviors during rollout
     compute_madness_checklist:
       - "nonsense"
-    max_response_length_in_one_turn: 2048
-    max_model_len: 16000
+
+    max_response_length_in_one_turn: 1024
+
+    max_model_len: 22000
+
+    multi_turn:
+      # expected steps for each task run, used to calculate the training batch size for trinity, do not have to be precise
+      expected_steps: 3
 
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
 
   data:
-    max_prompt_length: 3000
-    max_response_length: 13000
-    train_batch_size: 16
+    train_batch_size: 32
+    max_prompt_length: 4000
+    max_response_length: 18000
 
   trainer_common:
-    save_freq: 99999
+    save_freq: 5
     test_freq: 99999
     total_epochs: 99999
-    val_before_train: False
+    total_training_steps: 25
+    nnodes: 2
+    n_gpus_per_node: 8
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://astuner/default_config
@@ -49,10 +69,10 @@ hydra:
     - file://external/verl/verl/trainer/config  # verl only
     - file://astuner/default_config/trinity      # trinity only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
-  - ppo_trainer # verl inherit 1/2
-  - verl_default # verl inherit 2/2
+  - ppo_trainer     # verl inherit 1/2
+  - verl_default    # verl inherit 2/2
   - trinity_default # trinity inherit 1/1
   - astune_default
   - _self_

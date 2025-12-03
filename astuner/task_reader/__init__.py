@@ -4,6 +4,7 @@ import datasets
 import numpy as np
 
 from astuner.schema.task import Task
+from astuner.task_reader.data_generator_reader import TaskReaderDataGenerator
 from astuner.task_reader.env_service_reader import TaskReaderEnvService
 from astuner.task_reader.hf_dataset_reader import TaskReaderHuggingFace
 from astuner.task_reader.jsonl_reader import TaskReaderJsonl
@@ -56,6 +57,8 @@ class TaskReaderRouter(TaskReaderBase):
             self.task_reader = TaskReaderHuggingFace(reader_config)
         elif self.task_reader == "tracing":
             self.task_reader = TracingReader(reader_config)
+        elif self.task_reader_type == "data_generation":
+            self.task_reader = TaskReaderDataGenerator(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(reader_config)
         else:
@@ -81,6 +84,8 @@ class TaskReaderRouterV2(TaskReaderBase):
             self.task_reader = TaskReaderHuggingFace(reader_config)
         elif self.task_reader == "tracing":
             self.task_reader = TracingReader(reader_config)
+        elif self.task_reader_type == "data_generation":
+            self.task_reader = TaskReaderDataGenerator(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(reader_config)
         else:

@@ -28,11 +28,11 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from astuner.schema.trajectory import Sample
-from astuner.task_rollout.native_parallel_worker import DynamicRollout
+from astuner.task_rollout.native_parallel_worker import DynamicRolloutManager
 from astuner.utils.config_utils import read_astune_config
 
 
-class TrinityCompatWorkflow(DynamicRollout):
+class TrinityCompatWorkflow(DynamicRolloutManager):
     def __init__(
         self,
         is_eval,

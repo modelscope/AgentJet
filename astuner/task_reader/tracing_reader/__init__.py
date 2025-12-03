@@ -20,8 +20,6 @@ class Config(TypedDict):
 
 
 class TracingReader(TaskReaderBase):
-    reader_config: Config
-
     def __init__(
         self,
         reader_config,
@@ -34,7 +32,7 @@ class TracingReader(TaskReaderBase):
         self.reader_config = reader_config.feedback_tracing
 
         logger.info(
-            f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters'))}"
+            f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters', []))}"
         )
         self._connector = LocalSqliteConnectorV1(self.reader_config.get("base_url"))
         filters_config = self.reader_config.get("filters")

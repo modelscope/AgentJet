@@ -11,7 +11,7 @@ from tutorial.example_werewolves.prompt import EnglishPrompts as Prompts
 
 # MAX_GAME_ROUND = 30
 # MAX_DISCUSSION_ROUND = 3
-MAX_GAME_ROUND = 10
+MAX_GAME_ROUND = 7
 MAX_DISCUSSION_ROUND = 2
 
 

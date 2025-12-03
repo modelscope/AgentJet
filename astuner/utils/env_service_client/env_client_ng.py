@@ -2,15 +2,17 @@
 
 import os
 import random
-import time
 import tempfile
-import requests
-
+import time
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
+import requests
 
-LOG_PATH = os.environ.get("CLIENT_LOG_PATH", os.path.join(tempfile.gettempdir(), "app_logs", "error.out"))
+LOG_PATH = os.environ.get(
+    "CLIENT_LOG_PATH", os.path.join(tempfile.gettempdir(), "app_logs", "error.out")
+)
+
 
 def safe_log(msg: str):
     try:
