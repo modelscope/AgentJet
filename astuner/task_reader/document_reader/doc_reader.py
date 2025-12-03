@@ -38,8 +38,8 @@ class DocReader(DocReaderBase):
         return Document(doc_id=str(uuid.uuid4()), content=raw_document, metadata={})
 
     def get_document(self) -> Document:
-        file_path = self.config.astuner.document_reader.document_path
+        file_path = self.config.data_generation.document_reader.document_path
         raw_doc = self.load_document(
-            file_path, languages=list(self.config.astuner.document_reader.languages)
+            file_path, languages=list(self.config.data_generation.document_reader.languages)
         )
         return self._parser_document(raw_doc)

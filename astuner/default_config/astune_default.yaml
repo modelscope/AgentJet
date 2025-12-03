@@ -87,7 +87,7 @@ astuner:
 
 
   task_reader:
-    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`
+    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
     # when `type == dataset_file`
     dataset_file:
       training:
@@ -106,6 +106,22 @@ astuner:
       dataset_path: "gsm8k"
       training_split: "train"
       validation_split: "validation"
+    # when `type == data_generation`
+    data_generation:
+      document_reader:
+        document_path: 'dataset/document/your-document.pdf'
+        languages:
+          - eng
+      query_reader:
+        type: dataset_file
+        dataset_file:
+          training:
+            file_path: 'dataset/jsonl/your-queries.jsonl'
+      task_num: 10
+      llm_model: qwen-long
+      llm_response_length: 8192
+      sampling_params:
+        temperature: 0
 
 
   task_judge:

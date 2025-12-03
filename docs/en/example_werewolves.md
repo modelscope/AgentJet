@@ -64,7 +64,7 @@ This section corresponds to tutorial/example_werewolves/werewolves.yaml.
 You can copy and modify the key parameters in that file. The parts most relevant to this document are marked with ✨✨✨✨ in the YAML.
 The key configuration items are as follows:
 ```yaml
-astune:
+astuner:
   task_reader:
     # random seed to shuffle players
     type: random_dummy
@@ -168,5 +168,3 @@ For example:
     <em>The training process of Qwen2-14B is more robust than Qwen2-7B</em>
   </p>
 </div>
-
-

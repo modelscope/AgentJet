@@ -20,6 +20,8 @@ dependencies = [
     "agentscope>=1.0.7",
     "trinity-rft>=0.3.3",
     "loguru",
+    "debugpy",
+    "modelscope>=1.18.1",
     "pydantic",
     "beast_logger",
 ]

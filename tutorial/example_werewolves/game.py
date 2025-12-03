@@ -26,8 +26,13 @@ from tutorial.example_werewolves.utils import (
     names_to_str,
 )
 
+
+class BadGuyException(Exception):
+    ...
+
+
 moderator = EchoAgent()
-moderator.set_console_output_enabled(False)
+# moderator.set_console_output_enabled(False)
 
 
 async def hunter_stage(
@@ -46,7 +51,7 @@ async def hunter_stage(
     return None
 
 
-async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
+async def werewolves_game(agents: list[ReActAgent], roles) -> bool:  # noqa: C901
     """The main entry of the werewolf game
 
     Args:
@@ -99,49 +104,54 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:
             )
             killed_player, poisoned_player, shot_player = None, None, None
 
-            # Werewolves discuss
-            async with MsgHub(
-                players.werewolves,
-                enable_auto_broadcast=True,
-                announcement=await moderator(
-                    Prompts.to_wolves_discussion.format(
-                        names_to_str(players.werewolves),
-                        names_to_str(players.current_alive),
-                    ),
-                ),
-                name="werewolves",
-            ) as werewolves_hub:
-                # Discussion
-                n_werewolves = len(players.werewolves)
-                for _ in range(1, MAX_DISCUSSION_ROUND * n_werewolves + 1):
-                    res = await players.werewolves[_ % n_werewolves](
-                        structured_model=DiscussionModel,
-                    )
-                    if _ % n_werewolves == 0 and res.metadata.get(
-                        "reach_agreement",
-                    ):
-                        break
-
-                # Werewolves vote
-                # Disable auto broadcast to avoid following other's votes
-                werewolves_hub.set_auto_broadcast(False)
-                msgs_vote = await fanout_pipeline(
+            try:
+                # Werewolves discuss
+                async with MsgHub(
                     players.werewolves,
-                    msg=await moderator(content=Prompts.to_wolves_vote),
-                    structured_model=get_vote_model(players.current_alive),
-                    enable_gather=False,
-                )
-                killed_player, votes = majority_vote(
-                    [_.metadata.get("vote") for _ in msgs_vote],
-                )
-                # Postpone the broadcast of voting
-                await werewolves_hub.broadcast(
-                    [
-                        *msgs_vote,
-                        await moderator(
-                            Prompts.to_wolves_res.format(votes, killed_player),
+                    enable_auto_broadcast=True,
+                    announcement=await moderator(
+                        Prompts.to_wolves_discussion.format(
+                            names_to_str(players.werewolves),
+                            names_to_str(players.current_alive),
                         ),
-                    ],
+                    ),
+                    name="werewolves",
+                ) as werewolves_hub:
+                    # Discussion
+                    n_werewolves = len(players.werewolves)
+                    for _ in range(1, MAX_DISCUSSION_ROUND * n_werewolves + 1):
+                        res = await players.werewolves[_ % n_werewolves](
+                            structured_model=DiscussionModel,
+                        )
+                        if _ % n_werewolves == 0 and res.metadata.get(
+                            "reach_agreement",
+                        ):
+                            break
+
+                    # Werewolves vote
+                    # Disable auto broadcast to avoid following other's votes
+                    werewolves_hub.set_auto_broadcast(False)
+                    msgs_vote = await fanout_pipeline(
+                        players.werewolves,
+                        msg=await moderator(content=Prompts.to_wolves_vote),
+                        structured_model=get_vote_model(players.current_alive),
+                        enable_gather=False,
+                    )
+                    killed_player, votes = majority_vote(
+                        [_.metadata.get("vote") for _ in msgs_vote],
+                    )
+                    # Postpone the broadcast of voting
+                    await werewolves_hub.broadcast(
+                        [
+                            *msgs_vote,
+                            await moderator(
+                                Prompts.to_wolves_res.format(votes, killed_player),
+                            ),
+                        ],
+                    )
+            except Exception as e:
+                raise BadGuyException(
+                    f"Werewolves failed to make a decision: {e}",
                 )
 
             # Witch's turn

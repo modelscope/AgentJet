@@ -14,10 +14,10 @@ class DataGeneratorBase:
             config: Optional configuration object (LLM model, Maximum response length)
         """
         self.config = config
-        self.sampling_params = self.config.astuner.data_generator.sampling_params or {}
+        self.sampling_params = self.config.data_generation.sampling_params or {}
         self.llm_client = construct_alien_llm_chat_fn(
-            alien_llm_model=self.config.astuner.data_generator.llm_model,
-            alien_llm_response_length=self.config.astuner.data_generator.llm_response_length,
+            alien_llm_model=self.config.data_generation.llm_model,
+            alien_llm_response_length=self.config.data_generation.llm_response_length,
         )
 
     def generate_task(
@@ -75,5 +75,5 @@ class DataGeneratorBase:
         source_task: Optional[Task],
         document: Optional[Document] = None,
         extra_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Task:
+    ) -> Union[Task, List[Task]]:
         raise NotImplementedError

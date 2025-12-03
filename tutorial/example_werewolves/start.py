@@ -3,6 +3,7 @@
 
 """The main entry point for the werewolf game."""
 
+import os
 
 import dotenv
 import numpy as np
@@ -12,12 +13,12 @@ from textwrap import dedent
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
-from agentscope.model import OpenAIChatModel
+from agentscope.model import DashScopeChatModel, OpenAIChatModel
 from loguru import logger
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
-from tutorial.example_werewolves.game import werewolves_game
+from tutorial.example_werewolves.game import BadGuyException, werewolves_game
 
 
 def get_official_agent_prompt(name) -> str:
@@ -82,7 +83,7 @@ def get_official_agent_prompt(name) -> str:
 class ExampleWerewolves(Workflow):
     trainer: str = Field(default="astuner-trinity")
     trainable_targets: list = Field(
-        default=["seer", "witch"], description="List of agents to be fine-tuned."
+        default=["werewolf"], description="List of agents to be fine-tuned."
     )
 
     async def agentscope_execute(
@@ -104,16 +105,12 @@ class ExampleWerewolves(Workflow):
         players = []
         for i, role in enumerate(roles):
             default_model = OpenAIChatModel(
-                model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-30B-A3B-Instruct-2507",
+                model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/",
                 stream=False,
                 client_args={"base_url": "http://22.17.52.4:2888/v1"},
                 api_key="no_api_key",
+                generate_kwargs={"temperature": 0.01},
             )
-            # default_model = DashScopeChatModel(
-            #     model_name="qwen-max",
-            #     api_key=os.environ.get("DASHSCOPE_API_KEY", "your-dashscope-api-key"),
-            #     stream=False
-            # )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
@@ -121,8 +118,9 @@ class ExampleWerewolves(Workflow):
                 formatter=DashScopeMultiAgentFormatter()
                 if role in self.trainable_targets
                 else OpenAIMultiAgentFormatter(),
+                max_iters=3 if role in self.trainable_targets else 5,
             )
-            agent.set_console_output_enabled(False)
+            # agent.set_console_output_enabled(False)
             players += [agent]
 
         # reward condition
@@ -135,14 +133,19 @@ class ExampleWerewolves(Workflow):
             ):
                 raw_reward = 1
                 is_success = True
-            # check
             logger.warning(f"Raw reward: {raw_reward}")
             logger.warning(f"Is success: {is_success}")
+        except BadGuyException as e:
+            logger.bind(exception=True).exception(
+                f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
+            )
+            raw_reward = -0.1
+            is_success = False
         except Exception as e:
             logger.bind(exception=True).exception(
                 f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
             )
-            raw_reward = 0.0
+            raw_reward = -0.1
             is_success = False
 
         return WorkflowOutput(reward=raw_reward, is_success=is_success)
