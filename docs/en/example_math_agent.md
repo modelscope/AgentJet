@@ -55,7 +55,7 @@ Judge return values:
 
 ## 4. Start Training
 ### 4.1 Configure
-Copy and modify key parameters in [tutorial/example_math_agent/math_agent.yaml](../tutorial/example_math_agent/math_agent.yaml). The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
+Copy and modify key parameters in `tutorial/example_math_agent/math_agent.yaml`. The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
 
 1. Read task (corresponds to configuration field `astune.task_reader`)
 2. Define Workflow (corresponds to configuration field `astune.rollout.agentscope_learn_protocol`)
@@ -123,12 +123,8 @@ python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone
 ```
 
 ## 5 Reference Result
-<div align="center">
-<img width="700" alt="image" src="https://github.com/user-attachments/assets/6777b4fb-b71b-4573-81eb-8dccb7bdd3d2"/>
-    <p style="margin-top: 10px; color: #666; font-size: 14px;">
-    <em>Training curve</em>
-  </p>
-</div>
+
+![Tracing curve](../_static/imgs/example-appworld/learning-curve.png)
 
 ## Tuning Observation
 
@@ -159,8 +155,7 @@ To find the number of board members who attended the meeting, let's break down t
 However, tuning resolves these issues, as shown in the example below:
 
 
-<img width="1367" height="684" alt="image" src="https://github.com/user-attachments/assets/abf83861-d87c-4376-a4ec-04b2fde2be0a" />
-<img width="1363" height="422" alt="image" src="https://github.com/user-attachments/assets/e7a8a199-4577-468c-8ad4-5664bc7a2db1" />
-
+![image](../_static/imgs/example-mathagent/log-1.png)
+![image](../_static/imgs/example-mathagent/log-2.png)
 
 

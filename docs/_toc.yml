@@ -1,29 +1,46 @@
 format: jb-book
 root: en/introduction.md
 parts:
-- caption: Tutorial
-  chapters:
-  - file: en/installation.md
-  - file: en/concepts.md
-  - file: en/quickstart.md
-  - file: en/example.md
-    sections:
-    - file: en/example_math_agent.md
-    - file: en/example_app_world.md
-    - file: en/example_werewolves.md
+  - caption: Tutorial
+    chapters:
+      - file: en/installation.md
+      - file: en/quickstart.md
+      - file: en/configuration.md
 
-- caption: 简介
-  chapters:
-    - file: zh/introduction.md
-      title: "介绍"
+  - caption: Component
+    chapters:
+      - file: en/data_pipeline.md
+      - file: en/data_generation.md
+      - file: en/data_tracing_feedback_training.md
 
-- caption: 教程
-  chapters:
-  - file: zh/installation.md
-  - file: zh/concepts.md
-  - file: zh/quickstart.md
-  - file: zh/example.md
-    sections:
-    - file: zh/example_math_agent.md
-    - file: zh/example_app_world.md
-    - file: zh/example_werewolves.md
+  - caption: Cookbook
+    chapters:
+      - file: en/example.md
+        sections:
+          - file: en/example_math_agent.md
+          - file: en/example_app_world.md
+          - file: en/example_werewolves.md
+
+  - caption: 简介
+    chapters:
+      - file: zh/introduction.md
+        title: "介绍"
+
+  - caption: 教程
+    chapters:
+      - file: zh/installation.md
+      - file: zh/quickstart.md
+  
+  - caption: 组件
+    chapters:
+      - file: zh/data_pipeline.md
+      - file: zh/data_generation.md
+      - file: zh/data_tracing_feedback_training.md
+
+  - caption: 示例
+    chapters:
+      - file: zh/example.md
+        sections:
+          - file: zh/example_math_agent.md
+          - file: zh/example_app_world.md
+          - file: zh/example_werewolves.md
