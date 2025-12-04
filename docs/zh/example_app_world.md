@@ -68,13 +68,13 @@ for _ in range(config.astune.rollout.multi_turn.max_steps):
 
 拷贝并修改 `tutorial/example_appworld/appworld.yaml` 中的关键配置参数。与本文最相关的部分在 yaml 文件中用 ✨✨✨✨ 标出：
 
-1. **读取任务**（对应字段：`astune.task_reader`）  
-2. **定义 Workflow**（对应字段：`astune.rollout.agentscope_learn_protocol`）  
-   - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_appworld/appworld.py` 中的 `ExampleAgentScopeLearnProtocol` 类里  
-   - 则配置：  
+1. **读取任务**（对应字段：`astune.task_reader`）
+2. **定义 Workflow**（对应字段：`astune.rollout.agentscope_learn_protocol`）
+   - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_appworld/appworld.py` 中的 `ExampleAgentScopeLearnProtocol` 类里
+   - 则配置：
 `astune.rollout.agentscope_learn_protocol = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
-3. **定义评分函数**（对应字段：`astune.task_judge.judge_protocol`）  
-   - 示例：  
+3. **定义评分函数**（对应字段：`astune.task_judge.judge_protocol`）
+   - 示例：
 `astune.task_judge.judge_protocol = "astune.task_judge.env_service_as_judge->EnvServiceJudge"`
 4. **指定模型**（对应字段：`astune.model.path`）
 

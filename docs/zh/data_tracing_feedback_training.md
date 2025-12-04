@@ -26,7 +26,7 @@ ASTune 允许你回收 Agent 在执行过程中产生的对话日志，并通过
 2. 按照 [文档](https://doc.agentscope.io/tutorial/task_tracing.html) 启用了 tracing 模块；
 3. 部署了 Agent 并收集到了数据库文件。
 
-默认情况下，agentscope-studio 会将追踪日志存储在  
+默认情况下，agentscope-studio 会将追踪日志存储在
 `~/AgentScope-Studio/database.sqlite` 中，其中包含了用户与 Agent 之间的全部对话记录。
 
 
@@ -43,7 +43,7 @@ ASTune 允许你回收 Agent 在执行过程中产生的对话日志，并通过
 ```yaml
 astuner:
   # ...
-  
+
   task_reader:
     # 使用 tracing 日志作为任务来源
     type: tracing
@@ -92,7 +92,7 @@ python launcher.py --conf tutorial/example_feedback_tracing/example_feedback_tra
 ```yaml
 astuner:
   # ...
-  
+
   task_reader:
     # ...
     feedback_tracing:
@@ -109,5 +109,3 @@ astuner:
             print_reason: false
             max_thread: 16
 ```
-
-

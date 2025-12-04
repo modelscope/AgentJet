@@ -74,7 +74,7 @@ AgentScope Tuner makes agent fine-tuning unprecedentedly straightforward. It enc
 
 Of course, fine-tuning the workflow would not be possible without the silent support of the following core modules:
 
-![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png) 
+![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png)
 - launcher: The entry point of the project, helping developers quickly switch between debugging the backbone and training the backbone. It also launches and intelligently monitors the environment service processes related to training in the background.
 - task rollout: Bridges different LLM engines (such as FSDP, VLLM, etc.), implements a retry mechanism, and passes the tasks read by the task reader. If the gym environment is required, it initializes the gym environment and ensures resource cleanup.
 - task runner: The front-line worker responsible for actually executing the user-provided AgentScope workflow. It also runs the judge and performs preliminary reward calculations.

@@ -74,7 +74,7 @@ AgentScope Tuner 简化了智能体微调流程，将复杂的训练封装进三
 
 为顺利完成工作流微调，我们在三类模块之下实现了以下核心模块
 
-![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png) 
+![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png)
 - launcher：项目的入口，帮助开发者在调试 backbone 与训练 backbone 之间快速切换，同时负责启动并智能监控与训练相关的环境服务进程。
 - task rollout：桥接不同的 LLM 引擎（如 FSDP、VLLM 等），实现重试机制，并传递 task reader 读取的任务。同时负责 gym 环境的初始化与资源清理。
 - task runner：任务执行者，负责真正运行用户提供的 AgentScope 工作流，同时运行评判器并完成初步奖励计算。

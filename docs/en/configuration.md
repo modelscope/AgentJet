@@ -33,11 +33,11 @@ In the configuration file, you can set the path to load model parameters from a 
 ```yaml
 astuner:
   # ...
-  
+
   # model to be trained
   model:
     path: path/to/model
-    
+
   # ...
 
 ```
@@ -417,7 +417,7 @@ astuner:
   # task judge. it provide rewards for agent training
   task_judge:
     # options: 'customized_protocal', 'rubrics_auto_grader'
-    judge_type: customized_protocal  
+    judge_type: customized_protocal
     # the package path to judge (reward) function
     judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
 
