@@ -28,7 +28,7 @@ parts:
     chapters:
       - file: zh/installation.md
       - file: zh/quickstart.md
-  
+
   - caption: 组件
     chapters:
       - file: zh/data_pipeline.md

@@ -26,7 +26,7 @@ To use tracing logs for training, you are expected to already have an agent buil
 2. Enabled tracing module following [the doc](https://doc.agentscope.io/tutorial/task_tracing.html).
 3. Deployed your agent and collected the database.
 
-By default, agentscope-studio will store the tracing logs in  
+By default, agentscope-studio will store the tracing logs in
 `~/AgentScope-Studio/database.sqlite`, containing all recorded dialogues between the user and the agent.
 
 
@@ -44,7 +44,7 @@ Once we have the log (`database.sqlite`), we can train a new Agent with Tracing-
 ```yaml
 astuner:
   # ...
-  
+
   task_reader:
     # use tracing log as tasks
     type: tracing
@@ -93,7 +93,7 @@ To write rubrics, edit the configuration file:
 ```yaml
 astuner:
   # ...
-  
+
   task_reader:
     # ...
     feedback_tracing:
@@ -110,4 +110,3 @@ astuner:
             print_reason: false
             max_thread: 16
 ```
-

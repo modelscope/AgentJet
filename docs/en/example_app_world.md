@@ -64,13 +64,13 @@ You can also refer to this file to implement your own Judge for your specific ta
 ### 4.1 Configure YAML
 Copy and modify the key parameters in `tutorial/example_appworld/appworld.yaml`. The parts most relevant to this document are marked with ✨✨✨✨ in the yaml file:
 
-1. **Read tasks** (corresponding config field: `astune.task_reader`)  
-2. **Define the workflow** (corresponding config field: `astune.rollout.agentscope_learn_protocol`)  
-    - Example: if the AgentScope workflow is defined in the `ExampleAgentScopeLearnProtocol` class in `tutorial/example_appworld/appworld.py`  
-    - Then set  
+1. **Read tasks** (corresponding config field: `astune.task_reader`)
+2. **Define the workflow** (corresponding config field: `astune.rollout.agentscope_learn_protocol`)
+    - Example: if the AgentScope workflow is defined in the `ExampleAgentScopeLearnProtocol` class in `tutorial/example_appworld/appworld.py`
+    - Then set
 `astune.rollout.agentscope_learn_protocol = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
-3. **Define the scoring function** (corresponding config field: `astune.task_judge.judge_protocol`)  
-    - Example:  
+3. **Define the scoring function** (corresponding config field: `astune.task_judge.judge_protocol`)
+    - Example:
 `astune.task_judge.judge_protocol = "astune.task_judge.env_service_as_judge->EnvServiceJudge"`
 4. **Specify the model** (corresponding config field: `astune.model.path`)
 

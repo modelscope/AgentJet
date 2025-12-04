@@ -33,11 +33,11 @@ AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法
 ```yaml
 astuner:
   # ...
-  
+
   # 待训练的模型
   model:
     path: path/to/model
-    
+
   # ...
 
 ```
@@ -409,18 +409,18 @@ astuner:
       training_split: "train"
       # the name of validation split
       validation_split: "validation"
-  
+
   # task judge. it provide rewards for agent training
   task_judge:
     # options: 'customized_protocal', 'rubrics_auto_grader'
-    judge_type: customized_protocal  
+    judge_type: customized_protocal
     # the package path to judge (reward) function
     judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
 
     # the helper LLM model used for LLM-AS-Judge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
-    
+
     # when `judge_type == rubrics_auto_grader`
     rubrics_auto_grader:
       model_name: qwen-max
@@ -455,7 +455,7 @@ astuner:
     debug_vllm_port: 18000
     debug_vllm_seed: 12345
     debug_tensor_parallel_size: 4
-    
+
 
   # trainer common configurations
   trainer_common:

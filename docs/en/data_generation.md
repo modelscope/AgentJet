@@ -163,7 +163,7 @@ astuner:
         training:
           file_path: 'dataset/jsonl/your-queries.jsonl'  # path to the reference query data
 
-    # Configure the LLM for generation  
+    # Configure the LLM for generation
     llm_model: qwen-long # Model, e.g., qwen-long
     llm_response_length: 8192
     sampling_params:
@@ -287,5 +287,3 @@ astuner:
 | `llm_model` | string | Required | LLM model for generation |
 | `llm_response_length` | integer | `8192` | Maximum response length |
 | `sampling_params` | dict | `{}` | LLM sampling parameters |
-
-
