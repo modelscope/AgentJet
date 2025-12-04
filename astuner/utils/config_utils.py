@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+from functools import cache
 
 import yaml
 from best_logger import print_dict
@@ -25,6 +26,12 @@ def read_astune_config(yaml_fp):
     dir_path = os.path.dirname(yaml_fp)
     file_name = os.path.basename(yaml_fp)
     return load_hydra_config(config_path=dir_path, config_name=file_name)
+
+
+@cache
+def read_astune_config_with_cache(yaml_fp):
+    """Load a Hydra configuration relative to this module with caching."""
+    return read_astune_config(yaml_fp)
 
 
 def dump_yaml_config(cfg: DictConfig, yaml_fp: str):

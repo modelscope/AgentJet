@@ -33,7 +33,15 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
 )
 from astuner.schema.trajectory import Sample
 from astuner.task_rollout.native_parallel_worker import DynamicRolloutManager
-from astuner.utils.config_utils import read_astune_config
+from astuner.utils.config_utils import read_astune_config_with_cache
+
+
+def get_astune_config_from_trinity_side():
+    yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
+    if yaml_path is None:
+        raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
+    astune_config = read_astune_config_with_cache(yaml_path)
+    return astune_config
 
 
 class TrinityCompatWorkflow(DynamicRolloutManager):
@@ -119,10 +127,7 @@ class ASTunerWorkflowWrap(Workflow):
         self.answer = task.raw_task.get(task.format_args.response_key)  # type: ignore [index]
 
     async def run_async(self):
-        yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
-        if yaml_path is None:
-            raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
-        astune_config = read_astune_config(yaml_path)
+        astune_config = get_astune_config_from_trinity_side()
         warm_up_process(astune_config)
         tracker = await TrinityCompatWorkflow(
             is_eval=self.is_eval,
@@ -216,10 +221,7 @@ try:
             self.read_batch_size = config.batch_size
             self.split = config.split
 
-            yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
-            if yaml_path is None:
-                raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
-            astune_config = read_astune_config(yaml_path)
+            astune_config = get_astune_config_from_trinity_side()
 
             from astuner.task_reader import TaskReaderRouter, task_to_standard_dataset
 
@@ -372,8 +374,19 @@ class SwanlabMonitor(Monitor):
         ), "swanlab is not installed. Please install it to use SwanlabMonitor."
         swanlab.log(data, step=step)
         self.console_logger.info(f"Step {step}: {data}")
-        with open(f"{self.exp_name}.log", "a") as f:
+
+        astune_config = get_astune_config_from_trinity_side()
+        experiment_dir = astune_config.astuner.experiment_dir
+        trinity_log = f"{experiment_dir}/{self.exp_name}.log"
+
+        with open(trinity_log, "a") as f:
             f.write(f"Step {step}: {data}\n")
+
+        if astune_config.astuner.execute_test:  # apply a test probe
+            from astuner.utils.testing_utils import _test_if_test_mode
+
+            data["step"] = step
+            _test_if_test_mode(key="reward_probe", value=data, config=astune_config)
 
     def close(self) -> None:
         try:

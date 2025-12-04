@@ -3,7 +3,6 @@ from astuner.utils.dynamic_import import dynamic_import
 
 def get_test_lambda(test_name):
     test_cls = dynamic_import(test_name)()
-    print("using test lambda:", test_name)
     return test_cls
 
 
@@ -31,3 +30,14 @@ class GoodbyeException(Exception):
 
 class TestFailException(Exception):
     pass
+
+
+def singleton(cls):
+    instances = {}
+
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return get_instance

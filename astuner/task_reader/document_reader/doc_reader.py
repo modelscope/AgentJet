@@ -1,7 +1,5 @@
 import uuid
 
-from unstructured.partition.auto import partition
-
 from astuner.schema.document import Document
 from astuner.task_reader.document_reader.document_reader_base import DocReaderBase
 
@@ -24,6 +22,8 @@ class DocReader(DocReaderBase):
         Returns:
             str: Merged text from all pages.
         """
+        from unstructured.partition.auto import partition
+
         text_pages = []
         print(f"reading document from {source} using languages={languages}...")
         text_pages = partition(source, languages=languages)

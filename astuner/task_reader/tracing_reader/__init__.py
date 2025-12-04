@@ -10,7 +10,6 @@ from astuner.data_generator.filters.factory import build_filters
 from astuner.schema.task import Task
 
 from ..task_reader_base import TaskReaderBase
-from .connector import LocalSqliteConnectorV1
 
 
 class Config(TypedDict):
@@ -26,6 +25,8 @@ class TracingReader(TaskReaderBase):
         train_ratio: float = 0.7,
         split_seed: int = 42,
     ) -> None:
+        from astuner.task_reader.tracing_reader.connector import LocalSqliteConnectorV1
+
         super().__init__(reader_config)
         # config patch
         # print("*********", config, "**********")
