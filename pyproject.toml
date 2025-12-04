@@ -18,6 +18,9 @@ classifiers = [
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "agentscope>=1.0.7",
+    "chromadb",
+    "httpx",
+    "tenacity",
     "trinity-rft>=0.3.3",
     "loguru",
     "debugpy",
