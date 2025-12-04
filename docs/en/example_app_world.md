@@ -136,35 +136,26 @@ python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='tr
 
 ## 5 Reference Result
 
-<div align="center">
-<img width="500" alt="image" src="https://github.com/user-attachments/assets/7d434c6e-1ed0-46fd-ac53-c6029c3c3698"/>
-    <p style="margin-top: 10px; color: #666; font-size: 14px;">
-    <em>Training curve (small batch)</em>
-  </p>
-</div>
+![Training curve (small batch)](../_static/imgs/example-appworld/learning-curve.png)
 
 ## 6 Case Observation
 
 ### Before tuning:
 
 1. Keep using api that does not exist
-<div align="center">
-<img width="700"  alt="image" src="https://github.com/user-attachments/assets/2f98da6e-ca7b-4464-ae1a-22c085eea729" />
-</div>
+
+![Before tuning](../_static/imgs/example-appworld/before-1.png)
 
 2. Do not learn to follow instruction to get access token
-<div align="center">
-<img width="700"  alt="image" src="https://github.com/user-attachments/assets/8b0ad34e-8a41-45c3-b11d-e83f92d9627b" />
-</div>
+
+![Before tuning](../_static/imgs/example-appworld/before-2.png)
 
 ### After tuning:
 
 1. Look up to api document first, and learn to use effective api
-<div align="center">
-<img width="700"  alt="image" src="https://github.com/user-attachments/assets/c938d557-a847-4e73-aa60-15a1c96088d0" />
-</div>
+
+![After tuning](../_static/imgs/example-appworld/after-1.png)
 
 2. Learn to get access token
-<div align="center">
-<img width="700"  alt="image" src="https://github.com/user-attachments/assets/b6801381-1613-45fc-8438-43fcd023eb32" />
-</div>
+
+![After tuning](../_static/imgs/example-appworld/after-2.png)

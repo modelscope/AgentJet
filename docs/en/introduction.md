@@ -1,117 +1,85 @@
-# AgentScope Tuner Documentation
+# AgentScope Tuner
 
-AgentScope Tune, or **ASTuner**, is an advanced agent training framework designed to optimize AgentScope workflows and agents.
+AgentScope Tuner, or **ASTuner**, is an advanced agent training framework designed to optimize AgentScope workflows and agents.
 Simply provide your AgentScope workflow, training data, and reward function to enhance your agents to their optimal performance.
 
 
 
 ## ✨ Features
 
-- **Data Augmentation & User Feedback Tracing**
-  Automatically augment training data and trace user feedback when training data is limited.
-
-- **Auto Rubrics**
-  Generate LLM-as-judge reward functions by learning from few-shot examples.
-
-- **Multi-Agent Support**
-  Build advanced cooperative multi-agent systems with ease.
-
-- **Highly Efficient Async Training-Inference Separation**
-  Powered by Trinity-RFT for optimized performance.
-
-- **Training-Debugging Integration**
-  Seamlessly toggle between training and debugging modes using a simple `--backbone` switch (`--backbone=trinity` or `--backbone=debug`).
-
-- **Comprehensive Logging**
-  Integrate message-level logging from AgentScope Studio and token-level logging for detailed insights.
+- **Data Augmentation & User Feedback Tracing**: Automatically augment training data and trace user feedback when training data is limited.
+- **Auto Rubrics**:  Generate LLM-as-judge reward functions by learning from few-shot examples.
+- **Multi-Agent Support**: Build advanced cooperative multi-agent systems with ease.
+- **Highly Efficient Async Training-Inference Separation**: Powered by Trinity-RFT for optimized performance.
+- **Training-Debugging Integration**: Seamlessly toggle between training and debugging modes using a simple `--backbone` switch (`--backbone=trinity` or `--backbone=debug`).
+- **Comprehensive Logging**: Integrate message-level logging from AgentScope Studio and token-level logging for detailed insights.
 
 
 
-## 🚀 Train Your Agents
+## 🚀 Quick Start
 
 ### Installation
 
-<details>
-<summary>1. Native conda or uv deployment</summary>
-
 We recommend using `uv` for dependency management, though `conda` is also supported.
 
-1. Clone the repository and Trinity module:
-    ```bash
-    git clone https://github.com/..../agentscope-tuner.git astuner
-    git clone https://github.com/binary-husky/Trinity-RFT astuner/external/trinity
-    cd astuner
-    ```
+1. Clone the repository:
 
-2. Install the Trinity training backbone:
-    ```bash
-    uv venv --python=3.10.16  # Create virtual environment
-    source .venv/bin/activate  # Activate virtual environment
+```bash
+git clone https://github.com/agentscope-ai/agentscope-tuner.git
+cd agentscope-tuner
+```
 
-    # Install dependencies (execute in order)
-    uv pip install --upgrade pip setuptools packaging -i https://mirrors.aliyun.com/pypi/simple/
-    uv pip install -r scripts/requirements_trinity.txt -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --prerelease=allow  #  for conda, remove `--prerelease=allow` option
-    uv pip install -e external/trinity -i https://mirrors.aliyun.com/pypi/simple/ --no-deps
-    uv pip install agentscope==1.0.7 -i https://mirrors.aliyun.com/pypi/simple/
-    uv pip install --verbose flash-attn ring-flash-attn -i https://mirrors.aliyun.com/pypi/simple/ --no-deps --no-build-isolation  # Install flash attention (must be executed at last)
-    ```
-</details>
+3. Create virtual environment and install dependencies:
 
-<details>
-<summary>2. Docker container installation</summary>
+```bash
+uv venv --python=3.10.16  # Create virtual environment
+source .venv/bin/activate  # Activate virtual environment
 
-@xuchen
+uv pip install -e .[dev]
+uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
+```
 
-</details>
 
-### Get Started with Tutorials
+### Get Started
 
 Explore our rich library of examples to kickstart your journey:
 
-- Build a math agent specialized in GSM8K problems and [learn how to train it 🚀](tutorial/math_agent.md).
-- Create an AppWorld agent using AgentScope and [train it 🪐](tutorial/appworld.md).
-- Develop a Werewolves RPG agent and [train it 🚀](tutorial/werewolves/werewolves.md).
-- @chencheng: Training using user feedback tracing
-- @
+- 🚀 **Tutorial**: Train your first agent hand-by-hand.
+    - **Installation**: Learn how to install AgentScope-Tuner.
+ 	- **Quick Start**: Train your first agent from scratch.
+	- **Configuration**: Configure the data, optimization algorithms, rewards, etc.
+- ⚙️ **Component**: Understand the details of each components.
+	- **Workflow**: Build your own agent with trainable workflow.
+	- **Data Pipeline & Generation**: Includes building dataset tasks from document materials and expanding datasets from few samples.
+	- **Reward Modeling**: Learn to implement rubric-based rewards for agent training elegantly.
+	- **Tracing-Feedback Training**: Learn how to train using user feedback tracing.
+- 🍳 **Cookbook**
+    - **Build a Simple Math Agent**: Specialized in GSM8K problems and learn how to train it.
+    - **Build an AppWorld Agent**: Create an AppWorld agent using AgentScope and train it.
+    - **Build Multi-Agent Werewolf Gameplay**: Develop multiple Werewolves RPG agents and train them.
+
 
 ## 🏗️ Project Overview
 
 ### Architecture
 
-1. **Task Reader** (config field: `astuner.task_reader`)
-   - `astuner/task_reader/task_reader_base.py`
-     - `TaskReaderEnvService`
-     - `TaskReaderJsonl`
-     - `TaskReaderHuggingFace`
+AgentScope Tuner makes agent fine-tuning unprecedentedly straightforward. It encapsulates complex fine-tuning training into a simple module driven by three core inputs:
 
-2. **Workflow Definition** (config field: `astuner.rollout.agentscope_learn_protocol`)
-   - `tutorial/appworld.py`
-   - `tutorial/math_agent.py`
+- AgentScope workflows (which can directly utilize your pre-written AgentScope workflows)
+- Task datasets (providing training data)
+- Reward Judge (assessing performance quality).
 
-3. **Reward Function** (config field: `astuner.task_judge.judge_protocol`)
-   - `astuner/task_judge/judge_base.py`
-   - `astuner/task_judge/env_service_as_judge.py`
-     - `EnvServiceJudge`
-   - `astuner/task_judge/math_answer_as_judge.py`
-     - `MathAnswerAsJudge`
-     - `MathAnswerAndLlmAsJudge`
 
-4. **Model Specification** (config field: `astuner.model.path`)
+![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764207569988-69b6926f-301b-4766-9199-3823974aab99.png)
 
-5. **Configuration System** (under improvement)
-   - Default Configurations:
-     - `astuner/default_config/default.yaml` (default VERL training config, overridden by `--conf` YAML)
-     - `astuner/default_config/trinity_default.yaml` (default Trinity config, overridden via `trinity.xxx` in `--conf` YAML)
-   - Auto-Alignment:
-     - `astuner/default_config/config_auto_convertion_verl.jsonc`
-     - `astuner/default_config/config_auto_convertion_trinity.jsonc`
+Of course, fine-tuning the workflow would not be possible without the silent support of the following core modules:
 
-6. **ASTune & AgentScope Interaction System V0.5**
-   - Managed by `astuner/context_tracker/agentscope.py`:
-     - Processes tokens generated by AgentScope
-     - Caches data required for judging (e.g., dialogue messages, env_service handles, task metadata)
-     - Bridges LLM interactions
-     - Merges timelines
+![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png) 
+- launcher: The entry point of the project, helping developers quickly switch between debugging the backbone and training the backbone. It also launches and intelligently monitors the environment service processes related to training in the background.
+- task rollout: Bridges different LLM engines (such as FSDP, VLLM, etc.), implements a retry mechanism, and passes the tasks read by the task reader. If the gym environment is required, it initializes the gym environment and ensures resource cleanup.
+- task runner: The front-line worker responsible for actually executing the user-provided AgentScope workflow. It also runs the judge and performs preliminary reward calculations.
+- model tuner: When the AgentScope workflow sends an LLM inference request, this busy component directly receives and forwards the request to the LLM engine.
+- context tracker: A loyal recorder that monitors every LLM call and automatically identifies and archives LLM requests belonging to the same Agent and the same timeline. At the end of the task, it marks the loss mask, merges the recorded LLM input-output timelines, and improves training efficiency by 3 to 10 times.
 
 
 
