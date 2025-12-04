@@ -1,9 +1,8 @@
 # ------------------ 主要配置 ------------------
 astuner:
-  project_name: example_math_agent
+  project_name: benchmarking
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
-    # 如果选择 `huggingface_dat_repo` 以下配置生效
     huggingface_dat_repo:
       dataset_path: '/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main'
       training_split: "train"
@@ -44,13 +43,15 @@ astuner:
     debug_first_n_tasks: 1
 
   trainer_common:
-    save_freq: 100
-    test_freq: 100
-    total_epochs: 100
+    save_freq: 99999
+    test_freq: 99999
+    total_epochs: 99999
     logger: swanlab
 
 
+  execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
 
+  execute_testing_lambda: "tests/bench/benchmark_math/benchmark_math.py->TestProbe" #
 
 
 # ------------------ 不需要修改 ------------------

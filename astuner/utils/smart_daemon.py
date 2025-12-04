@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import logging
@@ -11,6 +12,16 @@ from typing import List, Optional, Tuple
 import psutil
 from beast_logger import print_dict
 from loguru import logger
+
+
+def string_to_base64(s):
+    # First, encode the string to bytes
+    s_bytes = s.encode("utf-8")
+    # Then convert bytes to base64
+    base64_bytes = base64.b64encode(s_bytes)
+    # Finally, convert base64 bytes back to string
+    base64_string = base64_bytes.decode("utf-8")
+    return base64_string
 
 
 class LaunchWhenAbsent:
@@ -168,19 +179,26 @@ class LaunchWhenAbsent:
         self,
         force_restart: bool = False,
         launch_wait_time: int = 30,
-        success_std_string: str = None,
+        success_std_string: str | None | List[str] = None,
         env_dict={},
-    ):
+    ) -> str:
         """
         Launch the script if it's not running, or restart it if force_restart is True.
 
         Args:
             force_restart (bool): If True, kill existing process and restart
             launch_wait_time (int): Maximum time to wait for process launch in seconds
-            success_std_string (str): String to look for in stdout to confirm successful launch
+            success_std_string (str, List[str]): String to look for in stdout to confirm successful launch
         """
         is_running, existing_process, pgid = self._is_script_running()
         self.pgid = pgid
+
+        # convert to list to simplify later checks
+        if isinstance(success_std_string, str):
+            success_std_string_arr = [success_std_string]
+        else:
+            success_std_string_arr = success_std_string
+        hit_success_string_content = ""
 
         if is_running:
             if force_restart:
@@ -191,7 +209,7 @@ class LaunchWhenAbsent:
                 logger.success(
                     f"Script is already running, skipping launch. pgid: {pgid}. Command [{' '.join(self.cmd)}]"
                 )
-                return
+                return ""
         try:
             # Set up process creation flags and environment
             # Create logs directory
@@ -203,22 +221,25 @@ class LaunchWhenAbsent:
 
             if os.name == "nt":  # Windows
                 # DETACHED_PROCESS flag
-                raise NotImplementedError("Windows support is not implemented yet.")
-            else:  # Unix-like systems
-                # Use nohup and redirect output
-                print_dict(
-                    {
-                        "Action": "Launching command",
-                        "Command": " ".join(self.cmd),
-                        "LogFile": str(log_file),
-                    }
+                raise NotImplementedError(
+                    "Windows support is not implemented yet. Please open a feature request."
                 )
-                # logger.warning("\nlaunching: " + " ".join(self.cmd))
-                # logger.warning(f"\nlogging to {log_file}\n")
+
+            else:
+                # Unix-like systems
+                # Use nohup and redirect output
                 # Open log file
                 if log_file.exists():
                     os.remove(log_file)
+
                 if not self.use_pty:
+                    print_dict(
+                        {
+                            "Action": "Launching command",
+                            "Command": " ".join(self.cmd),
+                            "LogFile": str(log_file),
+                        }
+                    )
                     f = open(log_file, "a")
                     proc = subprocess.Popen(
                         self.cmd,
@@ -232,17 +253,7 @@ class LaunchWhenAbsent:
                     f.close()  # Close append handle
                     pgid = os.getpgid(proc.pid)
                 else:
-                    import base64
-
-                    def string_to_base64(s):
-                        # First, encode the string to bytes
-                        s_bytes = s.encode("utf-8")
-                        # Then convert bytes to base64
-                        base64_bytes = base64.b64encode(s_bytes)
-                        # Finally, convert base64 bytes back to string
-                        base64_string = base64_bytes.decode("utf-8")
-                        return base64_string
-
+                    # if pty is used, we cannot use nohup, build and pass command differently
                     f = open(log_file, "a")
                     converted_cmd = [
                         sys.executable,
@@ -255,7 +266,14 @@ class LaunchWhenAbsent:
                         "--env",
                         json.dumps(env_dict),
                     ]
-                    print("running pty command:", " ".join(converted_cmd))
+                    print_dict(
+                        {
+                            "Action": "Launching command via PTY",
+                            "Command": " ".join(self.cmd),
+                            "LogFile": str(log_file),
+                            "Converted": " ".join(converted_cmd),
+                        }
+                    )
                     proc = subprocess.Popen(
                         converted_cmd,
                         stdout=f,
@@ -281,13 +299,27 @@ class LaunchWhenAbsent:
                         f_read_ = f.read()
                         inc_read = f_read_[len(f_read) :]
                         f_read = f_read_  # Update f_read to the latest content
-                        if success_std_string:
+
+                        if success_std_string_arr:
                             # Move to end of file and read new content
-                            if success_std_string in f_read:
-                                print(f"Found success string '{success_std_string}' in output")
+                            hit_success_string = False
+                            for success_std_string in success_std_string_arr:
+                                if success_std_string in f_read:
+                                    hit_success_string = True
+                                    hit_success_string_content = success_std_string
+                                    print(
+                                        f"Found success string '{hit_success_string_content}' in output"
+                                    )
+                                    break
+                            # if we have reached finish line, then break
+                            if hit_success_string:
                                 break
+
+                        # let hold for one second
                         time.sleep(1)
                         remaining = int(launch_wait_time - (time.time() - start_time))
+
+                        # trim output for printing
                         f_read_trim = inc_read.replace("\n", " ")
                         if f_read_trim:
                             if previous_r_print:
@@ -317,7 +349,9 @@ class LaunchWhenAbsent:
                                 f"Process did not output success string '{success_std_string}' within {launch_wait_time} seconds"
                             )
 
-                logger.success(f"Successfully launched {self.cmd} with PID {proc.pid}")
+                logger.success(
+                    f"Successfully launched {self.cmd} with PID {proc.pid} (Discovered {hit_success_string_content})"
+                )
                 print_dict(
                     {
                         "Result": "Successfully launched",
@@ -325,6 +359,7 @@ class LaunchWhenAbsent:
                         "PID": proc.pid,
                     }
                 )
+                return hit_success_string_content
 
         except Exception as e:
             logging.error(f"Error launching script: {e}")
