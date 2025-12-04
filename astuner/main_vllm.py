@@ -103,7 +103,10 @@ def run(config):
 
     from astuner.task_reader import TaskReaderRouter
 
-    task_reader = TaskReaderRouter(config)
+    task_reader = TaskReaderRouter(
+        config.astuner.task_reader.type,
+        config.astuner.task_reader,
+    )
     tasks = task_reader.get_validation_tasks()
     print(tasks[:2])
     cmt = parallel_env.rollout(

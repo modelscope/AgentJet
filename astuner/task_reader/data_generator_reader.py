@@ -24,9 +24,9 @@ class TaskReaderDataGenerator(TaskReaderBase):
         self.generated_train_file = os.path.join(dataset_dir, "generated_train_tasks.jsonl")
 
         # Initialize
-        from astuner.task_reader import TaskReaderRouterV2
+        from astuner.task_reader import TaskReaderRouter
 
-        task_reader = TaskReaderRouterV2(
+        task_reader = TaskReaderRouter(
             reader_type=self.reader_config.data_generation.query_reader.type,
             reader_config=self.reader_config.data_generation.query_reader,
         )

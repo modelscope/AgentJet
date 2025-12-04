@@ -45,37 +45,6 @@ class RandomDummyGenerator(TaskReaderBase):
 
 
 class TaskReaderRouter(TaskReaderBase):
-    def __init__(self, config):
-        super().__init__(config)
-        task_reader_type = config.astuner.task_reader.type
-        reader_config = config.astuner.task_reader
-        if task_reader_type == "env_service":
-            self.task_reader = TaskReaderEnvService(reader_config)
-        elif task_reader_type == "dataset_file":
-            self.task_reader = TaskReaderJsonl(reader_config)
-        elif task_reader_type == "huggingface_dat_repo":
-            self.task_reader = TaskReaderHuggingFace(reader_config)
-        elif self.task_reader == "tracing":
-            self.task_reader = TracingReader(reader_config)
-        elif self.task_reader_type == "data_generation":
-            self.task_reader = TaskReaderDataGenerator(reader_config)
-        elif task_reader_type == "random_dummy":
-            self.task_reader = RandomDummyGenerator(reader_config)
-        else:
-            raise ValueError(f"Unsupported task reader type: {task_reader_type}")
-
-    def get_training_tasks(self) -> List[Task]:
-        result = self.task_reader.get_training_tasks()
-        np.random.shuffle(result)  # type: ignore
-        return result
-
-    def get_validation_tasks(self) -> List[Task]:
-        result = self.task_reader.get_validation_tasks()
-        np.random.shuffle(result)  # type: ignore
-        return result
-
-
-class TaskReaderRouterV2(TaskReaderBase):
     def __init__(self, reader_type, reader_config):
         super().__init__(None)
 
@@ -88,7 +57,7 @@ class TaskReaderRouterV2(TaskReaderBase):
             self.task_reader = TaskReaderHuggingFace(reader_config)
         elif self.task_reader == "tracing":
             self.task_reader = TracingReader(reader_config)
-        elif self.task_reader_type == "data_generation":
+        elif self.task_reader == "data_generation":
             self.task_reader = TaskReaderDataGenerator(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(reader_config)
