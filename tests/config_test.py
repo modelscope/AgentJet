@@ -49,7 +49,7 @@ class TestConfigUtils(unittest.TestCase):
             )
             with open(temp_yaml1.name, "r") as file:
                 to_config = yaml.safe_load(file)
-            self.assertEqual(to_config["buffer"]["batch_size"], 960)
+            self.assertEqual(to_config["buffer"]["batch_size"], 120)
             self.assertEqual(to_config["explorer"]["runner_per_model"], 128)
             # Test simple field mappings
             self.assertEqual(to_config["project"], "unittest")
@@ -64,7 +64,6 @@ class TestConfigUtils(unittest.TestCase):
             # Test explorer/rollout mappings
             self.assertEqual(to_config["explorer"]["rollout_model"]["tensor_parallel_size"], 4)
             # Test computed values
-            # (astuner.data.train_batch_size * astuner.rollout.num_repeat) = 120 * 8 = 960
-            self.assertEqual(to_config["buffer"]["batch_size"], 960)
+            self.assertEqual(to_config["buffer"]["batch_size"], 120)
             # (astuner.rollout.max_env_worker // astuner.rollout.n_vllm_engine) = 256 // 2 = 128
             self.assertEqual(to_config["explorer"]["runner_per_model"], 128)
