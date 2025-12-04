@@ -18,6 +18,14 @@ astuner:
             temperature: 0.5
             print_reason: false
             max_thread: 16
+        - type: deduplication
+          enabled: true
+          params:
+            similarity_threshold: 0.8
+            db_path: ./.similarity_db
+            model: text-embedding-v4
+            api_key: null # load from the env
+            base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
