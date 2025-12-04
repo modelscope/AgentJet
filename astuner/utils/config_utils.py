@@ -211,10 +211,8 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
         raise FileNotFoundError(f"Configuration file not found: {exp_base}")
 
     ## 0. read yaml & get experiment_name
-    print(yaml_path)
     with open(yaml_path, "r") as file:
         config = yaml.safe_load(file)
-
     try:
         exp_name = config.get("astuner").get("experiment_name")
     except Exception:
