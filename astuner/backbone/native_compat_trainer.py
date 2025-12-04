@@ -1790,7 +1790,10 @@ class ASTuneRayPPOTrainer:
     def get_eval_dataset(self):
         from astuner.task_reader import TaskReaderRouter
 
-        task_reader = TaskReaderRouter(self.config)
+        task_reader = TaskReaderRouter(
+            self.config.astuner.task_reader.type,
+            self.config.astuner.task_reader,
+        )
         tasks = task_reader.get_validation_tasks()
         self.main_val_dataset = tasks
         return self.main_val_dataset, None, None

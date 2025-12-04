@@ -223,7 +223,10 @@ try:
 
             from astuner.task_reader import TaskReaderRouter, task_to_standard_dataset
 
-            task_reader = TaskReaderRouter(astune_config)
+            task_reader = TaskReaderRouter(
+                astune_config.astuner.task_reader.type,
+                astune_config.astuner.task_reader,
+            )
 
             dataset_segments = []
             if "train" in self.split:
