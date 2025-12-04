@@ -15,11 +15,9 @@ parts:
 
   - caption: Cookbook
     chapters:
-      - file: en/example.md
-        sections:
-          - file: en/example_math_agent.md
-          - file: en/example_app_world.md
-          - file: en/example_werewolves.md
+      - file: en/example_math_agent.md
+      - file: en/example_app_world.md
+      - file: en/example_werewolves.md
 
   - caption: 简介
     chapters:
@@ -39,8 +37,6 @@ parts:
 
   - caption: 示例
     chapters:
-      - file: zh/example.md
-        sections:
-          - file: zh/example_math_agent.md
-          - file: zh/example_app_world.md
-          - file: zh/example_werewolves.md
+      - file: zh/example_math_agent.md
+      - file: zh/example_app_world.md
+      - file: zh/example_werewolves.md
