@@ -348,6 +348,9 @@ class SwanlabMonitor(Monitor):
         self.logger = swanlab.init(**init_kwargs)
         self.console_logger = get_logger(__name__, in_ray_actor=True)
 
+        run_info = self.logger.public.json()
+        self.data_dashboard_url = run_info["cloud"]["experiment_url"]
+
     def log_table(self, table_name: str, experiences_table, step: int):
         assert (
             swanlab is not None
@@ -386,6 +389,7 @@ class SwanlabMonitor(Monitor):
             from astuner.utils.testing_utils import _test_if_test_mode
 
             data["step"] = step
+            data["data_dashboard_url"] = self.data_dashboard_url
             _test_if_test_mode(key="reward_probe", value=data, config=astune_config)
 
     def close(self) -> None:
