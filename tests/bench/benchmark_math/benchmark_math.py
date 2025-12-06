@@ -1,10 +1,36 @@
 # flake8: noqa
+import os
 import time
 
 from beast_logger import print_dict
 from loguru import logger
 
-from astuner.utils.testing_utils import GoodbyeException, TestFailException, singleton
+from astuner.utils.testing_utils import (
+    GoodbyeException,
+    TestFailException,
+    send_test_result,
+    singleton,
+)
+
+
+def update_benchmark_status(status, status_detail, append_log="", data_dashboard_url=""):
+    git_hash = os.environ["ASTUNER_GIT_HASH"]
+    req_txt = os.environ["ASTUNER_REQ_TXT"]
+    TARGET_NAME = os.environ["ASTUNER_BENCHMARK_NAME"]
+
+    if not append_log:
+        append_log = status_detail
+
+    send_test_result(
+        git_hash=git_hash,
+        target=TARGET_NAME,
+        status=status,
+        status_detail=status_detail,  #
+        req_txt=req_txt,  # get pip freeze
+        append_log=append_log,
+        data_dashboard_url=data_dashboard_url,
+        timeout=10.0,
+    )
 
 
 @singleton
@@ -33,9 +59,15 @@ class TestProbe(object):
             step = log_dict["step"]
 
             if time.time() - self.begin_time > self.expected_train_time:
-                raise TestFailException(
+                msg = (
                     f"Training time exceeded expected limit of {self.expected_train_time} seconds."
                 )
+                update_benchmark_status(
+                    status="fail",
+                    status_detail=msg,
+                    append_log=msg,
+                )
+                raise TestFailException(msg)
 
             # if new data, add
             logger.bind(benchmark=True).info(f"log_dict: {str(log_dict)}")
@@ -47,10 +79,22 @@ class TestProbe(object):
             if trainer_reward_key in log_dict:
                 return  # ignore trainer, only focus on explorer
 
+            update_benchmark_status(
+                status="running",
+                status_detail=f"Current step: {step}",
+                append_log=f"Step {step}: reward logged, {str(self.reward_array)}.",
+                data_dashboard_url=log_dict["data_dashboard_url"],
+            )
+
             # begin test
             if step in self.reward_expectation:
                 if len(self.reward_array) == 0:
-                    raise TestFailException(f"No reward logged at step {step}")
+                    err = f"No reward logged at step {step}"
+                    update_benchmark_status(
+                        status="fail",
+                        status_detail=err,
+                    )
+                    raise TestFailException(err)
                 # compute local average reward over last self.reward_expectation_avg_window steps
                 local_avg_reward = sum(
                     self.reward_array[-self.reward_expectation_avg_window :]
@@ -58,8 +102,11 @@ class TestProbe(object):
                 # get expected range
                 low, high = self.reward_expectation[step]
                 # log
-                logger.bind(benchmark=True).info(
-                    f"[TestProbe] Step {step}: local average reward over last self.reward_expectation_avg_window steps: {local_avg_reward:.4f}, expected range: [{low}, {high}]"
+                msg = f"[TestProbe] Step {step}: local average reward over last self.reward_expectation_avg_window steps: {local_avg_reward:.4f}, expected range: [{low}, {high}]"
+                logger.bind(benchmark=True).info(msg)
+                update_benchmark_status(
+                    status="running",
+                    status_detail=msg,
                 )
                 # check
                 if not (low <= local_avg_reward <= high):
@@ -72,23 +119,32 @@ class TestProbe(object):
                         },
                         mod="benchmark",
                     )
-                    logger.bind(benchmark=True).error(
-                        f"[TestProbe] Reward test failed at step {step}: local average reward {local_avg_reward:.4f} not in expected range [{low}, {high}]"
+
+                    err = f"[TestProbe] Reward test failed at step {step}: local average reward {local_avg_reward:.4f} not in expected range [{low}, {high}]"
+                    logger.bind(benchmark=True).error(err)
+                    update_benchmark_status(
+                        status="fail",
+                        status_detail=err,
                     )
-                    raise TestFailException(
-                        f"Reward test failed at step {step}: local average reward {local_avg_reward:.4f} not in expected range [{low}, {high}]"
-                    )
+                    raise TestFailException(err)
                 else:
-                    logger.bind(benchmark=True).info(
-                        f"[TestProbe] Reward test passed at step {step}."
-                    )
+                    msg = f"[TestProbe] Reward test passed at step {step}."
+                    logger.bind(benchmark=True).info(msg)
+                    update_benchmark_status(status="running", status_detail=msg)
                 # congrats, all tests passed, let's crash and escape this test early.
                 if step == max(self.reward_expectation.keys()):
-                    logger.bind(benchmark=True).info(
-                        f"[TestProbe] All reward tests passed. Exiting training early."
+                    msg = "[TestProbe] All reward tests passed. Exiting training early."
+                    logger.bind(benchmark=True).info(msg)
+                    update_benchmark_status(
+                        status="successful",
+                        status_detail=msg,
                     )
-                    raise GoodbyeException("All reward tests passed. Exiting training early.")
-
+                    raise GoodbyeException(msg)
         else:
-            logger.bind(benchmark=True).error(f"Unrecognized test key: {key}")
-            raise TestFailException(f"Unrecognized test key: {key}")
+            err = f"Unrecognized test key: {key}"
+            logger.bind(benchmark=True).error(err)
+            update_benchmark_status(
+                status="fail",
+                status_detail=err,
+            )
+            raise TestFailException(err)
