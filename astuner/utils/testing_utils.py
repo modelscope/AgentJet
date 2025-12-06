@@ -1,3 +1,4 @@
+from astuner.backbone.common_warm_up import init_parallel_rollout_logger
 from astuner.utils.dynamic_import import dynamic_import
 
 
@@ -11,6 +12,7 @@ def _test_if_test_mode(key, value, config):
         return
     if config.astuner.execute_test == "do_not_test":
         return
+    init_parallel_rollout_logger(config.astuner.experiment_name)
     test_lambda = get_test_lambda(config.astuner.execute_testing_lambda)
     return test_lambda(key, value)
 

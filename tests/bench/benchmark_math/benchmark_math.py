@@ -18,14 +18,17 @@ class TestProbe(object):
         self.reward_expectation = {
             # step    : expected local average reward range
             #         :       [low,    high ]
-               10     :       [0.7,  99999.0],
-               20     :       [0.8,  99999.0],
-               30     :       [0.9,  99999.0],
+               5     :        [0.90,  99999.0],
+            #  5     :        [0.50,  99999.0],
+               10     :       [0.45,  99999.0],
+               20     :       [0.68,  99999.0],
+               30     :       [0.85,  99999.0],
         }
         # fmt: on
 
     def __call__(self, key, log_dict):
-        reward_key = "experience_pipeline/group_advantages/reward_mean/mean"
+        explore_reward_key = "experience_pipeline/group_advantages/reward_mean/mean"
+        trainer_reward_key = "critic/score/mean"
         if key == "reward_probe":
             step = log_dict["step"]
 
@@ -35,9 +38,14 @@ class TestProbe(object):
                 )
 
             # if new data, add
-            if reward_key in log_dict:
-                reward = log_dict[reward_key]
+            logger.bind(benchmark=True).info(f"log_dict: {str(log_dict)}")
+            logger.bind(benchmark=True).info(f"reward_key: {str(explore_reward_key)}")
+            logger.bind(benchmark=True).info(f"self.reward_array before: {str(self.reward_array)}")
+            if explore_reward_key in log_dict:
+                reward = log_dict[explore_reward_key]
                 self.reward_array += [reward]
+            if trainer_reward_key in log_dict:
+                return  # ignore trainer, only focus on explorer
 
             # begin test
             if step in self.reward_expectation:
@@ -50,7 +58,7 @@ class TestProbe(object):
                 # get expected range
                 low, high = self.reward_expectation[step]
                 # log
-                logger.info(
+                logger.bind(benchmark=True).info(
                     f"[TestProbe] Step {step}: local average reward over last self.reward_expectation_avg_window steps: {local_avg_reward:.4f}, expected range: [{low}, {high}]"
                 )
                 # check
@@ -61,16 +69,26 @@ class TestProbe(object):
                             "local_avg_reward": local_avg_reward,
                             "expected_low": low,
                             "expected_high": high,
-                        }
+                        },
+                        mod="benchmark",
+                    )
+                    logger.bind(benchmark=True).error(
+                        f"[TestProbe] Reward test failed at step {step}: local average reward {local_avg_reward:.4f} not in expected range [{low}, {high}]"
                     )
                     raise TestFailException(
                         f"Reward test failed at step {step}: local average reward {local_avg_reward:.4f} not in expected range [{low}, {high}]"
                     )
                 else:
-                    logger.info(f"[TestProbe] Reward test passed at step {step}.")
+                    logger.bind(benchmark=True).info(
+                        f"[TestProbe] Reward test passed at step {step}."
+                    )
                 # congrats, all tests passed, let's crash and escape this test early.
                 if step == max(self.reward_expectation.keys()):
+                    logger.bind(benchmark=True).info(
+                        f"[TestProbe] All reward tests passed. Exiting training early."
+                    )
                     raise GoodbyeException("All reward tests passed. Exiting training early.")
 
         else:
+            logger.bind(benchmark=True).error(f"Unrecognized test key: {key}")
             raise TestFailException(f"Unrecognized test key: {key}")

@@ -228,6 +228,9 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
         if exp_name is not None:
             exp_name = exp_name.replace("|", "-")
         exp_name = os.path.basename(yaml_path).replace(".yaml", "")
+        # add timestamp to exp_name
+        timestamp = time.strftime("%Y%m%d_%H%M", time.localtime())
+        exp_name = f"{exp_name}_{timestamp}"
     else:
         exp_name = exp_name.replace("|", "-")
 

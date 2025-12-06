@@ -34,11 +34,22 @@ def dynamic_import(module_class_str: str):
 
         module = importlib.util.module_from_spec(spec)
 
-        # Add module to sys.modules to avoid duplicate loading
-        sys.modules[module_name] = module
+        # 检查是否已经加载过这个模块
+        if module_name in sys.modules:
+            module = sys.modules[module_name]
+        else:
+            # Load module from file using importlib.util
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Cannot create module spec for: {file_path}")
 
-        # Execute module
-        spec.loader.exec_module(module)
+            module = importlib.util.module_from_spec(spec)
+
+            # Add module to sys.modules BEFORE execution to avoid duplicate loading
+            sys.modules[module_name] = module
+
+            # Execute module
+            spec.loader.exec_module(module)
 
     else:
         # Standard module path format
