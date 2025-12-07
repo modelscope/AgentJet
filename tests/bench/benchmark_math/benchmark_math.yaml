@@ -14,18 +14,18 @@ astuner:
 
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
 
   rollout:
     agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
-    temperature: 0.7
+    temperature: 1.0
     max_env_worker: 64
+    max_num_seqs: 256
     num_repeat: 6
     agent_madness_reward: 0.0
     tensor_model_parallel_size: 1
-    max_num_seqs: 40
     multi_turn:
-      max_sample_per_task: 4
+      max_sample_per_task: 2
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"
@@ -34,7 +34,7 @@ astuner:
     n_vllm_engine: 2
 
   data:
-    train_batch_size: 32
+    train_batch_size: 100
     max_prompt_length:   3000
     max_response_length: 7000
 
@@ -43,15 +43,20 @@ astuner:
     debug_first_n_tasks: 1
 
   trainer_common:
-    save_freq: 99999
-    test_freq: 99999
-    total_epochs: 99999
+    save_freq: 100
+    test_freq: 999999
+    total_epochs: 100
     logger: swanlab
 
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
-
   execute_testing_lambda: "tests/bench/benchmark_math/benchmark_math.py->TestProbe" #
+
+
+trinity:
+  synchronizer:
+    sync_offset: 1
+    sync_method: nccl
 
 
 # ------------------ 不需要修改 ------------------
@@ -59,13 +64,11 @@ hydra:
   searchpath:
     - file://astuner/default_config
     - file://astuner/default_config/verl         # verl only
-    - file://external/verl/verl/trainer/config  # verl only
     - file://astuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
-  - ppo_trainer # verl inherit 1/2
-  - verl_default # verl inherit 2/2
-  - trinity_default # trinity inherit 1/1
+  - verl_default # verl inherit
+  - trinity_default # trinity inherit
   - astune_default
   - _self_

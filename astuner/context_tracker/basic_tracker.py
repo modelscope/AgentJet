@@ -431,15 +431,19 @@ class BasicContextTracker(BaseTracker):
     def compute_step_level_reward(
         self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
     ) -> float:
+        # TODO: support multi-step reward
         assert self.reward_structure is not None
 
         # --------------- global level reward ---------------
         global_reward = self.reward_structure.raw_reward
         gamma = self.config.astuner.rollout.gamma
         step_reward_base = global_reward * (gamma ** (total_steps - index - 1))
+        assert (
+            gamma == 1.0
+        ), "Currently only support gamma == 1.0, we'll support multi-step reward in the future"
 
         # --------------- compute step level reward ---------------
-        step_reward = step_reward_base
+        step_reward = step_reward_base  # reward scalar
         if self.already_mad_flag:
             step_reward = self.config.astuner.rollout.agent_madness_reward
             self.reward_structure.madness = -1.0
@@ -481,9 +485,9 @@ class BasicContextTracker(BaseTracker):
         # check reward structure
         self.reward_structure: Reward  # type: ignore
         assert (
-            self.reward_structure.step_reward is not None
+            self.reward_structure.step_reward_arr is not None
         ), "must call `process_reward` before tokenize_steps"
-        assert len(self.reward_structure.step_reward) == total_steps
+        assert len(self.reward_structure.step_reward_arr) == total_steps
 
         # mapping
         input_ids = []
@@ -568,9 +572,11 @@ class BasicContextTracker(BaseTracker):
         cmt_tokenized["position_ids"] = position_ids
         cmt_tokenized["prompt_position_ids"] = prompt_position_ids
         cmt_tokenized["response_position_ids"] = response_position_ids
-        cmt_tokenized["step_reward"] = self.reward_structure.step_reward[index]
         cmt_tokenized["response_logprobs"] = response_logprobs
         cmt_tokenized["prompt_logprobs"] = prompt_logprobs
+
+        # distribute reward
+        cmt_tokenized["step_reward"] = self.reward_structure.step_reward_arr[index]
         try:
             cmt_tokenized["reference_advantage"] = self.reward_structure.step_advantage[index]
         except Exception:
@@ -586,12 +592,13 @@ class BasicContextTracker(BaseTracker):
         for cmt in cmt_array:
             task2cmt[cmt.task_id] += [cmt]
 
+        # compute group normalized step_advantage (just for logging purpose)
         for task_id, cmt_list in task2cmt.items():
             cmt_reward = []
 
             # compute in-group mean and std
             for cmt in cmt_list:
-                cmt_reward += [np.mean(cmt.reward_structure.step_reward)]
+                cmt_reward += [np.mean(cmt.reward_structure.step_reward_arr)]
 
             if len(cmt_reward) == 1:
                 reward_mean = 0.0
@@ -602,36 +609,32 @@ class BasicContextTracker(BaseTracker):
                 if reward_std < 0.01:
                     reward_std = 0.01
 
-            # logger.bind(exception=True).info(f"task id {task_id}")
-            # logger.bind(exception=True).info(f"reward_mean {reward_mean}, reward_std {reward_std}, cmt_reward {cmt_reward}")
             # compute advantage
             for cmt in cmt_list:
                 cmt.reward_structure.step_advantage = []
-                for i in range(len(cmt.reward_structure.step_reward)):
+                for i in range(len(cmt.reward_structure.step_reward_arr)):
                     cmt.reward_structure.step_advantage += [
-                        (cmt.reward_structure.step_reward[i] - reward_mean) / (reward_std + 1e-6)
+                        (cmt.reward_structure.step_reward_arr[i] - reward_mean)
+                        / (reward_std + 1e-6)
                     ]
-                # logger.bind(exception=True).info(f"step reward {cmt.reward_structure.step_reward}")
-                # logger.bind(exception=True).info(f"step advantage {cmt.reward_structure.step_advantage}")
 
-        # compute simple advantage (uneven rollout sample count)
+        # compute simple advantage (uneven rollout sample count) (just for logging purpose)
         for task_id, cmt_list in task2cmt.items():
             cmt_reward = []
             for cmt in cmt_list:
-                cmt_reward.extend(cmt.reward_structure.step_reward)
+                cmt_reward.extend(cmt.reward_structure.step_reward_arr)
             if len(cmt_reward) == 1:
                 reward_mean = 0.0
                 reward_std = 1.0
             else:
                 reward_mean = float(np.mean(cmt_reward))
                 reward_std = float(np.std(cmt_reward, ddof=1))
-                # if reward_std < 0.01:
-                #     reward_std = 0.01
             for cmt in cmt_list:
                 cmt.reward_structure.step_advantage_simple = []
-                for i in range(len(cmt.reward_structure.step_reward)):
+                for i in range(len(cmt.reward_structure.step_reward_arr)):
                     cmt.reward_structure.step_advantage_simple += [
-                        (cmt.reward_structure.step_reward[i] - reward_mean) / (reward_std + 1e-6)
+                        (cmt.reward_structure.step_reward_arr[i] - reward_mean)
+                        / (reward_std + 1e-6)
                     ]
         return
 

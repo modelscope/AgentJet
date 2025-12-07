@@ -56,7 +56,7 @@ class BaseParallelEnv:
         self.max_llm_retries: int = max_llm_retries
         self.rollout_n = config.astuner.rollout.num_repeat
         self.tokenizer = tokenizer
-        self.pad_token_id = self.tokenizer.pad_token_id
+        self.pad_token_id: int = self.tokenizer.pad_token_id
         self.current_token = 0
         self.current_global_steps = "NA"
         self.async_llm_bridge = AsyncLlmBridge(

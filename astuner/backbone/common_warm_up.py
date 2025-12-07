@@ -4,9 +4,9 @@ import os
 
 def init_parallel_rollout_logger(experiment_name):
     """Initialize the logger with the given configuration."""
-    if "PROCESS_LEVEL_WARMUP_INIT" in os.environ:
+    if "PROCESS_LEVEL_WARMUP_INIT_LOGGER" in os.environ:
         return
-    os.environ["PROCESS_LEVEL_WARMUP_INIT"] = "1"
+    os.environ["PROCESS_LEVEL_WARMUP_INIT_LOGGER"] = "1"
 
     from datetime import datetime
 

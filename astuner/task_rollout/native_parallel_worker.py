@@ -2,7 +2,7 @@
 
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Dict, List, Literal
 from urllib.parse import quote
 
@@ -76,7 +76,7 @@ class ClassicRolloutManager(BaseParallelEnv):
             "stop": [False for _ in range(len(tasks) * rollout_n)],
         }
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
-            futures = []
+            futures: List[Future] = []
             for task_batch_index, task in enumerate(tasks):
                 for task_rollout_index in range(rollout_n):
                     task_thread_index = task_batch_index * rollout_n + task_rollout_index
@@ -94,12 +94,23 @@ class ClassicRolloutManager(BaseParallelEnv):
             while True:
                 if not any(future.running() for future in futures):
                     break
-                if any(future.exception() for future in futures):
+
+                completed_futures = [f for f in futures if f.done()]
+                failed_futures = [f for f in completed_futures if f.exception() is not None]
+
+                if failed_futures:
                     executor.shutdown(wait=False, cancel_futures=True)
                     for f in futures:
                         if not f.done():
                             f.cancel()
-                    raise RuntimeError("One of the rollout threads has encountered an exception.")
+
+                    for f in failed_futures:
+                        logger.error(f"Thread failed with exception: {f.exception()}")
+
+                    raise RuntimeError(
+                        f"One of the rollout threads has encountered an exception. {len(failed_futures)} threads failed."
+                    )
+
                 self.step_status_printer(obs_window)
                 time.sleep(10)
 
@@ -107,9 +118,15 @@ class ClassicRolloutManager(BaseParallelEnv):
                 result = future.result()
                 cmt_array.append(result)
 
+            # TODO: support multi-step reward
             task_success_rate = np.mean([cmt.reward_structure.success_rate for cmt in cmt_array])
+            task_scalar_reward = np.mean(
+                [cmt.reward_structure.final_scalar_reward for cmt in cmt_array]
+            )
+
             for cmt in cmt_array:
                 cmt.current_batch_success_rate = float(task_success_rate)
+                cmt.current_batch_reward = float(task_scalar_reward)
 
             return cmt_array
 
@@ -205,6 +222,10 @@ class DynamicRolloutManager(ClassicRolloutManager):
             "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],
         }
 
+        from vsdb import bp
+
+        bp("POOLX")
+
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
             futures = []
             for task_batch_index, task in enumerate(tasks):
@@ -223,6 +244,7 @@ class DynamicRolloutManager(ClassicRolloutManager):
                     task_future_array.append(future)
                 futures += [task_future_array]
 
+            # A while loop to wait for all task can be terminated
             tic = -1
             while True:
                 tic += 1
@@ -278,6 +300,8 @@ class DynamicRolloutManager(ClassicRolloutManager):
                             f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}"
                         )
                     time.sleep(5)
+
+            # We have enough number of samples, but we need to wait for all threads to finish, including discarded threads
             tic = -1
             while any(f.running() for task_future_array in futures for f in task_future_array):
                 tic += 1
@@ -285,10 +309,13 @@ class DynamicRolloutManager(ClassicRolloutManager):
                     logger.info("waiting final sync, this will not take long")
                 time.sleep(5)
 
+            # find sample group that has identical reward, mark them as need_amend
             task_ineffective_thread_cnt = []
-            task_completed_thread_cnt = []
-            task_extra_thread_cnt = []
-            task_need_amend = 0
+            task_completed_thread_cnt = []  # how many effective threads are obtained per group
+            task_extra_thread_cnt = (
+                []
+            )  # using rollout_n as baseline, how many extra threads are obtained per group
+            task_need_amend = 0  # how many groups need amendment due to identical rewards
             for j, task_future_array in enumerate(futures):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
@@ -312,38 +339,44 @@ class DynamicRolloutManager(ClassicRolloutManager):
             logger.info(f"task_completed_thread_cnt: {task_completed_thread_cnt}")
             logger.info(f"task_extra_thread_cnt: {task_extra_thread_cnt}")
 
+            # reduce `task_extra_thread_cnt`
             world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
+            # the number of all reward-diverse samples
             total_sample = sum(task_completed_thread_cnt)
+
+            # begin to compute a removal plan  (output: `task_extra_thread_cnt` and `num_task_to_amend`)
+            # - task_extra_thread_cnt: using rollout_n as baseline, how many extra threads to preserve per group
+            # - num_task_to_amend: how many groups can be amended according to removal plan
             if allow_sample_num_change and (total_sample > world_size * 2):
-                add_count = 0
-                num_task_to_amend = len(futures)
-                logger.info(
-                    f"allow_sample_num_change policy: world_size: {world_size}, total_sample {total_sample}, add_count: {add_count}, "
-                )
-                while add_count != 0:
-                    _task_completed_thread_cnt_find_nonzero_min = [
-                        float("inf") if x <= 0 else x for x in task_completed_thread_cnt
-                    ]
-                    min_extra_index = _task_completed_thread_cnt_find_nonzero_min.index(
-                        min(_task_completed_thread_cnt_find_nonzero_min)
-                    )
-                    task_extra_thread_cnt[min_extra_index] += 1
-                    task_completed_thread_cnt[min_extra_index] += 1
-                    add_count -= 1
+                # When changing the number of samples is ALLOWED
+                num_task_to_amend = len(
+                    futures
+                )  # this means infinate budget to amend, indicating that we throw away all ineffective samples
+                task_extra_thread_cnt = task_extra_thread_cnt  # do not change extra thread cnt, we simply take all diverse samples
+                # log
                 logger.info(
                     f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
                 )
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
             else:
+                # When changing the number of samples is NOT ALLOWED (or the number of samples are too small)
+                # compute how many valid extra samples are obtained during previous oversampling
                 num_task_max_to_amend = sum(task_extra_thread_cnt) // rollout_n
+                # compute how many tasks actually need amendment, we fix as many as we can, but not exceed `num_task_max_to_amend`:
+                # - num_task_max_to_amend: how many CAN be fixed
+                # - task_need_amend:       how many SHOULD be fixed
                 num_task_to_amend = min(num_task_max_to_amend, task_need_amend)
+                # according to `num_task_to_amend`, how many extra samples should be CONSUMED
                 extra_num_thread_required = num_task_to_amend * rollout_n
+                # after CONSUME, how many extra samples are really EXTRA and should be REMOVED
                 remove_count = sum(task_extra_thread_cnt) - extra_num_thread_required
                 logger.info(
-                    f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, "
+                    f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, "
+                    f"num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, "
                 )
-
+                # remove extra samples according to `remove_count`
                 while remove_count != 0:
+                    # if we should remove some extra samples, we always remove from the group that has the MOST extra samples
                     max_extra_index = task_extra_thread_cnt.index(max(task_extra_thread_cnt))
                     assert (
                         task_extra_thread_cnt[max_extra_index] > 0
@@ -351,48 +384,71 @@ class DynamicRolloutManager(ClassicRolloutManager):
                     task_extra_thread_cnt[max_extra_index] -= 1
                     task_completed_thread_cnt[max_extra_index] -= 1
                     remove_count -= 1
+
+                # now, we have computed the final `task_extra_thread_cnt` and `num_task_to_amend`, which the removal plan deps
                 logger.info(
                     f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
                 )
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
 
+            # collect results and get the final cmt_array according to removal plan (`task_extra_thread_cnt` and `num_task_to_amend`)
             cmt_array = []
             print_buffer = ""
             task_success_rate = []
+            task_group_reward = []
             for j, task_future_array, avail_extra_cnt in zip(
                 range(len(futures)), futures, task_extra_thread_cnt
             ):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
                 completed_results = [cmt for cmt in completed_results if not cmt.discarded]
+                # in-group success rate and reward
                 task_cmd_reward_array = [
                     cmt.reward_structure.performance_reward for cmt in completed_results
                 ]
                 success_rate_array = [
                     cmt.reward_structure.success_rate for cmt in completed_results
                 ]
+                task_group_reward += [
+                    np.mean([cmt.reward_structure.final_scalar_reward for cmt in completed_results])
+                ]
                 task_success_rate += [np.mean(success_rate_array)]
+                # whether this group need amendment
                 need_amend = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
+                # if so, whether we have quota (num_task_to_amend) to amend
                 if need_amend and (num_task_to_amend > 0):
+                    # this group need amendment, so, we discard all its samples
+                    # do not worry, other groups will take up the slack
                     num_task_to_amend -= 1
                     print_buffer += "/(amend)"
                     continue
                 else:
                     if need_amend:
+                        # this group need amendment, but we simply do not have quota to amend
+                        # we just accept rollout_n samples from this group
                         num_to_be_selected = rollout_n
                     else:
+                        # this group is good and healthy, if it has extra samples, we accept them
                         num_to_be_selected = rollout_n + avail_extra_cnt
+                    # if num_to_be_selected > the number of resulting samples, we choose them to maximum reward diversity
                     selected_cmt_array = self.greedy_max_std_selection(
                         completed_results, num_to_be_selected
                     )
+                    # good, we have collected selected samples from this group
                     cmt_array += selected_cmt_array
+                    # print info
                     print_buffer += f"/({len(selected_cmt_array)})"
                     if need_amend:
                         print_buffer += "(no-amend)"
+
             logger.info(print_buffer)
 
             for cmt in cmt_array:
+                # average of gourp success rate
                 cmt.current_batch_success_rate = np.mean(task_success_rate)
+                # average of gourp average reward
+                cmt.current_batch_reward = np.mean(task_group_reward)
+
             return cmt_array
 
 
@@ -460,7 +516,7 @@ class ParallelEnvManager(DynamicRolloutManager):
                 == len(sample.attention_mask)
                 == len(sample.position_ids)
                 == len(sample.loss_mask)
-            ), f"Sample {sample.request_id} has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
+            ), f"Sample has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
 
             task_ids.append(sample.task_id)
             rollout_ids.append(sample.task_tag)
@@ -493,7 +549,7 @@ class ParallelEnvManager(DynamicRolloutManager):
             reference_advantage.append(sample.reference_advantage)
 
             messages.append({"messages": sample.messages})
-            step_reward_scores.append(sample.step_reward)
+            step_reward_scores.append(sample.step_reward)  # append reward scalar
 
         max_prompt_length_this_batch = max([p.shape[-1] for p in prompt_ids])
         assert max_prompt_length_this_batch <= self.config.astuner.data.max_prompt_length

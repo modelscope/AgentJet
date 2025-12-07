@@ -61,13 +61,11 @@ hydra:
   searchpath:
     - file://astuner/default_config
     - file://astuner/default_config/verl         # verl only
-    - file://external/verl/verl/trainer/config  # verl only
     - file://astuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
-  - ppo_trainer # verl inherit 1/2
-  - verl_default # verl inherit 2/2
+  - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1
   - astune_default
   - _self_

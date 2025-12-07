@@ -2,9 +2,10 @@ import importlib
 import importlib.util
 import os
 import sys
+import threading
 
 
-def dynamic_import(module_class_str: str):
+def _dynamic_import(module_class_str: str):
     """
     Dynamic import of class from module
     Supports two formats:
@@ -58,3 +59,11 @@ def dynamic_import(module_class_str: str):
     # Get class
     protocol_cls = getattr(module, class_name)
     return protocol_cls
+
+
+_import_lock = threading.RLock()
+
+
+def dynamic_import(module_class_str: str):
+    with _import_lock:
+        return _dynamic_import(module_class_str)

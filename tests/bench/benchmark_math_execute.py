@@ -12,10 +12,18 @@ from astuner.utils.testing_utils import populate_test_env_metadata, send_test_re
 class TestBenchmarkMath(unittest.TestCase):
     def test_begin(self):
         # get probe target, so as to get timeout settings
+        BACKBONE = "verl"
         TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"
         PROBE_TARGET = "tests/bench/benchmark_math/benchmark_math.py->TestProbe"
-        TARGET_NAME = "benchmark_math"
+        TARGET_NAME = f"benchmark_math_{BACKBONE}"
+        self.execute_benchmark(
+            BACKBONE=BACKBONE,
+            TEST_TARGET=TEST_TARGET,
+            PROBE_TARGET=PROBE_TARGET,
+            TARGET_NAME=TARGET_NAME,
+        )
 
+    def execute_benchmark(self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME):
         cur_dir = os.path.dirname(__file__)
         workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
 
@@ -43,11 +51,11 @@ class TestBenchmarkMath(unittest.TestCase):
             "--conf",
             TEST_TARGET,
             "--backbone",
-            "trinity",
-            "--with-ray",
+            BACKBONE,
             "--autokill",
-            # "--debug=CUT|SWAN",
         ]
+        if BACKBONE == "trinity":
+            cmd += ["--with-ray"]
         companion = LaunchCommandWhenAbsent(
             full_argument_list=cmd,
             dir=workspace_dir,
@@ -75,7 +83,6 @@ class TestBenchmarkMath(unittest.TestCase):
             raise RuntimeError("Unknown trinity exception.")
         if terminate_str == "GoodbyeException":
             test_successful = True
-
         print_dict(
             {
                 "TestTarget": TEST_TARGET,
