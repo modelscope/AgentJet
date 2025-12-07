@@ -314,7 +314,10 @@ class MultiAgentContextTracker(BasicContextTracker):
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
         ext_steps = self.full_context
-        self.reward_structure.step_reward = [
+        # TODO: support multi-step reward
+        # in current implementation, all reward in all step equals
+        # we'll implement fine-grained step reward in future versions
+        self.reward_structure.step_reward_arr = [
             self.compute_step_level_reward(
                 ext_steps=ext_steps,
                 index=i,
@@ -361,7 +364,7 @@ class MultiAgentContextTracker(BasicContextTracker):
                 "loss_mask_color_arr": loss_mask_color_abl_arr,
             }
             raw_reward = self.reward_structure.raw_reward
-            step_reward: float = self.reward_structure.step_reward[index]
+            step_reward: float = self.reward_structure.step_reward_arr[index]
             try:
                 step_advantage = self.reward_structure.step_advantage[index]
                 step_advantage_simple = self.reward_structure.step_advantage_simple[index]

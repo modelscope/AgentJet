@@ -73,4 +73,5 @@ def fast_kill_by_keyword_bash(
     except Exception as e:
         print(f"Error issuing kill commands: {e}")
 
+    time.sleep(3.0)  # wait for processes to exit
     return [int(p) for p in pids]

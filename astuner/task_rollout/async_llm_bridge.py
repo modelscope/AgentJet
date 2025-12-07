@@ -63,7 +63,8 @@ class AsyncLlmBridge(object):
             )
             prompt_ids = self.tokenizer(prompt_text)["input_ids"]
 
-            _test_if_test_mode("prompt_text", prompt_text, self.config)
+            if self.config.astuner.execute_test:
+                _test_if_test_mode("prompt_text", prompt_text, self.config)
 
             final_res = run_async_coro__no_matter_what(
                 self.async_rollout_manager.generate(
@@ -96,9 +97,10 @@ class AsyncLlmBridge(object):
                 tool_parser = Hermes2ProToolParser(self.tokenizer)
                 parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
                 parsed_tool_calls = parsed_tool_calls.model_dump()
-                _test_if_test_mode(
-                    "parsed_tool_calls", parsed_tool_calls["tool_calls"], self.config
-                )
+                if self.config.astuner.execute_test:
+                    _test_if_test_mode(
+                        "parsed_tool_calls", parsed_tool_calls["tool_calls"], self.config
+                    )
                 model_called = parsed_tool_calls["tools_called"]
                 if model_called:
                     tool_calls = parsed_tool_calls["tool_calls"]

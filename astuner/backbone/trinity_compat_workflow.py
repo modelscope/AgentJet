@@ -34,6 +34,7 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
 from astuner.schema.trajectory import Sample
 from astuner.task_rollout.native_parallel_worker import DynamicRolloutManager
 from astuner.utils.config_utils import read_astune_config_with_cache
+from astuner.utils.testing_utils import _test_if_test_mode
 
 
 def get_astune_config_from_trinity_side():
@@ -152,28 +153,15 @@ class ASTunerWorkflowWrap(Workflow):
             input_ids = sample.input_ids
             prompt_ids = sample.prompt_ids
             response_ids = sample.response_ids
-            # attention_mask = sample.attention_mask
-            # prompt_attention_mask = sample.prompt_attention_mask
-            # response_attention_mask = sample.response_attention_mask
-            # loss_mask = sample.loss_mask
-            # prompt_loss_mask = sample.prompt_loss_mask
             response_loss_mask = sample.response_loss_mask
-            # position_ids = sample.position_ids
-            # prompt_position_ids = sample.prompt_position_ids
-            # response_position_ids = sample.response_position_ids
-            # tracker_tokenized["step_reward"] = self.reward_structure.step_reward[index]
 
             logprobs = sample.response_logprobs
-            try:
-                reward = tracker.reward_structure.step_reward
-                if isinstance(reward, list):
-                    reward = reward[0]
-            except Exception:
-                reward = tracker.reward_structure.raw_reward
-            if not isinstance(
-                reward, (float, int)
-            ):  # if reward is still not a float or int, set it to 0.0
-                reward = tracker.reward_structure.raw_reward
+            reward = sample.step_reward  # reward scalar
+
+            metrics = {
+                "success_rate": tracker.reward_structure.success_rate,
+                "madness": tracker.reward_structure.madness,
+            }
 
             if (
                 len(response_ids) + len(prompt_ids) == len(input_ids)
@@ -181,7 +169,6 @@ class ASTunerWorkflowWrap(Workflow):
                 and len(logprobs) > 0
             ):
                 exp = Experience(
-                    # eid=uuid.uuid4().hex,
                     tokens=input_ids,  # [seq_length] prompt + response
                     prompt_length=len(
                         prompt_ids
@@ -191,7 +178,7 @@ class ASTunerWorkflowWrap(Workflow):
                     # advantages=None,
                     # returns=None,
                     info={},
-                    metrics={},  # for wandb logging (must be string:float)
+                    metrics=metrics,  # for wandb logging (must be string:float)
                     response_text="",  # optional
                     prompt_text="",  # optional
                     #### for multi-turn experiences
@@ -386,11 +373,17 @@ class SwanlabMonitor(Monitor):
             f.write(f"Step {step}: {data}\n")
 
         if astune_config.astuner.execute_test:  # apply a test probe
-            from astuner.utils.testing_utils import _test_if_test_mode
-
-            data["step"] = step
-            data["data_dashboard_url"] = self.data_dashboard_url
-            _test_if_test_mode(key="reward_probe", value=data, config=astune_config)
+            if "critic/score/mean" in data:
+                return
+            if "experience_pipeline/group_advantages/reward_mean/mean" not in data:
+                return
+            test_robot_data = {}
+            test_robot_data["step"] = step
+            test_robot_data["data_dashboard_url"] = self.data_dashboard_url
+            test_robot_data["reward_for_test_robot"] = data[
+                "experience_pipeline/group_advantages/reward_mean/mean"
+            ]
+            _test_if_test_mode(key="reward_probe", value=test_robot_data, config=astune_config)
 
     def close(self) -> None:
         try:

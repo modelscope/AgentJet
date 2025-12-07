@@ -900,14 +900,14 @@ class ASTuneRayPPOTrainer:
             main_val_dataset, test_normal_dataset, test_chanllenge_dataset = self.get_eval_dataset()
 
             print("=" * 10 + "start validate rollout" + "=" * 10)
-            trajectories, tasks, val_metrics = self.eval_dataset(
+            context_tracker_arr, tasks, val_metrics = self.eval_dataset(
                 target_dataset=main_val_dataset,
                 target_dataset_name="main_val_dataset",
                 mode="validate",
                 epoch="test.1",
             )
             print("=" * 10 + "end validate rollout" + "=" * 10)
-            test_output_gen_batch = self.parallel_env.to_dataproto(trajectories)
+            test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
             self.async_rollout_manager.sleep()
             print("validation generation end")
 
@@ -1071,19 +1071,18 @@ class ASTuneRayPPOTrainer:
 
         # create async rollout manager and request scheduler
         self.async_rollout_mode = False
-        if self.config.astuner.rollout.mode == "async":
-            from verl.experimental.agent_loop.agent_loop import (
-                AgentLoopManager,
-                AsyncLLMServerManager,
-            )
+        from verl.experimental.agent_loop.agent_loop import (
+            AgentLoopManager,
+            AsyncLLMServerManager,
+        )
 
-            self.async_rollout_mode = True
-            agent_loop_manager = AgentLoopManager(
-                config=self.config,
-                worker_group=self.actor_rollout_wg,
-            )
-            self.async_server_list = agent_loop_manager.async_llm_servers
-            self.async_rollout_manager = AsyncLLMServerManager(self.config, self.async_server_list)
+        self.async_rollout_mode = True
+        agent_loop_manager = AgentLoopManager(
+            config=self.config,
+            worker_group=self.actor_rollout_wg,
+        )
+        self.async_server_list = agent_loop_manager.async_llm_servers
+        self.async_rollout_manager = AsyncLLMServerManager(self.config, self.async_server_list)
 
         self.reward_fn = parse_reward_from_dataproto
         self.val_reward_fn = parse_reward_from_dataproto
@@ -1407,33 +1406,47 @@ class ASTuneRayPPOTrainer:
                         )
                         print("=" * 10 + "start fit rollout" + "=" * 10)
                         self.parallel_env.current_global_steps = self.global_steps
-                        trajectories: List[BasicContextTracker] = self.parallel_env.rollout(
+                        context_tracker_arr: List[BasicContextTracker] = self.parallel_env.rollout(
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
                         print("=" * 10 + "end fit rollout" + "=" * 10)
-                        print("begin to convert trajectories to dataproto")
-                        gen_batch_output = self.parallel_env.to_dataproto(trajectories)
+                        print("begin to convert context_tracker_arr to dataproto")
+                        gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
                         print("end convertion")
-                        # context_time_cost = [traj.context_time_cost for traj in trajectories]
-                        # if context_time_cost:
-                        #     metrics.update({
-                        #         "context_cost_avg":   np.mean(context_time_cost),
-                        #         "context_cost_max":   np.max(context_time_cost),
-                        #         "context_cost_min":   np.min(context_time_cost),
-                        #     })
-                        success_rate = [traj.reward_structure.success_rate for traj in trajectories]
-                        madness_rate = [traj.reward_structure.madness for traj in trajectories]
-                        round_cnt = [traj.round_cnt for traj in trajectories]
+
+                        success_rate = [
+                            traj.reward_structure.success_rate for traj in context_tracker_arr
+                        ]
+                        madness_rate = [
+                            traj.reward_structure.madness for traj in context_tracker_arr
+                        ]
+                        # reward = [traj.reward_structure.raw_reward for traj in context_tracker_arr]
+                        round_cnt = [traj.round_cnt for traj in context_tracker_arr]
                         metrics.update(
                             {
                                 "critic/round_cnt": np.mean(round_cnt),
                                 "critic/madness_rate": np.mean(madness_rate),
                                 "critic/success_rate": np.mean(success_rate),
                                 "critic/real_success_rate": np.mean(
-                                    trajectories[0].current_batch_success_rate
+                                    context_tracker_arr[0].current_batch_success_rate
+                                ),
+                                "critic/real_reward": np.mean(
+                                    context_tracker_arr[0].current_batch_reward
                                 ),
                             }
                         )
+                        if self.config.astuner.execute_test:  # apply a test probe
+                            from swanlab.data.run.main import get_run
+
+                            from astuner.utils.testing_utils import _test_if_test_mode
+
+                            run_info = get_run().public.json()
+                            data = {
+                                "step": self.global_steps,
+                                "reward_for_test_robot": metrics["critic/real_reward"],
+                                "data_dashboard_url": run_info["cloud"]["experiment_url"],
+                            }
+                            _test_if_test_mode(key="reward_probe", value=data, config=self.config)
 
                         print(f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}")
                         self.async_rollout_manager.sleep()

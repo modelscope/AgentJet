@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from typing import List
 
 import requests
 
@@ -7,7 +8,18 @@ from astuner.backbone.common_warm_up import init_parallel_rollout_logger
 from astuner.utils.dynamic_import import dynamic_import
 
 
-def get_test_lambda(test_name):
+class BaseProbe(object):
+    def __init__(self):
+        self.probe_list: List[str] = []
+
+    def __call__(self, key: str, log_dict: dict):
+        raise NotImplementedError
+
+    def mock(self, key: str):
+        raise NotImplementedError
+
+
+def get_test_lambda(test_name) -> BaseProbe:
     test_cls = dynamic_import(test_name)()
     return test_cls
 
@@ -19,6 +31,8 @@ def _test_if_test_mode(key, value, config):
         return
     init_parallel_rollout_logger(config.astuner.experiment_name)
     test_lambda = get_test_lambda(config.astuner.execute_testing_lambda)
+    if key not in test_lambda.probe_list:
+        return
     return test_lambda(key, value)
 
 
@@ -28,6 +42,8 @@ def _mock_if_test_mode(key, value, config):
     if config.astuner.execute_test == "do_not_test":
         return value
     test_lambda = get_test_lambda(config.astuner.execute_testing_lambda)
+    if key not in test_lambda.probe_list:
+        return value
     return test_lambda.mock(key)
 
 
