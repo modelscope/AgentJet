@@ -10,7 +10,20 @@ from astuner.utils.testing_utils import populate_test_env_metadata, send_test_re
 
 
 class TestBenchmarkMath(unittest.TestCase):
-    def test_begin(self):
+    def test_begin_trinity(self):
+        # get probe target, so as to get timeout settings
+        BACKBONE = "trinity"
+        TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"
+        PROBE_TARGET = "tests/bench/benchmark_math/benchmark_math.py->TestProbe"
+        TARGET_NAME = f"benchmark_math_{BACKBONE}"
+        self.execute_benchmark(
+            BACKBONE=BACKBONE,
+            TEST_TARGET=TEST_TARGET,
+            PROBE_TARGET=PROBE_TARGET,
+            TARGET_NAME=TARGET_NAME,
+        )
+
+    def test_begin_verl(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "verl"
         TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"

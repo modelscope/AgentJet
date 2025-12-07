@@ -1,3 +1,4 @@
+# flake8: noqa: F541, F841
 import copy
 import json
 from typing import List, Tuple
@@ -157,16 +158,20 @@ class MultiAgentContextTracker(BasicContextTracker):
                         wrong_toolcall = True
                         err_type = "no function or no arguments"
                 if wrong_toolcall:
-                    logger.bind(exception=True).error(
-                        f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
+                    # logger.bind(exception=True).warning(
+                    #     f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
+                    # )
+                    logger.bind(exception=True).warning(
+                        f"Detected wrong toolcall format from LLM content"
                     )
                     self.already_mad_flag = True
                 else:
                     logger.success("Toolcall format check passed.")
         elif "<tool_call>" in llm_output["content"]:
-            logger.bind(exception=True).error(
-                f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
-            )
+            # logger.bind(exception=True).warning(
+            #     f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
+            # )
+            logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM content")
             self.already_mad_flag = True
             tool_calls = []
         else:
