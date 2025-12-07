@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 
 from beast_logger import print_dict
@@ -16,11 +15,13 @@ class TestBenchmarkMath(unittest.TestCase):
         TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"
         PROBE_TARGET = "tests/bench/benchmark_math/benchmark_math.py->TestProbe"
         TARGET_NAME = f"benchmark_math_{BACKBONE}"
+        PYTHON_EXECUTABLE = ".venv/bin/python"
         self.execute_benchmark(
             BACKBONE=BACKBONE,
             TEST_TARGET=TEST_TARGET,
             PROBE_TARGET=PROBE_TARGET,
             TARGET_NAME=TARGET_NAME,
+            PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
         )
 
     def test_begin_verl(self):
@@ -29,14 +30,18 @@ class TestBenchmarkMath(unittest.TestCase):
         TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"
         PROBE_TARGET = "tests/bench/benchmark_math/benchmark_math.py->TestProbe"
         TARGET_NAME = f"benchmark_math_{BACKBONE}"
+        PYTHON_EXECUTABLE = ".verl/bin/python"
         self.execute_benchmark(
             BACKBONE=BACKBONE,
             TEST_TARGET=TEST_TARGET,
             PROBE_TARGET=PROBE_TARGET,
             TARGET_NAME=TARGET_NAME,
+            PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
         )
 
-    def execute_benchmark(self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME):
+    def execute_benchmark(
+        self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE
+    ):
         cur_dir = os.path.dirname(__file__)
         workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
 
@@ -59,7 +64,7 @@ class TestBenchmarkMath(unittest.TestCase):
             dynamic_import(PROBE_TARGET)().expected_train_time + 600
         )  # add buffer time
         cmd = [
-            sys.executable,
+            PYTHON_EXECUTABLE,
             "launcher.py",
             "--conf",
             TEST_TARGET,

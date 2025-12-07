@@ -157,11 +157,9 @@ def read_astune_hierarchical_config(
     if backbone == "debug":
         config["defaults"].remove("trinity_default")
         config["hydra"]["searchpath"].remove("file://astuner/default_config/trinity")
-        config["hydra"]["searchpath"].remove("file://external/verl/verl/trainer/config")
     # remove extra config of verl for trinity
     if backbone == "trinity":
         config["defaults"].remove("verl_default")
-        config["hydra"]["searchpath"].remove("file://external/verl/verl/trainer/config")
         config["hydra"]["searchpath"].remove("file://astuner/default_config/verl")
     # remove extra config of trinity for verl
     if backbone == "verl":  # or args.backbone == "debug"
