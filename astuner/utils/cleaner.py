@@ -4,6 +4,19 @@ import subprocess
 import time
 
 
+def kill_ray_processes():
+    """run ray stop command to kill ray processes"""
+    try:
+        subprocess.run(
+            ["ray", "stop", "--force"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except Exception as e:
+        print(f"Failed to stop ray processes: {e}")
+
+
 def fast_kill_by_keyword_bash(
     keyword: str, exclude_substrings=["vscode", "benchmark"], grace_seconds: float = 1.0
 ):
@@ -15,6 +28,9 @@ def fast_kill_by_keyword_bash(
     - Returns list of PIDs targeted
     """
     self_pid = os.getpid()
+
+    if "ray" in keyword:
+        kill_ray_processes()
 
     # Build a fast PID collector using pgrep if available; fallback to ps/grep
     # We prefer pgrep -af to filter by full command and then extract PID (column 1)
@@ -73,4 +89,5 @@ def fast_kill_by_keyword_bash(
     except Exception as e:
         print(f"Error issuing kill commands: {e}")
 
+    time.sleep(3.0)  # wait for processes to exit
     return [int(p) for p in pids]
