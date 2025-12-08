@@ -1,6 +1,12 @@
 # 快速上手
 
-AgentScope Tuner 为 Agent 调优提供了完整的功能。在本文档中，我们将展示如何从零开始，在数学任务环境下训练一个能够自行使用 Python 进行计算并解决复杂数学问题的 Agent。
+AgentScope Tuner 为 Agent 调优提供了完整的功能。你可以直接尝试用一条命令启动一个数学智能体的训练：
+
+```bash
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+```
+
+在本文档中，我们会从零开始，带你实现并训练这样一个能够使用 Python 进行计算、解决复杂数学问题的 Agent。
 
 我们将依次完成以下步骤：
 
@@ -323,7 +329,7 @@ debug 模式不会启动 ray 集群，非常适合单机代码调试。另外，
 ## 训练
 当调试完成后，即可开始训练：
 ```bash
-python launcher.py --conf math_agent/math_agent.yaml --backbone='trinity' --with-ray
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 你可以在 `./launcher_record/{exp_yaml_file_name}` 目录下找到训练日志和 checkpoint。
@@ -332,11 +338,11 @@ python launcher.py --conf math_agent/math_agent.yaml --backbone='trinity' --with
 ## 阅读更多
 我们为 ASTuner 的核心概念和高级用法提供了更详细的说明：
 
-- [数据管线](./data_pipeline.md)：训练 & 测试数据读入
+- [数据](./data_pipeline.md)：训练 & 测试数据读入
 - [数据合成](./data_generation.md)：从零或少量数据开始合成训练数据
-- [数据回流训练](./data_tracing_feedback_training.md)：从已部署的 Agent 日志中进行迭代式训练
+- [数据回流训练](./example_tracing_feedback_loop.md)：从已部署的 Agent 日志中进行迭代式训练
 
 此外，我们还提供了其他使用案例：
-- [Math Agent](./example_math_agent.md)：即本文档最终搭建的 Agent 训练
-- [Appworld Agent](./example_app_world.md)：通过操作复杂 APP 完成复杂任务的 Agent 训练
-- [Multi-agent Werewolves](./example_werewolves.md)：多 Agent 协作/对抗的狼人杀 Agent 训练
+- [Math](./example_math_agent.md)：即本文档最终搭建的 Agent 训练
+- [Appworld](./example_app_world.md)：通过操作复杂 APP 完成复杂任务的 Agent 训练
+- [Werewolves](./example_werewolves.md)：多 Agent 协作/对抗的狼人杀 Agent 训练

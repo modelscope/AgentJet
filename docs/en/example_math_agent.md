@@ -1,4 +1,4 @@
-# Math Agent
+# Math
 This page demonstrates how to prepare data, build an Agent and Workflow, set up Rewards, and finally train a Math Agent from scratch.
 
 ## 1. Prepare Dataset
@@ -124,7 +124,7 @@ python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone
 
 ## 5 Reference Result
 
-![Tracing curve](../_static/imgs/example-appworld/learning-curve.png)
+![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
 
 ## Tuning Observation
 
@@ -155,5 +155,5 @@ To find the number of board members who attended the meeting, let's break down t
 However, tuning resolves these issues, as shown in the example below:
 
 
-![image](../_static/imgs/example-mathagent/log-1.png)
-![image](../_static/imgs/example-mathagent/log-2.png)
+![image](https://img.alicdn.com/imgextra/i4/O1CN01v1gGQZ1ftMiil5Cxg_!!6000000004064-2-tps-1367-684.png)
+![image](https://img.alicdn.com/imgextra/i4/O1CN01WarPpf1yNk4awZOIO_!!6000000006567-2-tps-1363-422.png)

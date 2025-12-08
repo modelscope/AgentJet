@@ -1,14 +1,15 @@
+# Trainable Workflow
 
 This tutorial introduces how to define a trainable workflow 🚀 with AgentScope.
 
 ASTuner offers two convenient and mutually compatible encapsulation methods for AgentScope Workflow. The first emphasizes **simplicity, convenience, and ease of understanding**, while the second focuses on **flexibility, controllability, and extensibility**.
 
-## Simple agent scenario ✨:
+## Simple Agent Scenario
 
 
 1. Converting your AgentScope Workflow in ASTuner.
 
-**Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.**
+**Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.** 
 
 ```python
 
@@ -104,10 +105,10 @@ This practice suits well for most users, you can choose to follow this practice 
 
 
 
-## Advanced agent scenario 🤝:
+## Advanced Agent Scenario
 
-When designing an advanced multi-agent workflow composed by agents with different roles,
-ASTuner can work better if it knows the identity of each agent,
+When designing an advanced multi-agent workflow composed by agents with different roles, 
+ASTuner can work better if it knows the identity of each agent, 
 thus providing training and debugging convinience.
 
 1. Promoting to advanced ASTuner workflow.

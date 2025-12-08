@@ -1,4 +1,4 @@
-# App World 应用操作示例
+# AppWorld
 
 本页展示在 AppWorld 场景下，从环境与数据准备、构建 AgentScope Workflow、配置奖励模块（Judge），到完成从调试到正式训练的完整流程。
 
@@ -142,7 +142,7 @@ python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='tr
 
 ## 5 参考结果
 
-![Training curve (small batch)](../_static/imgs/example-appworld/learning-curve.png)
+![Training curve (small batch)](https://img.alicdn.com/imgextra/i2/O1CN01toRt2c1Nj8nKDqoTd_!!6000000001605-2-tps-1410-506.png)
 
 ## 6 现象与案例观察
 
@@ -150,18 +150,18 @@ python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='tr
 
 1. 频繁调用不存在的 API
 
-![Before tuning](../_static/imgs/example-appworld/before-1.png)
+![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN015FgjqI20Ip3AJybr0_!!6000000006827-2-tps-1259-683.png)
 
 2. 没有学会按照说明去获取 access token
 
-![Before tuning](../_static/imgs/example-appworld/before-2.png)
+![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN01bGZ1s01VyjCSrTJte_!!6000000002722-2-tps-1181-954.png)
 
 ### 调优后：
 
 1. 会先查阅 API 文档，并学会使用有效的 API
 
-![After tuning](../_static/imgs/example-appworld/after-1.png)
+![After tuning](https://img.alicdn.com/imgextra/i4/O1CN01VRIDy922PoKD1bETl_!!6000000007113-2-tps-1180-944.png)
 
 2. 学会正确获取 access token
 
-![After tuning](../_static/imgs/example-appworld/after-2.png)
+![After tuning](https://img.alicdn.com/imgextra/i2/O1CN01xiF9UU20h62dyrZ4x_!!6000000006880-2-tps-1182-793.png)

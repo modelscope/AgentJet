@@ -1,4 +1,4 @@
-# 狼人杀多智能体示例
+# 狼人杀
 
 狼人杀角色扮演游戏是一个典型的 POMDP（部分可观测马尔可夫决策过程，Partially Observable Markov Decision Process）问题。我们可以在这个协作型多智能体问题中，使用「参数共享」的方法来训练多个 Agent。
 
@@ -10,7 +10,7 @@
 - **协作型多智能体问题（Cooperative multi-agent problem）**：多个 Agent 之间目标一致（共享奖励）。
 - **环境（Environment）**：本示例中，我们使用静态的 **`Qwen3-235B-A22B`** 作为对手（非可训练 Agent）的“脑”，并使用 **`Qwen2-7B`** 作为可训练 Agent（即 `trainable_targets`）。
 
-![image](../_static/imgs/example-werewolves/banner.jpg)
+![image](https://img.alicdn.com/imgextra/i2/O1CN012JgVZC2ABczBhAzJs_!!6000000008165-0-tps-2048-2048.jpg)
 
 本页展示如何将狼人杀这种社交推理类游戏作为一个多智能体环境，完成：准备数据与环境、编写 AgentScope Workflow、配置奖励模块（Judge）、以及从本地调试到正式训练的完整流程。
 
@@ -137,7 +137,7 @@ python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone
 
 `Qwen2-7B` 在大约 20 个 step 左右，就可以达到约 60% 的胜率。
 
-![image](../_static/imgs/example-werewolves/learning-curve.png)
+![image](https://img.alicdn.com/imgextra/i3/O1CN01ldZYDT1ZqGLHuwsrS_!!6000000003245-2-tps-2000-839.png)
 
 ### 行为变化（Behavior Shifts）
 
@@ -145,7 +145,8 @@ python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone
 
 1. 例如，在被投票出局时，原始模型往往会直接暴露自己是 `werewolf`；而经过微调之后，Agent 会尝试欺骗对手、保护队友。例如：
 
-   ![](../_static/imgs/example-werewolves/log-1.png)
+  ![](https://img.alicdn.com/imgextra/i1/O1CN01v8VqLB1aYEMfzyTHr_!!6000000003341-2-tps-2104-1016.png)
+
 
 2. Agent 会发展出多种取胜策略。例如：
 
@@ -154,8 +155,8 @@ python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone
 
 3. 有时 Agent 还能利用非狼人玩家之间的相互怀疑，从而淘汰对手。
 
-   ![](../_static/imgs/example-werewolves/graph.png)
+  ![](https://img.alicdn.com/imgextra/i2/O1CN01Sx7wkU23pHyPXyqPH_!!6000000007304-2-tps-968-575.png)
 
 ### 从 Qwen2-7B 扩展到 Qwen2-14B
 
-![](../_static/imgs/example-werewolves/extended-curve.png)
+![](https://img.alicdn.com/imgextra/i1/O1CN01TLZcQF1FJ1HPbpLfj_!!6000000000465-2-tps-1842-1008.png)

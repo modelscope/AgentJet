@@ -1,4 +1,4 @@
-# 数学 Agent 示例
+# 数学
 本页演示如何从零开始准备数据、构建 Agent 与 Workflow、配置 Reward，并最终训练一个数学 Agent。
 
 ## 1. 准备数据集
@@ -127,7 +127,7 @@ python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone
 
 ## 5 参考结果
 
-![Tracing curve](../_static/imgs/example-appworld/learning-curve.png)
+![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
 
 ## 调参与现象观察
 
@@ -156,5 +156,5 @@ To find the number of board members who attended the meeting, let's break down t
 
 经过调优后，这些问题会得到明显改善，例如下图所示：
 
-![image](../_static/imgs/example-mathagent/log-1.png)
-![image](../_static/imgs/example-mathagent/log-2.png)
+![image](https://img.alicdn.com/imgextra/i4/O1CN01v1gGQZ1ftMiil5Cxg_!!6000000004064-2-tps-1367-684.png)
+![image](https://img.alicdn.com/imgextra/i4/O1CN01WarPpf1yNk4awZOIO_!!6000000006567-2-tps-1363-422.png)

@@ -9,7 +9,7 @@ Terms explained:
 - **Cooperative multi-agent problem**: Agents have aligned interests (reward).
 - **Environment**: We use static **`Qwen3-235B-A22B`** as the brain of opponents. We use **`Qwen2-7B`** as the brain of trainable agents (`trainable_targets`).
 
-![image](../_static/imgs/example-werewolves/banner.jpg)
+![image](https://img.alicdn.com/imgextra/i2/O1CN012JgVZC2ABczBhAzJs_!!6000000008165-0-tps-2048-2048.jpg)
 
 This page shows how to use the Werewolves social deduction game as a multi-agent environment to prepare data and environment, write an AgentScope Workflow, configure the reward module (Judge), and complete the full process from local debugging to formal training.
 
@@ -118,7 +118,7 @@ python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone
 ## result
 
 Qwen2-7B is able to reach 60% percent win rate in about 20 steps.
-![image](../_static/imgs/example-werewolves/learning-curve.png)
+![image](https://img.alicdn.com/imgextra/i3/O1CN01ldZYDT1ZqGLHuwsrS_!!6000000003245-2-tps-2000-839.png)
 
 ### Behavior Shifts
 
@@ -127,7 +127,7 @@ Significant role-playing improvement is observed during the experiment.
 1. For example, when voted out, the original model trends to reveal its identity as `werewolf`, but fine-tuning, agent will try to cheat its opponents and protect teammates. For example:
 
 
-![](../_static/imgs/example-werewolves/log-1.png)
+![](https://img.alicdn.com/imgextra/i1/O1CN01v8VqLB1aYEMfzyTHr_!!6000000003341-2-tps-2104-1016.png)
 
 2. Agent develop multiple strategy for winning.
 
@@ -137,8 +137,8 @@ For example:
 
 3. Sometime agents can take advantage of suspect between non-werewolf players to eliminate opponents.
 
-![](../_static/imgs/example-werewolves/graph.png)
+![](https://img.alicdn.com/imgextra/i2/O1CN01Sx7wkU23pHyPXyqPH_!!6000000007304-2-tps-968-575.png)
 
 ### Expanding Qwen2-7B to Qwen2-14B
 
-![](../_static/imgs/example-werewolves/extended-curve.png)
+![](https://img.alicdn.com/imgextra/i1/O1CN01TLZcQF1FJ1HPbpLfj_!!6000000000465-2-tps-1842-1008.png)

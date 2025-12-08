@@ -40,5 +40,6 @@ class DeduplicationFilter(Filter):
                 continue
             res.append(task)
             self._client.add(task.main_query, hash(task.main_query))
+            
 
         return res
