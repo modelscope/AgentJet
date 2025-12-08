@@ -1,4 +1,4 @@
-# Data Pipeline
+# Data
 
 AgentScope Tuner establishes a unified training data structure and complete data loading methods for data from various sources. This page provides a detailed description of the data schema and data loaders in AgentScope Tuner.
 

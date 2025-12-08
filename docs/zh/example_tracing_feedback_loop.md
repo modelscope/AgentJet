@@ -43,7 +43,6 @@ ASTune 允许你回收 Agent 在执行过程中产生的对话日志，并通过
 ```yaml
 astuner:
   # ...
-
   task_reader:
     # 使用 tracing 日志作为任务来源
     type: tracing
@@ -92,7 +91,6 @@ python launcher.py --conf tutorial/example_feedback_tracing/example_feedback_tra
 ```yaml
 astuner:
   # ...
-
   task_reader:
     # ...
     feedback_tracing:

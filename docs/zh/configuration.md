@@ -420,7 +420,6 @@ astuner:
     # the helper LLM model used for LLM-AS-Judge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
-
     # when `judge_type == rubrics_auto_grader`
     rubrics_auto_grader:
       model_name: qwen-max
@@ -455,7 +454,6 @@ astuner:
     debug_vllm_port: 18000
     debug_vllm_seed: 12345
     debug_tensor_parallel_size: 4
-
 
   # trainer common configurations
   trainer_common:

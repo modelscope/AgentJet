@@ -1,6 +1,12 @@
 # Quick Start
 
-AgentScope Tuner provides a complete feature set for tuning agents. In this document, we demonstrate how to train, from scratch, an agent that can use Python to perform calculations and solve complex math problems in a math task environment.
+AgentScope Tuner provides a complete feature set for tuning agents. You can try starting training an agent right away:
+
+```bash
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+```
+
+In this document, we demonstrate how to implement and train, from scratch, this agent that can use Python to perform calculations and solve complex math problems.
 
 We will go through the following steps in order:
 
@@ -345,12 +351,12 @@ You can find training logs and checkpoints in the `./launcher_record/{exp_yaml_f
 
 We provide more detailed explanations for ASTuner's core concepts and advanced usage:
 
-- [Data pipeline](data_pipeline.md): reading training & test data
-- [Data synthesis](data_generation.md): synthesizing training data from scratch or from small seed sets
-- [Data feedback training](data_tracing_feedback_training.md): iteratively training from logs of deployed agents
+- [Data](data_pipeline.md): reading training & test data
+- [Data Generation](data_generation.md): synthesizing training data from scratch or from small seed sets
+- [Tracing-Feedback Loop](./example_tracing_feedback_loop.md): iteratively training from logs of deployed agents
 
 In addition, we provide several other use cases:
 
 - [Math Agent](example_math_agent.md): the math agent training process described in this document
 - [Appworld Agent](example_app_world.md): training agents that operate complex apps to complete complex tasks
-- [Multi-agent Werewolves](example_werewolves.md): training multi-agent cooperation/competition agents for the Werewolves game
+- [Werewolves](example_werewolves.md): training multi-agent cooperation/competition agents for the Werewolves game

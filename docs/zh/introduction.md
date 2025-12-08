@@ -42,26 +42,29 @@ uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
 
 ### 开始使用
 
-你可以从我们丰富的示例库入手学习使用方法：
+一键启动并训练一个数学智能体：
 
-- 🚀 **教程（Tutorial）**：手把手训练你的第一个智能体。
-    - **安装（Installation）**：了解如何安装 AgentScope Tuner。
-  	- **快速开始（Quick Start）**：从零开始训练你的第一个智能体。
-	- **配置（Configuration）**：配置数据、优化算法、奖励函数等。
-- ⚙️ **组件（Component）**：理解各个组件的工作原理。
-	- **工作流（Workflow）**：构建你自己的、可训练的智能体工作流。
-	- **数据流水线与生成（Data Pipeline & Generation）**：包含从文档材料构建数据集任务，以及从少量样本扩展数据集。
-	- **奖励建模（Reward Modeling）**：学习如何优雅地实现基于 rubrics 的智能体训练奖励。
-	- **追踪-反馈训练（Tracing-Feedback Training）**：学习如何利用数据回流来进行训练。
-- 🍳 **Cookbook 示例**
-    - **构建一个简单的数学智能体**：基于 GSM8K 任务，学习如何训练一个简单的 Agent。
-    - **构建 AppWorld 智能体**：基于 AgentScope 构建一个较复杂的 AppWorld 智能体，并对其进行训练。
-    - **构建多智能体狼人杀游戏**：开发能参与狼人杀博弈的多智能体训练。
+```bash
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+```
+
+你可以从以下示例入手，快速上手 ASTuner：
+
+- 🚀 [**快速开始（Quick Start）**](./quickstart.md)：了解整体框架，并从零开始训练你的第一个智能体。
+- 🍳 [**构建一个简单的数学智能体**](./example_math_agent.md)：面向 GSM8K 任务，学习如何训练一个数学 Agent。
+- 🍳 [**构建 AppWorld 智能体**](./example_app_world.md)：基于 AgentScope 构建 AppWorld 智能体并进行训练。
+- 🍳 [**构建多智能体狼人杀游戏**](./example_werewolves.md)：开发参与狼人杀博弈的多智能体并对其进行训练。
+- 📔 [**追踪-反馈训练（Tracing-Feedback Training）**](./example_tracing_feedback_loop.md)：学习如何基于用户反馈回流进行训练。
+
+如果你希望了解各个组件的细节，可以参考：
+
+- ⚙️ [**配置（Configuration）**](./configuration.md)：配置数据、优化算法、奖励函数等。
+- 💼 [**工作流（Workflow）**](./workflow.md)：构建你自己的、可训练的智能体工作流。
+- 📊 [**数据流水线与生成（Data Pipeline & Generation）**](./data_pipeline.md)：包含从文档构建数据集任务，以及从少量样本扩展数据集。
 
 
-## 🏗️ 项目概览
 
-### 架构
+## 🏗️ 项目架构
 
 AgentScope Tuner 简化了智能体微调流程，将复杂的训练封装进三类核心模块：
 
@@ -75,11 +78,11 @@ AgentScope Tuner 简化了智能体微调流程，将复杂的训练封装进三
 为顺利完成工作流微调，我们在三类模块之下实现了以下核心模块
 
 ![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png)
-- launcher：项目的入口，帮助开发者在调试 backbone 与训练 backbone 之间快速切换，同时负责启动并智能监控与训练相关的环境服务进程。
-- task rollout：桥接不同的 LLM 引擎（如 FSDP、VLLM 等），实现重试机制，并传递 task reader 读取的任务。同时负责 gym 环境的初始化与资源清理。
-- task runner：任务执行者，负责真正运行用户提供的 AgentScope 工作流，同时运行评判器并完成初步奖励计算。
-- model tuner：当前端 AgentScope 工作流发出 LLM 推理请求时，该组件会直接接收并将请求转发给 LLM 引擎。
-- context tracker：上下文记录员，监控每一次 LLM 调用，自动识别并归档属于同一 Agent、同一时间线的 LLM 请求。在任务结束时，负责标记 loss 掩膜，合并 LLM 输入输出，从而将训练效率提升约 3～10 倍。
+- **launcher**：项目的入口，帮助开发者在调试 backbone 与训练 backbone 之间快速切换，同时负责启动并智能监控与训练相关的环境服务进程。
+- **task rollout**：桥接不同的 LLM 引擎（如 FSDP、VLLM 等），实现重试机制，并传递 task reader 读取的任务。同时负责 gym 环境的初始化与资源清理。
+- **task runner**：任务执行者，负责真正运行用户提供的 AgentScope 工作流，同时运行评判器并完成初步奖励计算。
+- **model tuner**：当前端 AgentScope 工作流发出 LLM 推理请求时，该组件会直接接收并将请求转发给 LLM 引擎。
+- **context tracker**：上下文记录员，监控每一次 LLM 调用，自动识别并归档属于同一 Agent、同一时间线的 LLM 请求。在任务结束时，负责标记 loss 掩膜，合并 LLM 输入输出，从而将训练效率提升约 3～10 倍。
 
 ## 🗺️ 项目规划
 

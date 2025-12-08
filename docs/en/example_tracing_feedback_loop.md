@@ -1,4 +1,4 @@
-# Tracing-Feedback Training
+# Tracing-Feedback Loop
 
 ASTune allows you to recycle the chat logs generated during an Agent's execution and continuously improve the Agent through iterative training, which we call **Tracing-Feedback Training**. It provides features
 
@@ -44,7 +44,6 @@ Once we have the log (`database.sqlite`), we can train a new Agent with Tracing-
 ```yaml
 astuner:
   # ...
-
   task_reader:
     # use tracing log as tasks
     type: tracing
@@ -93,7 +92,6 @@ To write rubrics, edit the configuration file:
 ```yaml
 astuner:
   # ...
-
   task_reader:
     # ...
     feedback_tracing:

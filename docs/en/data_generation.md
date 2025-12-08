@@ -7,16 +7,16 @@
 + **Few-shot data generation**: Uses existing queries as references to generate new queries with consistent style and semantic similarity
 
 ## Document-based Data Generation
-### 📖 Overview
+### Overview
 **Document-based Data Generation** automatically produces high-quality training tasks based on documents. Leveraging the knowledge augmentation capability of LLMs, this module generates new queries along with their corresponding context.
 
-### 🔧 **Architecture**
+### Architecture
 The module consists of two main components:
 
 1. **DocReader**: Parses documents (PDF, TXT, Word, etc.) and provides smart caching.
 2. **KnowledgeAugmentor**: Generates new queries from the document content.
 
-### 🌟 Features
+### Features
 **Knowledge augmentation**
 
 + ✅ **Comprehensive Coverage**: Extracts factual, conceptual, analytical, and applicational queries from the document.
@@ -48,7 +48,7 @@ astuner:
       n: 10  # generate 10 queries
 ```
 
-#### **Step 3: Run the Generation Script**
+#### Step 3: Run the Generation Script
 **Option A: Use the test script**
 
 ```bash
@@ -108,21 +108,21 @@ for i, task in enumerate(generated_tasks[:3]):
 
 
 ## Few-shot Data Generation
-### 📖 Overview
+### Overview
 Few-shot Data Generation is a module based on few-shot learning that helps you **automatically generate new queries**:
 
 + Provide some existing queries as reference examples
 + Optionally provide a document as background knowledge
 + The module leverages LLMs to generate new queries with similar style and related semantics
 
-### 🔧 Architecture
+### Architecture
 The module consists of three main components:
 
 1. **TaskReader**: Parses the user-provided queries
 2. **DocReader**: Parses documents (PDF, TXT, Word, etc.) and provides smart caching
 3. **TaskAugmentation**: Generates new tasks from the user-provided queries and optional document content
 
-### 🌟 Features
+### Features
 **Task augmentation**
 
 + ✅ **Smart Imitation**: Generates new queries consistent in style and semantically related to the references.
@@ -226,7 +226,7 @@ for i, task in enumerate(new_tasks):
 
 ```
 
-### **Sample Output**
+### Sample Output
 ```json
 [
   {
@@ -272,7 +272,7 @@ astuner:
 ```
 
 ### Config Options
-#### **Document Reader Options**
+#### Document Reader Options
 | **Option** | **Type** | **Default** | **Description** |
 | --- | --- | --- | --- |
 | `document_path` | string | Required | Path to the source document |

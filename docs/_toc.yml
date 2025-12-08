@@ -11,13 +11,14 @@ parts:
     chapters:
       - file: en/data_pipeline.md
       - file: en/data_generation.md
-      - file: en/data_tracing_feedback_training.md
+      - file: en/workflow.md
 
   - caption: Cookbook
     chapters:
       - file: en/example_math_agent.md
       - file: en/example_app_world.md
       - file: en/example_werewolves.md
+      - file: en/example_tracing_feedback_loop.md
 
   - caption: 简介
     chapters:
@@ -28,15 +29,15 @@ parts:
     chapters:
       - file: zh/installation.md
       - file: zh/quickstart.md
-
   - caption: 组件
     chapters:
       - file: zh/data_pipeline.md
       - file: zh/data_generation.md
-      - file: zh/data_tracing_feedback_training.md
+      - file: zh/workflow.md
 
   - caption: 示例
     chapters:
       - file: zh/example_math_agent.md
       - file: zh/example_app_world.md
       - file: zh/example_werewolves.md
+      - file: zh/example_tracing_feedback_loop.md
