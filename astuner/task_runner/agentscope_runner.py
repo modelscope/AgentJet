@@ -62,9 +62,10 @@ class AgentScopeRunner(BaseAgentRunner):
         ), "ASTune will support step reward in future versions."
 
         # register reward
+        # TODO: support multi-step reward
         reward = Reward(
             raw_reward=raw_reward,
-            raw_step_reward=None,
+            raw_step_reward=None,  # "ASTune will support step reward in future versions."
             success_rate=1.0 if is_success else 0.0,
             madness=0,
             description="",

@@ -313,6 +313,10 @@ class LaunchWhenAbsent:
                                     break
                             # if we have reached finish line, then break
                             if hit_success_string:
+                                f_read_trim = inc_read.replace("\n", " ")
+                                print(
+                                    f"Waiting for process launch [PGID {pgid}, PID {proc.pid}] ({f_read_trim})"
+                                )
                                 break
 
                         # let hold for one second

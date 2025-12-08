@@ -22,20 +22,18 @@ def get_runtime_env(is_trinity: bool = False) -> dict:
             "ASTUNER_CONFIG_REDIRECT": os.getenv("ASTUNER_CONFIG_REDIRECT", ""),
         }
     }
-    if os.getenv("RAY_record_task_actor_creation_sites"):
-        runtime_env["env_vars"].update(
-            {
-                "RAY_record_task_actor_creation_sites": os.getenv(
-                    "RAY_record_task_actor_creation_sites", ""
-                ),
-            }
-        )
-    if os.getenv("BEST_LOGGER_WEB_SERVICE_URL"):
-        runtime_env["env_vars"].update(
-            {
-                "BEST_LOGGER_WEB_SERVICE_URL": os.getenv("BEST_LOGGER_WEB_SERVICE_URL", ""),
-            }
-        )
+
+    optional_env_vars = [
+        "RAY_record_task_actor_creation_sites",
+        "BEST_LOGGER_WEB_SERVICE_URL",
+        "ASTUNER_GIT_HASH",
+        "ASTUNER_REQ_TXT",
+        "ASTUNER_BENCHMARK_NAME",
+    ]
+
+    for var in optional_env_vars:
+        if os.getenv(var):
+            runtime_env["env_vars"].update({var: os.getenv(var, "")})
 
     if is_trinity:
         assert "ASTUNER_CONFIG_REDIRECT" in runtime_env["env_vars"]

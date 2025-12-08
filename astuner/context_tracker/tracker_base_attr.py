@@ -132,7 +132,8 @@ class BaseTracker(object):
         self.reward_structure: Union[Reward, None] = None
         self.context_time_cost = 0
         self.tag = ""
-        self.current_batch_success_rate: float = -1.0
+        self.current_batch_success_rate: float = float("-inf")
+        self.current_batch_reward: float = float("-inf")
         self.already_mad_flag: bool = False
         self.round_cnt = 0
         self.generation_prompt_token = None
