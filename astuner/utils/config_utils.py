@@ -232,6 +232,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
 
     backup_dir = os.path.join(exp_dir, exp_name, "backup")
     yaml_backup_dst = os.path.join(exp_dir, exp_name, "yaml_backup.yaml")
+    yaml_backup_dst = os.path.abspath(yaml_backup_dst)
     exe_exp_base = os.path.dirname(yaml_backup_dst)
 
     logger.info("----------------------------------------")
