@@ -96,7 +96,6 @@ python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone
 
 ```json
 {
-
     "version": "0.2.0",
     "configurations": [
         {

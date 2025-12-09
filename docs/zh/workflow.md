@@ -192,4 +192,3 @@ for i, role in enumerate(roles):
 - 又作为 `model_tuner.register_model` 的 key，标识一个**可训练目标**；
 - `chosen_model` 定义了该角色在「当前未训练」时所使用的默认底座模型；
 - 通过这种方式，可以在多 Agent 场景下灵活地指定和切换各角色的训练与推理行为。
-

@@ -94,7 +94,6 @@ When --backbone=debug, the program no longer uses Ray. You can configure vscode'
 
 ```json
 {
-
     "version": "0.2.0",
     "configurations": [
         {
