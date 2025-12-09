@@ -135,8 +135,8 @@ class MultiAgentContextTracker(BasicContextTracker):
                 self.already_mad_flag = True
 
         # dummy response for now
-        err_type = ""
-        if llm_output.get("tool_calls", []):  # is not None, and is not []
+        # err_type = ""
+        if llm_output.get("tool_calls", []):  # llm_output["tool_calls"] is not None, and is not []
             tool_calls = llm_output["tool_calls"]
             if "wrong_toolcall" in self.config.astuner.rollout.compute_madness_checklist:
                 # check tool call formating
@@ -150,13 +150,13 @@ class MultiAgentContextTracker(BasicContextTracker):
                             expect_dict = json.loads(copy_tool_calls[i]["function"]["arguments"])
                             if not isinstance(expect_dict, dict):
                                 wrong_toolcall = True
-                                err_type = "cannot parse arguments"
+                                # err_type = "cannot parse arguments"
                         except Exception:
                             wrong_toolcall = True
-                            err_type = "arguments not json"
+                            # err_type = "arguments not json"
                     else:
                         wrong_toolcall = True
-                        err_type = "no function or no arguments"
+                        # err_type = "no function or no arguments"
                 if wrong_toolcall:
                     # logger.bind(exception=True).warning(
                     #     f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
@@ -171,9 +171,12 @@ class MultiAgentContextTracker(BasicContextTracker):
             # logger.bind(exception=True).warning(
             #     f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
             # )
-            logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM content")
-            self.already_mad_flag = True
-            tool_calls = []
+            if "wrong_toolcall" in self.config.astuner.rollout.compute_madness_checklist:
+                logger.bind(exception=True).warning(
+                    f"Detected wrong toolcall format from LLM content"
+                )
+                self.already_mad_flag = True
+                tool_calls = []
         else:
             tool_calls = []
 
