@@ -176,9 +176,7 @@ astuner:
     total_epochs: 50
     nnodes: 1
     n_gpus_per_node: 8
-    logger:
-      - console
-      - swanlab
+    logger: swanlab
     algorithm:
       task_norm_patch: False
       adv_estimator: grpo

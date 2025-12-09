@@ -82,6 +82,12 @@ def parse_args():
         required=False,
         help="list of keywords for killing processes",
     )
+    parser.add_argument(
+        "--autokill",
+        action="store_true",
+        default=False,
+        help="Kill system processes (ray + vllm + python) that may block the current experiment",
+    )
     return parser.parse_args()
 
 
@@ -223,8 +229,11 @@ def main():
     args = parse_args()
 
     # Enforce GPU availability and free memory threshold before proceeding
-    if (args.backbone != "debug") and (not args.kill):
+    if (args.backbone != "debug") and (not args.kill) and (not args.autokill):
         check_avail_gpu(min_free_ratio=0.95)
+
+    if args.autokill:
+        args.kill = "ray|vllm|VLLM|python"
 
     # Handle kill-keywords argument if provided
     if args.kill:
@@ -236,8 +245,8 @@ def main():
                 logger.success(f"Successfully killed processes with PIDs: {killed_pids}")
             else:
                 logger.warning(f"No processes found matching keyword: {keyword}")
-        return  # Exit after killing processes
-
+        if not args.conf:
+            return
     # Initialize variables with default values to avoid "possibly unbound" errors
     main_yaml_fp = None
     exe_exp_base = None

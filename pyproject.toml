@@ -17,21 +17,34 @@ classifiers = [
 ]
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "agentscope>=1.0.7",
+    "agentscope==1.0.7",
     "chromadb",
     "httpx",
     "tenacity",
-    "trinity-rft>=0.3.3",
     "loguru",
     "debugpy",
     "swanlab",
     "modelscope>=1.18.1",
     "pydantic",
     "beast_logger",
+    "pytest>=8.0.0",
 ]
 
 
 [project.optional-dependencies]
+
+trinity = [
+    "trinity-rft==0.3.3"
+]
+
+
+verl = [
+    "vllm==0.10.0",
+    "verl @ git+https://github.com/binary-husky/verl.git",
+]
+
+
+
 dev = [
     "pre-commit>=2.17.0",
     "black>=23.7.0",
@@ -91,8 +104,6 @@ exclude = '''
 [tool.isort]
 known_third_party = ["wandb"]
 
-[tool.uv.extra-build-dependencies]
-flash-attn = ["torch", "numpy", "setuptools"]
 
 [project.urls]
 "Homepage" = "https://github.com/agentscope-ai/AgentScope-Tuner"

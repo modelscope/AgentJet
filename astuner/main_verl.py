@@ -152,11 +152,7 @@ class TaskRunner:
             else:
                 raise ValueError(f"Invalid use_legacy_worker_impl: {use_legacy_worker_impl}")
 
-            actor_rollout_cls = (
-                AsyncActorRolloutRefWorker
-                if config.astuner.rollout.mode == "async"
-                else ActorRolloutRefWorker
-            )
+            actor_rollout_cls = AsyncActorRolloutRefWorker
             ray_worker_group_cls = RayWorkerGroup
 
         elif config.actor_rollout_ref.actor.strategy == "megatron":
@@ -168,11 +164,7 @@ class TaskRunner:
                 CriticWorker,
             )
 
-            actor_rollout_cls = (
-                AsyncActorRolloutRefWorker
-                if config.astuner.rollout.mode == "async"
-                else ActorRolloutRefWorker
-            )
+            actor_rollout_cls = AsyncActorRolloutRefWorker
             ray_worker_group_cls = NVMegatronRayWorkerGroup
 
         else:

@@ -30,7 +30,6 @@
         "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu"
     ],
 
-    "astuner.rollout.mode": "actor_rollout_ref.rollout.mode",
     "astuner.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
     "astuner.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
 

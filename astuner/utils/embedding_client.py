@@ -2,9 +2,7 @@ import os
 import uuid
 from typing import Any, Dict, List, Optional, Sequence, Union, cast
 
-import chromadb
 import httpx
-from chromadb.config import Settings
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -194,12 +192,14 @@ class EmbeddingClient:
         chroma_db_path: str = "./chroma_db",
         collection_name: str = "trajectories",
     ):
+        import chromadb
+        from chromadb.config import Settings
+
         api_key = api_key or os.getenv("DASHSCOPE_API_KEY")
         assert api_key is not None, "DASHSCOPE_API_KEY is required"
 
         self._client = OpenAIEmbeddingClient(api_key=api_key, base_url=base_url, model_name=model)
         self.similarity_threshold = similarity_threshold
-
         self._chroma_client = chromadb.PersistentClient(
             path=chroma_db_path, settings=Settings(anonymized_telemetry=False)
         )

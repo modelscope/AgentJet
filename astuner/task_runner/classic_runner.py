@@ -10,7 +10,6 @@ from astuner.utils.utils import convert_tool_to_user_message
 class AgentRunner(BaseAgentRunner):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.step_reward = []
 
     def execute(self, workflow_task) -> BasicContextTracker:
         obs_window = workflow_task.obs_window
@@ -115,10 +114,12 @@ class AgentRunner(BaseAgentRunner):
             success_rate = 1.0
         else:
             success_rate = 0.0
+
+        # TODO: support multi-step reward
         self.cmt.process_reward(
             reward_structure=Reward(
                 raw_reward=raw_reward,
-                raw_step_reward=None,
+                raw_step_reward=None,  # we do not support step reward yet
                 success_rate=success_rate,
                 madness=0,
                 description="Success=1, Failure=0",

@@ -1,6 +1,6 @@
 # Installation Guide
 
-This document provides a step-by-step guide to installing AgentScope Tuner.
+This document provides a step-by-step guide to installing AgentScope-Tuner.
 
 ```{tip}
 AgentScope Tuner is under active development and iteration. We recommend installing from source to get the latest futures and bug fixes.
@@ -8,7 +8,8 @@ AgentScope Tuner is under active development and iteration. We recommend install
 
 ## Prerequisites
 
-- Python 3.10 to 3.12
+- Python 3.10
+
 - CUDA 12.8 or higher
 
 
@@ -16,7 +17,7 @@ AgentScope Tuner is under active development and iteration. We recommend install
 
 ### Step 1: Clone the Repository
 
-First, clone the AgentScope Tuner repository from GitHub and navigate into the project directory:
+Clone the AgentScope Tuner repository from GitHub and navigate into the project directory:
 
 ```bash
 git clone https://github.com/agentscope-ai/agentscope-tuner.git
@@ -26,36 +27,41 @@ cd agentscope-tuner
 
 ### Step 2: Install Dependencies
 
-#### For Users New to LLM Training
+#### 1. Install in your native system
 
-If you are new to LLM training and environment setup, we suggest using Docker to simplify the installation process.
+AgentScope-Tuner supports multiple backbones, currently we have `verl` and `trinity` (recommended).
+You can choose you backbone as you wish, and choose any one of them during training as you wish.
+We recommend using `uv` to manage your Python environment as it is incredibly fast.  See also [`uv` installation document](https://docs.astral.sh/uv/getting-started/installation/). However, if you wish to use `conda`, you can also install it via conda and pip (simply change to `uv pip` to `pip`):
 
-Before proceeding, ensure you have Docker installed on your system and that it is configured to use your GPU.
 
-You can download our Docker Image from Docker Hub or build it locally.
 
-##### Option 1: Pull the pre-built Docker Image
+- Install with `trinity` training backbone (Recommended).
+  ```bash
+  uv venv --python=3.10
+  source .venv/bin/activate
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e . [trinity]
+  uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps
+  ```
 
-You can pull the pre-built Docker image using the following command:
 
-```bash
-docker pull ghcr.io/agentscope-ai/agentscope-tuner:latest
-```
+- Install with `verl` training backbone.
+  ```bash
+  source .venv/bin/activate
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
+  ```
 
-##### Option 2: Build the Docker Image Locally
+#### 2. Install one-click via docker
 
-We provide a Dockerfile that sets up the necessary environment for AgentScope Tuner.
+If you prefer one-click dependency installation, we provide image to jump start!
 
-You can build the Docker image using the following command:
+However, before proceeding, ensure you have `nvidia docker` installed on your system.
+Cuda is needed inside our docker container, which need toolkits from Nvidia for GPU support.
+Please install nvidia docker runtime on the host ubuntu system.
+For details, refer to [nvidia official document](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installing-on-ubuntu-and-debian).
+According the link above, we also write a manual about installing nvidia docker runtime in ubuntu linux environment, please read [set up nvidia docker environment](./setup_ubuntu.md).
 
-```bash
-# make sure you are in the root directory of agentscope-tuner
-docker build -f scripts/docker/dockerfile -t agentscope-tuner:latest .
-```
 
-##### Running the Docker Container
-
-Once the image is pulled or built, you can run a container with the following command. Make sure to replace `/path/to/your/checkpoint/and/data` with the actual path where your model checkpoints and data are stored.
 This command mounts your current working directory (the root directory of agentscope-tuner) to `/workspace` and your data directory to `/data` inside the container.
 
 ```bash
@@ -66,33 +72,4 @@ docker run -it \
   -v $PWD:/workspace \
   -v /path/to/your/checkpoint/and/data:/data \
   agentscope-tuner:latest
-```
-
-#### For Users Familiar with LLM Training
-
-We recommend using `uv` to manage your Python environment.
-
-If you don't have `uv` installed, you can install it via pip:
-
-```bash
-pip install uv
-uv venv --python=3.10.16
-```
-
-Then, activate the virtual environment and install the required dependencies:
-
-```bash
-source .venv/bin/activate
-uv pip install -e.[dev]
-uv pip install flash-attn --no-build-isolation --no-cache-dir
-```
-
-## Install from PyPI (Not Recommended)
-
-You can also install AgentScope Tuner directly from PyPI using pip. This method is suitable for users who prefer a quick installation without needing the latest development features.
-
-```bash
-pip install agentscope-tuner
-# install flash-attn after agentscope-tuner, because flash-attn relies on some packages installed by agentscope-tuner
-pip install flash-attn --no-build-isolation --no-cache-dir
 ```
