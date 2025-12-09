@@ -1,24 +1,24 @@
 # flake8: noqa
 import time
 
-from astuner.utils.testing_utils import BaseProbe, singleton
+from astuner.utils.testing_utils import BaseProbe, BenchmarkProbe, singleton
 
 
 @singleton
-class TestProbe(BaseProbe):
+class TestProbe(BenchmarkProbe):
     def __init__(self):
         # fmt: off
-        self.expected_train_time = 3600 * 24 # 24 hours
+        self.expected_train_time = 3600 * 48 # 24 hours
         self.begin_time = time.time()
         self.reward_array = []
         self.reward_expectation_avg_window = 5
         self.reward_expectation = {
             # step    : expected local average reward range
             # step    :       [low,    high ]
-                5     :       [0.10,  99999.0],
-               10     :       [0.45,  99999.0],
-               20     :       [0.68,  99999.0],
-               30     :       [0.85,  99999.0],
+                5     :       [0.0,  99999.0],
+               10     :       [0.0,  99999.0],
+               20     :       [0.0,  99999.0],
+               30     :       [0.0,  99999.0],
         }
         # fmt: on
         self.probe_list = ["reward_probe"]

@@ -84,7 +84,7 @@ class TestBenchmarkMath(unittest.TestCase):
         terminate_str = companion.launch(
             launch_wait_time=timeout_seconds,
             success_std_string=[
-                "GoodbyeException",
+                "TestSuccessException",
                 "TestFailException",
                 "You can force stop the `Trainer` process by pressing Ctrl+C",
             ],
@@ -99,7 +99,7 @@ class TestBenchmarkMath(unittest.TestCase):
         if terminate_str == "You can force stop the `Trainer` process by pressing Ctrl+C":
             test_successful = False
             raise RuntimeError("Unknown trinity exception.")
-        if terminate_str == "GoodbyeException":
+        if terminate_str == "TestSuccessException":
             test_successful = True
         print_dict(
             {

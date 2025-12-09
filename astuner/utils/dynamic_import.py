@@ -57,7 +57,11 @@ def _dynamic_import(module_class_str: str):
         module = importlib.import_module(module_str)
 
     # Get class
-    protocol_cls = getattr(module, class_name)
+    try:
+        protocol_cls = getattr(module, class_name)
+    except Exception as e:
+        print(module)
+        raise ImportError(f"Cannot import class {class_name} from module {module_str}: {e}") from e
     return protocol_cls
 
 
