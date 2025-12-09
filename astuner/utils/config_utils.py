@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+from functools import cache
 
 import yaml
 from best_logger import print_dict
@@ -25,6 +26,12 @@ def read_astune_config(yaml_fp):
     dir_path = os.path.dirname(yaml_fp)
     file_name = os.path.basename(yaml_fp)
     return load_hydra_config(config_path=dir_path, config_name=file_name)
+
+
+@cache
+def read_astune_config_with_cache(yaml_fp):
+    """Load a Hydra configuration relative to this module with caching."""
+    return read_astune_config(yaml_fp)
 
 
 def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
@@ -129,7 +136,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     time.sleep(1)
     # special: logger
     if backbone == "verl" and isinstance(to_config["trainer"]["logger"], str):
-        to_config["trainer"]["logger"] = ["console" + to_config["trainer"]["logger"]]
+        to_config["trainer"]["logger"] = ["console", to_config["trainer"]["logger"]]
 
     # save to_config_fp
     with open(to_config_fp, "w") as file:
@@ -148,15 +155,11 @@ def read_astune_hierarchical_config(
     config["astuner"]["backbone"] = backbone
     # remove extra config of verl for trinity
     if backbone == "debug":
-        config["defaults"].remove("ppo_trainer")
         config["defaults"].remove("trinity_default")
         config["hydra"]["searchpath"].remove("file://astuner/default_config/trinity")
-        config["hydra"]["searchpath"].remove("file://external/verl/verl/trainer/config")
     # remove extra config of verl for trinity
     if backbone == "trinity":
-        config["defaults"].remove("ppo_trainer")
         config["defaults"].remove("verl_default")
-        config["hydra"]["searchpath"].remove("file://external/verl/verl/trainer/config")
         config["hydra"]["searchpath"].remove("file://astuner/default_config/verl")
     # remove extra config of trinity for verl
     if backbone == "verl":  # or args.backbone == "debug"
@@ -221,6 +224,9 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
         if exp_name is not None:
             exp_name = exp_name.replace("|", "-")
         exp_name = os.path.basename(yaml_path).replace(".yaml", "")
+        # add timestamp to exp_name
+        timestamp = time.strftime("%Y%m%d_%H%M", time.localtime())
+        exp_name = f"{exp_name}_{timestamp}"
     else:
         exp_name = exp_name.replace("|", "-")
 

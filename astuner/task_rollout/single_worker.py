@@ -15,7 +15,7 @@ from astuner.task_runner.agentscope_runner import AgentScopeRunner
 from astuner.task_runner.classic_runner import AgentRunner
 from astuner.utils.retry import retry_with_backoff
 from astuner.utils.sample import get_sample_params
-from astuner.utils.testing_utils import GoodbyeException, TestFailException
+from astuner.utils.testing_utils import TestFailException, TestSuccessException
 
 
 class BaseParallelEnv:
@@ -56,7 +56,7 @@ class BaseParallelEnv:
         self.max_llm_retries: int = max_llm_retries
         self.rollout_n = config.astuner.rollout.num_repeat
         self.tokenizer = tokenizer
-        self.pad_token_id = self.tokenizer.pad_token_id
+        self.pad_token_id: int = self.tokenizer.pad_token_id
         self.current_token = 0
         self.current_global_steps = "NA"
         self.async_llm_bridge = AsyncLlmBridge(
@@ -113,8 +113,10 @@ class BaseParallelEnv:
                 cmt = agent_runner.execute(
                     workflow_task=workflow_task,
                 )
-            except GoodbyeException as e:
-                logger.success(f"env_worker.agent_flow completed with GoodbyeException: {e.args}")
+            except TestSuccessException as e:
+                logger.success(
+                    f"env_worker.agent_flow completed with TestSuccessException: {e.args}"
+                )
                 raise e
             except TestFailException as e:
                 logger.error(f"env_worker.agent_flow failed with TestFailException: {e.args}")

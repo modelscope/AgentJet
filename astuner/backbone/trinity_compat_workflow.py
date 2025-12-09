@@ -33,7 +33,16 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
 )
 from astuner.schema.trajectory import Sample
 from astuner.task_rollout.native_parallel_worker import DynamicRolloutManager
-from astuner.utils.config_utils import read_astune_config
+from astuner.utils.config_utils import read_astune_config_with_cache
+from astuner.utils.testing_utils import _test_if_test_mode
+
+
+def get_astune_config_from_trinity_side():
+    yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
+    if yaml_path is None:
+        raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
+    astune_config = read_astune_config_with_cache(yaml_path)
+    return astune_config
 
 
 class TrinityCompatWorkflow(DynamicRolloutManager):
@@ -119,10 +128,7 @@ class ASTunerWorkflowWrap(Workflow):
         self.answer = task.raw_task.get(task.format_args.response_key)  # type: ignore [index]
 
     async def run_async(self):
-        yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
-        if yaml_path is None:
-            raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
-        astune_config = read_astune_config(yaml_path)
+        astune_config = get_astune_config_from_trinity_side()
         warm_up_process(astune_config)
         tracker = await TrinityCompatWorkflow(
             is_eval=self.is_eval,
@@ -147,28 +153,15 @@ class ASTunerWorkflowWrap(Workflow):
             input_ids = sample.input_ids
             prompt_ids = sample.prompt_ids
             response_ids = sample.response_ids
-            # attention_mask = sample.attention_mask
-            # prompt_attention_mask = sample.prompt_attention_mask
-            # response_attention_mask = sample.response_attention_mask
-            # loss_mask = sample.loss_mask
-            # prompt_loss_mask = sample.prompt_loss_mask
             response_loss_mask = sample.response_loss_mask
-            # position_ids = sample.position_ids
-            # prompt_position_ids = sample.prompt_position_ids
-            # response_position_ids = sample.response_position_ids
-            # tracker_tokenized["step_reward"] = self.reward_structure.step_reward[index]
 
             logprobs = sample.response_logprobs
-            try:
-                reward = tracker.reward_structure.step_reward
-                if isinstance(reward, list):
-                    reward = reward[0]
-            except Exception:
-                reward = tracker.reward_structure.raw_reward
-            if not isinstance(
-                reward, (float, int)
-            ):  # if reward is still not a float or int, set it to 0.0
-                reward = tracker.reward_structure.raw_reward
+            reward = sample.step_reward  # reward scalar
+
+            metrics = {
+                "success_rate": tracker.reward_structure.success_rate,
+                "madness": tracker.reward_structure.madness,
+            }
 
             if (
                 len(response_ids) + len(prompt_ids) == len(input_ids)
@@ -176,7 +169,6 @@ class ASTunerWorkflowWrap(Workflow):
                 and len(logprobs) > 0
             ):
                 exp = Experience(
-                    # eid=uuid.uuid4().hex,
                     tokens=input_ids,  # [seq_length] prompt + response
                     prompt_length=len(
                         prompt_ids
@@ -186,7 +178,7 @@ class ASTunerWorkflowWrap(Workflow):
                     # advantages=None,
                     # returns=None,
                     info={},
-                    metrics={},  # for wandb logging (must be string:float)
+                    metrics=metrics,  # for wandb logging (must be string:float)
                     response_text="",  # optional
                     prompt_text="",  # optional
                     #### for multi-turn experiences
@@ -216,10 +208,7 @@ try:
             self.read_batch_size = config.batch_size
             self.split = config.split
 
-            yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
-            if yaml_path is None:
-                raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
-            astune_config = read_astune_config(yaml_path)
+            astune_config = get_astune_config_from_trinity_side()
 
             from astuner.task_reader import TaskReaderRouter, task_to_standard_dataset
 
@@ -346,6 +335,9 @@ class SwanlabMonitor(Monitor):
         self.logger = swanlab.init(**init_kwargs)
         self.console_logger = get_logger(__name__, in_ray_actor=True)
 
+        run_info = self.logger.public.json()
+        self.data_dashboard_url = run_info["cloud"]["experiment_url"]
+
     def log_table(self, table_name: str, experiences_table, step: int):
         assert (
             swanlab is not None
@@ -372,8 +364,26 @@ class SwanlabMonitor(Monitor):
         ), "swanlab is not installed. Please install it to use SwanlabMonitor."
         swanlab.log(data, step=step)
         self.console_logger.info(f"Step {step}: {data}")
-        with open(f"{self.exp_name}.log", "a") as f:
+
+        astune_config = get_astune_config_from_trinity_side()
+        experiment_dir = astune_config.astuner.experiment_dir
+        trinity_log = f"{experiment_dir}/{self.exp_name}.log"
+
+        with open(trinity_log, "a") as f:
             f.write(f"Step {step}: {data}\n")
+
+        if astune_config.astuner.execute_test:  # apply a test probe
+            if "critic/score/mean" in data:
+                return
+            if "experience_pipeline/group_advantages/reward_mean/mean" not in data:
+                return
+            test_robot_data = {}
+            test_robot_data["step"] = step
+            test_robot_data["data_dashboard_url"] = self.data_dashboard_url
+            test_robot_data["reward_for_test_robot"] = data[
+                "experience_pipeline/group_advantages/reward_mean/mean"
+            ]
+            _test_if_test_mode(key="reward_probe", value=test_robot_data, config=astune_config)
 
     def close(self) -> None:
         try:

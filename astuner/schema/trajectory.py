@@ -5,41 +5,43 @@ from pydantic import BaseModel, Field
 
 
 class Reward(BaseModel):
+    # raw reward: the original reward from environment
     raw_reward: float = Field(default=0.0)
+    # raw step reward: the original step-wise rewards from environment
     raw_step_reward: Union[List[float], None] = Field(default=[])
-    step_reward: List[float] = Field(default=[])
+    # step reward: reward after post-processing, e.g., repeatition penalty
+    step_reward_arr: List[float] = Field(default=[])
+    # advantage values: mean reward is group-wise averaged. e.g. ( (r11+r12+r13)/3 , (r21+r22)/2 ) / 2
     step_advantage: List[float] = Field(default=[])
+    # simple advantage values: mean reward is sample-wise averaged. e.g. (r11, r12, r13, r21, r22) / 5
     step_advantage_simple: List[float] = Field(default=[])
+    # the success or not, either 0 or 1. average multiple samples to get success rate
     success_rate: float = Field(default=0.0)
+    # llm produce abnormal or illegal output, such as ever repeating the same sentence
     madness: float = Field(default=0.0)
+    # description of the reward
     description: str = Field(default="Outcome 1 denotes success, and 0 denotes failure.")
+    # metadata for reward
     metadata: dict = Field(default_factory=dict)
 
     @property
     def performance_reward(self):
-        if (self.step_reward is not None) and len(self.step_reward) > 0:
-            res = np.mean(self.step_reward)
-            # print(f"Performance reward computed as mean of step_reward: {res}")
+        # performance reward is only used in dynamic rollout
+        # used to terminate hopeless rollout thread early
+        # this reward is NOT used in training
+        if (self.step_reward_arr is not None) and len(self.step_reward_arr) > 0:
+            res = np.mean(self.step_reward_arr)
+            # print(f"Performance reward computed as mean of step_reward_arr: {res}")
             return res
         else:
             return self.raw_reward
 
-
-class Trajectory(BaseModel):
-    task_batch_index: int = Field(default=0)
-    task_tag: str = Field(default="")
-
-    steps: List[dict] = Field(default_factory=list)
-    query: str = Field(default="")
-
-    is_terminated: bool = Field(default=False)
-    reward: Reward = Field(default_factory=Reward)
-
-    metadata: dict = Field(default_factory=dict)
-
     @property
-    def success(self) -> bool:
-        return self.reward_outcome > 0
+    def final_scalar_reward(self):
+        # to compute scalar reward, we average step_reward_arr
+        reward = self.step_reward_arr
+        reward = float(np.mean(reward))
+        return reward
 
 
 class Sample(BaseModel):
@@ -138,23 +140,9 @@ class Sample(BaseModel):
 
         if len(self.prompt_ids) > self.max_prompt_len:
             truncate_any = True
-            print(
-                "-------------------------------------------------------------------------------------------------------"
-            )
-            print(
+            raise RuntimeError(
                 f"Warning: prompt_ids length {len(self.prompt_ids)} exceeds max_prompt_len {self.max_prompt_len}, truncating."
             )
-            print(
-                "-------------------------------------------------------------------------------------------------------"
-            )
-            raise RuntimeError(
-                "Prompt length exceeds maximum allowed length. Please adjust the input data."
-            )
-            self.prompt_ids = self.prompt_ids[-self.max_prompt_len :]
-            self.prompt_attention_mask = self.prompt_attention_mask[-self.max_prompt_len :]
-            self.prompt_position_ids = self.prompt_position_ids[-self.max_prompt_len :]
-            self.prompt_loss_mask = self.prompt_loss_mask[-self.max_prompt_len :]
-            self.prompt_logprobs = self.prompt_logprobs[-self.max_prompt_len :]
 
         if len(self.response_ids) > self.max_response_len:
             truncate_any = True

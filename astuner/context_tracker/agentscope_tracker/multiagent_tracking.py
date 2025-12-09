@@ -1,3 +1,4 @@
+# flake8: noqa: F541, F841
 import copy
 import json
 from typing import List, Tuple
@@ -157,16 +158,20 @@ class MultiAgentContextTracker(BasicContextTracker):
                         wrong_toolcall = True
                         err_type = "no function or no arguments"
                 if wrong_toolcall:
-                    logger.bind(exception=True).error(
-                        f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
+                    # logger.bind(exception=True).warning(
+                    #     f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
+                    # )
+                    logger.bind(exception=True).warning(
+                        f"Detected wrong toolcall format from LLM content"
                     )
                     self.already_mad_flag = True
                 else:
                     logger.success("Toolcall format check passed.")
         elif "<tool_call>" in llm_output["content"]:
-            logger.bind(exception=True).error(
-                f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
-            )
+            # logger.bind(exception=True).warning(
+            #     f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
+            # )
+            logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM content")
             self.already_mad_flag = True
             tool_calls = []
         else:
@@ -314,7 +319,10 @@ class MultiAgentContextTracker(BasicContextTracker):
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
         ext_steps = self.full_context
-        self.reward_structure.step_reward = [
+        # TODO: support multi-step reward
+        # in current implementation, all reward in all step equals
+        # we'll implement fine-grained step reward in future versions
+        self.reward_structure.step_reward_arr = [
             self.compute_step_level_reward(
                 ext_steps=ext_steps,
                 index=i,
@@ -361,7 +369,7 @@ class MultiAgentContextTracker(BasicContextTracker):
                 "loss_mask_color_arr": loss_mask_color_abl_arr,
             }
             raw_reward = self.reward_structure.raw_reward
-            step_reward: float = self.reward_structure.step_reward[index]
+            step_reward: float = self.reward_structure.step_reward_arr[index]
             try:
                 step_advantage = self.reward_structure.step_advantage[index]
                 step_advantage_simple = self.reward_structure.step_advantage_simple[index]
