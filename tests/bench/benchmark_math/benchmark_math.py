@@ -1,4 +1,5 @@
 # flake8: noqa
+import os
 import time
 
 from astuner.utils.testing_utils import BaseProbe, singleton
