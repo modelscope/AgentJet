@@ -295,7 +295,7 @@ class LaunchWhenAbsent:
                 f_read = ""
                 previous_r_print = False
                 with open(log_file, "r") as f:
-                    while time.time() - start_time < launch_wait_time:
+                    while (time.time() - start_time) < launch_wait_time:
                         f_read_ = f.read()
                         inc_read = f_read_[len(f_read) :]
                         f_read = f_read_  # Update f_read to the latest content

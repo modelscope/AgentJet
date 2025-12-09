@@ -24,10 +24,12 @@ astuner:
     compute_madness_checklist:
       - "nonsense"
     max_response_length_in_one_turn: 4096
-    max_model_len: 18000
+    # max_model_len: 18000 # for verl backbone * 8 GPU
+    max_model_len: 15000 # for trinity backbone * 6 GPU
     multi_turn:
       max_sample_per_task: 25
       max_steps: 25
+    n_vllm_engine: 2
 
   debug:
     debug_max_parallel: 1
@@ -36,7 +38,8 @@ astuner:
   data:
     train_batch_size: 64
     max_prompt_length: 3000
-    max_response_length: 15000
+    # max_response_length: 15000 # for verl backbone * 8 GPU
+    max_response_length: 12000 # for trinity backbone * 6 GPU
 
   trainer_common:
     save_freq: 99999
@@ -45,6 +48,13 @@ astuner:
     nnodes: 1
     n_gpus_per_node: 8
 
+  execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
+  execute_testing_lambda: "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe" #
+
+trinity:
+  synchronizer:
+    sync_offset: 1
+    sync_method: nccl
 
 # ------------------ 不需要修改 ------------------
 hydra:
