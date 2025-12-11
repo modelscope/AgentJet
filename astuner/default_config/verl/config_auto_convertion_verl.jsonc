@@ -5,6 +5,7 @@
     "astuner.trainer_common.n_gpus_per_node": "trainer.n_gpus_per_node",
     "astuner.trainer_common.nnodes": "trainer.nnodes",
     "astuner.trainer_common.logger": "trainer.logger",
+    "astuner.trainer_common.checkpoint_base_dir": "trainer.checkpoint_base_dir",
     "astuner.trainer_common.algorithm.task_norm_patch": "algorithm.task_norm_patch",
     "astuner.trainer_common.algorithm.adv_estimator": "algorithm.adv_estimator",
     "astuner.trainer_common.algorithm.use_kl_in_reward": "algorithm.use_kl_in_reward",

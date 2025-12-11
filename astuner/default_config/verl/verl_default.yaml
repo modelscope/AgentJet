@@ -380,11 +380,12 @@ trainer:
     trace: cuda,nvtx,cublas,ucx
   critic_warmup: 0
   default_hdfs_dir: null
-  default_local_dir: checkpoints/example_math_agent/math_agent
+  checkpoint_base_dir: ./saved_checkpoints
+  default_local_dir: ${checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}
   del_local_ckpt_after_load: false
   device: cuda
   esi_redundant_time: 0
-  experiment_name: math_agent
+  experiment_name: read_yaml_name
   hfmodelpath: ''
   log_val_generations: 0
   logger:
@@ -409,7 +410,7 @@ trainer:
       with_stack: false
   profile_continuous_steps: false
   profile_steps: null
-  project_name: example_math_agent
+  project_name: project_name_placeholder
   ray_wait_register_center_timeout: 300
   resume_from_path: null
   resume_mode: auto

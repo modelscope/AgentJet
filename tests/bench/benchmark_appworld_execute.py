@@ -151,14 +151,18 @@ class TestBenchmarkAppworld(unittest.TestCase):
         )
         test_successful = True
         companion.kill_self()
-        if terminate_str == "TestFailException":
-            test_successful = False
-            raise RuntimeError("Benchmark test failed during execution.")
-        if terminate_str == "You can force stop the `Trainer` process by pressing Ctrl+C":
-            test_successful = False
-            raise RuntimeError("Unknown trinity exception.")
         if terminate_str == "TestSuccessException":
             test_successful = True
+        elif terminate_str == "TestFailException":
+            test_successful = False
+            raise RuntimeError("Benchmark test failed during execution.")
+        elif terminate_str == "You can force stop the `Trainer` process by pressing Ctrl+C":
+            test_successful = False
+            raise RuntimeError("Unknown trinity exception.")
+        else:
+            test_successful = False
+            raise RuntimeError(f"Benchmark test timed out or crashed. {test_successful}")
+
         print_dict(
             {
                 "TestTarget": TEST_TARGET,

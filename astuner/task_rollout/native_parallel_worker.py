@@ -18,10 +18,10 @@ from verl.utils.torch_functional import pad_sequence_to_length
 from astuner.context_tracker.basic_tracker import BasicContextTracker
 from astuner.schema.task import Task
 from astuner.schema.trajectory import Sample
-from astuner.task_rollout.single_worker import BaseParallelEnv
+from astuner.task_rollout.single_worker import BaseRolloutManager
 
 
-class ClassicRolloutManager(BaseParallelEnv):
+class ClassicRolloutManager(BaseRolloutManager):
     """Static (non-dynamic) rollout manager."""
 
     def step_status_printer(self, obs_window):
