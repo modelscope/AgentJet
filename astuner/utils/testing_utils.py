@@ -10,7 +10,7 @@ import requests
 from beast_logger import print_dict
 from loguru import logger
 
-from astuner.backbone.common_warm_up import init_parallel_rollout_logger
+from astuner.backbone.warm_up import init_parallel_rollout_logger
 from astuner.utils.dynamic_import import dynamic_import
 
 

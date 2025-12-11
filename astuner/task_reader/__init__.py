@@ -7,7 +7,7 @@ from astuner.schema.task import Task
 from astuner.task_reader.data_generator_reader import TaskReaderDataGenerator
 from astuner.task_reader.env_service_reader import TaskReaderEnvService
 from astuner.task_reader.hf_dataset_reader import TaskReaderHuggingFace
-from astuner.task_reader.jsonl_reader import TaskReaderJsonl
+from astuner.task_reader.jsonl_reader import JsonlTaskReader
 from astuner.task_reader.task_reader_base import TaskReaderBase
 from astuner.task_reader.tracing_reader import TracingReader
 
@@ -52,7 +52,7 @@ class TaskReaderRouter(TaskReaderBase):
         if task_reader_type == "env_service":
             self.task_reader = TaskReaderEnvService(reader_config)
         elif task_reader_type == "dataset_file":
-            self.task_reader = TaskReaderJsonl(reader_config)
+            self.task_reader = JsonlTaskReader(reader_config)
         elif task_reader_type == "huggingface_dat_repo":
             self.task_reader = TaskReaderHuggingFace(reader_config)
         elif self.task_reader == "tracing":

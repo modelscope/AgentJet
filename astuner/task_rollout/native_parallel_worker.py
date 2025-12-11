@@ -21,8 +21,8 @@ from astuner.schema.trajectory import Sample
 from astuner.task_rollout.single_worker import BaseRolloutManager
 
 
-class ClassicRolloutManager(BaseRolloutManager):
-    """Static (non-dynamic) rollout manager."""
+class DynamicRolloutManager(BaseRolloutManager):
+    """Dynamic rollout supporting oversampling and early termination."""
 
     def step_status_printer(self, obs_window):
         """Pretty-print thread progress statistics for the shared obs window."""
@@ -60,7 +60,7 @@ class ClassicRolloutManager(BaseRolloutManager):
                 print_buf += [f"[finished]:{count} threads"]
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
 
-    def rollout(
+    def rollout_static(
         self,
         tasks: List[Task],
         mode: Literal["sample", "validate"],
@@ -130,10 +130,6 @@ class ClassicRolloutManager(BaseRolloutManager):
 
             return cmt_array
 
-
-class DynamicRolloutManager(ClassicRolloutManager):
-    """Dynamic rollout supporting oversampling and early termination."""
-
     def rollout(
         self,
         tasks: List[Task],
@@ -148,7 +144,7 @@ class DynamicRolloutManager(ClassicRolloutManager):
         ):
             return self.rollout_dynamic(tasks, mode, epoch)
         else:
-            return super().rollout(tasks, mode, epoch)
+            return self.rollout_static(tasks, mode, epoch)
 
     def greedy_max_std_selection(self, samples: List[BasicContextTracker], n):
         """Select samples whose rewards maximize spread to cover diverse rollouts."""
@@ -221,10 +217,6 @@ class DynamicRolloutManager(ClassicRolloutManager):
             "stop": [False for _ in range(len(tasks) * rollout_n_oversample)],
             "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],
         }
-
-        from vsdb import bp
-
-        bp("POOLX")
 
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
             futures = []
@@ -452,7 +444,7 @@ class DynamicRolloutManager(ClassicRolloutManager):
             return cmt_array
 
 
-class ParallelEnvManager(DynamicRolloutManager):
+class VerlRolloutManger(DynamicRolloutManager):
     """High-level manager orchestrating rollouts and batch conversion."""
 
     def to_dataproto(self, cmt_array) -> DataProto:
