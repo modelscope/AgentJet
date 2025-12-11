@@ -191,6 +191,7 @@ astuner:
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
+    checkpoint_base_dir: ./saved_checkpoints
 
 
   # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`

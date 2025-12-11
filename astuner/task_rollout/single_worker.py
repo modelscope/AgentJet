@@ -18,7 +18,7 @@ from astuner.utils.sample import get_sample_params
 from astuner.utils.testing_utils import TestFailException, TestSuccessException
 
 
-class BaseParallelEnv:
+class BaseRolloutManager:
     def __init__(
         self,
         config: DictConfig,

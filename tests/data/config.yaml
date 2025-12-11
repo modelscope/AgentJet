@@ -38,6 +38,7 @@ astuner:
     save_freq: 99999
     test_freq: 99999
     total_epochs: 99999
+    checkpoint_base_dir: "/wow/astuner_checkpoints"
 
 
 # ------------------ 不需要修改 ------------------

@@ -49,6 +49,7 @@ class TestConfigUtils(unittest.TestCase):
             )
             with open(temp_yaml1.name, "r") as file:
                 to_config = yaml.safe_load(file)
+            self.assertEqual(to_config["checkpoint_root_dir"], "/wow/astuner_checkpoints")
             self.assertEqual(to_config["buffer"]["batch_size"], 120)
             self.assertEqual(to_config["explorer"]["runner_per_model"], 128)
             # Test simple field mappings
@@ -67,3 +68,33 @@ class TestConfigUtils(unittest.TestCase):
             self.assertEqual(to_config["buffer"]["batch_size"], 120)
             # (astuner.rollout.max_env_worker // astuner.rollout.n_vllm_engine) = 256 // 2 = 128
             self.assertEqual(to_config["explorer"]["runner_per_model"], 128)
+
+    def test_config_alignment_verl(self):
+        """Test configuration alignment based on conversion JSON."""
+        from_config_fp = "tests/data/config.yaml"
+        # Fixed config asset locations
+        TRINITY_CONFIG_AUTO_CONVERSION = (
+            "astuner/default_config/verl/config_auto_convertion_verl.jsonc"
+        )
+
+        with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:
+            config = read_astune_hierarchical_config(
+                from_config_fp,
+                "dummy_exp_name",
+                backbone="verl",
+                write_to=temp_yaml1.name,
+                exp_dir="tests/temp",
+            )
+            expand_astune_hierarchical_config(config, write_to=temp_yaml1.name)
+            align_parameters(
+                temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity"
+            )
+            with open(temp_yaml1.name, "r") as file:
+                to_config = yaml.safe_load(file)
+            self.assertEqual(
+                to_config["trainer"]["checkpoint_base_dir"], "/wow/astuner_checkpoints"
+            )
+            self.assertEqual(
+                to_config["trainer"]["default_local_dir"],
+                r"${checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}",
+            )
