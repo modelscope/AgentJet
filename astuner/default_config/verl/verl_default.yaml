@@ -381,7 +381,7 @@ trainer:
   critic_warmup: 0
   default_hdfs_dir: null
   checkpoint_base_dir: ./saved_checkpoints
-  default_local_dir: ${checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}
+  default_local_dir: ${trainer.checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}
   del_local_ckpt_after_load: false
   device: cuda
   esi_redundant_time: 0
