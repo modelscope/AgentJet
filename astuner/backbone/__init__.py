@@ -1,14 +1,14 @@
 from loguru import logger
 
 try:
-    from astuner.backbone.trinity_compat_workflow import (
+    from astuner.backbone.trinity_trainer import (
         ASTunerTaskReader,
         ASTunerWorkflowWrap,
-        TrinityCompatWorkflow,
+        TrinityRolloutManager,
     )
 
     __all__ = [
-        "TrinityCompatWorkflow",
+        "TrinityRolloutManager",
         "ASTunerWorkflowWrap",
         "ASTunerTaskReader",
     ]

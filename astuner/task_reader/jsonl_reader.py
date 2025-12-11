@@ -5,7 +5,7 @@ from astuner.schema.task import Task
 from astuner.task_reader.task_reader_base import TaskReaderBase
 
 
-class TaskReaderJsonl(TaskReaderBase):
+class JsonlTaskReader(TaskReaderBase):
     def __init__(self, reader_config):
         super().__init__(reader_config)
         self.reader_config = reader_config

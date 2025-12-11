@@ -27,7 +27,7 @@ from typing import List, Literal, Optional, cast
 
 from transformers import AutoTokenizer
 
-from astuner.backbone.common_warm_up import warm_up_process
+from astuner.backbone.warm_up import warm_up_process
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
@@ -45,7 +45,7 @@ def get_astune_config_from_trinity_side():
     return astune_config
 
 
-class TrinityCompatWorkflow(DynamicRolloutManager):
+class TrinityRolloutManager(DynamicRolloutManager):
     def __init__(
         self,
         is_eval,
@@ -130,7 +130,7 @@ class ASTunerWorkflowWrap(Workflow):
     async def run_async(self):
         astune_config = get_astune_config_from_trinity_side()
         warm_up_process(astune_config)
-        tracker = await TrinityCompatWorkflow(
+        tracker = await TrinityRolloutManager(
             is_eval=self.is_eval,
             task=self.task,
             llm_handle=self.model_client,

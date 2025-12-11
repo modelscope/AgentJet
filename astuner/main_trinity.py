@@ -22,7 +22,7 @@ from trinity.utils.log import get_logger
 from trinity.utils.plugin_loader import load_plugins
 
 # register trinity backbone modules
-import astuner.backbone.trinity_compat_workflow  # noqa: F401
+import astuner.backbone.trinity_trainer  # noqa: F401
 from astuner.utils.core_env_vars import get_runtime_env
 
 logger = get_logger(__name__)

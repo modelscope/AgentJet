@@ -90,7 +90,7 @@ Explore our rich library of examples to kickstart your journey:
 1. **Task Reader** (config field: `astuner.task_reader`)
    - `astuner/task_reader/task_reader_base.py`
      - `TaskReaderEnvService`
-     - `TaskReaderJsonl`
+     - `JsonlTaskReader`
      - `TaskReaderHuggingFace`
 
 2. **Workflow Definition** (config field: `astuner.rollout.agentscope_learn_protocol`)

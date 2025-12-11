@@ -66,7 +66,7 @@ from verl.utils.tracking import ValidationGenerationsLogger
 
 from astuner.context_tracker.basic_tracker import BasicContextTracker
 from astuner.schema.task import Task
-from astuner.task_rollout.native_parallel_worker import ParallelEnvManager
+from astuner.task_rollout.native_parallel_worker import VerlRolloutManger
 
 WorkerType = type[Worker]
 
@@ -1087,7 +1087,7 @@ class ASTuneRayPPOTrainer:
         self.reward_fn = parse_reward_from_dataproto
         self.val_reward_fn = parse_reward_from_dataproto
 
-        self.parallel_env = ParallelEnvManager(
+        self.parallel_env = VerlRolloutManger(
             config=self.config,
             async_rollout_manager=self.async_rollout_manager,
             max_parallel=self.config.astuner.rollout.max_env_worker,
@@ -1290,7 +1290,7 @@ class ASTuneRayPPOTrainer:
         from omegaconf import OmegaConf
         from verl.utils.tracking import Tracking
 
-        from astuner.backbone.common_warm_up import warm_up_process
+        from astuner.backbone.warm_up import warm_up_process
 
         warm_up_process(self.config)
         logger = Tracking(
