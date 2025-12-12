@@ -109,7 +109,9 @@ astuner:
     # when `type == data_generation`
     data_generation:
       document_reader:
-        document_path: 'dataset/document/your-document.pdf'
+        document_path:
+          - 'dataset/document/your-document1.pdf'
+          - 'dataset/document/your-document2.pdf'
         languages:
           - eng
       query_reader:
@@ -120,8 +122,18 @@ astuner:
       task_num: 10
       llm_model: qwen-long
       llm_response_length: 8192
+      num_workers: 32
       sampling_params:
         temperature: 0
+      filter:
+        type: deduplication
+        enabled: true
+        params:
+          similarity_threshold: 0.8
+          db_path: ./.similarity_db
+          model: text-embedding-v4
+          api_key: null # load from the env
+          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
 
 
   task_judge:

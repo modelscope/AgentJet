@@ -47,7 +47,7 @@ class KnowledgeAugmentor(DataGeneratorBase):
         ref_doc = document.content
 
         user_part = []
-        N = self.config.astuner.data_generator.knowledge_augmentor.n
+        N = 10  # 10 is the hyperparameter we found that produces relatively stable outputs
         user_part.append(
             f"Generate exactly {N} unique, high-quality questions from the following document according to the rules in the system prompt above."
         )
