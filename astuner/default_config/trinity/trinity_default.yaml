@@ -5,6 +5,14 @@
 trinity:
   algorithm:
     algorithm_type: multi_step_grpo
+    policy_loss_fn_args:
+      fallback_to_policy_gradient: true
+      clip_range: 0.2
+      clip_ratio_c: 3.0
+      loss_agg_mode: token-mean
+      enable_sequence_masking: false
+      delta_sequence_masking: 0.1
+
   buffer:
     batch_size: 32
     explorer_input:
