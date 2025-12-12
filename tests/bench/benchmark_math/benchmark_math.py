@@ -2,11 +2,11 @@
 import os
 import time
 
-from astuner.utils.testing_utils import BaseProbe, singleton
+from astuner.utils.testing_utils import BenchmarkProbe, singleton
 
 
 @singleton
-class TestProbe(BaseProbe):
+class TestProbe(BenchmarkProbe):
     def __init__(self):
         # fmt: off
         self.expected_train_time = 3600 * 24 # 24 hours
