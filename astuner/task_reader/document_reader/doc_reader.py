@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import List, Union
 
 from loguru import logger
-from unstructured.partition.auto import partition
+
+try:
+    from unstructured.partition.auto import partition
+except Exception:
+    logger.warning("Cannot import dependency `unstructured`")
 
 from astuner.schema.document import Document
 from astuner.task_reader.document_reader.document_reader_base import DocReaderBase
