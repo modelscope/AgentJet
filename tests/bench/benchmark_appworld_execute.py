@@ -15,7 +15,7 @@ class TestBenchmarkAppworld(unittest.TestCase):
     def test_begin_trinity(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "trinity"
-        TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.yaml"
+        TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld_2nodes.yaml"
         PROBE_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe"
         TARGET_NAME = f"benchmark_appworld_{BACKBONE}"
         PYTHON_EXECUTABLE = ".venv/bin/python"
@@ -43,6 +43,87 @@ class TestBenchmarkAppworld(unittest.TestCase):
     #         TARGET_NAME=TARGET_NAME,
     #         PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
     #     )
+
+    def execute_benchmark(
+        self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE, MULTI_NODES=True
+    ):
+        cur_dir = os.path.dirname(__file__)
+        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
+
+        git_hash, req_txt = populate_test_env_metadata(workspace_dir)
+        os.environ["ASTUNER_GIT_HASH"] = git_hash
+        os.environ["ASTUNER_REQ_TXT"] = req_txt
+        os.environ["ASTUNER_BENCHMARK_NAME"] = TARGET_NAME
+
+        self.install_appworld()
+
+        send_test_result(
+            git_hash=git_hash,
+            target=TARGET_NAME,
+            status="running",
+            status_detail="",  #
+            req_txt=req_txt,  # get pip freeze
+            append_log="",
+            data_dashboard_url="",
+            timeout=10.0,
+        )
+        timeout_seconds = (
+            dynamic_import(PROBE_TARGET)().expected_train_time + 600
+        )  # add buffer time
+        cmd = [
+            PYTHON_EXECUTABLE,
+            "launcher.py",
+            "--conf",
+            TEST_TARGET,
+            "--backbone",
+            BACKBONE,
+            "--with-appworld",
+            "--autokill",
+        ]
+
+        if BACKBONE == "trinity" and (not MULTI_NODES):
+            cmd += ["--with-ray"]
+        if MULTI_NODES:
+            cmd += ["--with-ray-cluster"]
+
+        companion = LaunchCommandWhenAbsent(
+            full_argument_list=cmd,
+            dir=workspace_dir,
+            tag=TARGET_NAME,
+        )
+
+        test_successful = False
+        terminate_str = companion.launch(
+            launch_wait_time=timeout_seconds,
+            success_std_string=[
+                "TestSuccessException",
+                "TestFailException",
+                "You can force stop the `Trainer` process by pressing Ctrl+C",
+                "torch.OutOfMemoryError: CUDA out of memory",
+            ],
+            env_dict=os.environ,
+            force_restart=True,
+        )
+        test_successful = True
+        companion.kill_self()
+        if terminate_str == "TestSuccessException":
+            test_successful = True
+        elif terminate_str == "TestFailException":
+            test_successful = False
+            raise RuntimeError("Benchmark test failed during execution.")
+        elif terminate_str == "You can force stop the `Trainer` process by pressing Ctrl+C":
+            test_successful = False
+            raise RuntimeError("Unknown trinity exception.")
+        else:
+            test_successful = False
+            raise RuntimeError(f"Benchmark test timed out or crashed. {test_successful}")
+
+        print_dict(
+            {
+                "TestTarget": TEST_TARGET,
+                "TestSuccessful": test_successful,
+            }
+        )
 
     def clear_system_processes(self):
         # kill all python + ray + vllm processes
@@ -92,80 +173,3 @@ class TestBenchmarkAppworld(unittest.TestCase):
         # write
         os.environ["APPWORLD_PATH"] = "/tmp/pack_all_in_one"
         os.environ["APPWORLD_SCRIPT"] = "bash EnvService/env_sandbox/appworld.sh"
-
-    def execute_benchmark(
-        self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE
-    ):
-        cur_dir = os.path.dirname(__file__)
-        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
-
-        git_hash, req_txt = populate_test_env_metadata(workspace_dir)
-        os.environ["ASTUNER_GIT_HASH"] = git_hash
-        os.environ["ASTUNER_REQ_TXT"] = req_txt
-        os.environ["ASTUNER_BENCHMARK_NAME"] = TARGET_NAME
-
-        self.install_appworld()
-
-        send_test_result(
-            git_hash=git_hash,
-            target=TARGET_NAME,
-            status="running",
-            status_detail="",  #
-            req_txt=req_txt,  # get pip freeze
-            append_log="",
-            data_dashboard_url="",
-            timeout=10.0,
-        )
-        timeout_seconds = (
-            dynamic_import(PROBE_TARGET)().expected_train_time + 600
-        )  # add buffer time
-        cmd = [
-            PYTHON_EXECUTABLE,
-            "launcher.py",
-            "--conf",
-            TEST_TARGET,
-            "--backbone",
-            BACKBONE,
-            "--with-appworld",
-            "--autokill",
-        ]
-        if BACKBONE == "trinity":
-            cmd += ["--with-ray"]
-        companion = LaunchCommandWhenAbsent(
-            full_argument_list=cmd,
-            dir=workspace_dir,
-            tag=TARGET_NAME,
-        )
-
-        test_successful = False
-        terminate_str = companion.launch(
-            launch_wait_time=timeout_seconds,
-            success_std_string=[
-                "TestSuccessException",
-                "TestFailException",
-                "You can force stop the `Trainer` process by pressing Ctrl+C",
-                "torch.OutOfMemoryError: CUDA out of memory",
-            ],
-            env_dict=os.environ,
-            force_restart=True,
-        )
-        test_successful = True
-        companion.kill_self()
-        if terminate_str == "TestSuccessException":
-            test_successful = True
-        elif terminate_str == "TestFailException":
-            test_successful = False
-            raise RuntimeError("Benchmark test failed during execution.")
-        elif terminate_str == "You can force stop the `Trainer` process by pressing Ctrl+C":
-            test_successful = False
-            raise RuntimeError("Unknown trinity exception.")
-        else:
-            test_successful = False
-            raise RuntimeError(f"Benchmark test timed out or crashed. {test_successful}")
-
-        print_dict(
-            {
-                "TestTarget": TEST_TARGET,
-                "TestSuccessful": test_successful,
-            }
-        )

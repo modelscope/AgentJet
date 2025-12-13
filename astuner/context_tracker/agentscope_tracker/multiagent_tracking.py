@@ -176,7 +176,7 @@ class MultiAgentContextTracker(BasicContextTracker):
                     f"Detected wrong toolcall format from LLM content"
                 )
                 self.already_mad_flag = True
-                tool_calls = []
+            tool_calls = []
         else:
             tool_calls = []
 

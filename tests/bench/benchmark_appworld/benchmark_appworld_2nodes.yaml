@@ -1,0 +1,70 @@
+# ------------------ 主要配置 ------------------
+astuner:
+  project_name: example_appworld
+  experiment_name: "read_yaml_name"
+  task_judge:
+    # ✨✨✨✨ 编写并选择评价函数
+    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+
+  model:
+    # ✨✨✨✨ 设置待训练的模型
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    # ✨✨✨✨ 编写并选择Agent
+    agentscope_disable_toolcalls: True
+    use_agentscope_protocol: True
+    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    temperature: 0.9
+    max_env_worker: 64
+    num_repeat: 6
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 1
+    max_num_seqs: 40
+    compute_madness_checklist:
+      - "nonsense"
+    max_response_length_in_one_turn: 4096
+    max_model_len: 18000
+    multi_turn:
+      max_sample_per_task: 25
+      max_steps: 25
+    n_vllm_engine: 8
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  data:
+    train_batch_size: 64
+    max_prompt_length: 3000
+    max_response_length: 15000
+
+  trainer_common:
+    save_freq: 99999
+    test_freq: 99999
+    total_epochs: 99999
+    nnodes: 2
+    n_gpus_per_node: 8
+    ulysses_sequence_parallel_size: 2
+
+  execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
+  execute_testing_lambda: "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe" #
+
+trinity:
+  synchronizer:
+    sync_offset: 1
+    sync_method: nccl
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
+    - file://astuner/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - verl_default # verl inherit 1/1
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_

@@ -41,7 +41,7 @@ def launch_logview(exp_name=None):
         logger.error(f"Error opening web browser: {e}")
 
 
-def start_ray_service(args, env):
+def start_ray_service(args, env, cluster=False):
     """
     Start a Ray service with appropriate configuration.
 
@@ -51,15 +51,45 @@ def start_ray_service(args, env):
     # Get the current Python interpreter directory
     python_dir = os.path.dirname(sys.executable)
     ray_path = os.path.join(python_dir, "ray")
-    companion = LaunchCommandWhenAbsent(
-        full_argument_list=[f"{ray_path} start --head --block"],
-        dir="./",
-        tag="ray_service",
-        use_pty=True,
-    )
+    if not cluster:
+        companion = LaunchCommandWhenAbsent(
+            full_argument_list=[f"{ray_path} start --head --block"],
+            dir="./",
+            tag="ray_service",
+            use_pty=True,
+        )
+        launch_wait_time = 600
+        success_std_string = "Ray runtime started"
+    else:
+        HOSTNAME = os.uname().nodename
+        MASTER_ADDR = os.getenv("MASTER_ADDR")
+        MASTER_PORT = os.getenv("MASTER_PORT")
+        if HOSTNAME == MASTER_ADDR:
+            companion = LaunchCommandWhenAbsent(
+                full_argument_list=[
+                    f"{ray_path} start --head --node-ip-address={MASTER_ADDR} --port={MASTER_PORT} --disable-usage-stats --block"
+                ],
+                dir="./",
+                tag="ray_service_head",
+                use_pty=True,
+            )
+            launch_wait_time = 600
+            success_std_string = "Ray runtime started"
+        else:
+            companion = LaunchCommandWhenAbsent(
+                full_argument_list=[
+                    f"{ray_path} start --address={MASTER_ADDR}:{MASTER_PORT} --disable-usage-stats --block"
+                ],
+                dir="./",
+                tag="ray_service_worker",
+                use_pty=True,
+            )
+            launch_wait_time = 9999999999
+            # success_std_string = "Connected to Ray cluster"
+            success_std_string = "Just wait here forever"
     companion.launch(
-        launch_wait_time=1800,
-        success_std_string="Ray runtime started",
+        launch_wait_time=launch_wait_time,
+        success_std_string=success_std_string,
         env_dict=env,
     )
 
