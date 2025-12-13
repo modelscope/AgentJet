@@ -50,6 +50,7 @@ def parse_args():
     )
 
     parser.add_argument("--with-ray", action="store_true", default=False, help="Launch ray")
+    parser.add_argument("--with-ray-cluster", action="store_true", default=False, help="Launch ray")
     parser.add_argument(
         "--with-appworld",
         action="store_true",
@@ -213,7 +214,7 @@ def setup_environment_vars(args, exp_config, main_yaml_fp):
         env["RAY_DEBUG_POST_MORTEM"] = "1"
         env["DEBUG_TAGS"] = args.debug
         env["RAY_record_task_actor_creation_sites"] = "true"
-        assert exp_config["astuner"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
+        # assert exp_config["astuner"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
@@ -269,6 +270,9 @@ def main():
 
     env = setup_environment_vars(args, exp_config, main_yaml_fp)
     if args.with_ray:
+        assert (
+            not args.with_ray_cluster
+        ), "Cannot use both --with-ray and --with-ray-cluster simultaneously."
         start_ray_service(args, env)
 
     if args.with_appworld:
@@ -285,6 +289,12 @@ def main():
 
     if args.with_logview:
         launch_logview(exp_name)
+
+    if args.with_ray_cluster:
+        assert (
+            not args.with_ray
+        ), "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        start_ray_service(args, env, cluster=True)
 
     if args.conf and main_yaml_fp and exe_exp_base and exp_config:
         execute_training_process(
