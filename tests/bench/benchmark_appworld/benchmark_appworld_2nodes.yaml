@@ -19,16 +19,16 @@ astuner:
     max_env_worker: 64
     num_repeat: 6
     agent_madness_reward: -1.0
-    tensor_model_parallel_size: 1
-    max_num_seqs: 40
+    tensor_model_parallel_size: 4
+    max_num_seqs: 10
     compute_madness_checklist:
       - "nonsense"
     max_response_length_in_one_turn: 4096
     max_model_len: 18000
     multi_turn:
-      max_sample_per_task: 25
-      max_steps: 25
-    n_vllm_engine: 8
+      max_sample_per_task: 30
+      max_steps: 30
+    n_vllm_engine: 2
 
   debug:
     debug_max_parallel: 1
@@ -36,7 +36,7 @@ astuner:
 
   data:
     train_batch_size: 64
-    max_prompt_length: 3000
+    max_prompt_length:    3000
     max_response_length: 15000
 
   trainer_common:
@@ -52,7 +52,7 @@ astuner:
 
 trinity:
   synchronizer:
-    sync_offset: 1
+    sync_offset: 0
     sync_method: nccl
 
 # ------------------ 不需要修改 ------------------

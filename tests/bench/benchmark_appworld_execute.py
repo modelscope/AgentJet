@@ -12,7 +12,24 @@ from astuner.utils.testing_utils import populate_test_env_metadata, send_test_re
 
 
 class TestBenchmarkAppworld(unittest.TestCase):
-    def test_begin_trinity(self):
+    def test_01_begin_verl(self):
+        # get probe target, so as to get timeout settings
+        BACKBONE = "verl"
+        TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.yaml"
+        PROBE_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe"
+        # tests/bench/benchmark_appworld/benchmark_appworld.py
+        # tests/bench/benchmark_appworld/benchmark_appworld.yaml
+        TARGET_NAME = f"benchmark_appworld_{BACKBONE}"
+        PYTHON_EXECUTABLE = ".verl/bin/python"
+        self.execute_benchmark(
+            BACKBONE=BACKBONE,
+            TEST_TARGET=TEST_TARGET,
+            PROBE_TARGET=PROBE_TARGET,
+            TARGET_NAME=TARGET_NAME,
+            PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
+        )
+
+    def test_02_begin_trinity(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "trinity"
         TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld_2nodes.yaml"
@@ -26,23 +43,6 @@ class TestBenchmarkAppworld(unittest.TestCase):
             TARGET_NAME=TARGET_NAME,
             PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
         )
-
-    # def test_begin_verl(self):
-    #     # get probe target, so as to get timeout settings
-    #     BACKBONE = "verl"
-    #     TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.yaml"
-    #     PROBE_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe"
-    #     # tests/bench/benchmark_appworld/benchmark_appworld.py
-    #     # tests/bench/benchmark_appworld/benchmark_appworld.yaml
-    #     TARGET_NAME = f"benchmark_appworld_{BACKBONE}"
-    #     PYTHON_EXECUTABLE = ".verl/bin/python"
-    #     self.execute_benchmark(
-    #         BACKBONE=BACKBONE,
-    #         TEST_TARGET=TEST_TARGET,
-    #         PROBE_TARGET=PROBE_TARGET,
-    #         TARGET_NAME=TARGET_NAME,
-    #         PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
-    #     )
 
     def execute_benchmark(
         self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE, MULTI_NODES=True
