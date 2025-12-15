@@ -1,0 +1,163 @@
+# ------------------ main configuration ------------------
+astuner:
+  project_name: "example_countdown"
+  experiment_name: "example_countdown_test"
+  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
+  backbone: verl # `debug` or `trinity` or `verl`
+
+
+  model:
+    # ✨✨✨✨ which model should be trained
+    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
+
+  data:
+    # max number of tokens for prompt
+    max_prompt_length: 1024
+    # max number of tokens for response
+    max_response_length: 4096
+    # how many tasks per training batch
+    train_batch_size: 32
+    # [Hint]: The final number of samples per update will be: N_{sample} = (data.train_batch_size * rollout.num_repeat * rollout.multi_turn.expected_steps)
+
+
+  rollout:
+    # activate AgentScope learn protocol
+    use_agentscope_protocol: True
+
+    # ✨✨✨✨ the path to the workflow class
+    agentscope_learn_protocol: tutorial.example_countdown.countdown->ExampleCountdownLearn
+
+    # whether or not to disable all tool calls
+    agentscope_disable_toolcalls: True
+
+    # maximum number of parallel environments / simulate workers
+    max_env_worker: 128
+
+    # step reward gamma (experimental, do not change)
+    gamma: 1.0
+
+    # monitor LLM's abormal behaviors during rollout
+    compute_madness_checklist:
+      - "nonsense"
+    # send signal to terminate context tracing when LLM is losing control
+    agent_madness_termination: True # terminate_after_gone_mad
+    # punish the LLM when it is detected as lost control
+    agent_madness_reward: -1.0
+
+    # max response length in one turn
+    max_response_length_in_one_turn: 4096
+
+    # max token length allowed for the model during rollout
+    max_model_len: 5120
+
+    multi_turn:
+      # how many samples should be collected for each task run
+      max_sample_per_task: 30
+      # limit the maximum steps for each task
+      max_steps: 30
+      # the expected steps for each task, used to calculate the training batch size for trinity
+      expected_steps: 1
+
+    # TP size for rollout engine
+    tensor_model_parallel_size: 1
+
+    # the number of vllm engines, number of gpus for infer is `n_vllm_engine*tensor_model_parallel_size`, this argument is NOT effective when NOT using trinity
+    n_vllm_engine: 2
+
+    # how many sequences are allowed to be processed in parallel by each vllm engine
+    max_num_seqs: 10
+
+    # the usage of infer engine, options: (vllm, sglang)
+    name: vllm
+
+    # how many times a task should be repeated
+    num_repeat: 4
+
+    # rollout kwargs
+    temperature: 0.9
+    top_p: 1.0
+
+    # validation kwargs
+    val_kwargs:
+      temperature: 0.0
+      top_k: -1
+      top_p: 1.0
+      do_sample: False
+      num_repeat: 1
+
+
+  task_reader:
+    type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
+    # when `type == huggingface_dat_repo`
+    huggingface_dat_repo:
+      dataset_path: "dataset/Countdown-Tasks-3to4"
+      training_split: "train"
+      validation_split: "test"
+
+
+  task_judge:
+    judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
+
+    # ✨✨✨✨ when `judge_type == customized_protocol`
+    judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
+
+  # when backbone is `debug`, debug related configurations
+  debug:
+    debug_max_parallel: 16
+    debug_first_n_tasks: 2
+    debug_vllm_port: 18000
+    debug_vllm_seed: 12345
+    debug_tensor_parallel_size: 4
+
+
+  # trainer common configurations
+  trainer_common:
+    val_before_train: False
+    val_pass_n: 4
+    save_freq: 50
+    test_freq: 20
+    total_epochs: 5
+    nnodes: 1
+    n_gpus_per_node: 8
+    logger: swanlab
+    algorithm:
+      task_norm_patch: False
+      adv_estimator: grpo
+      use_kl_in_reward: False
+    mini_batch_num: 1
+    fsdp_config:
+      param_offload: True
+      optimizer_offload: True
+    optim:
+      lr: 1e-6
+    use_kl_loss: True
+    kl_loss_coef: 0.002
+    kl_loss_type: low_var_kl
+    ulysses_sequence_parallel_size: 1
+
+
+  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
+  context_tracker:
+    context_tracker_type: "linear"
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
+    max_env_len: 4096
+
+
+  # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
+  execute_test: False        # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
+  execute_testing_lambda: "" # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
+    - file://astuner/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - verl_default # verl inherit 1/1
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_
