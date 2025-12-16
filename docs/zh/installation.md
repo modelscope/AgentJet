@@ -79,7 +79,7 @@ uv venv --python=3.10.16
 
 ```bash
 source .venv/bin/activate
-uv pip install -e.[dev]
+uv pip install -e .[trinity]
 uv pip install flash-attn==2.8.1 --no-build-isolation --no-cache-dir
 ```
 

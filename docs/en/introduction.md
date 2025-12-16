@@ -35,7 +35,7 @@ cd agentscope-tuner
 uv venv --python=3.10.16  # Create virtual environment
 source .venv/bin/activate  # Activate virtual environment
 
-uv pip install -e .[dev]
+uv pip install -e .[trinity]
 uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
 ```
 
