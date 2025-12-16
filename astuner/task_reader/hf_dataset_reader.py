@@ -43,7 +43,7 @@ class TaskReaderHuggingFace(TaskReaderBase):
         for idx, example in enumerate(dataset):
             # Create Task object
             task = Task(
-                main_query=example["question"],
+                main_query=example.get("question", "Empty"),
                 init_messages=[],  # Dataset examples typically don't have init messages
                 task_id=str(idx),
                 env_type="no_env",

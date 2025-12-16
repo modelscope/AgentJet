@@ -7,6 +7,7 @@ import time
 def kill_ray_processes():
     """run ray stop command to kill ray processes"""
     try:
+        print("Stopping ray processes...")
         subprocess.run(
             ["ray", "stop", "--force"],
             check=False,

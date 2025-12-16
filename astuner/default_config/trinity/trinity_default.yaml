@@ -58,7 +58,7 @@ trinity:
       tool_call_parser: hermes
     # runner_state_report_interval: 30
   monitor:
-    monitor_type: tensorboard
+    monitor_type: swanlab
   name: dummy_name
   project: dummy_project
   synchronizer:

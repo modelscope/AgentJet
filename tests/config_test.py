@@ -51,7 +51,7 @@ class TestConfigUtils(unittest.TestCase):
                 to_config = yaml.safe_load(file)
             self.assertEqual(to_config["checkpoint_root_dir"], "/wow/astuner_checkpoints")
             self.assertEqual(to_config["buffer"]["batch_size"], 120)
-            self.assertEqual(to_config["explorer"]["runner_per_model"], 128)
+            self.assertEqual(to_config["buffer"]["train_batch_size"], 1920)
             # Test simple field mappings
             self.assertEqual(to_config["project"], "unittest")
             self.assertEqual(to_config["name"], "dummy_exp_name")

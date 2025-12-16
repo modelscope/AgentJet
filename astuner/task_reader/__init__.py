@@ -55,9 +55,9 @@ class TaskReaderRouter(TaskReaderBase):
             self.task_reader = JsonlTaskReader(reader_config)
         elif task_reader_type == "huggingface_dat_repo":
             self.task_reader = TaskReaderHuggingFace(reader_config)
-        elif self.task_reader == "tracing":
+        elif task_reader_type == "tracing":
             self.task_reader = TracingReader(reader_config)
-        elif self.task_reader == "data_generation":
+        elif task_reader_type == "data_generation":
             self.task_reader = TaskReaderDataGenerator(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(reader_config)
