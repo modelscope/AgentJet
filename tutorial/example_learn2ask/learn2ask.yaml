@@ -1,0 +1,68 @@
+# ------------------ 主要配置 ------------------
+astuner:
+  project_name: example_learn2ask_enhancedreward
+  task_reader:
+    type: dataset_file
+    dataset_file:
+      training:
+        file_path: your_file_path
+      validation:
+        file_path: your_file_path
+
+  model:
+    path: Qwen/Qwen2.5-7B-Instruct
+
+  rollout:
+    agentscope_learn_protocol: "tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask"
+    agentscope_disable_toolcalls: True
+    temperature: 1.0
+    max_env_worker: 64
+    num_repeat: 6
+    tensor_model_parallel_size: 1
+    max_num_seqs: 40
+    multi_turn:
+      max_sample_per_task: 2
+    
+    compute_madness_checklist:
+      - "nonsense"
+    agent_madness_reward: 0.0
+    
+    max_response_length_in_one_turn: 1024
+    max_model_len: 10000
+    n_vllm_engine: 2
+
+  data:
+    train_batch_size: 100
+    max_prompt_length:   3000
+    max_response_length: 7000
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  trainer_common:
+    save_freq: 100
+    test_freq: 100
+    total_epochs: 100
+    logger: swanlab
+
+
+trinity:
+  synchronizer:
+    sync_offset: 1
+    sync_method: nccl
+
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
+    - file://astuner/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - verl_default # verl inherit 1/1
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_
