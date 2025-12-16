@@ -24,6 +24,9 @@ astuner:
     max_num_seqs: 256
     multi_turn:
       max_sample_per_task: 4
+      expected_steps: 2
+
+
     compute_madness_checklist:
       - "nonsense"
       - "wrong_toolcall"

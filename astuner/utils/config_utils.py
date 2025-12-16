@@ -117,9 +117,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     # align based on convertion_json
     for from_key, to_keys in convertion_json.items():
         if from_key.startswith("("):
-            keys_array, config_computer = split_keys_and_operators(
-                from_key, ["+", "-", "*", "/", "//", "%"]
-            )
+            keys_array, config_computer = split_keys_and_operators(from_key, [])
             value = config_computer({k: _dive_to_fetch_value(from_config, k) for k in keys_array})
         else:
             value = _dive_to_fetch_value(from_config, from_key)

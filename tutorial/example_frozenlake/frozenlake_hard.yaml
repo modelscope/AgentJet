@@ -1,0 +1,89 @@
+# ------------------ main config ------------------
+astuner:
+  project_name: example_frozenlake_7b
+  task_reader:
+    type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
+
+  task_judge:
+    # ✨✨✨✨ select evaluation function
+    judge_protocol: null
+
+  model:
+    # ✨✨✨✨ select model to be trained
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+
+
+  rollout:
+    # the path to the workflow class
+    agentscope_learn_protocol: tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow # ✨✨✨✨ select agent
+    agentscope_disable_toolcalls: True
+
+    temperature: 0.9
+
+    max_env_worker: 512
+
+    num_repeat: 4
+
+    agent_madness_reward: 0.0
+
+    tensor_model_parallel_size: 1
+
+    # the number of vllm engines, number of gpus for infer is `n_vllm_engine*tensor_model_parallel_size`, this argument is NOT effective when NOT using trinity
+    n_vllm_engine: 4
+
+    mode: async
+
+    max_num_seqs: 40
+
+    # monitor LLM's abormal behaviors during rollout
+    compute_madness_checklist: []
+
+    max_response_length_in_one_turn: 512
+
+    max_model_len: 22000
+
+    multi_turn:
+      # how many samples should be collected for each task run
+      max_sample_per_task: 20
+      # limit the maximum steps for each task
+      max_steps: 20
+      # the expected steps for each task, used to calculate the training batch size for trinity
+      expected_steps: 1
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  data:
+    train_batch_size: 128
+    max_prompt_length: 4000
+    max_response_length: 18000
+
+  trainer_common:
+    save_freq: 99999
+    test_freq: 99999
+    total_epochs: 99999
+    total_training_steps: 25
+    nnodes: 1
+    n_gpus_per_node: 8
+    logger: swanlab
+
+frozen_lake:
+  frozen_lake_size: 6
+  is_slippery: True
+
+
+
+# ------------------ do not edit ------------------
+hydra:
+  searchpath:
+    - file://astuner/default_config
+    - file://astuner/default_config/verl         # verl only
+    - file://astuner/default_config/trinity      # trinity only
+
+# ------------------ do not edit ------------------
+defaults:
+  - verl_default    # verl inherit 1/1
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_
