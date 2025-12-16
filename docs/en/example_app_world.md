@@ -97,8 +97,8 @@ astune:
 ### 4.2 Debugging
 ```bash
 # It is recommended to kill all ray and env_service processes before starting
-# ( python launcher.py --kill="python|ray" )
-python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
+# ( astuner --kill="python|ray" )
+astuner --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, the program no longer uses Ray. You can configure VSCode's `launch.json` for convenient breakpoint debugging. Example configuration:
@@ -130,8 +130,8 @@ After debugging is complete, simply switch the `backbone` to `trinity` to start 
 
 ```bash
 # It is recommended to kill all ray, vllm, and env_service processes before starting
-# ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='trinity'
+# ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity'
 ```
 
 ## 5 Reference Result

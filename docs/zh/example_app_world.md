@@ -102,8 +102,8 @@ astune:
 
 ```bash
 # 建议在启动前先杀掉所有 ray 和 env_service 相关进程
-# ( python launcher.py --kill="python|ray" )
-python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
+# ( astuner --kill="python|ray" )
+astuner --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
 ```
 
 当 `--backbone=debug` 时，程序不再使用 Ray。你可以在 VSCode 中配置 `launch.json`，方便进行断点调试。配置示例：
@@ -136,8 +136,8 @@ python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='de
 
 ```bash
 # 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程
-# ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_appworld/appworld.yaml --backbone='trinity'
+# ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity'
 ```
 
 ## 5 参考结果

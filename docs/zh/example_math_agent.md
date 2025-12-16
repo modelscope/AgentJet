@@ -87,9 +87,9 @@ astune:
 ### 4.2 调试
 
 ```bash
-# 建议在启动前先杀掉所有 ray 和 env_service 相关进程（ python launcher.py --kill="python|ray" ）
+# 建议在启动前先杀掉所有 ray 和 env_service 相关进程（ astuner --kill="python|ray" ）
 clear && \
-python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 当 `--backbone=debug` 时，程序不再使用 Ray。你可以在 vscode 中配置 `launch.json`，方便地进行断点调试。例如：
@@ -120,8 +120,8 @@ python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone
 ### 4.3 正式训练
 
 ```bash
-# 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程（ python launcher.py --kill="python|ray|vllm" ）
-python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+# 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程（ astuner --kill="python|ray|vllm" ）
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ## 5 参考结果

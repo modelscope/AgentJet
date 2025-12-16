@@ -81,8 +81,8 @@ Just make sure that the paths and class names are consistent with the actual cod
 Before running formal training, it is recommended to use --backbone='debug' for fast single-machine debugging without Ray:
 ```
 # It is recommended to kill all processes related to ray, env_service, and vllm before starting
-# ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
+# ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
 ```
 When --backbone=debug, the program runs without Ray, making it convenient to do breakpoint debugging on your local machine. You can configure launch.json in VSCode as follows:
 ```json
@@ -109,8 +109,8 @@ When --backbone=debug, the program runs without Ray, making it convenient to do 
 After you finish validating in Debug mode, simply switch backbone to trinity and enable Ray to launch formal training:
 ```
 # It is recommended to kill all processes related to ray, vllm, and env_service before starting
-# ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+# ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
 ```
 
 
