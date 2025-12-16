@@ -297,7 +297,7 @@ trinity:
 使用 debug 模式启动训练：
 
 ```bash
-python launcher.py --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 debug 模式不会启动 ray 集群，非常适合单机代码调试。另外，我们也可以编写 VS Code 的 `launch.json` 进行便捷的断点调试：

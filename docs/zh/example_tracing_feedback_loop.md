@@ -75,7 +75,7 @@ astuner:
 
 ```bash
 # 启动示例训练
-python launcher.py --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
+astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 训练完成后，你可以将新的 Agent 部署回生产环境，并继续收集新的日志。通过这样的闭环，你可以持续进行迭代的数据回流训练，不断提升 Agent 的效果。

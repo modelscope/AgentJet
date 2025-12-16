@@ -76,7 +76,7 @@ When everything is ready, start the training with `launcher.py`.
 
 ```bash
 # this launch the demo
-python launcher.py --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
+astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 After training, we can now deploy the new Agent into production and collect new logs. This workflow enables continuous improvement through iterative tracing-feedback training.

@@ -307,7 +307,7 @@ Next, we will start the training process in debug mode to check whether there ar
 Start training in debug mode:
 
 ```bash
-python launcher.py --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 In debug mode, the Ray cluster will not be started, which is very suitable for single-machine debugging. In addition, you can configure `launch.json` in VS Code to conveniently debug with breakpoints:
@@ -339,7 +339,7 @@ In debug mode, the Ray cluster will not be started, which is very suitable for s
 After debugging, you can start training:
 
 ```bash
-python launcher.py --conf math_agent/math_agent.yaml --backbone='trinity' --with-ray
+astuner --conf math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 You can find training logs and checkpoints in the `./launcher_record/{exp_yaml_file_name}` directory.

@@ -97,8 +97,8 @@ astuner:
 
 ```
 # 建议在启动前先杀掉所有与 ray、env_service、vllm 相关的进程
-# ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
+# ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
 ```
 
 当 `--backbone=debug` 时，程序在本地以非 Ray 模式运行，便于进行断点调试。你可以在 VSCode 中配置 `launch.json`，例如：
@@ -129,8 +129,8 @@ python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone
 
 ```
 # 建议在启动前先杀掉所有与 ray、vllm、env_service 相关的进程
-# ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+# ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
 ```
 
 ## 5 实验结果

@@ -85,9 +85,9 @@ astune:
 
 ### 4.2 Debug
 ```bash
-# It is recommended to kill all ray and env_service processes before starting ( python launcher.py --kill="python|ray" )
+# It is recommended to kill all ray and env_service processes before starting ( astuner --kill="python|ray" )
 clear && \
-python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 When --backbone=debug, the program no longer uses Ray. You can configure vscode's launch.json for convenient breakpoint debugging. launch.json configuration:
@@ -117,8 +117,8 @@ When --backbone=debug, the program no longer uses Ray. You can configure vscode'
 
 ### 4.3 Start Training
 ```bash
-# It is recommended to kill all ray, vllm, and env_service processes before starting ( python launcher.py --kill="python|ray|vllm" )
-python launcher.py --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+# It is recommended to kill all ray, vllm, and env_service processes before starting ( astuner --kill="python|ray|vllm" )
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ## 5 Reference Result
