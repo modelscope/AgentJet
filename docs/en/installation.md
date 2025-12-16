@@ -39,7 +39,7 @@ We recommend using `uv` to manage your Python environment as it is incredibly fa
   ```bash
   uv venv --python=3.10
   source .venv/bin/activate
-  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e . [trinity]
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
   uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps
   ```
 
