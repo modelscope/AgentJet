@@ -15,7 +15,7 @@ class TestBenchmarkLearnToAsk(unittest.TestCase):
         TEST_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.yaml"
         PROBE_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe"
         TARGET_NAME = f"benchmark_learn2ask_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".venv/bin/python"
+        PYTHON_EXECUTABLE = "python"
         self.execute_benchmark(
             BACKBONE=BACKBONE,
             TEST_TARGET=TEST_TARGET,
@@ -30,7 +30,7 @@ class TestBenchmarkLearnToAsk(unittest.TestCase):
         TEST_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.yaml"
         PROBE_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe"
         TARGET_NAME = f"benchmark_learn2ask_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".verl/bin/python"
+        PYTHON_EXECUTABLE = "python"
         self.execute_benchmark(
             BACKBONE=BACKBONE,
             TEST_TARGET=TEST_TARGET,
@@ -43,7 +43,8 @@ class TestBenchmarkLearnToAsk(unittest.TestCase):
         self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE
     ):
         cur_dir = os.path.dirname(__file__)
-        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
+        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../../.."))
+        
 
         git_hash, req_txt = populate_test_env_metadata(workspace_dir)
         os.environ["ASTUNER_GIT_HASH"] = git_hash
@@ -71,7 +72,7 @@ class TestBenchmarkLearnToAsk(unittest.TestCase):
             TEST_TARGET,
             "--backbone",
             BACKBONE,
-            "--autokill",
+            "--autokill", # this breaks remote vscode server
         ]
         if BACKBONE == "trinity":
             cmd += ["--with-ray"]
