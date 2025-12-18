@@ -52,7 +52,7 @@ class JsonlTaskReader(TaskReaderBase):
         Returns:
             List[Task]: List of training Task objects.
         """
-        file_path = self.reader_config.dataset_file.training.file_path
+        file_path = self.reader_config.jsonl_dataset_file.training.file_path
         return self._read_jsonl_file(file_path)
 
     def get_validation_tasks(self) -> List[Task]:
@@ -62,5 +62,5 @@ class JsonlTaskReader(TaskReaderBase):
         Returns:
             List[Task]: List of validation Task objects.
         """
-        file_path = self.reader_config.dataset_file.validation.file_path
+        file_path = self.reader_config.jsonl_dataset_file.validation.file_path
         return self._read_jsonl_file(file_path)

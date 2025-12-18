@@ -1,0 +1,166 @@
+"""Programmatic training entry point for ASTuner.
+
+This class mirrors the CLI launcher by materializing a YAML config and
+spawning a subprocess to run the existing training pipeline. The goal is to
+keep the public surface minimal while reusing the mature CLI code paths.
+"""
+
+from __future__ import annotations
+
+import os
+import tempfile
+from datetime import datetime
+from types import SimpleNamespace
+from typing import Any, Callable, Optional, Union
+
+import ray
+import yaml
+from loguru import logger
+
+from astuner.cli.launcher import (
+    check_avail_gpu,
+    get_backbone_target,
+    setup_environment_vars,
+)
+from astuner.utils.config_utils import (
+    expand_astune_hierarchical_config,
+    prepare_experiment_config,
+    read_astune_hierarchical_config,
+)
+from astuner.utils.dynamic_import import cls_to_path
+from astuner.utils.launch_utils import execute_training_process
+
+
+class AstunerJob:
+    """Lightweight builder that launches ASTuner training as a subprocess."""
+
+    def __init__(
+        self,
+        backbone: Optional[str] = "trinity",
+        model: Optional[str] = None,
+        n_gpu: Optional[int] = None,
+        algorithm: Optional[str] = None,
+    ) -> None:
+        self.backbone = backbone
+        self.config = self.build_job_from_yaml(None)
+        self.config["astuner"]["backbone"] = self.backbone
+        self.config["astuner"]["model"]["path"] = model
+        self.config["astuner"]["trainer_common"]["n_gpus_per_node"] = n_gpu
+        self.config["astuner"]["trainer_common"]["algorithm"]["adv_estimator"] = algorithm
+
+    def build_job_from_yaml(self, yaml_path: str | None) -> dict:
+        self.exp_name = datetime.now().strftime("astuner_job_%Y%m%d_%H%M%S")
+        self.exp_dir_final = "saved_experiments"
+        self.config = read_astune_hierarchical_config(
+            yaml_path,
+            exp_name=self.exp_name,
+            backbone=self.backbone,
+            write_to=None,
+            exp_dir=self.exp_dir_final,
+        )
+        self.config = expand_astune_hierarchical_config(self.config, write_to=None)
+        logger.info(f"Built ASTuner job config: {yaml_path}")
+        return self.config
+
+    def dump_job_as_yaml(self, yaml_path: str) -> str:
+        os.makedirs(os.path.dirname(yaml_path), exist_ok=True)
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(self.config, f, sort_keys=False)
+        logger.info(f"Saved training config to {yaml_path}")
+        return yaml_path
+
+    def set_workflow(
+        self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False
+    ) -> "AstunerJob":
+        self.config["astuner"]["rollout"] = {
+            "use_agentscope_protocol": True,
+            "agentscope_learn_protocol": cls_to_path(workflow),
+        }
+        # TODO: validate workflow outputs contain reward
+        # ensure_reward_in_workflow
+        return self
+
+    def set_data(
+        self,
+        type: str,
+        dataset_path: str,
+        training_split: str = "train",
+        validation_split: str = "test",
+    ) -> "AstunerJob":
+        """Configure the task reader. Defaults to HuggingFace datasets."""
+
+        # available types:
+        # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
+
+        if type in {"hf", "huggingface", "huggingface_dat_repo"}:
+            self.config["astuner"]["task_reader"]["type"] = "huggingface_dat_repo"
+            self.config["astuner"]["task_reader"]["huggingface_dat_repo"] = {
+                "dataset_path": dataset_path,
+                "training_split": training_split,
+                "validation_split": validation_split,
+            }
+        elif type in {"random_dummy", "dummy"}:
+            self.config["astuner"]["task_reader"]["type"] = "random_dummy"
+        else:
+            raise NotImplementedError(
+                f"Please edit yaml to directly set up task reader of type {type}."
+            )
+
+        return self
+
+    def tune(self, *args, **kwargs) -> "AstunerJob":
+        ast_cfg = self.config.get("astuner", {})
+        if not ast_cfg.get("rollout") or not ast_cfg["rollout"].get("agentscope_learn_protocol"):
+            raise ValueError("Workflow must be set via set_workflow before tuning.")
+        if not ast_cfg.get("task_reader"):
+            raise ValueError("Data source must be set via set_data before tuning.")
+
+        backbone = self.config["astuner"]["backbone"]
+        exp_dir = self.config["astuner"]["experiment_dir"]
+
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".yaml") as temp_yaml:
+            yaml_path = temp_yaml.name
+            self.dump_job_as_yaml(yaml_path)
+            args = SimpleNamespace(
+                conf=yaml_path,
+                backbone=backbone,
+                exp_dir=exp_dir,
+                with_logview=False,
+                debug=False,
+            )
+
+            if args.backbone != "debug":
+                # Enforce GPU availability and free memory threshold before proceeding
+                check_avail_gpu(min_free_ratio=0.95)
+
+            # finalize experiment config
+            main_yaml_fp, exe_exp_base, exp_name, exp_config = prepare_experiment_config(
+                yaml_path, exp_dir, backbone
+            )
+
+        # setup environment variables for ray
+        env = setup_environment_vars(args, exp_config, main_yaml_fp)
+
+        # start ray if not already started
+        if not ray.is_initialized():
+            from astuner.utils.launch_utils import start_ray_service
+
+            start_ray_service(args, env)
+        else:
+            raise RuntimeError(
+                "Ray is already initialized. Please shutdown existing Ray instance before starting a new tuning job."
+            )
+
+        # start training process
+        if args.conf and main_yaml_fp and exe_exp_base and exp_config:
+            execute_training_process(
+                args,
+                get_backbone_target(args.backbone),
+                main_yaml_fp,
+                exe_exp_base,
+                main_yaml_fp,
+                env,
+                exp_config,
+            )
+
+        return self
