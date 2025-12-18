@@ -105,64 +105,111 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
                     recursive_copy(value, dst_dict[key], full_key)
                 else:
                     dst_dict[key] = value
-                    logger.info(
-                        f"[Note]: Aligned parameter from [trinity.{full_key}] to [{full_key}] with value: [{value}]"
-                    )
 
         recursive_copy(trinity_config, to_config)
-
-    logger.success("----------------------------------------------------")
-    time.sleep(1)
 
     # align based on convertion_json
     for from_key, to_keys in convertion_json.items():
         if from_key.startswith("("):
+            # special argument that need A.S.T. computation
             keys_array, config_computer = split_keys_and_operators(from_key, [])
             value = config_computer({k: _dive_to_fetch_value(from_config, k) for k in keys_array})
         else:
+            # normal argument
             value = _dive_to_fetch_value(from_config, from_key)
 
+        # multiple to_keys support
         to_keys = to_keys if isinstance(to_keys, list) else [to_keys]
 
+        # set and override config value
         for to_key in to_keys:
             _dive_to_set_value(to_config, to_key, value)
             logger.success(
                 f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]"
             )
 
-    logger.success("----------------------------------------------------")
-    time.sleep(1)
-    # special: logger
-    if backbone == "verl" and isinstance(to_config["trainer"]["logger"], str):
-        to_config["trainer"]["logger"] = ["console", to_config["trainer"]["logger"]]
+    # backbone specific safe guard
+    to_config = config_safe_guard(to_config, backbone)
 
     # save to_config_fp
     with open(to_config_fp, "w") as file:
         yaml.dump(to_config, file)
+
     # logger.success(f"Saved aligned configuration to {to_config_fp}")
     print_dict({"Note": f"Saved aligned configuration to {to_config_fp}"})
+
+
+def config_safe_guard(config: dict, backbone: str) -> dict:
+    # special: logger
+    if backbone == "verl" and isinstance(config["trainer"]["logger"], str):
+        config["trainer"]["logger"] = ["console", config["trainer"]["logger"]]
+
+    # special: trinity train_batch_size
+    if backbone == "trinity":
+        train_batch_size = config["buffer"]["train_batch_size"]
+        world_size = config["cluster"]["gpu_per_node"] * config["cluster"]["node_num"]
+        vllm_world_size = (
+            config["explorer"]["rollout_model"]["tensor_parallel_size"]
+            * config["explorer"]["rollout_model"]["engine_num"]
+        )
+        fsdp_world_size = world_size - vllm_world_size
+
+        # if train_batch_size % fsdp_world_size != 0, train_batch_size + until divisible
+        if fsdp_world_size > 0 and train_batch_size % fsdp_world_size != 0:
+            new_train_batch_size = train_batch_size
+            while new_train_batch_size % fsdp_world_size != 0:
+                new_train_batch_size += 1
+            logger.warning(
+                f"[Warning]: trinity backbone detected, but train_batch_size {train_batch_size} is not divisible by fsdp_world_size {fsdp_world_size}. Automatically adjust train_batch_size to {new_train_batch_size}."
+            )
+            config["buffer"]["train_batch_size"] = new_train_batch_size
+
+    return config
 
 
 def read_astune_hierarchical_config(
     yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments"
 ):
-    with open(yaml_fp, "r") as file:
-        config = yaml.safe_load(file)
+    if yaml_fp is None:
+        config = {
+            "astuner": {},
+            "hydra": {
+                "searchpath": [
+                    "file://astuner/default_config",
+                    "file://astuner/default_config/verl",
+                    "file://astuner/default_config/trinity",
+                ]
+            },
+            "defaults": [
+                "verl_default",
+                "trinity_default",
+                "astune_default",
+                "_self_",
+            ],
+        }
+    else:
+        with open(yaml_fp, "r") as file:
+            config = yaml.safe_load(file)
     config["astuner"]["experiment_name"] = exp_name
     config["astuner"]["experiment_dir"] = os.path.join(exp_dir, exp_name)
     config["astuner"]["backbone"] = backbone
+
     # remove extra config of verl for trinity
     if backbone == "debug":
-        config["defaults"].remove("trinity_default")
-        config["hydra"]["searchpath"].remove("file://astuner/default_config/trinity")
+        if "trinity_default" in config["defaults"]:
+            config["defaults"].remove("trinity_default")
+            config["hydra"]["searchpath"].remove("file://astuner/default_config/trinity")
     # remove extra config of verl for trinity
     if backbone == "trinity":
-        config["defaults"].remove("verl_default")
-        config["hydra"]["searchpath"].remove("file://astuner/default_config/verl")
+        if "verl_default" in config["defaults"]:
+            config["defaults"].remove("verl_default")
+            config["hydra"]["searchpath"].remove("file://astuner/default_config/verl")
     # remove extra config of trinity for verl
     if backbone == "verl":  # or args.backbone == "debug"
-        config["defaults"].remove("trinity_default")
-        config["hydra"]["searchpath"].remove("file://astuner/default_config/trinity")
+        if "trinity_default" in config["defaults"]:
+            config["defaults"].remove("trinity_default")
+            config["hydra"]["searchpath"].remove("file://astuner/default_config/trinity")
+
     if write_to:
         with open(write_to, "w") as file:
             yaml.dump(config, file)

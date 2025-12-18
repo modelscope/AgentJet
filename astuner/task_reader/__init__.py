@@ -51,7 +51,7 @@ class TaskReaderRouter(TaskReaderBase):
         task_reader_type = reader_type
         if task_reader_type == "env_service":
             self.task_reader = TaskReaderEnvService(reader_config)
-        elif task_reader_type == "dataset_file":
+        elif task_reader_type == "jsonl_dataset_file":
             self.task_reader = JsonlTaskReader(reader_config)
         elif task_reader_type == "huggingface_dat_repo":
             self.task_reader = TaskReaderHuggingFace(reader_config)

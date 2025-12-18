@@ -96,7 +96,7 @@ def split_keys_and_operators(
     """
 
     # Parse the expression
-    print(operation_str)
+    # print(operation_str)
     try:
         tree = ast.parse(operation_str, mode="eval")
     except SyntaxError as e:
@@ -156,7 +156,7 @@ def split_keys_and_operators(
         except Exception as e:
             raise RuntimeError(f"Error evaluating expression '{operation_str}': {e}") from e
 
-    print(f"Extracted keys: {keys}")
+    # print(f"Extracted keys: {keys}")
     return keys, eval_func
 
 

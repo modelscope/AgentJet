@@ -3,6 +3,19 @@ import importlib.util
 import os
 import sys
 import threading
+from typing import Any, Callable, Union
+
+
+def cls_to_path(obj_or_path: Union[str, Callable[..., Any]]) -> str:
+    """Convert a callable to the ``module->name`` string expected by dynamic_import."""
+
+    if isinstance(obj_or_path, str):
+        return obj_or_path
+    module = getattr(obj_or_path, "__module__", None)
+    name = getattr(obj_or_path, "__name__", None)
+    if module and name:
+        return f"{module}->{name}"
+    raise ValueError("Object must be a dotted string or a callable with __module__ and __name__.")
 
 
 def _dynamic_import(module_class_str: str):

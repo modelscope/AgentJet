@@ -14,6 +14,7 @@ trinity:
       delta_sequence_masking: 0.1
 
   buffer:
+    # Explorer-side mini-batch for reading tasks from the dataset (producer input size)
     batch_size: 32
     explorer_input:
       eval_tasksets: []
@@ -30,6 +31,7 @@ trinity:
         storage_type: astuner
         subset_name: ""
     total_epochs: 1000
+    # Trainer-side mini-batch consumed from the explorer queue per optimization step (consumer input size)
     train_batch_size: 36
     trainer_input:
       experience_buffer:
@@ -43,6 +45,7 @@ trinity:
           priority_fn_args:
             decay: 2.0
   checkpoint_root_dir: ./trinity_checkpoints
+  # Explorer = producer (typically VLLM), generates samples
   explorer:
     max_repeat_times_per_runner: 1
     max_timeout: 3600
@@ -66,6 +69,10 @@ trinity:
     sync_method: nccl
     sync_style: dynamic_by_explorer
     sync_timeout: 7200
+  # Trainer = consumer, updates model parameters using explorer outputs
   trainer:
     grad_clip: 1.0
     use_dynamic_bsz: true
+  cluster:
+    gpu_per_node: 8
+    node_num: 1
