@@ -444,7 +444,7 @@ class DynamicRolloutManager(BaseRolloutManager):
             return tracker_array
 
 
-class VerlRolloutManger(DynamicRolloutManager):
+class VerlRolloutManager(DynamicRolloutManager):
     """High-level manager orchestrating rollouts and batch conversion."""
 
     def to_dataproto(self, tracker_array) -> DataProto:
