@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from astuner.schema.document import Document
 from astuner.schema.task import Task
-from astuner.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
+from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
 
 
 class BaseDataGenerator:
@@ -15,7 +15,7 @@ class BaseDataGenerator:
         """
         self.config = config
         self.sampling_params = self.config.data_generation.sampling_params or {}
-        self.llm_client = construct_alien_llm_chat_fn(
+        self.llm_client = create_external_llm_fn(
             alien_llm_model=self.config.data_generation.llm_model,
             alien_llm_response_length=self.config.data_generation.llm_response_length,
         )
