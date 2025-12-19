@@ -4,15 +4,15 @@ import datasets
 import numpy as np
 
 from astuner.schema.task import Task
-from astuner.task_reader.data_generator_reader import TaskReaderDataGenerator
-from astuner.task_reader.env_service_reader import TaskReaderEnvService
-from astuner.task_reader.hf_dataset_reader import TaskReaderHuggingFace
+from astuner.task_reader.data_generator_reader import DataGeneratorTaskReader
+from astuner.task_reader.env_service_reader import EnvServiceTaskReader
+from astuner.task_reader.hf_dataset_reader import HuggingFaceTaskReader
 from astuner.task_reader.jsonl_reader import JsonlTaskReader
-from astuner.task_reader.task_reader_base import TaskReaderBase
+from astuner.task_reader.task_reader_base import BaseTaskReader
 from astuner.task_reader.tracing_reader import TracingReader
 
 
-class RandomDummyGenerator(TaskReaderBase):
+class RandomDummyGenerator(BaseTaskReader):
     def __init__(self, reader_config):
         super().__init__(reader_config)
 
@@ -44,21 +44,21 @@ class RandomDummyGenerator(TaskReaderBase):
         return self._load_dataset_split("dataset_name", "split")
 
 
-class TaskReaderRouter(TaskReaderBase):
+class TaskReaderRouter(BaseTaskReader):
     def __init__(self, reader_type, reader_config):
         super().__init__(None)
 
         task_reader_type = reader_type
         if task_reader_type == "env_service":
-            self.task_reader = TaskReaderEnvService(reader_config)
+            self.task_reader = EnvServiceTaskReader(reader_config)
         elif task_reader_type == "jsonl_dataset_file":
             self.task_reader = JsonlTaskReader(reader_config)
         elif task_reader_type == "huggingface_dat_repo":
-            self.task_reader = TaskReaderHuggingFace(reader_config)
+            self.task_reader = HuggingFaceTaskReader(reader_config)
         elif task_reader_type == "tracing":
             self.task_reader = TracingReader(reader_config)
         elif task_reader_type == "data_generation":
-            self.task_reader = TaskReaderDataGenerator(reader_config)
+            self.task_reader = DataGeneratorTaskReader(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyGenerator(reader_config)
         else:

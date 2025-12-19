@@ -16,12 +16,12 @@ from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
 from astuner.data_generator.task_augmentation import TaskAugmentor
 from astuner.schema.task import Task
 from astuner.task_reader.document_reader.doc_reader import DocReader
-from astuner.task_reader.task_reader_base import TaskReaderBase
+from astuner.task_reader.task_reader_base import BaseTaskReader
 
 dotenv.load_dotenv()
 
 
-class TaskReaderDataGenerator(TaskReaderBase):
+class DataGeneratorTaskReader(BaseTaskReader):
     """
     Enhanced version of TaskReaderDataGenerator with multi-threading support,
     progress bars, and improved batch calculation.

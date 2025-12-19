@@ -1,9 +1,9 @@
 from astuner.schema.task import Task
-from astuner.task_reader.task_reader_base import TaskReaderBase
+from astuner.task_reader.task_reader_base import BaseTaskReader
 from astuner.utils.env_service_client.env_client_ng import EnvClient
 
 
-class TaskReaderEnvService(TaskReaderBase):
+class EnvServiceTaskReader(BaseTaskReader):
     def __init__(self, reader_config):
         super().__init__(reader_config)
         self.reader_config = reader_config

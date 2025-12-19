@@ -3,7 +3,7 @@ from typing import List
 from astuner.schema.task import Task
 
 
-class TaskReaderBase:
+class BaseTaskReader:
     def __init__(self, reader_config):
         self.reader_config = reader_config
 
