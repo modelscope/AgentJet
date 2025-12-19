@@ -18,7 +18,7 @@ def convert_tool_to_user_message(tool_message, tokenizer, format="qwen"):
         }
 
 
-def run_async_coro__no_matter_what(coro, timeout: int = 3600) -> Any:
+def run_async_coroutine_with_timeout(coro, timeout: int = 3600) -> Any:
     try:
         asyncio.get_running_loop()
         in_loop = True
