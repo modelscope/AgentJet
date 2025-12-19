@@ -84,7 +84,7 @@ class BaseRolloutManager:
         (with validation overrides), and robust retry on transient failures.
         """
         sampling_params = get_sample_params(mode, self.config)
-        llm_chat_fn = self.async_llm_bridge.get_llm_chat_fn(sampling_params=sampling_params)
+        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn(sampling_params=sampling_params)
 
         workflow_task = WorkflowTask(
             env_type=task.env_type,
@@ -94,7 +94,7 @@ class BaseRolloutManager:
             task_env_uuid=uuid.uuid4().hex,
             task_tag=task_tag,
             obs_window=obs_window,
-            llm_chat_fn=llm_chat_fn,
+            llm_inference_fn=llm_inference_fn,
             tokenizer=self.tokenizer,
             task=task,
         )
@@ -108,7 +108,7 @@ class BaseRolloutManager:
                     else AgentRunner
                 )
                 agent_runner: AgentScopeRunner = Runner(
-                    llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config
+                    llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
                 )  # type:ignore
                 tracker = agent_runner.execute(
                     workflow_task=workflow_task,

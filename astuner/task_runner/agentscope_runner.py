@@ -29,7 +29,7 @@ class AgentScopeRunner(BaseAgentRunner):
             workflow_task=workflow_task,
         )
         context_tracker = MultiAgentContextTracker(
-            llm_chat_fn=self.llm_chat_fn,
+            llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,
             config=self.config,
             task_batch_index=task_batch_index,
@@ -39,7 +39,7 @@ class AgentScopeRunner(BaseAgentRunner):
         )
         m_tuner = ModelTuner(
             context_tracker=context_tracker,
-            llm_chat_fn=self.llm_chat_fn,
+            llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,
             agentscope_workflow=agentscope_workflow,
             config=self.config,

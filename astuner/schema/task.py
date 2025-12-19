@@ -28,7 +28,7 @@ class WorkflowTask(BaseModel):
     task_tag: str = Field(default="")
     task_env_uuid: str = Field(default="")
     obs_window: dict = Field(default={})
-    llm_chat_fn: Any = Field(default=None)
+    llm_inference_fn: Any = Field(default=None)
     tokenizer: Any = Field(default=None)
     task: Task = Field(default=Task())
     gym_env: Any = Field(default=None)  # agentscope runtime handle or env service handle

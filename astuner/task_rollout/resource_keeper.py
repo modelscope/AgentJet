@@ -21,7 +21,7 @@ class ResourceKeeper(object):
         self.workflow_task = self.workflow_task
         self.task_id: str = self.workflow_task.task_id
         self.tokenizer = self.workflow_task.tokenizer
-        self.llm_chat_fn = self.workflow_task.llm_chat_fn
+        self.llm_inference_fn = self.workflow_task.llm_inference_fn
         self.obs_window = self.workflow_task.obs_window
         if self.config.astuner.task_reader.type == "env_service":
             url = self.config.astuner.task_reader.env_service.env_url

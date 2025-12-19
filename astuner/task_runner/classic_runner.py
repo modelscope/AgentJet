@@ -61,7 +61,7 @@ class AgentRunner(BaseAgentRunner):
                 break
 
             # 5. 🤖 call llm
-            llm_output = self.llm_chat_fn(step_input_message_arr, request_id=request_id)
+            llm_output = self.llm_inference_fn(step_input_message_arr, request_id=request_id)
             if (obs_window["stop"] is not None) and obs_window["stop"][
                 task_thread_index
             ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)

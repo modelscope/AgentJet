@@ -21,7 +21,7 @@ from astuner.utils.tokenizer import astune_apply_chat_template
 class MultiAgentContextTracker(BasicContextTracker):
     def __init__(
         self,
-        llm_chat_fn,
+        llm_inference_fn,
         tokenizer: PreTrainedTokenizer,
         config,
         should_interrupt_fn,
@@ -29,7 +29,7 @@ class MultiAgentContextTracker(BasicContextTracker):
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
-        self.llm_chat_fn = llm_chat_fn
+        self.llm_inference_fn = llm_inference_fn
         self.tokenizer = tokenizer
         self.should_interrupt_fn = should_interrupt_fn
         self.generated_token_callback_fn = generated_token_callback_fn
