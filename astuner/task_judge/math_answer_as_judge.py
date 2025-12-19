@@ -1,7 +1,7 @@
 import re
 
 from astuner.task_judge.base_judge import JudgeBase
-from astuner.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
+from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 
@@ -41,7 +41,7 @@ class MathAnswerAndLlmAsJudge(JudgeBase):
         reference_answer = workflow_task.task.metadata["answer"]
         reference_answer = reference_answer.split("####")[-1].strip()
 
-        alien_llm_chat_fn = construct_alien_llm_chat_fn(
+        alien_llm_chat_fn = create_external_llm_fn(
             alien_llm_model=self.config.astuner.task_judge.alien_llm_model,
             alien_llm_response_length=self.config.astuner.task_judge.alien_llm_response_length,
         )

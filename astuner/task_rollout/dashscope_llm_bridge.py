@@ -7,8 +7,8 @@ from loguru import logger
 from openai import OpenAI
 
 
-def construct_alien_llm_chat_fn(alien_llm_model, alien_llm_response_length):
-    def alien_llm_chat_fn(messages, sampling_params_override={}, request_id=""):
+def create_external_llm_fn(alien_llm_model, alien_llm_response_length):
+    def external_llm_chat_fn(messages, sampling_params_override={}, request_id=""):
         max_try = 4
         alien_model_name = alien_llm_model
         alien_model_response_length = alien_llm_response_length
@@ -75,4 +75,4 @@ def construct_alien_llm_chat_fn(alien_llm_model, alien_llm_response_length):
                 print(f"Error calling alien llm: {e}, retrying...")
         raise RuntimeError(f"Failed to get response from alien llm after {max_try} attempts")
 
-    return alien_llm_chat_fn
+    return external_llm_chat_fn

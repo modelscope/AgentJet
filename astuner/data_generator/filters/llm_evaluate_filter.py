@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable, List
 
 from astuner.schema.task import Task
-from astuner.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
+from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
 from astuner.utils.fn import Fn
 
 from .base import Filter
@@ -51,7 +51,7 @@ class LlmEvaluateFilter(Filter):
 
         self._print_reason = print_reason
         self._max_thread = max_thread
-        self.alien_llm_chat_fn = construct_alien_llm_chat_fn(
+        self.alien_llm_chat_fn = create_external_llm_fn(
             alien_llm_model="qwen3-235b-a22b-instruct-2507",
             alien_llm_response_length=512,
         )
