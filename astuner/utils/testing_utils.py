@@ -10,7 +10,6 @@ import requests
 from beast_logger import print_dict
 from loguru import logger
 
-from astuner.backbone.warm_up import init_parallel_rollout_logger
 from astuner.utils.dynamic_import import dynamic_import
 
 
@@ -51,6 +50,8 @@ def get_test_lambda(test_name) -> BaseProbe:
 
 
 def _test_if_test_mode(key, value, config):
+    from astuner.backbone.warm_up import init_parallel_rollout_logger
+
     if not config.astuner.execute_test:
         return
     if config.astuner.execute_test == "do_not_test":
