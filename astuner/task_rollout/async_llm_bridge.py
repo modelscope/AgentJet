@@ -20,7 +20,7 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
 from astuner.schema.logprob import TokenAndProb
 from astuner.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
 from astuner.utils.tokenizer import astune_apply_chat_template
-from astuner.utils.utils import run_async_coro__no_matter_what
+from astuner.utils.utils import run_async_coroutine_with_timeout
 
 
 class AsyncLlmBridge(object):
@@ -66,7 +66,7 @@ class AsyncLlmBridge(object):
             if self.config.astuner.execute_test:
                 _test_if_test_mode("prompt_text", prompt_text, self.config)
 
-            final_res = run_async_coro__no_matter_what(
+            final_res = run_async_coroutine_with_timeout(
                 self.async_rollout_manager.generate(
                     request_id=request_id,
                     prompt_ids=prompt_ids,
@@ -194,7 +194,7 @@ class AsyncLlmBridge(object):
                     )
                 return response
 
-            response = run_async_coro__no_matter_what(main(), timeout=1800)  # type: ignore
+            response = run_async_coroutine_with_timeout(main(), timeout=1800)  # type: ignore
             prompt_text = self.tokenizer.decode(response.model_extra["prompt_token_ids"])
             prompt_token_ids = response.model_extra["prompt_token_ids"]
             content = response.choices[0].message.content

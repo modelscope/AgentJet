@@ -3,7 +3,7 @@ from typing import Any, Callable, Union
 from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.task_judge.base_judge import JudgeBase
 from astuner.utils.dynamic_import import dynamic_import
-from astuner.utils.utils import run_async_coro__no_matter_what
+from astuner.utils.utils import run_async_coroutine_with_timeout
 
 
 class BaseAgentRunner(object):
@@ -29,7 +29,7 @@ class BaseAgentRunner(object):
             from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
 
             judge = RMAutoGraderJudge(self.config)
-            run_async_coro__no_matter_what(judge.load_rubrics_from_cache())
+            run_async_coroutine_with_timeout(judge.load_rubrics_from_cache())
             return judge
 
     def runner_hooks(self, observation_window, task_thread_index, workflow_task):
