@@ -3,10 +3,10 @@ from typing import List
 import datasets
 
 from astuner.schema.task import Task
-from astuner.task_reader.task_reader_base import TaskReaderBase
+from astuner.task_reader.task_reader_base import BaseTaskReader
 
 
-class TaskReaderHuggingFace(TaskReaderBase):
+class HuggingFaceTaskReader(BaseTaskReader):
     """
     Task reader that reads tasks from Hugging Face datasets.
 

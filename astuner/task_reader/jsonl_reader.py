@@ -2,10 +2,10 @@ import json
 from typing import List
 
 from astuner.schema.task import Task
-from astuner.task_reader.task_reader_base import TaskReaderBase
+from astuner.task_reader.task_reader_base import BaseTaskReader
 
 
-class JsonlTaskReader(TaskReaderBase):
+class JsonlTaskReader(BaseTaskReader):
     def __init__(self, reader_config):
         super().__init__(reader_config)
         self.reader_config = reader_config

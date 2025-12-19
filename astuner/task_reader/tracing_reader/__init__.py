@@ -9,7 +9,7 @@ from astuner.data_generator.filters.base import Filter
 from astuner.data_generator.filters.factory import build_filters
 from astuner.schema.task import Task
 
-from ..task_reader_base import TaskReaderBase
+from ..task_reader_base import BaseTaskReader
 
 
 class Config(TypedDict):
@@ -18,7 +18,7 @@ class Config(TypedDict):
     filters: List[Mapping[str, Any]]
 
 
-class TracingReader(TaskReaderBase):
+class TracingReader(BaseTaskReader):
     def __init__(
         self,
         reader_config,
