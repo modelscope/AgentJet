@@ -22,7 +22,7 @@ class ResourceKeeper(object):
         self.task_id: str = self.workflow_task.task_id
         self.tokenizer = self.workflow_task.tokenizer
         self.llm_inference_fn = self.workflow_task.llm_inference_fn
-        self.obs_window = self.workflow_task.obs_window
+        self.observation_window = self.workflow_task.observation_window
         if self.config.astuner.task_reader.type == "env_service":
             url = self.config.astuner.task_reader.env_service.env_url
             env_type = self.config.astuner.task_reader.env_service.env_type
@@ -56,7 +56,7 @@ class ResourceKeeper(object):
             self.env,
             self.workflow_task.task_env_uuid,
             self.workflow_task.task_thread_index,
-            self.workflow_task.obs_window,
+            self.workflow_task.observation_window,
         )
 
         return self.workflow_task
@@ -127,9 +127,9 @@ class ResourceKeeper(object):
         return query, init_messages
 
     def generate_gym_env(
-        self, env_client: Any, task_env_uuid: str, task_thread_index: int, obs_window: Dict
+        self, env_client: Any, task_env_uuid: str, task_thread_index: int, observation_window: Dict
     ) -> "BaseGymEnv":
-        return BaseGymEnv(env_client, task_env_uuid, task_thread_index, obs_window)
+        return BaseGymEnv(env_client, task_env_uuid, task_thread_index, observation_window)
 
 
 class BaseGymEnv(object):
@@ -138,11 +138,11 @@ class BaseGymEnv(object):
     """
 
     def __init__(
-        self, env_client: EnvClientNg, task_env_uuid: str, task_thread_index: int, obs_window: Dict
+        self, env_client: EnvClientNg, task_env_uuid: str, task_thread_index: int, observation_window: Dict
     ):
         self.env_client = env_client
         self.task_thread_index = task_thread_index
-        self.obs_window = obs_window
+        self.observation_window = observation_window
         self.task_env_uuid = task_env_uuid
 
     def step(self, action: dict) -> Tuple[str, float, bool, dict]:
@@ -161,7 +161,7 @@ class BaseGymEnv(object):
                 )
                 action["content"] = str(action["content"])
 
-        self.obs_window["step"][self.task_thread_index] += 1
+        self.observation_window["step"][self.task_thread_index] += 1
         env_output = self.env_client.step(
             instance_id=self.task_env_uuid,
             action=action,

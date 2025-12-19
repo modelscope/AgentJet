@@ -83,7 +83,7 @@ class TrinityRolloutManager(DynamicRolloutManager):
         return Task(**d)
 
     def thread_worker(self):
-        obs_window = {
+        observation_window = {
             "stop": [False],
             "step": [0],
             "token": [0],
@@ -95,7 +95,7 @@ class TrinityRolloutManager(DynamicRolloutManager):
             task_tag=f"T{astune_task.task_id}#R",
             mode="sample" if not self.is_eval else "validate",
             task_thread_index=0,
-            obs_window=obs_window,
+            observation_window=observation_window,
         )
 
     async def run_in_new_thread(self) -> MultiAgentContextTracker:

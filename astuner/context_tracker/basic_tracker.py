@@ -14,7 +14,7 @@ from astuner.utils.compute_madness import compute_string_madness
 from astuner.utils.tokenizer import astune_apply_chat_template
 
 
-class BasicContextTracker(BaseTracker):
+class BaseContextTracker(BaseTracker):
     """
     A linear context tracker template that handles the conversation flow between LLM and environment.
     This class manages the context window, tokenization, and message history in a linear fashion.
@@ -267,7 +267,7 @@ class BasicContextTracker(BaseTracker):
         return final_token_arr, token_logprob_arr, loss_mask, lack_normal_eos
 
     def save_llm_output_do_not_register_full_context(self, llm_output, input_msg_ref):
-        return BasicContextTracker.save_llm_output(
+        return BaseContextTracker.save_llm_output(
             self, llm_output, input_msg_ref, auto_register_full_context=False
         )
 

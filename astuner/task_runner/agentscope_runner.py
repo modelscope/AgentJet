@@ -4,7 +4,7 @@ from astuner import ModelTuner, Workflow, WorkflowOutput
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
-from astuner.context_tracker.basic_tracker import BasicContextTracker
+from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import WorkflowTask
 from astuner.schema.trajectory import Reward
 from astuner.task_runner import BaseAgentRunner
@@ -12,8 +12,8 @@ from astuner.utils.dynamic_import import dynamic_import
 
 
 class AgentScopeRunner(BaseAgentRunner):
-    def execute(self, workflow_task: WorkflowTask) -> BasicContextTracker:
-        obs_window = workflow_task.obs_window
+    def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
+        observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
         task_batch_index = workflow_task.task_batch_index
         task_tag = workflow_task.task_tag
@@ -24,7 +24,7 @@ class AgentScopeRunner(BaseAgentRunner):
         agentscope_workflow: Workflow = workflow_cls(name="astuner-trinity")
 
         hooks = self.runner_hooks(
-            obs_window=obs_window,
+            observation_window=observation_window,
             task_thread_index=task_thread_index,
             workflow_task=workflow_task,
         )

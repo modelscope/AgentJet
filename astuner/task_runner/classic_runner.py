@@ -1,7 +1,7 @@
 from beast_logger import print_listofdict
 from loguru import logger
 
-from astuner.context_tracker.basic_tracker import BasicContextTracker
+from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.trajectory import Reward
 from astuner.task_runner import BaseAgentRunner
 from astuner.utils.utils import convert_tool_to_user_message
@@ -11,15 +11,15 @@ class AgentRunner(BaseAgentRunner):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def execute(self, workflow_task) -> BasicContextTracker:
-        obs_window = workflow_task.obs_window
+    def execute(self, workflow_task) -> BaseContextTracker:
+        observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
         init_messages = workflow_task.init_messages
         env = workflow_task.gym_env
 
         # 1. 🚀 Initialize messages
         if self.config.astuner.context_tracker.context_tracker_type == "linear":
-            self.tracker = BasicContextTracker(self.config, self.tokenizer)
+            self.tracker = BaseContextTracker(self.config, self.tokenizer)
         else:
             raise ValueError(
                 f"Unsupported context template: {self.config.astuner.context_tracker.context_tracker_type}"
@@ -31,10 +31,10 @@ class AgentRunner(BaseAgentRunner):
         request_id: str = ""
         for act_step in range(self.max_steps):
             # 2. 🔄 Update thread progress
-            obs_window["step"][task_thread_index] = act_step
-            if (obs_window["stop"] is not None) and obs_window["stop"][
+            observation_window["step"][task_thread_index] = act_step
+            if (observation_window["stop"] is not None) and observation_window["stop"][
                 task_thread_index
-            ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
+            ]:  # Check if the thread should observation_window['stop'] (because other threads have completed, making this thread useless)
                 self.tracker.discarded = True
                 break
 
@@ -62,15 +62,15 @@ class AgentRunner(BaseAgentRunner):
 
             # 5. 🤖 call llm
             llm_output = self.llm_inference_fn(step_input_message_arr, request_id=request_id)
-            if (obs_window["stop"] is not None) and obs_window["stop"][
+            if (observation_window["stop"] is not None) and observation_window["stop"][
                 task_thread_index
-            ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
+            ]:  # Check if the thread should observation_window['stop'] (because other threads have completed, making this thread useless)
                 self.tracker.discarded = True
                 break
 
             # 6. 💾 save llm output
             self.tracker.save_llm_output(llm_output, input_msg_ref=step_input_message_arr)
-            obs_window["token"][task_thread_index] += self.tracker.generated_token_cnt
+            observation_window["token"][task_thread_index] += self.tracker.generated_token_cnt
 
             # 7. 🌍 world interaction
             try:
@@ -107,7 +107,7 @@ class AgentRunner(BaseAgentRunner):
             if self.tracker.is_terminated:
                 break
 
-        obs_window["step"][task_thread_index] = -1
+        observation_window["step"][task_thread_index] = -1
         raw_reward = 0
         raw_reward = env.evaluate(workflow_task.task_env_uuid, params={"sparse": False})
         if raw_reward >= 1:

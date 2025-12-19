@@ -7,7 +7,7 @@ from loguru import logger
 from omegaconf import DictConfig
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from astuner.context_tracker.basic_tracker import BasicContextTracker
+from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import Task, WorkflowTask
 from astuner.task_rollout.async_llm_bridge import AsyncLlmBridge
 from astuner.task_rollout.resource_keeper import ResourceKeeper
@@ -75,9 +75,9 @@ class BaseRolloutManager:
         task_tag: str,
         mode: Literal["sample", "validate"],
         task_thread_index: int,
-        obs_window: dict,
+        observation_window: dict,
         **kwargs,
-    ) -> BasicContextTracker:
+    ) -> BaseContextTracker:
         """Execute one environment rollout worker.
 
         Handles environment initialization, LLM sampling parameter construction
@@ -93,7 +93,7 @@ class BaseRolloutManager:
             task_batch_index=task_batch_index,
             task_env_uuid=uuid.uuid4().hex,
             task_tag=task_tag,
-            obs_window=obs_window,
+            observation_window=observation_window,
             llm_inference_fn=llm_inference_fn,
             tokenizer=self.tokenizer,
             task=task,

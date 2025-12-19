@@ -1,6 +1,6 @@
 from typing import Any, Callable, Union
 
-from astuner.context_tracker.basic_tracker import BasicContextTracker
+from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.task_judge.base_judge import JudgeBase
 from astuner.utils.dynamic_import import dynamic_import
 from astuner.utils.utils import run_async_coro__no_matter_what
@@ -11,7 +11,7 @@ class BaseAgentRunner(object):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
-        self.tracker: Union[BasicContextTracker, Any, None] = None
+        self.tracker: Union[BaseContextTracker, Any, None] = None
         self.alien_llm_chat_fn: Union[Callable, None] = None
         self.llm_inference_fn: Callable = llm_inference_fn
         self.config = config
@@ -32,16 +32,16 @@ class BaseAgentRunner(object):
             run_async_coro__no_matter_what(judge.load_rubrics_from_cache())
             return judge
 
-    def runner_hooks(self, obs_window, task_thread_index, workflow_task):
+    def runner_hooks(self, observation_window, task_thread_index, workflow_task):
         def should_interrupt_fn() -> bool:
-            if (obs_window["stop"] is not None) and obs_window["stop"][
+            if (observation_window["stop"] is not None) and observation_window["stop"][
                 task_thread_index
             ]:  # Check if the thread should stop (because other threads have completed, making this thread useless)
                 return True
             return False
 
         def generated_token_callback_fn(token_array):
-            obs_window["token"][task_thread_index] += len(token_array)
+            observation_window["token"][task_thread_index] += len(token_array)
 
         return {
             "should_interrupt_fn": should_interrupt_fn,
