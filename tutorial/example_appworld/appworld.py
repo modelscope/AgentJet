@@ -7,7 +7,7 @@ from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 class ExampleAgentScopeLearnProtocol(Workflow):
     trainer: str = Field(default="astuner-trinity")
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent

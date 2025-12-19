@@ -50,7 +50,7 @@ Please show your thinking process and put the final action in ``` ```. In every 
 
 
 class FrozenLakeWorkflow(Workflow):
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         config = model_tuner.config

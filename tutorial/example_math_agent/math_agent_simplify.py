@@ -36,7 +36,7 @@ You should return your final answer within \\boxed{{}}.
 class MathToolWorkflow(Workflow):
     name: str = "math_agent_workflow"
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent

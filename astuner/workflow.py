@@ -11,7 +11,7 @@ class Workflow(BaseModel):
     name: str = Field(default="default_workflow", description="Name of the workflow.")
     trainable_targets: List[str] = Field(default=[], description="List of agents to be fine-tuned.")
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         """Run the workflow on a given task."""
@@ -56,7 +56,7 @@ How to define a trainable workflow 🚀:
 
         [+] class ExampleMathLearn(Workflow):
         [+]    name: str = "math_agent_workflow"
-        [+]    async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+        [+]    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         [ ]       from agentscope.agent import ReActAgent
         [ ]       from agentscope.formatter import DashScopeChatFormatter
         [ ]       from agentscope.memory import InMemoryMemory

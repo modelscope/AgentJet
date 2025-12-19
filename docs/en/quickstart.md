@@ -178,7 +178,7 @@ def extract_final_answer(result) -> str:
 class MathAgentWorkflow(Workflow):
     name: str = "math_agent_workflow"
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
@@ -209,7 +209,7 @@ class MathAgentWorkflow(Workflow):
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
  ```
 
-In this code, we wrap the agent into a workflow and implement the `agentscope_execute` function:
+In this code, we wrap the agent into a workflow and implement the `execute` function:
 
 1. Read the input from `WorkflowTask`
 2. Construct the agent in the same way as before, but **set `model` to `model_tuner`** — this is the key to making the agent trainable
