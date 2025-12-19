@@ -1,19 +1,27 @@
 """
-Example: Using RM Auto Grader Judge with astuner
+Example: Using RM Iterative Rubric Judge with astuner
 
-This example demonstrates how to use the RM Gallery AutoGrader integration
+This example demonstrates how to use the RM Gallery IterativeRubricsGenerator integration
 for data-driven evaluation of workflow outputs.
 
-The example shows two approaches:
-1. Pre-generating rubrics from reference samples
-2. Online rubric generation during training (batch mode)
+The IterativeRubricsGenerator uses an iterative Propose-Evaluate-Revise loop to
+generate high-quality evaluation rubrics from reference samples.
+
+This example shows:
+1. Pointwise evaluation mode (scoring individual outputs)
+2. Listwise evaluation mode (ranking multiple outputs)
 """
 
 import asyncio
 from typing import List
 
+from rm_gallery.core.generator.iterative_rubric.query_rubric_generator import (
+    LISTWISE_EVALUATION_TEMPLATE,
+    POINTWISE_EVALUATION_TEMPLATE,
+)
+
 from astuner.schema.task import Task
-from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+from astuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 # ============================================
@@ -23,82 +31,75 @@ from astuner.workflow import WorkflowOutput, WorkflowTask
 
 async def example_pregerated_rubrics():
     """
-    Example of using RMAutoGraderJudge with pre-generated rubrics.
+    Example of using RMAutoGraderJudge with iteratively-generated rubrics (Pointwise mode).
 
-    This approach is suitable when you have a separate set of reference samples
-    and want to generate rubrics once before training begins.
+    This approach uses the IterativeRubricsGenerator to automatically create
+    evaluation rubrics from reference samples using a Propose-Evaluate-Revise loop.
     """
-    print("=" * 60)
-    print("Example 1: Pre-generated Rubrics Approach")
-    print("=" * 60)
+    print("\n\nExample 1: Pointwise Evaluation with Iterative Rubrics")
 
     # Mock config object
     class MockConfig:
         class Astuner:
             class TaskJudge:
-                # Model configuration
-                model_name = "qwen3-32b"
+                class RubricsAutoGrader:
+                    # Model configuration
+                    model_name = "qwen3-32b"
 
-                # Grader configuration
-                grader_mode = "pointwise"
-                language = "en"
-                min_score = 0
-                max_score = 1
-                success_threshold = 0.7
+                    # Grader configuration
+                    grader_mode = "pointwise"
+                    language = "en"
+                    min_score = 0
+                    max_score = 1
 
-                # Rubric generation configuration
-                sampling_mode = "all_samples"
-                generate_number = 1
-                max_epochs = 2
-                max_retries = 3
-                aggregation_mode = "keep_all"
+                    # Evaluation prompt template
+                    custom_evaluation_prompt = POINTWISE_EVALUATION_TEMPLATE
 
-                # Field mappings
-                query_field = "main_query"
-                answer_field = "final_answer"
-                reference_field = "answer"
+                    # Advanced configuration (optional)
+                    query_specific_generate_number = 1
+                    max_epochs = 2
+                    max_retries = 3
+                    enable_categorization = False
 
-                grader_name = "Math Auto Grader"
+                    # Field mappings
+                    query_field = "main_query"
+                    answer_field = "final_answer"
+                    reference_field = "answer"
+
+                    grader_name = "Math Iterative Rubric Grader"
+
+                rubrics_auto_grader = RubricsAutoGrader()
 
             task_judge = TaskJudge()
+            experiment_dir = "/tmp/rm_grader_example"
 
         astuner = Astuner()
 
     config = MockConfig()
 
     # Step 1: Create reference samples for rubric generation
-    print("\nStep 1: Creating reference samples...")
     reference_samples = create_math_reference_samples(num_samples=10)
-    print(f"Created {len(reference_samples)} reference samples")
 
     # Step 2: Initialize judge
-    print("\nStep 2: Initializing RMAutoGraderJudge...")
-    judge = RMAutoGraderJudge(config)
+    judge = AutoGraderJudge(config)
 
-    # Step 3: Generate rubrics from reference samples
-    print("\nStep 3: Generating rubrics from reference samples...")
-    print("(This may take a few minutes depending on the number of samples)")
+    # Step 3: Generate rubrics from reference samples using iterative refinement
     await judge.generate_rubrics_from_samples(reference_samples)
-    print("✓ Rubrics generated successfully!")
-    print(f"\nGenerated rubrics:\n{judge.llm_grader.rubrics}\n")
 
     # Step 4: Evaluate new samples using generated rubrics
-    print("\nStep 4: Evaluating new samples...")
     test_samples = create_math_test_samples(num_samples=5)
 
-    for i, (task, output) in enumerate(test_samples, 1):
+    for i, (workflow_task, output) in enumerate(test_samples, 1):
         print(f"\n--- Test Sample {i} ---")
-        print(f"Query: {task.task.main_query}")
+        print(f"Query: {workflow_task.task.main_query}")
         print(f"Answer: {output.metadata['final_answer']}")
-        print(f"Reference: {task.task.metadata['answer']}")
+        print(f"Reference: {workflow_task.task.metadata['answer']}")
 
         # Use async method directly since we're in async context
-        reward = await judge._async_compute_reward(task, output)
+        reward = await judge._async_compute_reward(workflow_task.task, output)
         print(f"Result: {reward}")
 
-    print("\n" + "=" * 60)
     print("Example 1 completed!")
-    print("=" * 60)
 
 
 # ============================================
@@ -108,7 +109,7 @@ async def example_pregerated_rubrics():
 
 async def example_listwise_mode():
     """
-    Example of using RMAutoGraderJudge in Listwise mode.
+    Example of using RMAutoGraderJudge in Listwise mode with iterative rubrics.
 
     Listwise mode ranks multiple candidate answers for the same query.
     This is useful for:
@@ -116,79 +117,77 @@ async def example_listwise_mode():
     - Ranking candidate responses by quality
     - Batch evaluation of similar tasks
     """
-    print("\n\n" + "=" * 60)
-    print("Example 2: Listwise Mode with Multiple Outputs")
-    print("=" * 60)
+    print("\n\nExample 2: Listwise Ranking with Iterative Rubrics")
 
     # Mock config object
     class MockConfig:
         class Astuner:
             class TaskJudge:
-                # Model configuration
-                model_name = "qwen3-32b"
+                class RubricsAutoGrader:
+                    # Model configuration
+                    model_name = "qwen3-32b"
 
-                # Grader configuration - LISTWISE mode
-                grader_mode = "listwise"  # Key difference!
-                language = "en"
-                min_score = 0
-                max_score = 1
-                success_threshold = 0.7
+                    # Grader configuration - LISTWISE mode
+                    grader_mode = "listwise"  # Key difference!
+                    language = "en"
+                    # Note: min_score/max_score not needed for listwise mode
 
-                # Rubric generation configuration
-                sampling_mode = "all_samples"
-                generate_number = 2
-                max_epochs = 2
-                max_retries = 3
-                aggregation_mode = "keep_all"
+                    # Evaluation prompt template
+                    custom_evaluation_prompt = LISTWISE_EVALUATION_TEMPLATE
 
-                # Field mappings
-                query_field = "main_query"
-                answer_field = "final_answer"
-                reference_field = "answer"
+                    # Advanced configuration (optional)
+                    query_specific_generate_number = 2
+                    max_epochs = 2
+                    max_retries = 3
+                    enable_categorization = False
 
-                grader_name = "Math Listwise Grader"
+                    # Field mappings
+                    query_field = "main_query"
+                    answer_field = "final_answer"
+                    reference_field = "answer"
+
+                    grader_name = "Math Listwise Iterative Grader"
+
+                rubrics_auto_grader = RubricsAutoGrader()
 
             task_judge = TaskJudge()
+            experiment_dir = "/tmp/rm_grader_example_listwise"
 
         astuner = Astuner()
 
     config = MockConfig()
 
     # Step 1: Create reference samples with multiple outputs per query
-    print("\nStep 1: Creating reference samples with multiple outputs...")
     reference_samples = create_listwise_reference_samples(num_samples=5)
-    print(f"Created {len(reference_samples)} reference samples")
-    print("Each sample contains multiple candidate answers with rankings")
 
     # Step 2: Initialize judge
-    print("\nStep 2: Initializing RMAutoGraderJudge in Listwise mode...")
-    judge = RMAutoGraderJudge(config)
+    judge = AutoGraderJudge(config)
 
-    # Step 3: Generate rubrics from reference samples
-    print("\nStep 3: Generating rubrics from reference samples...")
-    print("(Listwise mode learns to rank multiple outputs)")
+    # Step 3: Generate ranking rubrics using iterative refinement
     await judge.generate_rubrics_from_samples(reference_samples)
-    print("✓ Rubrics generated successfully!")
-    print(f"\nGenerated rubrics:\n{judge.llm_grader.rubrics}\n")
 
     # Step 4: Evaluate multiple candidate answers for new queries
-    print("\nStep 4: Evaluating multiple candidates for each query...")
     test_queries = create_listwise_test_samples(num_queries=3)
 
-    for i, (query_task, candidate_outputs) in enumerate(test_queries, 1):
+    for i, (workflow_task, candidate_outputs) in enumerate(test_queries, 1):
         print(f"\n{'='*50}")
-        print(f"Query {i}: {query_task.task.main_query}")
+        print(f"Query {i}: {workflow_task.task.main_query}")
         print(f"{'='*50}")
         print(f"Evaluating {len(candidate_outputs)} candidates...")
 
         # Evaluate all candidates together (pass list for listwise mode)
-        results_batch = await judge._async_compute_reward(query_task, candidate_outputs)
+        grader_rank_result = await judge._async_compute_reward(
+            workflow_task.task, candidate_outputs
+        )
 
-        if results_batch and len(results_batch) > 0 and len(results_batch[0]) > 0:
-            # Extract ranks for each candidate (score field contains rank in listwise mode)
+        if grader_rank_result and hasattr(grader_rank_result, "rank"):
+            ranks = grader_rank_result.rank
+            reason = grader_rank_result.reason
+
+            print(f"\nGrader reasoning: {reason}")
+
             results = []
-            for j, (output, grader_score) in enumerate(zip(candidate_outputs, results_batch[0]), 1):
-                rank = grader_score.score if hasattr(grader_score, "score") else j
+            for j, (output, rank) in enumerate(zip(candidate_outputs, ranks), 1):
                 results.append((j, output.metadata["final_answer"], rank))
 
             # Sort by rank (ascending, rank 1 is best)
@@ -201,7 +200,7 @@ async def example_listwise_mode():
             print("No results returned from evaluation")
 
     print("\n" + "=" * 60)
-    print("Example 3 completed!")
+    print("Example 2 completed!")
     print("=" * 60)
 
 
@@ -210,7 +209,7 @@ async def example_listwise_mode():
 # ============================================
 
 
-def create_math_reference_samples(num_samples: int = 10) -> List[WorkflowTask]:
+def create_math_reference_samples(num_samples: int = 10) -> List[Task]:
     """
     Create reference math problem samples for Pointwise rubric generation.
 
@@ -242,17 +241,12 @@ def create_math_reference_samples(num_samples: int = 10) -> List[WorkflowTask]:
             metadata={"answer": answer, "score": score},  # Pointwise label
         )
 
-        workflow_task = WorkflowTask(
-            task_id=f"ref_sample_{i}",
-            task=task,
-        )
-
-        samples.append(workflow_task)
+        samples.append(task)
 
     return samples
 
 
-def create_listwise_reference_samples(num_samples: int = 5) -> List[WorkflowTask]:
+def create_listwise_reference_samples(num_samples: int = 5) -> List[Task]:
     """
     Create reference samples for Listwise mode rubric generation.
 
@@ -321,12 +315,7 @@ def create_listwise_reference_samples(num_samples: int = 5) -> List[WorkflowTask
             metadata={"candidates": [{"answer": ans, "rank": rank} for ans, rank in candidates]},
         )
 
-        workflow_task = WorkflowTask(
-            task_id=f"listwise_ref_{i}",
-            task=task,
-        )
-
-        samples.append(workflow_task)
+        samples.append(task)
 
     return samples
 
@@ -449,20 +438,11 @@ def create_math_test_samples(num_samples: int = 5) -> List[tuple[WorkflowTask, W
 
 async def main():
     """Run all examples."""
-    print("\n")
-    print("╔" + "═" * 58 + "╗")
-    print("║" + " " * 10 + "RM Auto Grader Judge Examples" + " " * 18 + "║")
-    print("╚" + "═" * 58 + "╝")
 
     # Run examples
     try:
         await example_pregerated_rubrics()
-        # await example_batch_rubrics()
         await example_listwise_mode()
-
-        print("\n\n" + "═" * 60)
-        print("All examples completed successfully!")
-        print("═" * 60)
 
     except Exception as e:
         print(f"\n✗ Error running examples: {e}")

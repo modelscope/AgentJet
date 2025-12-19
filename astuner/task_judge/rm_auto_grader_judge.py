@@ -1,13 +1,15 @@
 """
-RM Gallery Auto Grader Judge Integration
+RM Gallery Iterative Rubric Judge Integration
 
-This module integrates RM Gallery's AutoGrader capabilities into astuner's judge system.
+This module integrates RM Gallery's IterativeRubricsGenerator capabilities into astuner's judge system.
 It provides a data-driven approach to evaluate workflow outputs using automatically
 generated rubrics from training samples.
 
 Key Features:
-- Automatic rubric generation from training/validation samples
+- Automatic rubric generation from training/validation samples using iterative Propose-Evaluate-Revise loop
 - Support for both pointwise and listwise evaluation modes
+- MCR²-based smart sampling for large datasets
+- Optional LLM-based categorization to organize rubrics
 - Flexible scoring based on LLM-generated rubrics
 - Seamless integration with astuner's workflow system
 """
@@ -19,31 +21,31 @@ from typing import List, Optional
 
 from beast_logger import print_dict
 from loguru import logger
-from rm_gallery.core.grader.auto.auto_grader import AutoGrader, AutoGraderConfig
-from rm_gallery.core.grader.auto.auto_rubrics import (
-    AggregationMode,
-    AutoRubricsConfig,
-    SamplingMode,
+from rm_gallery.core.generator.iterative_rubric.generator import (
+    IterativeListwiseRubricsGeneratorConfig,
+    IterativePointwiseRubricsGeneratorConfig,
+    IterativeRubricsGenerator,
 )
-from rm_gallery.core.grader.base import GraderMode, LLMGrader, aevaluate_with_cases
-from rm_gallery.core.model.openai_llm import OpenAIChatModel
-from rm_gallery.core.schema.data import EvalCase
-from rm_gallery.core.schema.template import LanguageEnum
+from rm_gallery.core.graders.llm_grader import LLMGrader
+from rm_gallery.core.graders.schema import GraderMode
+from rm_gallery.core.models.dashscope_chat_model import DashScopeChatModel
+from rm_gallery.core.models.schema.prompt_template import LanguageEnum
 
 from astuner.schema.task import Task, WorkflowOutput
 from astuner.task_judge.base_judge import JudgeBase
 
 
-class RMAutoGraderJudge(JudgeBase):
+class AutoGraderJudge(JudgeBase):
     """
-    A data-driven judge that uses RM Gallery's AutoGrader to evaluate workflow outputs.
+    A data-driven judge that uses RM Gallery's IterativeRubricsGenerator to evaluate workflow outputs.
 
     This judge automatically generates evaluation rubrics from a set of reference samples
-    and then uses those rubrics to score new workflow outputs.
+    and then uses those rubrics to score new workflow outputs. It uses an iterative
+    Propose-Evaluate-Revise loop to ensure high-quality rubrics.
 
     Workflow:
     1. Initialize with configuration and reference samples
-    2. Generate rubrics from reference samples (one-time setup)
+    2. Generate rubrics from reference samples using iterative refinement (one-time setup)
     3. Evaluate each workflow output against the generated rubrics
 
     Example Config (in YAML):
@@ -56,23 +58,26 @@ class RMAutoGraderJudge(JudgeBase):
           # Rubric Generation Configuration
           grader_mode: "pointwise"  # or "listwise"
           language: "en"  # or "zh"
-          min_score: 0
-          max_score: 10
 
-          # AutoRubrics Configuration
-          sampling_mode: "all_samples"  # or "smart_sampling"
-          generate_number: 3  # number of rubrics per sample
-          max_epochs: 3  # max iterations for refinement
-          aggregation_mode: "keep_all"  # or "merge_similar"
+          # Advanced Configuration (optional, uses sensible defaults)
+          query_specific_generate_number: 1  # number of rubrics per sample (default: 1)
+          enable_categorization: false  # use LLM-based categorization (default: false)
+          categories_number: 5  # number of categories when categorization enabled (default: 5)
 
           # Reference samples for rubric generation
-          reference_samples_path: "path/to/reference_samples.jsonl"  # optional
-          num_reference_samples: 20  # number of samples to use for rubric generation
+          input_data_type: "dataset_file"  # or other supported types
+          dataset_file:
+            training:
+              file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
 
-          # Custom field mapping (optional)
+          # Custom field mapping (optional, uses defaults if not specified)
           query_field: "main_query"  # field in task containing query
           answer_field: "final_answer"  # field in metadata containing answer
           reference_field: "answer"  # field in task.metadata containing reference
+
+          # Pointwise mode settings (only for pointwise mode)
+          min_score: 0  # minimum score
+          max_score: 10  # maximum score
     """
 
     def __init__(self, config):
@@ -84,14 +89,24 @@ class RMAutoGraderJudge(JudgeBase):
         super().__init__(config)
 
         self.config = config
-        self.grader_config = self._parse_config()
 
-        # Initialize the model
-        self.model = OpenAIChatModel(
+        # Initialize the model FIRST
+        # Get API key from config or environment
+        import os
+
+        api_key = getattr(
+            config.astuner.task_judge.rubrics_auto_grader, "api_key", None
+        ) or os.getenv("DASHSCOPE_API_KEY")
+
+        self.model = DashScopeChatModel(
             model=config.astuner.task_judge.rubrics_auto_grader.model_name,
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            api_key=api_key,
             stream=False,
+            enable_thinking=False,
         )
+
+        # Parse config (needs self.model to be initialized)
+        self.generator_config = self._parse_config()
 
         # Storage for generated grader
         self.llm_grader: Optional[LLMGrader] = None
@@ -109,12 +124,14 @@ class RMAutoGraderJudge(JudgeBase):
         )
 
         logger.info(
-            f"RMAutoGraderJudge initialized with mode={self.grader_config.method_config.grader_mode.value}, "
-            f"language={self.grader_config.method_config.language.value}"
+            f"RMAutoGraderJudge initialized with mode={self.generator_config.grader_mode.value}, "
+            f"language={self.generator_config.language.value}"
         )
 
-    def _parse_config(self) -> AutoGraderConfig:
-        """Parse astuner config into AutoGraderConfig."""
+    def _parse_config(
+        self,
+    ) -> IterativePointwiseRubricsGeneratorConfig | IterativeListwiseRubricsGeneratorConfig:
+        """Parse astuner config into IterativeRubricsGeneratorConfig."""
         judge_config = self.config.astuner.task_judge.rubrics_auto_grader
 
         # Parse grader mode
@@ -127,45 +144,36 @@ class RMAutoGraderJudge(JudgeBase):
         language_str = getattr(judge_config, "language", "en").upper()
         language = LanguageEnum.ZH if language_str == "ZH" else LanguageEnum.EN
 
-        # Parse sampling mode
-        sampling_mode_str = getattr(judge_config, "sampling_mode", "all_samples")
-        sampling_mode = (
-            SamplingMode.ALL_SAMPLES
-            if sampling_mode_str == "all_samples"
-            else SamplingMode.SMART_SAMPLING
-        )
+        # Common configuration parameters
+        common_config = {
+            "model": self.model,
+            "grader_name": getattr(judge_config, "grader_name", "RM Iterative Rubric Grader"),
+            "language": language,
+            "enable_categorization": getattr(judge_config, "enable_categorization", False),
+            "query_specific_generate_number": getattr(
+                judge_config, "query_specific_generate_number", 1
+            ),
+            "categories_number": getattr(judge_config, "categories_number", 5),
+            "max_retries": getattr(judge_config, "max_retries", 5),
+            "max_epochs": getattr(judge_config, "max_epochs", 3),
+            "batch_size": getattr(judge_config, "batch_size", 10),
+            "mcr_batch_size": getattr(judge_config, "mcr_batch_size", 10),
+            "min_increment_threshold": getattr(judge_config, "min_increment_threshold", 0.002),
+            "patience": getattr(judge_config, "patience", 2),
+            "max_iterations": getattr(judge_config, "max_iterations", 50),
+            "max_total_rubrics": getattr(judge_config, "max_total_rubrics", 200),
+            "custom_evaluation_prompt": getattr(judge_config, "custom_evaluation_prompt", None),
+        }
 
-        # Parse aggregation mode
-        aggregation_mode_str = getattr(judge_config, "aggregation_mode", "keep_all")
-        aggregation_mode = (
-            AggregationMode.KEEP_ALL
-            if aggregation_mode_str == "keep_all"
-            else AggregationMode.MERGE_SIMILAR
-        )
-
-        # Create AutoRubricsConfig
-        rubrics_config = AutoRubricsConfig(
-            sampling_mode=sampling_mode,
-            grader_mode=grader_mode,
-            language=language,
-            generate_number=getattr(judge_config, "generate_number", 3),
-            max_retries=getattr(judge_config, "max_retries", 5),
-            max_epochs=getattr(judge_config, "max_epochs", 3),
-            min_score=getattr(judge_config, "min_score", 0),
-            max_score=getattr(judge_config, "max_score", 10),
-            batch_size=getattr(judge_config, "batch_size", 10),
-            mcr_batch_size=getattr(judge_config, "mcr_batch_size", 10),
-            aggregation_mode=aggregation_mode,
-        )
-
-        # Create AutoGraderConfig
-        auto_grader_config = AutoGraderConfig(
-            method="auto_rubrics",
-            method_config=rubrics_config,
-            grader_name=getattr(judge_config, "grader_name", "RM Auto Grader"),
-        )
-
-        return auto_grader_config
+        # Create mode-specific config
+        if grader_mode == GraderMode.POINTWISE:
+            return IterativePointwiseRubricsGeneratorConfig(
+                **common_config,
+                min_score=getattr(judge_config, "min_score", 0),
+                max_score=getattr(judge_config, "max_score", 10),
+            )
+        else:
+            return IterativeListwiseRubricsGeneratorConfig(**common_config)
 
     async def read_reference_samples_from_dataset(self) -> List[Task]:
         # read dataset from config
@@ -179,7 +187,7 @@ class RMAutoGraderJudge(JudgeBase):
 
     async def generate_rubrics_from_samples(self, reference_samples: List[Task] = []) -> None:
         """
-        Generate evaluation rubrics from reference samples.
+        Generate evaluation rubrics from reference samples using iterative refinement.
 
         This method should be called once during initialization with a set of
         reference tasks that represent the types of problems to be evaluated.
@@ -193,30 +201,25 @@ class RMAutoGraderJudge(JudgeBase):
 
         logger.info(f"Generating rubrics from {len(reference_samples)} reference samples...")
 
-        # Convert Task samples to EvalCase format for rubric generation
-        # Use reference answers as example "good" outputs
-        eval_cases = []
+        # Convert Task samples to the format expected by IterativeRubricsGenerator
+        training_dataset = []
         for sample in reference_samples:
-            eval_case = self._task_to_eval_case(
-                sample, workflow_output=None, for_rubric_generation=True
-            )
-            if eval_case:
-                eval_cases.append(eval_case)
+            data_item = self._task_to_training_data(sample)
+            if data_item:
+                training_dataset.append(data_item)
 
-        if not eval_cases:
-            raise ValueError("No valid eval cases could be created from reference samples")
+        if not training_dataset:
+            raise ValueError("No valid training data could be created from reference samples")
 
-        logger.info(f"Created {len(eval_cases)} eval cases for rubric generation")
+        logger.info(f"Created {len(training_dataset)} training samples for rubric generation")
 
-        # Create AutoGrader
-        auto_grader = AutoGrader(
-            model=self.model,
-            parser=None,
-            config=self.grader_config,
-        )
+        # Create IterativeRubricsGenerator
+        generator = IterativeRubricsGenerator(config=self.generator_config)
 
         # Generate rubrics and get LLMGrader
-        self.llm_grader = await auto_grader.run(eval_cases)
+        self.llm_grader = await generator.generate(dataset=training_dataset)
+
+        # Save the grader
         experiment_dir = self.config.astuner.experiment_dir
         grader_save_dir = os.path.join(experiment_dir, "auto_grader.json")
         # make dirs if not exist
@@ -228,11 +231,6 @@ class RMAutoGraderJudge(JudgeBase):
             indent=4,
             ensure_ascii=False,
         )
-
-        # Load grader config and inject model
-        # grader_config = json.load(open("my_grader.json", "r", encoding="utf-8"))
-        # grader_config["model"] = self.model
-        # self.llm_grader = LLMGrader.from_config(grader_config)
 
         self.rubrics_generated = True
 
@@ -258,22 +256,19 @@ class RMAutoGraderJudge(JudgeBase):
             logger.exception("Failed to load grader config from")
             await self.generate_rubrics_from_samples([])
 
-    def _task_to_eval_case(
-        self,
-        task: Task,
-        workflow_output: Optional[WorkflowOutput | List[WorkflowOutput]] = None,
-        for_rubric_generation: bool = False,
-    ) -> Optional[EvalCase]:
+    def _task_to_training_data(self, task: Task) -> Optional[dict]:
         """
-        Convert Task (and optionally WorkflowOutput) to EvalCase format.
+        Convert Task to training data format for IterativeRubricsGenerator.
 
         Args:
-            task: The workflow task containing query and reference
-            workflow_output: Single output or list of outputs (for listwise evaluation)
-            for_rubric_generation: If True, create training format with labeled data
+            task: The workflow task containing query and reference with labels
 
         Returns:
-            EvalCase object or None if conversion fails
+            Training data dict or None if conversion fails
+
+        Expected formats:
+            Pointwise: {"query": str, "response": str, "label_score": int}
+            Listwise: {"query": str, "responses": List[str], "label_rank": List[int]}
         """
         try:
             # Extract query
@@ -281,76 +276,45 @@ class RMAutoGraderJudge(JudgeBase):
             if not query and hasattr(task, "metadata"):
                 query = task.metadata.get(self.query_field, "")
 
-            # Extract reference answer
-            reference = ""
-            if hasattr(task, "metadata") and self.reference_field in task.metadata:
-                reference = task.metadata[self.reference_field]
-            if not reference:
-                raise ValueError(
-                    f"Reference field '{self.reference_field}' not found in task metadata"
-                )
+            if not query:
+                raise ValueError(f"Query field '{self.query_field}' not found in task")
 
-            # Build input dict - reference should always be in input for comparison
-            input_dict = {
-                "query": query,
-            }
+            metadata = task.metadata if hasattr(task, "metadata") else {}
 
-            # Build output dict
-            outputs = []
-
-            if for_rubric_generation:
-                # For rubric generation: directly construct outputs from metadata
-                # Metadata should contain pre-labeled data (with score/rank)
-
-                grader_mode = self.grader_config.method_config.grader_mode
-                metadata = task.metadata if hasattr(task, "metadata") else {}
-
-                if grader_mode == GraderMode.POINTWISE:
-                    # Pointwise: expect metadata with "answer" and "score"
-                    if "answer" in metadata and "score" in metadata:
-                        outputs.append({"answer": metadata["answer"], "score": metadata["score"]})
-                    else:
-                        raise ValueError(
-                            f"Metadata must contain 'answer' and 'score' for pointwise rubric generation in task {task.task_id}"
-                        )
-
-                else:  # LISTWISE
-                    # Listwise: expect metadata with "candidates" containing list of {answer, rank}
-                    if "candidates" in metadata and isinstance(metadata["candidates"], list):
-                        for candidate in metadata["candidates"]:
-                            outputs.append(
-                                {"answer": candidate["answer"], "rank": candidate["rank"]}
-                            )
-                    else:
-                        logger.warning(
-                            f"No labeled data found for listwise rubric generation in task {task.task_id}"
-                        )
-                        return None
-            else:
-                # For evaluation: use the actual model output (no labels)
-                if workflow_output:
-                    # Handle both single output and list of outputs
-                    if isinstance(workflow_output, list):
-                        for output in workflow_output:
-                            answer = output.metadata.get(self.answer_field, "")
-                            outputs.append({"answer": answer})
-                    else:
-                        answer = workflow_output.metadata.get(self.answer_field, "")
-                        outputs.append({"answer": answer})
+            if self.generator_config.grader_mode == GraderMode.POINTWISE:
+                # Pointwise: expect metadata with "answer" and "score"
+                if "answer" in metadata and "score" in metadata:
+                    return {
+                        "query": query,
+                        "response": metadata["answer"],
+                        "label_score": metadata["score"],
+                    }
                 else:
-                    logger.warning(
-                        f"No workflow output provided for evaluation of task {task.task_id}"
+                    raise ValueError(
+                        f"Metadata must contain 'answer' and 'score' for pointwise training data in task {task.task_id}"
                     )
-                    return None
 
-            if not outputs:
-                logger.warning(f"No outputs found for task {task.task_id}")
-                return None
+            else:  # LISTWISE
+                # Listwise: expect metadata with "candidates" containing list of {answer, rank}
+                if "candidates" in metadata and isinstance(metadata["candidates"], list):
+                    responses = []
+                    label_ranks = []
+                    for candidate in metadata["candidates"]:
+                        responses.append(candidate["answer"])
+                        label_ranks.append(candidate["rank"])
 
-            return EvalCase(input=input_dict, outputs=outputs)
+                    return {
+                        "query": query,
+                        "responses": responses,
+                        "label_rank": label_ranks,
+                    }
+                else:
+                    raise ValueError(
+                        f"Metadata must contain 'candidates' list for listwise training data in task {task.task_id}"
+                    )
 
         except Exception as e:
-            logger.warning(f"Failed to convert workflow task to eval case: {e}")
+            logger.warning(f"Failed to convert task to training data: {e}")
             return None
 
     async def _async_compute_reward(
@@ -365,7 +329,7 @@ class RMAutoGraderJudge(JudgeBase):
 
         Returns:
             For pointwise: tuple (raw_reward, is_success)
-            For listwise: List[List[GraderScore]]
+            For listwise: List of ranking results
         """
         if not self.rubrics_generated or self.llm_grader is None:
             raise RuntimeError(
@@ -373,18 +337,44 @@ class RMAutoGraderJudge(JudgeBase):
                 "Call generate_rubrics_from_samples() first."
             )
 
-        # Create eval_case(s) based on input
-        eval_case = self._task_to_eval_case(task, workflow_output, for_rubric_generation=False)
+        # Extract query
+        query = getattr(task, self.query_field, "")
+        if not query and hasattr(task, "metadata"):
+            query = task.metadata.get(self.query_field, "")
 
-        if not eval_case:
-            logger.error("Failed to create eval case from workflow task and output")
-            return None
-
-        # Evaluate using LLMGrader - it handles both pointwise and listwise internally
+        # Evaluate using LLMGrader
         try:
-            results = await aevaluate_with_cases(self.llm_grader, eval_cases=[eval_case])
-            # For all other cases (listwise, or pointwise with multiple outputs), return raw results
-            return results
+            if self.generator_config.grader_mode == GraderMode.POINTWISE:
+                # Pointwise evaluation: single output
+                if isinstance(workflow_output, list):
+                    # If list provided, evaluate first output
+                    answer = workflow_output[0].metadata.get(self.answer_field, "")
+                else:
+                    answer = workflow_output.metadata.get(self.answer_field, "")
+
+                result = await self.llm_grader.aevaluate(query=query, answer=answer)
+                return result
+
+            else:  # LISTWISE
+                # Listwise evaluation: multiple outputs
+                if not isinstance(workflow_output, list):
+                    logger.error("Listwise mode requires a list of workflow outputs")
+                    return None
+
+                # Format responses for listwise evaluation
+                responses = []
+                for output in workflow_output:
+                    responses.append(output.metadata.get(self.answer_field, ""))
+
+                # Format answer as required by listwise grader
+                answer = "\n\n".join(
+                    [f"Response {i+1}:\n{resp}" for i, resp in enumerate(responses)]
+                )
+
+                result = await self.llm_grader.aevaluate(
+                    query=query, answer=answer, num_responses=len(responses)
+                )
+                return result
 
         except Exception as e:
             logger.error(f"Error during evaluation: {e}")
