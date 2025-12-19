@@ -1685,7 +1685,7 @@ class ASTuneRayPPOTrainer:
             epoch: Current epoch for logging
 
         Returns:
-            Tuple of (cmts, tasks) containing trajectory results and task definitions
+            Tuple of (ctx_trackers, tasks) containing trajectory results and task definitions
         """
         pass_n = self.config.astuner.trainer_common.val_pass_n
         # if pass_n == 1:
@@ -1695,25 +1695,25 @@ class ASTuneRayPPOTrainer:
         for _ in range(pass_n):
             tasks += [task for task in target_dataset]
 
-        cmts = self.parallel_env.rollout(
+        ctx_trackers = self.parallel_env.rollout(
             tasks=tasks, mode=mode, epoch=epoch
         )  # "sample" or "validate"
         task_results = {}
-        for _cmt in cmts:
-            reward = _cmt.reward_structure.raw_reward
-            task_id = _cmt.task_id
+        for ctx_tracker in ctx_trackers:
+            reward = ctx_tracker.reward_structure.raw_reward
+            task_id = ctx_tracker.task_id
             if task_id not in task_results:
                 task_results[task_id] = {}
                 task_results[task_id]["reward_arr"] = []
                 task_results[task_id]["tag_arr"] = []
             if reward >= 1:
-                _cmt.tag = "success"
+                ctx_tracker.tag = "success"
             elif reward == 0:
-                _cmt.tag = "failure"
+                ctx_tracker.tag = "failure"
             else:
-                _cmt.tag = "half_success"
-            task_results[task_id]["tag_arr"] += [_cmt.tag]
-            task_results[task_id]["reward_arr"] += [_cmt.reward_structure.raw_reward]
+                ctx_tracker.tag = "half_success"
+            task_results[task_id]["tag_arr"] += [ctx_tracker.tag]
+            task_results[task_id]["reward_arr"] += [ctx_tracker.reward_structure.raw_reward]
             task_results[task_id]["scenario"] = task_id.split("_")[0]
 
         task_scenario = [task_id.split("_")[0] for task_id in task_results.keys()]
@@ -1763,14 +1763,14 @@ class ASTuneRayPPOTrainer:
                     repeated_num_pass_1_scenarios += 1
 
         # record logs
-        task_scenario_for_cmts = [_cmt.task_id.split("_")[0] for _cmt in cmts]
-        for _cmt, scenario in zip(cmts, task_scenario_for_cmts):
-            _cmt.generate_log()
-            reward = _cmt.reward_structure.raw_reward
+        task_scenario_for_ctx_trackers = [ctx_tracker.task_id.split("_")[0] for ctx_tracker in ctx_trackers]
+        for ctx_tracker, scenario in zip(ctx_trackers, task_scenario_for_ctx_trackers):
+            ctx_tracker.generate_log()
+            reward = ctx_tracker.reward_structure.raw_reward
 
-        rewards = [_cmt.reward_structure.raw_reward for _cmt in cmts]
+        rewards = [ctx_tracker.reward_structure.raw_reward for ctx_tracker in ctx_trackers]
         num_tasks = len(task_results)
-        assert num_tasks == len(cmts) // pass_n
+        assert num_tasks == len(ctx_trackers) // pass_n
 
         val_metrics = {
             "target dataset name": target_dataset_name,
@@ -1798,7 +1798,7 @@ class ASTuneRayPPOTrainer:
 
         self.tracking_logger.log(data=val_metrics, step=self.global_steps)
 
-        return cmts, tasks, val_metrics
+        return ctx_trackers, tasks, val_metrics
 
     def get_eval_dataset(self):
         from astuner.task_reader import TaskReaderRouter

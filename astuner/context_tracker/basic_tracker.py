@@ -388,9 +388,9 @@ class BasicContextTracker(BaseTracker):
     def group_tokenize(self):
         sample_arr = []
         ext_steps = self.full_context
-        cmt_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
+        tracker_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
         sample = Sample(
-            cmt_tokenized=cmt_tokenized,
+            tracker_tokenized=tracker_tokenized,
             messages=self.to_role_content(ext_steps),
             config=self.config,
             task_batch_index=self.task_batch_index,
@@ -405,13 +405,13 @@ class BasicContextTracker(BaseTracker):
         sample_arr = []
         max_num_group = self.config.astuner.rollout.multi_turn.max_sample_per_task
         for index, ext_steps in enumerate(self.grouped_steps):
-            cmt_tokenized = self.tokenize_steps(
+            tracker_tokenized = self.tokenize_steps(
                 ext_steps=ext_steps,
                 index=index,
                 total_steps=len(self.grouped_steps),
             )
             sample = Sample(
-                cmt_tokenized=cmt_tokenized,
+                tracker_tokenized=tracker_tokenized,
                 messages=self.to_role_content(ext_steps),
                 config=self.config,
                 task_batch_index=self.task_batch_index,
@@ -558,82 +558,82 @@ class BasicContextTracker(BaseTracker):
         response_loss_mask = loss_mask[split_prompt_reponse_index:]
         response_logprobs = input_logprobs[split_prompt_reponse_index:]
 
-        cmt_tokenized = {}
-        cmt_tokenized["input_ids"] = input_ids
-        cmt_tokenized["prompt_ids"] = prompt_ids
-        cmt_tokenized["response_ids"] = response_ids
-        cmt_tokenized["attention_mask"] = attention_mask
-        cmt_tokenized["logprobs"] = input_logprobs
-        cmt_tokenized["prompt_attention_mask"] = prompt_attention_mask
-        cmt_tokenized["response_attention_mask"] = response_attention_mask
-        cmt_tokenized["loss_mask"] = loss_mask
-        cmt_tokenized["prompt_loss_mask"] = prompt_loss_mask
-        cmt_tokenized["response_loss_mask"] = response_loss_mask
-        cmt_tokenized["position_ids"] = position_ids
-        cmt_tokenized["prompt_position_ids"] = prompt_position_ids
-        cmt_tokenized["response_position_ids"] = response_position_ids
-        cmt_tokenized["response_logprobs"] = response_logprobs
-        cmt_tokenized["prompt_logprobs"] = prompt_logprobs
+        tracker_tokenized = {}
+        tracker_tokenized["input_ids"] = input_ids
+        tracker_tokenized["prompt_ids"] = prompt_ids
+        tracker_tokenized["response_ids"] = response_ids
+        tracker_tokenized["attention_mask"] = attention_mask
+        tracker_tokenized["logprobs"] = input_logprobs
+        tracker_tokenized["prompt_attention_mask"] = prompt_attention_mask
+        tracker_tokenized["response_attention_mask"] = response_attention_mask
+        tracker_tokenized["loss_mask"] = loss_mask
+        tracker_tokenized["prompt_loss_mask"] = prompt_loss_mask
+        tracker_tokenized["response_loss_mask"] = response_loss_mask
+        tracker_tokenized["position_ids"] = position_ids
+        tracker_tokenized["prompt_position_ids"] = prompt_position_ids
+        tracker_tokenized["response_position_ids"] = response_position_ids
+        tracker_tokenized["response_logprobs"] = response_logprobs
+        tracker_tokenized["prompt_logprobs"] = prompt_logprobs
 
         # distribute reward
-        cmt_tokenized["step_reward"] = self.reward_structure.step_reward_arr[index]
+        tracker_tokenized["step_reward"] = self.reward_structure.step_reward_arr[index]
         try:
-            cmt_tokenized["reference_advantage"] = self.reward_structure.step_advantage[index]
+            tracker_tokenized["reference_advantage"] = self.reward_structure.step_advantage[index]
         except Exception:
-            cmt_tokenized["reference_advantage"] = 0
+            tracker_tokenized["reference_advantage"] = 0
 
-        return cmt_tokenized
+        return tracker_tokenized
 
     @staticmethod
-    def compute_reference_advantage(cmt_array: List):
+    def compute_reference_advantage(tracker_array: List):
         import numpy as np
 
-        task2cmt = defaultdict(list)
-        for cmt in cmt_array:
-            task2cmt[cmt.task_id] += [cmt]
+        task2tracker = defaultdict(list)
+        for tracker in tracker_array:
+            task2tracker[tracker.task_id] += [tracker]
 
         # compute group normalized step_advantage (just for logging purpose)
-        for task_id, cmt_list in task2cmt.items():
-            cmt_reward = []
+        for task_id, tracker_list in task2tracker.items():
+            tracker_reward = []
 
             # compute in-group mean and std
-            for cmt in cmt_list:
-                cmt_reward += [np.mean(cmt.reward_structure.step_reward_arr)]
+            for tracker in tracker_list:
+                tracker_reward += [np.mean(tracker.reward_structure.step_reward_arr)]
 
-            if len(cmt_reward) == 1:
+            if len(tracker_reward) == 1:
                 reward_mean = 0.0
                 reward_std = 1.0
             else:
-                reward_mean = float(np.mean(cmt_reward))
-                reward_std = float(np.std(cmt_reward, ddof=1))
+                reward_mean = float(np.mean(tracker_reward))
+                reward_std = float(np.std(tracker_reward, ddof=1))
                 if reward_std < 0.01:
                     reward_std = 0.01
 
             # compute advantage
-            for cmt in cmt_list:
-                cmt.reward_structure.step_advantage = []
-                for i in range(len(cmt.reward_structure.step_reward_arr)):
-                    cmt.reward_structure.step_advantage += [
-                        (cmt.reward_structure.step_reward_arr[i] - reward_mean)
+            for tracker in tracker_list:
+                tracker.reward_structure.step_advantage = []
+                for i in range(len(tracker.reward_structure.step_reward_arr)):
+                    tracker.reward_structure.step_advantage += [
+                        (tracker.reward_structure.step_reward_arr[i] - reward_mean)
                         / (reward_std + 1e-6)
                     ]
 
         # compute simple advantage (uneven rollout sample count) (just for logging purpose)
-        for task_id, cmt_list in task2cmt.items():
-            cmt_reward = []
-            for cmt in cmt_list:
-                cmt_reward.extend(cmt.reward_structure.step_reward_arr)
-            if len(cmt_reward) == 1:
+        for task_id, tracker_list in task2tracker.items():
+            tracker_reward = []
+            for tracker in tracker_list:
+                tracker_reward.extend(tracker.reward_structure.step_reward_arr)
+            if len(tracker_reward) == 1:
                 reward_mean = 0.0
                 reward_std = 1.0
             else:
-                reward_mean = float(np.mean(cmt_reward))
-                reward_std = float(np.std(cmt_reward, ddof=1))
-            for cmt in cmt_list:
-                cmt.reward_structure.step_advantage_simple = []
-                for i in range(len(cmt.reward_structure.step_reward_arr)):
-                    cmt.reward_structure.step_advantage_simple += [
-                        (cmt.reward_structure.step_reward_arr[i] - reward_mean)
+                reward_mean = float(np.mean(tracker_reward))
+                reward_std = float(np.std(tracker_reward, ddof=1))
+            for tracker in tracker_list:
+                tracker.reward_structure.step_advantage_simple = []
+                for i in range(len(tracker.reward_structure.step_reward_arr)):
+                    tracker.reward_structure.step_advantage_simple += [
+                        (tracker.reward_structure.step_reward_arr[i] - reward_mean)
                         / (reward_std + 1e-6)
                     ]
         return

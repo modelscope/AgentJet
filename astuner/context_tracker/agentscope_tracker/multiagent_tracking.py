@@ -340,15 +340,15 @@ class MultiAgentContextTracker(BasicContextTracker):
         step_reward = 0.0
 
         for index, ext_steps in enumerate(self.grouped_steps):
-            cmt_tokenized = self.tokenize_steps(
+            tracker_tokenized = self.tokenize_steps(
                 ext_steps=ext_steps,
                 index=index,
                 total_steps=len(self.grouped_steps),
             )
-            text_arr = [self.tokenizer.decode(t) for t in cmt_tokenized["input_ids"]]
-            input_id_arr = [str(t) for t in cmt_tokenized["input_ids"]]
-            # loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in cmt_tokenized["loss_mask"]]
-            logprobs = [INVALID_LOG_PROB_VALUE] * len(cmt_tokenized["prompt_ids"]) + cmt_tokenized[
+            text_arr = [self.tokenizer.decode(t) for t in tracker_tokenized["input_ids"]]
+            input_id_arr = [str(t) for t in tracker_tokenized["input_ids"]]
+            # loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in tracker_tokenized["loss_mask"]]
+            logprobs = [INVALID_LOG_PROB_VALUE] * len(tracker_tokenized["prompt_ids"]) + tracker_tokenized[
                 "response_logprobs"
             ]
             # Create adjusted color array
@@ -358,7 +358,7 @@ class MultiAgentContextTracker(BasicContextTracker):
                     if mask == 1
                     else adjust_color_hsl("#D98510", logprob)
                 )
-                for mask, logprob in zip(cmt_tokenized["loss_mask"], logprobs)
+                for mask, logprob in zip(tracker_tokenized["loss_mask"], logprobs)
             ]
             logprob_text_arr = [
                 (f"{logprob:.4f}" if logprob != INVALID_LOG_PROB_VALUE else "N/A")
@@ -381,9 +381,9 @@ class MultiAgentContextTracker(BasicContextTracker):
                 step_advantage_simple = 0.0
             task_outcome = str(self.reward_structure.success_rate)
             selectors = [task_id, task_outcome, str(index)]
-            len_prompt_ids = len(cmt_tokenized["prompt_ids"])
-            len_response_ids = len(cmt_tokenized["response_ids"])
-            len_input_ids = len(cmt_tokenized["input_ids"])
+            len_prompt_ids = len(tracker_tokenized["prompt_ids"])
+            len_response_ids = len(tracker_tokenized["response_ids"])
+            len_input_ids = len(tracker_tokenized["input_ids"])
             assert (
                 len_prompt_ids + len_response_ids == len_input_ids
             ), "len_prompt_ids + len_response_ids should equal to len_input_ids"

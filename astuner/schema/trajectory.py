@@ -73,7 +73,7 @@ class Sample(BaseModel):
     step_reward: float = 0.0
     reference_advantage: float = 0.0
 
-    def __init__(self, cmt_tokenized: dict, messages, config, **kwargs):
+    def __init__(self, tracker_tokenized: dict, messages, config, **kwargs):
         super().__init__(**kwargs)
 
         self.max_prompt_len = config.astuner.data.max_prompt_length
@@ -82,26 +82,26 @@ class Sample(BaseModel):
             config.astuner.data.max_response_length + config.astuner.data.max_prompt_length
         )
 
-        self.input_ids = cmt_tokenized["input_ids"]
-        self.attention_mask = cmt_tokenized["attention_mask"]
-        self.loss_mask = cmt_tokenized["loss_mask"]
-        self.position_ids = cmt_tokenized["position_ids"]
-        self.logprobs = cmt_tokenized["logprobs"]
+        self.input_ids = tracker_tokenized["input_ids"]
+        self.attention_mask = tracker_tokenized["attention_mask"]
+        self.loss_mask = tracker_tokenized["loss_mask"]
+        self.position_ids = tracker_tokenized["position_ids"]
+        self.logprobs = tracker_tokenized["logprobs"]
 
-        self.prompt_ids = cmt_tokenized["prompt_ids"]
-        self.prompt_attention_mask = cmt_tokenized["prompt_attention_mask"]
-        self.prompt_loss_mask = cmt_tokenized["prompt_loss_mask"]
-        self.prompt_position_ids = cmt_tokenized["prompt_position_ids"]
-        self.prompt_logprobs = cmt_tokenized["prompt_logprobs"]
+        self.prompt_ids = tracker_tokenized["prompt_ids"]
+        self.prompt_attention_mask = tracker_tokenized["prompt_attention_mask"]
+        self.prompt_loss_mask = tracker_tokenized["prompt_loss_mask"]
+        self.prompt_position_ids = tracker_tokenized["prompt_position_ids"]
+        self.prompt_logprobs = tracker_tokenized["prompt_logprobs"]
 
-        self.response_ids = cmt_tokenized["response_ids"]
-        self.response_attention_mask = cmt_tokenized["response_attention_mask"]
-        self.response_loss_mask = cmt_tokenized["response_loss_mask"]
-        self.response_position_ids = cmt_tokenized["response_position_ids"]
-        self.response_logprobs = cmt_tokenized["response_logprobs"]
+        self.response_ids = tracker_tokenized["response_ids"]
+        self.response_attention_mask = tracker_tokenized["response_attention_mask"]
+        self.response_loss_mask = tracker_tokenized["response_loss_mask"]
+        self.response_position_ids = tracker_tokenized["response_position_ids"]
+        self.response_logprobs = tracker_tokenized["response_logprobs"]
 
-        self.reference_advantage = cmt_tokenized["reference_advantage"]
-        self.step_reward = cmt_tokenized["step_reward"]
+        self.reference_advantage = tracker_tokenized["reference_advantage"]
+        self.step_reward = tracker_tokenized["step_reward"]
 
         self.messages = messages
 

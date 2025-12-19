@@ -110,7 +110,7 @@ class BaseRolloutManager:
                 agent_runner: AgentScopeRunner = Runner(
                     llm_chat_fn=llm_chat_fn, tokenizer=self.tokenizer, config=self.config
                 )  # type:ignore
-                cmt = agent_runner.execute(
+                tracker = agent_runner.execute(
                     workflow_task=workflow_task,
                 )
             except TestSuccessException as e:
@@ -127,4 +127,4 @@ class BaseRolloutManager:
                 )
                 raise e
 
-        return cmt
+        return tracker

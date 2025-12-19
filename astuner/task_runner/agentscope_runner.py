@@ -46,7 +46,7 @@ class AgentScopeRunner(BaseAgentRunner):
         )
 
         workflow_output: WorkflowOutput = asyncio.run(
-            agentscope_workflow.agentscope_execute(workflow_task, m_tuner)
+            agentscope_workflow.execute(workflow_task, m_tuner)
         )
         if workflow_output.reward is not None:
             raw_reward, is_success = (

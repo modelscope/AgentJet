@@ -68,7 +68,7 @@ class DynamicRolloutManager(BaseRolloutManager):
     ) -> List[BasicContextTracker]:
         """Execute non-dynamic rollouts in parallel and return collected trackers."""
         self.current_token_count_time = time.time()
-        cmt_array: List[BasicContextTracker] = []
+        tracker_array: List[BasicContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
         obs_window = {
             "step": [0 for _ in range(len(tasks) * rollout_n)],
@@ -116,19 +116,19 @@ class DynamicRolloutManager(BaseRolloutManager):
 
             for future in tqdm(futures, desc=f"epoch{epoch}.collect_rollout"):
                 result = future.result()
-                cmt_array.append(result)
+                tracker_array.append(result)
 
             # TODO: support multi-step reward
-            task_success_rate = np.mean([cmt.reward_structure.success_rate for cmt in cmt_array])
+            task_success_rate = np.mean([tracker.reward_structure.success_rate for tracker in tracker_array])
             task_scalar_reward = np.mean(
-                [cmt.reward_structure.final_scalar_reward for cmt in cmt_array]
+                [tracker.reward_structure.final_scalar_reward for tracker in tracker_array]
             )
 
-            for cmt in cmt_array:
-                cmt.current_batch_success_rate = float(task_success_rate)
-                cmt.current_batch_reward = float(task_scalar_reward)
+            for tracker in tracker_array:
+                tracker.current_batch_success_rate = float(task_success_rate)
+                tracker.current_batch_reward = float(task_scalar_reward)
 
-            return cmt_array
+            return tracker_array
 
     def rollout(
         self,
@@ -156,9 +156,9 @@ class DynamicRolloutManager(BaseRolloutManager):
 
         sorted_samples = sorted(
             samples,
-            key=lambda cmt: abs(cmt.reward_structure.performance_reward),
+            key=lambda tracker: abs(tracker.reward_structure.performance_reward),
         )
-        value_array = [cmt.reward_structure.performance_reward for cmt in sorted_samples]
+        value_array = [tracker.reward_structure.performance_reward for tracker in sorted_samples]
         macro_selected_value = []
         macro_selected_index = []
         while len(macro_selected_index) != n:
@@ -187,7 +187,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         selected_samples = [sorted_samples[i] for i in macro_selected_index]
         sorted_selected_samples = sorted(
             selected_samples,
-            key=lambda cmt: abs(cmt.reward_structure.performance_reward),
+            key=lambda tracker: abs(tracker.reward_structure.performance_reward),
         )
         return sorted_selected_samples
 
@@ -201,7 +201,7 @@ class DynamicRolloutManager(BaseRolloutManager):
     ) -> List[BasicContextTracker]:
         """Perform oversampled rollouts with optional early termination heuristics."""
 
-        cmt_array: List[BasicContextTracker] = []
+        tracker_array: List[BasicContextTracker] = []
         assert mode != "validate"
         rollout_n = self.rollout_n
         self.current_token_count_time = time.time()
@@ -245,8 +245,8 @@ class DynamicRolloutManager(BaseRolloutManager):
                 for j, task_future_array in enumerate(futures):
                     completed_task_futures = [f for f in task_future_array if f.done()]
                     completed_results = [f.result() for f in completed_task_futures]
-                    completed_results = [cmt for cmt in completed_results if not cmt.discarded]
-                    reward = [cmt.reward_structure.performance_reward for cmt in completed_results]
+                    completed_results = [tracker for tracker in completed_results if not tracker.discarded]
+                    reward = [tracker.reward_structure.performance_reward for tracker in completed_results]
                     reward_std = np.std(reward) if reward else 0.0
                     all_finished = len(completed_task_futures) == len(task_future_array)
                     if all_finished:
@@ -254,7 +254,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                         terminate_status[j] = f"all_fin({len(completed_results)}/{reward_std:.2f})"
                     num_finished = len(completed_task_futures)
                     task_cmd_reward_array = [
-                        cmt.reward_structure.performance_reward for cmt in completed_results
+                        tracker.reward_structure.performance_reward for tracker in completed_results
                     ]
                     all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                     if not all_equal:
@@ -311,9 +311,9 @@ class DynamicRolloutManager(BaseRolloutManager):
             for j, task_future_array in enumerate(futures):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
-                completed_results = [cmt for cmt in completed_results if not cmt.discarded]
+                completed_results = [tracker for tracker in completed_results if not tracker.discarded]
                 task_cmd_reward_array = [
-                    cmt.reward_structure.performance_reward for cmt in completed_results
+                    tracker.reward_structure.performance_reward for tracker in completed_results
                 ]
                 all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                 completed_task_cnt = len(completed_results)
@@ -383,8 +383,8 @@ class DynamicRolloutManager(BaseRolloutManager):
                 )
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
 
-            # collect results and get the final cmt_array according to removal plan (`task_extra_thread_cnt` and `num_task_to_amend`)
-            cmt_array = []
+            # collect results and get the final tracker_array according to removal plan (`task_extra_thread_cnt` and `num_task_to_amend`)
+            tracker_array = []
             print_buffer = ""
             task_success_rate = []
             task_group_reward = []
@@ -393,16 +393,16 @@ class DynamicRolloutManager(BaseRolloutManager):
             ):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
-                completed_results = [cmt for cmt in completed_results if not cmt.discarded]
+                completed_results = [tracker for tracker in completed_results if not tracker.discarded]
                 # in-group success rate and reward
                 task_cmd_reward_array = [
-                    cmt.reward_structure.performance_reward for cmt in completed_results
+                    tracker.reward_structure.performance_reward for tracker in completed_results
                 ]
                 success_rate_array = [
-                    cmt.reward_structure.success_rate for cmt in completed_results
+                    tracker.reward_structure.success_rate for tracker in completed_results
                 ]
                 task_group_reward += [
-                    np.mean([cmt.reward_structure.final_scalar_reward for cmt in completed_results])
+                    np.mean([tracker.reward_structure.final_scalar_reward for tracker in completed_results])
                 ]
                 task_success_rate += [np.mean(success_rate_array)]
                 # whether this group need amendment
@@ -423,47 +423,47 @@ class DynamicRolloutManager(BaseRolloutManager):
                         # this group is good and healthy, if it has extra samples, we accept them
                         num_to_be_selected = rollout_n + avail_extra_cnt
                     # if num_to_be_selected > the number of resulting samples, we choose them to maximum reward diversity
-                    selected_cmt_array = self.greedy_max_std_selection(
+                    selected_tracker_array = self.greedy_max_std_selection(
                         completed_results, num_to_be_selected
                     )
                     # good, we have collected selected samples from this group
-                    cmt_array += selected_cmt_array
+                    tracker_array += selected_tracker_array
                     # print info
-                    print_buffer += f"/({len(selected_cmt_array)})"
+                    print_buffer += f"/({len(selected_tracker_array)})"
                     if need_amend:
                         print_buffer += "(no-amend)"
 
             logger.info(print_buffer)
 
-            for cmt in cmt_array:
+            for tracker in tracker_array:
                 # average of gourp success rate
-                cmt.current_batch_success_rate = np.mean(task_success_rate)
+                tracker.current_batch_success_rate = np.mean(task_success_rate)
                 # average of gourp average reward
-                cmt.current_batch_reward = np.mean(task_group_reward)
+                tracker.current_batch_reward = np.mean(task_group_reward)
 
-            return cmt_array
+            return tracker_array
 
 
 class VerlRolloutManger(DynamicRolloutManager):
     """High-level manager orchestrating rollouts and batch conversion."""
 
-    def to_dataproto(self, cmt_array) -> DataProto:
+    def to_dataproto(self, tracker_array) -> DataProto:
         """Convert completed context trackers into a `DataProto` minibatch."""
-        samples = self.trajectories_to_samples(cmt_array)
+        samples = self.trajectories_to_samples(tracker_array)
         dataproto = self.samples_to_dataproto(samples)
         return dataproto
 
-    def trajectories_to_samples(self, cmt_array: List[BasicContextTracker]) -> List[Sample]:
+    def trajectories_to_samples(self, tracker_array: List[BasicContextTracker]) -> List[Sample]:
         """Tokenize each tracker into `Sample` objects ready for tensorization."""
         sample_arr_final = []
-        BasicContextTracker.compute_reference_advantage(cmt_array)
-        for cmt in cmt_array:
+        BasicContextTracker.compute_reference_advantage(tracker_array)
+        for tracker in tracker_array:
             try:
-                sample_arr = cmt.group_tokenize()
+                sample_arr = tracker.group_tokenize()
             except Exception as e:
                 raise e
             finally:
-                cmt.generate_log(global_step=self.current_global_steps)
+                tracker.generate_log(global_step=self.current_global_steps)
                 if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get(
                     "ASTUNER_DEBUG", None
                 ):

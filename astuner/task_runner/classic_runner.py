@@ -19,14 +19,14 @@ class AgentRunner(BaseAgentRunner):
 
         # 1. 🚀 Initialize messages
         if self.config.astuner.context_tracker.context_tracker_type == "linear":
-            self.cmt = BasicContextTracker(self.config, self.tokenizer)
+            self.tracker = BasicContextTracker(self.config, self.tokenizer)
         else:
             raise ValueError(
                 f"Unsupported context template: {self.config.astuner.context_tracker.context_tracker_type}"
             )
 
         add_nothink = False
-        self.cmt.save_init_input(init_messages, add_nothink)
+        self.tracker.save_init_input(init_messages, add_nothink)
 
         request_id: str = ""
         for act_step in range(self.max_steps):
@@ -35,29 +35,29 @@ class AgentRunner(BaseAgentRunner):
             if (obs_window["stop"] is not None) and obs_window["stop"][
                 task_thread_index
             ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
-                self.cmt.discarded = True
+                self.tracker.discarded = True
                 break
 
             # 3. ⏮️ get previous steps
             try:
-                step_input_message_arr = self.cmt.prepare_next_llm_context()
+                step_input_message_arr = self.tracker.prepare_next_llm_context()
             except Exception as e:
                 print_listofdict(
-                    self.cmt.to_role_content(self.cmt.full_context),
+                    self.tracker.to_role_content(self.tracker.full_context),
                     mod="exception",
                     header="Before Crash",
                 )
                 raise e
 
             # 4. ⚠️ check token overflow
-            is_safe, token_overflow, info = self.cmt.check_context_token_num_safe(
+            is_safe, token_overflow, info = self.tracker.check_context_token_num_safe(
                 step_input_message_arr
             )
             if not is_safe:
                 logger.warning(
                     f"[{info}] detected at step {act_step}. Current token count exceeds the limit."
                 )
-                self.cmt.is_terminated = True
+                self.tracker.is_terminated = True
                 break
 
             # 5. 🤖 call llm
@@ -65,19 +65,19 @@ class AgentRunner(BaseAgentRunner):
             if (obs_window["stop"] is not None) and obs_window["stop"][
                 task_thread_index
             ]:  # Check if the thread should obs_window['stop'] (because other threads have completed, making this thread useless)
-                self.cmt.discarded = True
+                self.tracker.discarded = True
                 break
 
             # 6. 💾 save llm output
-            self.cmt.save_llm_output(llm_output, input_msg_ref=step_input_message_arr)
-            obs_window["token"][task_thread_index] += self.cmt.generated_token_cnt
+            self.tracker.save_llm_output(llm_output, input_msg_ref=step_input_message_arr)
+            obs_window["token"][task_thread_index] += self.tracker.generated_token_cnt
 
             # 7. 🌍 world interaction
             try:
                 env_output = env.step(
                     instance_id=workflow_task.task_env_uuid,
                     action={
-                        "content": self.cmt.prepare_world_interaction(),
+                        "content": self.tracker.prepare_world_interaction(),
                         "role": "assistant",
                     },
                     params={"step_skip_action": self.config.astuner.rollout.step_skip_action},
@@ -88,7 +88,7 @@ class AgentRunner(BaseAgentRunner):
                     )
             except Exception as e:
                 logger.bind(exception=True).exception(f"call env.step error with {e}")
-                self.cmt.is_terminated = True
+                self.tracker.is_terminated = True
                 state = {"content": str(e), "role": "user"}
                 env_output = {
                     "reward": 0,
@@ -99,12 +99,12 @@ class AgentRunner(BaseAgentRunner):
             # 8. 📥 save environment output
             state = env_output["state"]
             state.pop("tool_calls", None)  # type: ignore
-            self.cmt.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink)  # type: ignore
-            self.cmt.round_cnt += 1
+            self.tracker.save_env_output(state, input_msg_ref=step_input_message_arr, add_nothink=add_nothink)  # type: ignore
+            self.tracker.round_cnt += 1
 
             # 9. 🔚 determine if the episode is terminated
-            self.cmt.is_terminated = env_output["is_terminated"]
-            if self.cmt.is_terminated:
+            self.tracker.is_terminated = env_output["is_terminated"]
+            if self.tracker.is_terminated:
                 break
 
         obs_window["step"][task_thread_index] = -1
@@ -116,7 +116,7 @@ class AgentRunner(BaseAgentRunner):
             success_rate = 0.0
 
         # TODO: support multi-step reward
-        self.cmt.process_reward(
+        self.tracker.process_reward(
             reward_structure=Reward(
                 raw_reward=raw_reward,
                 raw_step_reward=None,  # we do not support step reward yet
@@ -125,5 +125,5 @@ class AgentRunner(BaseAgentRunner):
                 description="Success=1, Failure=0",
             )
         )
-        self.cmt.remove_last_context()
-        return self.cmt
+        self.tracker.remove_last_context()
+        return self.tracker
