@@ -151,23 +151,21 @@ astuner:
       model_name: qwen-max
       grader_mode: pointwise
       language: en
-      min_score: 0
-      max_score: 1
-      success_threshold: 0.7
-      sampling_mode: all_samples
-      generate_number: 1
-      max_epochs: 2
-      max_retries: 3
-      aggregation_mode: keep_all
+      query_specific_generate_number: 1
+      enable_categorization: false
+      categories_number: 5
       grader_name: "auto_grader"
-      num_reference_samples: 20
       query_field: main_query
       answer_field: final_answer
       reference_field: answer
+      custom_evaluation_prompt: null # dict or PromptTemplate or None
       input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
       dataset_file:
         training:
           file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
+      # Pointwise mode settings
+      min_score: 0
+      max_score: 1
 
 
   # when backbone is `debug`, debug related configurations
