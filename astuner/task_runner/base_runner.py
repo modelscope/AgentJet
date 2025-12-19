@@ -12,7 +12,7 @@ class BaseAgentRunner(object):
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
         self.tracker: Union[BaseContextTracker, Any, None] = None
-        self.alien_llm_chat_fn: Union[Callable, None] = None
+        self.external_llm_fn: Union[Callable, None] = None
         self.llm_inference_fn: Callable = llm_inference_fn
         self.config = config
         self.max_steps: int = self.config.astuner.rollout.multi_turn.max_steps

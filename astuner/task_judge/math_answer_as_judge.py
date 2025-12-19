@@ -41,7 +41,7 @@ class MathAnswerAndLlmAsJudge(BaseJudge):
         reference_answer = workflow_task.task.metadata["answer"]
         reference_answer = reference_answer.split("####")[-1].strip()
 
-        alien_llm_chat_fn = create_external_llm_fn(
+        external_llm_fn = create_external_llm_fn(
             alien_llm_model=self.config.astuner.task_judge.alien_llm_model,
             alien_llm_response_length=self.config.astuner.task_judge.alien_llm_response_length,
         )
@@ -55,7 +55,7 @@ class MathAnswerAndLlmAsJudge(BaseJudge):
                 "content": f"Is my result correct?\n\n\n----\nMy result: {final_answer}\n\n\n----\nReal result: {reference_answer}",
             },
         ]
-        res = alien_llm_chat_fn(messages=messages)
+        res = external_llm_fn(messages=messages)
         if "<Correct>" in res["content"]:
             is_success = True
             raw_reward = 1.0
