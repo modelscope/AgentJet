@@ -5,7 +5,7 @@ from beast_logger import print_listofdict
 from astuner.context_tracker.basic_tracker import ExtendedMessage
 
 
-def can_merge_steps(
+def is_timeline_mergeable(
     source_timeline: List[ExtendedMessage],
     target_timeline: List[ExtendedMessage],
     debug=False,
@@ -53,7 +53,7 @@ def can_merge_steps(
                 else:
                     d["match"] = "YES"
                 debug_listofdict.append(d)
-        print_listofdict(debug_listofdict, header=f"can_merge_steps debug: {can_merge}")
+        print_listofdict(debug_listofdict, header=f"is_timeline_mergeable debug: {can_merge}")
 
     return can_merge
 
@@ -87,7 +87,7 @@ def merge_tracker_timelines(
                 continue
             source_timeline = reversed_timelines[i]
             target_timeline = reversed_timelines[j]
-            if can_merge_steps(source_timeline, target_timeline):
+            if is_timeline_mergeable(source_timeline, target_timeline):
                 source_timeline = toggle_author_and_mask(source_timeline, target_timeline)
                 reversed_timelines[i] = source_timeline
                 absorbed_step_indices += [j]

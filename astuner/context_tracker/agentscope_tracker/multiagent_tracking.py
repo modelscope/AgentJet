@@ -236,7 +236,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             # if (
             #     DEBUG
             #     and len(self.grouped_steps) >= 2
-            #     and (not can_merge_steps(self.grouped_steps[-1], self.grouped_steps[-2]))
+            #     and (not is_timeline_mergeable(self.grouped_steps[-1], self.grouped_steps[-2]))
             # ):
             #     print(f"General Warning: merge failure discovered.")
         return None
