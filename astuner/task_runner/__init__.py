@@ -11,7 +11,7 @@ class BaseAgentRunner(object):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
-        self.cmt: Union[BasicContextTracker, Any, None] = None
+        self.tracker: Union[BasicContextTracker, Any, None] = None
         self.alien_llm_chat_fn: Union[Callable, None] = None
         self.llm_chat_fn: Callable = llm_chat_fn
         self.config = config

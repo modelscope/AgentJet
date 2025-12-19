@@ -109,10 +109,10 @@ def run(config):
     )
     tasks = task_reader.get_validation_tasks()
     print(tasks[:2])
-    cmt = parallel_env.rollout(
+    ctx_tracker = parallel_env.rollout(
         tasks=tasks[:n_task], mode="sample", epoch="1"
     )  # "sample" or "validate"
-    _ = parallel_env.to_dataproto(cmt)
+    _ = parallel_env.to_dataproto(ctx_tracker)
     print("Generated batch output")
 
 
