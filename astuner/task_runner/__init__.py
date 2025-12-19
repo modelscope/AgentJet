@@ -7,13 +7,13 @@ from astuner.utils.utils import run_async_coro__no_matter_what
 
 
 class BaseAgentRunner(object):
-    def __init__(self, llm_chat_fn: Callable, tokenizer: Any, config, **kwargs):
+    def __init__(self, llm_inference_fn: Callable, tokenizer: Any, config, **kwargs):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
         self.tracker: Union[BasicContextTracker, Any, None] = None
         self.alien_llm_chat_fn: Union[Callable, None] = None
-        self.llm_chat_fn: Callable = llm_chat_fn
+        self.llm_inference_fn: Callable = llm_inference_fn
         self.config = config
         self.max_steps: int = self.config.astuner.rollout.multi_turn.max_steps
         self.max_model_len: int = self.config.astuner.rollout.max_model_len

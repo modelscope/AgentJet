@@ -38,7 +38,7 @@ class AsyncLlmBridge(object):
         self.llm_mode = llm_mode
         self.max_llm_retries = max_llm_retries
 
-    def get_llm_chat_fn(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
+    def get_llm_inference_fn(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
         def llm_chat(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
@@ -244,13 +244,13 @@ class LlmProxyForAgentScope(object):
 
     def __init__(
         self,
-        llm_chat_fn,
+        llm_inference_fn,
         tokenizer: PreTrainedTokenizer,
         context_tracker: MultiAgentContextTracker,
         config,
     ) -> None:
         self.context_tracker = context_tracker
-        self.llm_chat_fn = llm_chat_fn
+        self.llm_inference_fn = llm_inference_fn
         self.tokenizer = tokenizer
         self.config = config
 
@@ -286,7 +286,7 @@ class LlmProxyForAgentScope(object):
 
         # run llm inference ✨
         llm_output = await asyncio.wait_for(
-            asyncio.to_thread(self.llm_chat_fn, converted_message, custom_sampling_params, tools),
+            asyncio.to_thread(self.llm_inference_fn, converted_message, custom_sampling_params, tools),
             timeout=1800,
         )
 
