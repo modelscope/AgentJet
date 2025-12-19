@@ -1,6 +1,6 @@
 # ------------------ main configuration ------------------
 astuner:
-  project_name: "example_countdown"
+  project_name: benchmarking
 
   model:
     # ✨✨✨✨ which model should be trained
@@ -84,7 +84,6 @@ astuner:
 
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
-    # when `type == huggingface_dat_repo`
     huggingface_dat_repo:
       dataset_path: "dataset/Countdown-Tasks-3to4"
       training_split: "train"
@@ -93,17 +92,8 @@ astuner:
 
   task_judge:
     judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
-
     # ✨✨✨✨ when `judge_type == customized_protocol`
     judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
-
-  # when backbone is `debug`, debug related configurations
-  debug:
-    debug_max_parallel: 16
-    debug_first_n_tasks: 2
-    debug_vllm_port: 18000
-    debug_vllm_seed: 12345
-    debug_tensor_parallel_size: 4
 
 
   # trainer common configurations
@@ -132,17 +122,9 @@ astuner:
     ulysses_sequence_parallel_size: 1
 
 
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
-
-
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-  execute_test: False        # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-  execute_testing_lambda: "" # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
+  execute_test: True # FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
+  execute_testing_lambda: "tests/bench/benchmark_countdown/benchmark_countdown.py->TestProbe" # FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN
 
 
 # ------------------ 不需要修改 ------------------
