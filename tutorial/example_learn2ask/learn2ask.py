@@ -148,7 +148,7 @@ async def reward_fn(init_messages: list[Msg], response: str, truth_action: str, 
 class ExampleLearn2Ask(Workflow):
     name: str = "math_agent_workflow"
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent

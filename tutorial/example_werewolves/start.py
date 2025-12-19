@@ -86,7 +86,7 @@ class ExampleWerewolves(Workflow):
         default=["werewolf"], description="List of agents to be fine-tuned."
     )
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         # ensure trainable targets is legal

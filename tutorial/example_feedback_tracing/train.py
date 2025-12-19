@@ -44,7 +44,7 @@ class FinalResult(BaseModel):
 class ExampleTracingFeedbackTrain(Workflow):
     name: str = "tracing_feedback_train"
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         query = workflow_task.task.main_query

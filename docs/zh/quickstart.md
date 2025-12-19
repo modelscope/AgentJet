@@ -173,7 +173,7 @@ def extract_final_answer(result) -> str:
 class MathAgentWorkflow(Workflow):
     name: str = "math_agent_workflow"
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
@@ -204,7 +204,7 @@ class MathAgentWorkflow(Workflow):
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-在这段代码中，我们将 Agent 封装进一个 Workflow 中，并实现了其中的 `agentscope_execute` 函数：
+在这段代码中，我们将 Agent 封装进一个 Workflow 中，并实现了其中的 `execute` 函数：
 1. 从 `WorkflowTask` 中取出输入
 2. 用与前面相同的方式构造 Agent，但 **指定 model 为 model_tuner** —— 这是使 Agent 可被训练的关键
 3. 执行 Agent

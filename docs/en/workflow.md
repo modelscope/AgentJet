@@ -35,7 +35,7 @@ Then, wrap your workflow in a class that inherit `Workflow` (`from astnue import
 ```
 class ExampleMathLearn(Workflow):
 	name: str = "math_agent_workflow"
-	async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+	async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
 		... your ReActAgent workflow here ...
 		return WorkflowOutput(reward=workflow_reward)
 
@@ -80,7 +80,7 @@ This practice suits well for most users, you can choose to follow this practice 
 		```
         [+] class ExampleMathLearn(Workflow):
         [+]    name: str = "math_agent_workflow"
-        [+]    async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+        [+]    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         [ ]       from agentscope.agent import ReActAgent
         [ ]       from agentscope.formatter import DashScopeChatFormatter
         [ ]       from agentscope.memory import InMemoryMemory
@@ -149,7 +149,7 @@ agent_instance = ReActAgent(
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
 	trainable_targets: list = ["TYPE-ZERO", ...]
-	async def agentscope_execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+	async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
 		... your agents and workflow here ...
 ```
 

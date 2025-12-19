@@ -32,7 +32,7 @@
 ```python
 class ExampleWerewolves(AgentScopeLearnProtocol):
 
-    async def agentscope_execute(self, init_messages, astune_proxy: ModelTuner, config) -> WorkflowOutput:
+    async def execute(self, init_messages, astune_proxy: ModelTuner, config) -> WorkflowOutput:
         train_which_role = "werewolf"
         roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
 

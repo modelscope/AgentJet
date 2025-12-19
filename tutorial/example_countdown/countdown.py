@@ -37,7 +37,7 @@ You should return your final answer within \\boxed{{}}, for example \\boxed{{(1 
 class ExampleCountdownLearn(Workflow):
     name: str = "countdown_agent_workflow"
 
-    async def agentscope_execute(
+    async def execute(
         self, workflow_task: WorkflowTask, model_tuner: ModelTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
