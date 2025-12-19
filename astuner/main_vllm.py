@@ -7,7 +7,7 @@ import hydra
 from openai import OpenAI
 
 from astuner.backbone.warm_up import warm_up_process
-from astuner.task_rollout.native_parallel_worker import VerlRolloutManger
+from astuner.task_rollout.native_parallel_worker import VerlRolloutManager
 from astuner.utils.sms_agent import send_train_message
 
 
@@ -92,7 +92,7 @@ def run(config):
     async_rollout_manager = ChatCompletionScheduler(
         config=config, url=f"http://localhost:{vllm_port}/v1"
     )
-    parallel_env = VerlRolloutManger(
+    parallel_env = VerlRolloutManager(
         config=config,
         async_rollout_manager=async_rollout_manager,
         max_parallel=max_parallel,
