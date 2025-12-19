@@ -3,8 +3,8 @@ from loguru import logger
 
 from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.trajectory import Reward
-from astuner.task_runner import BaseAgentRunner
 from astuner.utils.utils import convert_tool_to_user_message
+from .base_runner import BaseAgentRunner
 
 
 class AgentRunner(BaseAgentRunner):

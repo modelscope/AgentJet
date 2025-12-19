@@ -7,8 +7,8 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
 from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import WorkflowTask
 from astuner.schema.trajectory import Reward
-from astuner.task_runner import BaseAgentRunner
 from astuner.utils.dynamic_import import dynamic_import
+from .base_runner import BaseAgentRunner
 
 
 class AgentScopeRunner(BaseAgentRunner):
