@@ -27,7 +27,7 @@ class WorkflowTask(BaseModel):
     task_batch_index: int = Field(default=0)
     task_tag: str = Field(default="")
     task_env_uuid: str = Field(default="")
-    obs_window: dict = Field(default={})
+    observation_window: dict = Field(default={})
     llm_inference_fn: Any = Field(default=None)
     tokenizer: Any = Field(default=None)
     task: Task = Field(default=Task())

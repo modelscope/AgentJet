@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
-from astuner.task_rollout.async_llm_bridge import LlmProxyForAgentScope
+from astuner.task_rollout.async_llm_bridge import AgentScopeLlmProxy
 
 if TYPE_CHECKING:
     from astuner import Workflow
@@ -59,7 +59,7 @@ class ModelTuner(DashScopeChatModel):
         self.context_tracker = context_tracker
         self.agentscope_workflow = agentscope_workflow
         self.target2proxy_registry: dict[str, Agent2Proxy] = {}
-        self.llm_proxy = LlmProxyForAgentScope(
+        self.llm_proxy = AgentScopeLlmProxy(
             context_tracker=context_tracker, config=config, **kwargs
         )
         super().__init__(
@@ -174,7 +174,7 @@ class ModelTuner(DashScopeChatModel):
         else:
             return False
 
-    def get_llm_proxy(self) -> LlmProxyForAgentScope:
+    def get_llm_proxy(self) -> AgentScopeLlmProxy:
         """Get the LlmProxyForAgentScope instance.
         Returns:
             LlmProxyForAgentScope:

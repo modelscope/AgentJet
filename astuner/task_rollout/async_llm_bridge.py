@@ -235,7 +235,7 @@ class AsyncLlmBridge(object):
             return llm_chat
 
 
-class LlmProxyForAgentScope(object):
+class AgentScopeLlmProxy(object):
     """
     An essential wrapper to connect AsyncLlmBridge with AgentScope
 

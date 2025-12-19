@@ -10,7 +10,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from astuner.context_tracker.agentscope_tracker.timeline_merging import (
     merge_tracker_timelines,
 )
-from astuner.context_tracker.basic_tracker import BasicContextTracker, ExtendedMessage
+from astuner.context_tracker.basic_tracker import BaseContextTracker, ExtendedMessage
 from astuner.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from astuner.schema.trajectory import Reward
 from astuner.utils.color_hsl import adjust_color_hsl
@@ -18,7 +18,7 @@ from astuner.utils.compute_madness import compute_string_madness
 from astuner.utils.tokenizer import astune_apply_chat_template
 
 
-class MultiAgentContextTracker(BasicContextTracker):
+class MultiAgentContextTracker(BaseContextTracker):
     def __init__(
         self,
         llm_inference_fn,

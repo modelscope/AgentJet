@@ -15,7 +15,7 @@ from tqdm import tqdm
 from verl import DataProto
 from verl.utils.torch_functional import pad_sequence_to_length
 
-from astuner.context_tracker.basic_tracker import BasicContextTracker
+from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import Task
 from astuner.schema.trajectory import Sample
 from astuner.task_rollout.single_worker import BaseRolloutManager
@@ -24,11 +24,11 @@ from astuner.task_rollout.single_worker import BaseRolloutManager
 class DynamicRolloutManager(BaseRolloutManager):
     """Dynamic rollout supporting oversampling and early termination."""
 
-    def step_status_printer(self, obs_window):
+    def step_status_printer(self, observation_window):
         """Pretty-print thread progress statistics for the shared obs window."""
-        # Histogram buckets: obs_window['step'] 0~5 / 5~10 / 10~15 / ...
+        # Histogram buckets: observation_window['step'] 0~5 / 5~10 / 10~15 / ...
         step_counter = {}
-        current_token = sum(obs_window["token"])
+        current_token = sum(observation_window["token"])
         current_time = time.time()
         delta_token = current_token - self.current_token
         if delta_token < 0:
@@ -40,7 +40,7 @@ class DynamicRolloutManager(BaseRolloutManager):
             f"{delta_token/delta_time:.2f} tokens/s" if delta_time > 0 else "N/A"
         )
 
-        for step in obs_window["step"]:
+        for step in observation_window["step"]:
             if step == -1:
                 step_counter[(-1, "terminated")] = step_counter.get((-1, "terminated"), 0) + 1
                 continue
@@ -65,12 +65,12 @@ class DynamicRolloutManager(BaseRolloutManager):
         tasks: List[Task],
         mode: Literal["sample", "validate"],
         epoch: str,
-    ) -> List[BasicContextTracker]:
+    ) -> List[BaseContextTracker]:
         """Execute non-dynamic rollouts in parallel and return collected trackers."""
         self.current_token_count_time = time.time()
-        tracker_array: List[BasicContextTracker] = []
+        tracker_array: List[BaseContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
-        obs_window = {
+        observation_window = {
             "step": [0 for _ in range(len(tasks) * rollout_n)],
             "token": [0 for _ in range(len(tasks) * rollout_n)],
             "stop": [False for _ in range(len(tasks) * rollout_n)],
@@ -87,7 +87,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                         task_tag=f"T{task.task_id}#R{task_rollout_index}",
                         mode=mode,
                         task_thread_index=task_thread_index,
-                        obs_window=obs_window,
+                        observation_window=observation_window,
                     )
                     futures.append(future)
 
@@ -111,7 +111,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                         f"One of the rollout threads has encountered an exception. {len(failed_futures)} threads failed."
                     )
 
-                self.step_status_printer(obs_window)
+                self.step_status_printer(observation_window)
                 time.sleep(10)
 
             for future in tqdm(futures, desc=f"epoch{epoch}.collect_rollout"):
@@ -135,7 +135,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         tasks: List[Task],
         mode: Literal["sample", "validate"],
         epoch: str,
-    ) -> List[BasicContextTracker]:
+    ) -> List[BaseContextTracker]:
         """Delegate to dynamic rollout when oversampling is enabled."""
         if (
             mode == "sample"
@@ -146,7 +146,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         else:
             return self.rollout_static(tasks, mode, epoch)
 
-    def greedy_max_std_selection(self, samples: List[BasicContextTracker], n):
+    def greedy_max_std_selection(self, samples: List[BaseContextTracker], n):
         """Select samples whose rewards maximize spread to cover diverse rollouts."""
         if len(samples) < n:
             additional_n = n - len(samples)
@@ -198,10 +198,10 @@ class DynamicRolloutManager(BaseRolloutManager):
         epoch: str,
         allow_sample_num_change=True,
         allow_force_stop=True,
-    ) -> List[BasicContextTracker]:
+    ) -> List[BaseContextTracker]:
         """Perform oversampled rollouts with optional early termination heuristics."""
 
-        tracker_array: List[BasicContextTracker] = []
+        tracker_array: List[BaseContextTracker] = []
         assert mode != "validate"
         rollout_n = self.rollout_n
         self.current_token_count_time = time.time()
@@ -212,7 +212,7 @@ class DynamicRolloutManager(BaseRolloutManager):
             rollout_n < rollout_n_confirm < rollout_n_oversample
         ), f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
 
-        obs_window: Dict[str, List[int | bool]] = {
+        observation_window: Dict[str, List[int | bool]] = {
             "step": [0 for _ in range(len(tasks) * rollout_n_oversample)],
             "stop": [False for _ in range(len(tasks) * rollout_n_oversample)],
             "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],
@@ -231,7 +231,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                         task_tag=f"T{task.task_id}#R{task_rollout_index}",
                         mode=mode,
                         task_thread_index=task_thread_index,
-                        obs_window=obs_window,
+                        observation_window=observation_window,
                     )
                     task_future_array.append(future)
                 futures += [task_future_array]
@@ -276,18 +276,18 @@ class DynamicRolloutManager(BaseRolloutManager):
                                     j * rollout_n_oversample,
                                     j * rollout_n_oversample + rollout_n_oversample,
                                 ):
-                                    obs_window["stop"][k] = True
+                                    observation_window["stop"][k] = True
                         else:
                             pass
                 terminate_status = "/".join(terminate_status)
                 if all(can_terminate):
                     logger.info(f"epoch{epoch}.collect_rollout: all tasks finished, exiting loop")
-                    for i, stop_flag in enumerate(obs_window["stop"]):
-                        obs_window["stop"][i] = True
+                    for i, stop_flag in enumerate(observation_window["stop"]):
+                        observation_window["stop"][i] = True
                     break
                 else:
                     if tic % 10 == 0:
-                        self.step_status_printer(obs_window)
+                        self.step_status_printer(observation_window)
                         logger.info(
                             f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}"
                         )
@@ -453,10 +453,10 @@ class VerlRolloutManger(DynamicRolloutManager):
         dataproto = self.samples_to_dataproto(samples)
         return dataproto
 
-    def trajectories_to_samples(self, tracker_array: List[BasicContextTracker]) -> List[Sample]:
+    def trajectories_to_samples(self, tracker_array: List[BaseContextTracker]) -> List[Sample]:
         """Tokenize each tracker into `Sample` objects ready for tensorization."""
         sample_arr_final = []
-        BasicContextTracker.compute_reference_advantage(tracker_array)
+        BaseContextTracker.compute_reference_advantage(tracker_array)
         for tracker in tracker_array:
             try:
                 sample_arr = tracker.group_tokenize()

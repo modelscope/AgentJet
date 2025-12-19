@@ -64,7 +64,7 @@ from verl.utils.seqlen_balancing import (
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
 
-from astuner.context_tracker.basic_tracker import BasicContextTracker
+from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import Task
 from astuner.task_rollout.native_parallel_worker import VerlRolloutManger
 
@@ -1406,7 +1406,7 @@ class ASTuneRayPPOTrainer:
                         )
                         print("=" * 10 + "start fit rollout" + "=" * 10)
                         self.parallel_env.current_global_steps = self.global_steps
-                        context_tracker_arr: List[BasicContextTracker] = self.parallel_env.rollout(
+                        context_tracker_arr: List[BaseContextTracker] = self.parallel_env.rollout(
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
                         print("=" * 10 + "end fit rollout" + "=" * 10)
