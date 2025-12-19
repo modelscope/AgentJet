@@ -5,7 +5,7 @@ from astuner.schema.task import Task
 from astuner.task_rollout.dashscope_llm_bridge import construct_alien_llm_chat_fn
 
 
-class DataGeneratorBase:
+class BaseDataGenerator:
     def __init__(self, config):
         """
         Initialize the TaskGeneratorBase class.

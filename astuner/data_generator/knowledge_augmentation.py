@@ -2,12 +2,12 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
-from astuner.data_generator.data_generator_base import DataGeneratorBase
+from astuner.data_generator.base_data_generator import BaseDataGenerator
 from astuner.schema.document import Document
 from astuner.schema.task import Task
 
 
-class KnowledgeAugmentor(DataGeneratorBase):
+class KnowledgeAugmentor(BaseDataGenerator):
     """
     Knowledge Augmentation:
     - Generate new tasks from Document
