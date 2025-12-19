@@ -1,12 +1,12 @@
 import re
 from typing import Any, Dict, Optional, Union
 
-from astuner.data_generator.data_generator_base import DataGeneratorBase
+from astuner.data_generator.base_data_generator import BaseDataGenerator
 from astuner.schema.document import Document
 from astuner.schema.task import Task
 
 
-class TaskAugmentor(DataGeneratorBase):
+class TaskAugmentor(BaseDataGenerator):
     """
     Task Augmentation:
     - Generate new queries based on reference Query (and optional Document)
