@@ -12,7 +12,7 @@ class Fn:
         self,
         name: str,
         description: str,
-        alien_llm_chat_fn: Any,
+        external_llm_fn: Any,
         input_schema: Dict[str, str],
         output_schema: Dict[str, str],
         sampling_params: Dict[str, Any] = {},
@@ -30,7 +30,7 @@ class Fn:
         """
         self.name = name
         self.description = description
-        self.alien_llm_chat_fn = alien_llm_chat_fn
+        self.external_llm_fn = external_llm_fn
         self.input_schema = input_schema
         self.output_schema = output_schema
         self.sampling_params = sampling_params or {}
@@ -193,7 +193,7 @@ class Fn:
         ]
 
         # Call LLM
-        response = self.alien_llm_chat_fn(messages, self.sampling_params)
+        response = self.external_llm_fn(messages, self.sampling_params)
 
         # Parse and return result
         return self._parse_markdown_kv(response["content"])

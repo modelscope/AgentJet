@@ -48,14 +48,14 @@ class LlmEvaluateFilter(Filter):
         """Filter that evaluates the quality of tasks using LLM."""
 
         self._print_reason = print_reason
-        self.alien_llm_chat_fn = create_external_llm_fn(
+        self.external_llm_fn = create_external_llm_fn(
             alien_llm_model="qwen3-235b-a22b-instruct-2507",
             alien_llm_response_length=512,
         )
         self._fn = Fn(
             name="evaluate_quality",
             description=EVALUATE_PROMPT.format(custom_rubrics=custom_rubrics),
-            alien_llm_chat_fn=self.alien_llm_chat_fn,
+            external_llm_fn=self.external_llm_fn,
             input_schema={
                 "query": "user query/task",
                 "answer": "assistant answer",
