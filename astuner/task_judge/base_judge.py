@@ -1,7 +1,7 @@
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 
-class JudgeBase:
+class BaseJudge:
     def __init__(self, config):
         self.config = config
 

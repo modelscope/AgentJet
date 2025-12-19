@@ -32,10 +32,10 @@ from rm_gallery.core.models.dashscope_chat_model import DashScopeChatModel
 from rm_gallery.core.models.schema.prompt_template import LanguageEnum
 
 from astuner.schema.task import Task, WorkflowOutput
-from astuner.task_judge.base_judge import JudgeBase
+from astuner.task_judge.base_judge import BaseJudge
 
 
-class AutoGraderJudge(JudgeBase):
+class AutoGraderJudge(BaseJudge):
     """
     A data-driven judge that uses RM Gallery's IterativeRubricsGenerator to evaluate workflow outputs.
 

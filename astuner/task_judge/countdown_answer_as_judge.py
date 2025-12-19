@@ -1,10 +1,10 @@
 import re
 
-from astuner.task_judge.base_judge import JudgeBase
+from astuner.task_judge.base_judge import BaseJudge
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 
-class CountdownAnswerAsJudge(JudgeBase):
+class CountdownAnswerAsJudge(BaseJudge):
     def __init__(self, config):
         self.config = config
         self.format_score = 0.1

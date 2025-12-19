@@ -1,7 +1,7 @@
 from typing import Any, Callable, Union
 
 from astuner.context_tracker.basic_tracker import BaseContextTracker
-from astuner.task_judge.base_judge import JudgeBase
+from astuner.task_judge.base_judge import BaseJudge
 from astuner.utils.dynamic_import import dynamic_import
 from astuner.utils.utils import run_async_coroutine_with_timeout
 
@@ -19,7 +19,7 @@ class BaseAgentRunner(object):
         self.max_model_len: int = self.config.astuner.rollout.max_model_len
         self.max_env_len: int = self.config.astuner.context_tracker.max_env_len
 
-    def get_judge(self) -> JudgeBase:  # type: ignore
+    def get_judge(self) -> BaseJudge:  # type: ignore
         if self.config.astuner.task_judge.judge_type == "customized_protocol":
             judge_protocol = self.config.astuner.task_judge.judge_protocol
             return dynamic_import(judge_protocol)(self.config)  # type: ignore

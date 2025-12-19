@@ -1,8 +1,8 @@
-from astuner.task_judge.base_judge import JudgeBase
+from astuner.task_judge.base_judge import BaseJudge
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 
-class EnvServiceJudge(JudgeBase):
+class EnvServiceJudge(BaseJudge):
     def __init__(self, config):
         self.config = config
 

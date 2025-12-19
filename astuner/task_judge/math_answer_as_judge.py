@@ -1,11 +1,11 @@
 import re
 
-from astuner.task_judge.base_judge import JudgeBase
+from astuner.task_judge.base_judge import BaseJudge
 from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
 from astuner.workflow import WorkflowOutput, WorkflowTask
 
 
-class MathAnswerAsJudge(JudgeBase):
+class MathAnswerAsJudge(BaseJudge):
     def __init__(self, config):
         self.config = config
 
@@ -29,7 +29,7 @@ class MathAnswerAsJudge(JudgeBase):
         return raw_reward, is_success
 
 
-class MathAnswerAndLlmAsJudge(JudgeBase):
+class MathAnswerAndLlmAsJudge(BaseJudge):
     def __init__(self, config):
         self.config = config
 
