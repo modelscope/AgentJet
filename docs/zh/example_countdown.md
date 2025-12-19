@@ -76,9 +76,9 @@ Judge 的返回值包括：
 拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 ✨✨✨✨ 标出。
 
 1. 读取任务（对应配置字段 `astuner.task_reader`）
-2. 定义 Workflow（对应配置字段 `astuner.rollout.agentscope_learn_protocol`）
+2. 定义 Workflow（对应配置字段 `astuner.rollout.agentscope_workflow`）
    - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_countdown/countdown.py` 的 `ExampleCountdownLearn` 类中
-   - 则配置 `astuner.rollout.agentscope_learn_protocol`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
+   - 则配置 `astuner.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
 3. 定义评分函数（对应配置字段 `astuner.task_judge.judge_protocol`）
    - 示例：如果评分逻辑定义在 `astuner/task_judge/countdown_answer_as_judge.py` 的 `CountdownAnswerAsJudge` 类中
    - 则配置 `astuner.task_judge.judge_protocol`=`astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge`
@@ -89,8 +89,7 @@ astuner:
     task_reader:
         type: huggingface_dat_repo # ✨✨✨✨ `env_service` 或 `dataset_file` 或 `huggingface_dat_repo` 或 `data_generation`
     rollout:
-        use_agentscope_protocol: True
-        agentscope_learn_protocol: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ 编写并选择 Agent
+        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ 编写并选择 Agent
     task_judge:
         # ✨✨✨✨ 编写并选择评估函数
         judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge

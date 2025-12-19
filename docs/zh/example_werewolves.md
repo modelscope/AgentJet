@@ -86,7 +86,7 @@ astuner:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ 编写并选择 AgentScope Workflow 的入口
-    agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves
+    agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves
 ```
 
 你可以在上述结构的基础上增加或替换自己的 Workflow / Judge / Model，只要确保路径和类名与实际代码保持一致即可。

@@ -69,10 +69,10 @@ for _ in range(config.astune.rollout.multi_turn.max_steps):
 拷贝并修改 `tutorial/example_appworld/appworld.yaml` 中的关键配置参数。与本文最相关的部分在 yaml 文件中用 ✨✨✨✨ 标出：
 
 1. **读取任务**（对应字段：`astune.task_reader`）
-2. **定义 Workflow**（对应字段：`astune.rollout.agentscope_learn_protocol`）
+2. **定义 Workflow**（对应字段：`astune.rollout.agentscope_workflow`）
    - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_appworld/appworld.py` 中的 `ExampleAgentScopeLearnProtocol` 类里
    - 则配置：
-`astune.rollout.agentscope_learn_protocol = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
+`astune.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
 3. **定义评分函数**（对应字段：`astune.task_judge.judge_protocol`）
    - 示例：
 `astune.task_judge.judge_protocol = "astune.task_judge.env_service_as_judge->EnvServiceJudge"`
@@ -90,8 +90,7 @@ astune:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ 编写并选择 Agent
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1

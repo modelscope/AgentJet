@@ -104,8 +104,6 @@ class BaseRolloutManager:
                 workflow_task = resource_keeper.prepare()
                 Runner = (
                     AgentScopeRunner
-                    if self.config.astuner.rollout.use_agentscope_protocol
-                    else AgentRunner
                 )
                 agent_runner: AgentScopeRunner = Runner(
                     llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config

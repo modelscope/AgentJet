@@ -222,7 +222,7 @@ After defining the workflow, we also need to tell ASTuner to use this class as t
 astuner:
   # ...
   rollout:
-    agentscope_learn_protocol: math_agent.math_agent->MathAgentWorkflow
+    agentscope_workflow: math_agent.math_agent->MathAgentWorkflow
 ```
 
 There is one more thing we have not addressed yet: the reward. Fortunately, ASTuner also supports customizing how rewards are calculated through configuration. Continue editing the config:
@@ -260,7 +260,7 @@ We also need to configure several important training hyperparameters:
 astuner:
   # ...
   rollout:
-    agentscope_learn_protocol: math_agent.math_agent->MathAgentWorkflow
+    agentscope_workflow: math_agent.math_agent->MathAgentWorkflow
     # Model temperature
     temperature: 0.7
     # Maximum number of parallel rollout workers

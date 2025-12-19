@@ -152,8 +152,7 @@ astuner:
 ```yaml
 astuner:
   rollout:
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     max_env_worker: 128
     temperature: 0.9
     top_p: 1.0
@@ -162,28 +161,10 @@ astuner:
     num_repeat: 4
 ```
 
-+ `use_agentscope_protocol`：是否使用 AgentScope 定义的交互协议。
-+ `agentscope_learn_protocol`：指定具体的交互协议实现类。
++ `agentscope_workflow`：指定具体的交互协议实现类。
 + `temperature` / `top_p`：采样参数。
 + `name`：推理引擎名称（例如 `vllm`）。
 + `n_vllm_engine`：使用的 vLLM 引擎数量（仅在 backbone 为 trinity 时生效）。
-
-### Context Tracker
-当且仅当 `rollout.use_agentscope_protocol=False` 时，才会使用 `context_tracker`，可独立于 AgentScope 管理对话。
-
-```yaml
-astuner:
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    # ...
-```
-
-- `context_tracker_type`：上下文管理策略，例如 `linear`。
-- `alien_llm_model` / `alien_llm_response_length`：用于上下文管理的辅助 LLM 及其最大回复长度。
-
-其他策略（例如 `auto_context_cm`、`sliding_window_cm`、`linear_think_cm`）请依照实际情况启用。
 
 ### 通用参数
 `trainer_common` 包含训练流程控制的通用参数：
@@ -311,11 +292,9 @@ astuner:
 
 
   rollout:
-    # activate AgentScope learn protocol
-    use_agentscope_protocol: True
 
     # the path to the workflow class
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: False
@@ -502,13 +481,6 @@ astuner:
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
 
-
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
 
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.

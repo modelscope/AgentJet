@@ -13,8 +13,7 @@ astuner:
   rollout:
     # ✨✨✨✨ 编写并选择Agent
     agentscope_disable_toolcalls: True
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     temperature: 0.9
     max_env_worker: 64
     num_repeat: 6

@@ -15,7 +15,7 @@ astuner:
 
   rollout:
     # the path to the workflow class
-    agentscope_learn_protocol: tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow # ✨✨✨✨ select agent
+    agentscope_workflow: tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow # ✨✨✨✨ select agent
     agentscope_disable_toolcalls: True
 
     temperature: 0.9

@@ -72,7 +72,7 @@ astuner:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ Implement and select the AgentScope Workflow entry
-    agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves
+    agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves
 ```
 You can add or replace your own Workflow / Judge / Model following the structure above.
 Just make sure that the paths and class names are consistent with the actual code.

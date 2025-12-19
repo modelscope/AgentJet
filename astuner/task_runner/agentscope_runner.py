@@ -19,7 +19,7 @@ class AgentScopeRunner(BaseAgentRunner):
         task_tag = workflow_task.task_tag
         task_id = workflow_task.task_id
 
-        workflow_import = self.config.astuner.rollout.agentscope_learn_protocol
+        workflow_import = self.config.astuner.rollout.agentscope_workflow
         workflow_cls = dynamic_import(workflow_import)
         agentscope_workflow: Workflow = workflow_cls(name="astuner-trinity")
 

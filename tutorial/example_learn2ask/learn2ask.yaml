@@ -13,7 +13,7 @@ astuner:
     path: Qwen/Qwen2.5-7B-Instruct
 
   rollout:
-    agentscope_learn_protocol: "tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask"
+    agentscope_workflow: "tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask"
     agentscope_disable_toolcalls: True
     temperature: 1.0
     max_env_worker: 64
