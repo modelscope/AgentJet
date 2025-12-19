@@ -76,9 +76,9 @@ Judge return values:
 Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
 
 1. Read task (corresponds to configuration field `astuner.task_reader`)
-2.  Define Workflow (corresponds to configuration field `astuner.rollout.agentscope_learn_protocol`)
+2.  Define Workflow (corresponds to configuration field `astuner.rollout.agentscope_workflow`)
    - Example: If agentscope workflow is defined in `ExampleCountdownLearn` class of `tutorial/example_countdown/countdown.py`
-   - Then set `astuner.rollout.agentscope_learn_protocol`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
+   - Then set `astuner.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
 3. Define scoring function (corresponds to configuration field `astuner.task_judge.judge_protocol`)
    - Example: If agentscope workflow is defined in `CountdownAnswerAsJudge` class of `astuner/task_judge/countdown_answer_as_judge.py`
    - Then set `astuner.task_judge.judge_protocol`=`astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge`
@@ -89,8 +89,7 @@ astuner:
     task_reader:
         type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
     rollout:
-        use_agentscope_protocol: True
-        agentscope_learn_protocol: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ Write and select Agent
+        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ Write and select Agent
     task_judge:
         # ✨✨✨✨ Write and select evaluation function
         judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge

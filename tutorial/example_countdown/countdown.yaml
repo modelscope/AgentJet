@@ -17,11 +17,9 @@ astuner:
 
 
   rollout:
-    # activate AgentScope learn protocol
-    use_agentscope_protocol: True
 
     # ✨✨✨✨ the path to the workflow class
-    agentscope_learn_protocol: tutorial.example_countdown.countdown->ExampleCountdownLearn
+    agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: True
@@ -131,13 +129,6 @@ astuner:
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
 
-
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
 
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.

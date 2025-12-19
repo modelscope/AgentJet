@@ -65,10 +65,10 @@ You can also refer to this file to implement your own Judge for your specific ta
 Copy and modify the key parameters in `tutorial/example_appworld/appworld.yaml`. The parts most relevant to this document are marked with ✨✨✨✨ in the yaml file:
 
 1. **Read tasks** (corresponding config field: `astune.task_reader`)
-2. **Define the workflow** (corresponding config field: `astune.rollout.agentscope_learn_protocol`)
+2. **Define the workflow** (corresponding config field: `astune.rollout.agentscope_workflow`)
     - Example: if the AgentScope workflow is defined in the `ExampleAgentScopeLearnProtocol` class in `tutorial/example_appworld/appworld.py`
     - Then set
-`astune.rollout.agentscope_learn_protocol = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
+`astune.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
 3. **Define the scoring function** (corresponding config field: `astune.task_judge.judge_protocol`)
     - Example:
 `astune.task_judge.judge_protocol = "astune.task_judge.env_service_as_judge->EnvServiceJudge"`
@@ -86,8 +86,7 @@ astune:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ Implement and select the Agent
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1

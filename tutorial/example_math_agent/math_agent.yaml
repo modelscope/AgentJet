@@ -18,7 +18,7 @@ astuner:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
 
   rollout:
-    agentscope_learn_protocol: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
+    agentscope_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 1.0
     max_env_worker: 64
     num_repeat: 6

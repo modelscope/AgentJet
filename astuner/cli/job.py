@@ -73,8 +73,7 @@ class AstunerJob:
         self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False
     ) -> "AstunerJob":
         self.config["astuner"]["rollout"] = {
-            "use_agentscope_protocol": True,
-            "agentscope_learn_protocol": cls_to_path(workflow),
+            "agentscope_workflow": cls_to_path(workflow),
         }
         # TODO: validate workflow outputs contain reward
         # ensure_reward_in_workflow
@@ -110,7 +109,7 @@ class AstunerJob:
 
     def tune(self, *args, **kwargs) -> "AstunerJob":
         ast_cfg = self.config.get("astuner", {})
-        if not ast_cfg.get("rollout") or not ast_cfg["rollout"].get("agentscope_learn_protocol"):
+        if not ast_cfg.get("rollout") or not ast_cfg["rollout"].get("agentscope_workflow"):
             raise ValueError("Workflow must be set via set_workflow before tuning.")
         if not ast_cfg.get("task_reader"):
             raise ValueError("Data source must be set via set_data before tuning.")

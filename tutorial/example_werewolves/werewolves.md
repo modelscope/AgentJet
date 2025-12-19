@@ -47,7 +47,7 @@
         # ✨✨✨✨ 设置待训练的模型
         path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
     rollout:
-        agentscope_learn_protocol: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
+        agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
     ```
 
 

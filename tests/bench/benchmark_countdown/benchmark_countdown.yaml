@@ -17,11 +17,9 @@ astuner:
 
 
   rollout:
-    # activate AgentScope learn protocol
-    use_agentscope_protocol: True
 
     # ✨✨✨✨ the path to the workflow class
-    agentscope_learn_protocol: tutorial.example_countdown.countdown->ExampleCountdownLearn
+    agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: True

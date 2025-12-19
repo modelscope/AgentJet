@@ -156,8 +156,7 @@ The rollout section controls the behavior of the Agent during the interaction sa
 ```yaml
 astuner:
   rollout:
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
     max_env_worker: 128
     temperature: 0.9
     top_p: 1.0
@@ -166,28 +165,10 @@ astuner:
     num_repeat: 4
 ```
 
-+ `use_agentscope_protocol`: Whether to use the interaction protocol defined by AgentScope.
-+ `agentscope_learn_protocol`: Specify the specific interaction protocol implementation class.
++ `agentscope_workflow`: Specify the specific interaction protocol implementation class.
 + `temperature` / `top_p`: Sampling parameters.
 + `name`: Inference engine name (e.g., `vllm`).
 + `n_vllm_engine`: The number of vLLM engines to use (effective when backbone is trinity).
-
-### Context Tracker
-The `context_tracker` section is used **only when** `rollout.use_agentscope_protocol=False`. It controls how the conversation history is managed and summarized.
-
-```yaml
-astuner:
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    # ...
-```
-
-- `context_tracker_type`: Strategy for context management, e.g. `linear`.
-- `alien_llm_model` / `alien_llm_response_length`: Auxiliary LLM and its max response length used in context tracking.
-
-Other commented sub-sections (such as `auto_context_cm`, `sliding_window_cm`, `linear_think_cm`) can be enabled and customized in advanced use cases.
 
 ### Common Parameters
 `trainer_common` contains common parameters for training flow control:
@@ -315,11 +296,9 @@ astuner:
 
 
   rollout:
-    # activate AgentScope learn protocol
-    use_agentscope_protocol: True
 
     # the path to the workflow class
-    agentscope_learn_protocol: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: False
@@ -507,14 +486,6 @@ astuner:
     # type of KL loss
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
-
-
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
 
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
