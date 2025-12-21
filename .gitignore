@@ -149,3 +149,5 @@ launcher.py
 vsdb.py
 appworld_pack_v2.tar*
 saved_checkpoints
+data
+datasets

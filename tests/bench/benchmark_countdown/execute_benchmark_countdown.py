@@ -41,7 +41,7 @@ class TestBenchmarkCountdown(unittest.TestCase):
         self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE
     ):
         cur_dir = os.path.dirname(__file__)
-        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
+        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../../.."))
 
         git_hash, req_txt = populate_test_env_metadata(workspace_dir)
         os.environ["ASTUNER_GIT_HASH"] = git_hash

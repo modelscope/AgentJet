@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import sys
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -14,8 +15,10 @@ from astuner.utils.launch_utils import (
 )
 from astuner.utils.pty import pty_launch
 
+logger.remove()
+colorize = os.environ.get("LOGURU_COLORIZE", "YES").upper() not in ["NO", "0", "FALSE"]
+logger.add(sys.stderr, colorize=colorize, enqueue=False)
 load_dotenv()
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="BA Launcher")

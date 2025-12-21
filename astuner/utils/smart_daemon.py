@@ -5,6 +5,7 @@ import logging
 import os
 import subprocess
 import sys
+import re
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -241,13 +242,27 @@ class LaunchWhenAbsent:
                         }
                     )
                     f = open(log_file, "a")
+
+                    # for key in ['COLORTERM', 'LS_COLORS', 'CLICOLOR', 'CLICOLOR_FORCE', 'FORCE_COLOR']:
+                    #     env_dict.pop(key, None)
+                    env_dict.update({
+                        'NO_COLOR': '1',
+                        # 'TERM': 'dumb',
+                        # 'PYTHONUNBUFFERED': '1',
+                        'LOGURU_COLORIZE': 'NO',
+                        # 'LOGURU_AUTOINIT': '1',
+                    })
+
                     proc = subprocess.Popen(
                         self.cmd,
                         stdout=f,
                         stderr=subprocess.STDOUT,
                         stdin=subprocess.DEVNULL,
                         cwd=self.dir,
-                        env={"ScriptHash": self.script_hash, **env_dict},
+                        env={
+                            "ScriptHash": self.script_hash,
+                            **env_dict
+                        },
                         start_new_session=True,  # Start new session
                     )
                     f.close()  # Close append handle

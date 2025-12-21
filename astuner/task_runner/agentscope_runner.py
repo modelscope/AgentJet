@@ -78,4 +78,6 @@ class AgentScopeRunner(BaseAgentRunner):
         context_tracker.group_merge()
         # after merging, process and align reward again
         context_tracker.process_reward(reward)
+        # mark the thread as ended
+        observation_window["step"][task_thread_index] = -1
         return context_tracker
