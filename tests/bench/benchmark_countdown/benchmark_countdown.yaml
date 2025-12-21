@@ -4,7 +4,7 @@ astuner:
 
   model:
     # ✨✨✨✨ which model should be trained
-    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 
   data:
     # max number of tokens for prompt
@@ -83,7 +83,7 @@ astuner:
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
     huggingface_dat_repo:
-      dataset_path: "dataset/Countdown-Tasks-3to4"
+      dataset_path: "/mnt/data_cpfs/model_cache/modelscope/dataset/Countdown-Tasks"
       training_split: "train"
       validation_split: "test"
 

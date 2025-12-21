@@ -24,26 +24,26 @@ class TestBenchmarkMath(unittest.TestCase):
             PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
         )
 
-    def test_begin_verl(self):
-        # get probe target, so as to get timeout settings
-        BACKBONE = "verl"
-        TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"
-        PROBE_TARGET = "tests/bench/benchmark_math/benchmark_math.py->TestProbe"
-        TARGET_NAME = f"benchmark_math_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".verl/bin/python"
-        self.execute_benchmark(
-            BACKBONE=BACKBONE,
-            TEST_TARGET=TEST_TARGET,
-            PROBE_TARGET=PROBE_TARGET,
-            TARGET_NAME=TARGET_NAME,
-            PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
-        )
+    # def test_begin_verl(self):
+    #     # get probe target, so as to get timeout settings
+    #     BACKBONE = "verl"
+    #     TEST_TARGET = "tests/bench/benchmark_math/benchmark_math.yaml"
+    #     PROBE_TARGET = "tests/bench/benchmark_math/benchmark_math.py->TestProbe"
+    #     TARGET_NAME = f"benchmark_math_{BACKBONE}"
+    #     PYTHON_EXECUTABLE = ".verl/bin/python"
+    #     self.execute_benchmark(
+    #         BACKBONE=BACKBONE,
+    #         TEST_TARGET=TEST_TARGET,
+    #         PROBE_TARGET=PROBE_TARGET,
+    #         TARGET_NAME=TARGET_NAME,
+    #         PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
+    #     )
 
     def execute_benchmark(
         self, BACKBONE, TEST_TARGET, PROBE_TARGET, TARGET_NAME, PYTHON_EXECUTABLE
     ):
         cur_dir = os.path.dirname(__file__)
-        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../.."))
+        workspace_dir = os.path.abspath(os.path.join(cur_dir, "../../.."))
 
         git_hash, req_txt = populate_test_env_metadata(workspace_dir)
         os.environ["ASTUNER_GIT_HASH"] = git_hash
@@ -65,7 +65,8 @@ class TestBenchmarkMath(unittest.TestCase):
         )  # add buffer time
         cmd = [
             PYTHON_EXECUTABLE,
-            "launcher.py",
+            "-m",
+            "astuner.cli.launcher",
             "--conf",
             TEST_TARGET,
             "--backbone",

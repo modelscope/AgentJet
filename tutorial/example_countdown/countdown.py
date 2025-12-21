@@ -45,12 +45,13 @@ class ExampleCountdownLearn(Workflow):
         from agentscope.memory import InMemoryMemory
 
         # Extract task information
-        query_data = json.loads(workflow_task.task.main_query)
+        # print(workflow_task.task.main_query)
+        query_data = workflow_task.task.metadata
         target = query_data.get("target")
         nums = query_data.get("nums")
 
         # Format the query
-        nums_str = ", ".join(map(str, nums))
+        nums_str = ", ".join(map(str, nums))    # type: ignore
         query = f"Target number: {target}\nAvailable numbers: {nums_str}\n\nPlease find a way to reach the target number using the available numbers."
 
         self.agent = ReActAgent(
