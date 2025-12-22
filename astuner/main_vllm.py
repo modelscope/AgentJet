@@ -101,9 +101,9 @@ def run(config):
         tokenizer=async_rollout_manager.tokenizer,
     )
 
-    from astuner.task_reader import TaskReaderRouter
+    from astuner.task_reader import RouterTaskReader
 
-    task_reader = TaskReaderRouter(
+    task_reader = RouterTaskReader(
         config.astuner.task_reader.type,
         config.astuner.task_reader,
     )

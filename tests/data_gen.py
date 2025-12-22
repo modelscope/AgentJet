@@ -6,7 +6,7 @@ from loguru import logger
 
 from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
 from astuner.data_generator.task_augmentation import TaskAugmentor
-from astuner.task_reader import TaskReaderRouter
+from astuner.task_reader import RouterTaskReader
 from astuner.task_reader.document_reader.doc_reader import DocReader
 from astuner.utils.config_utils import read_astune_config
 
@@ -18,7 +18,7 @@ class TestConfigUtils(unittest.TestCase):
         try:
             config = read_astune_config("tests/data_gen.yaml")
 
-            task_reader = TaskReaderRouter(
+            task_reader = RouterTaskReader(
                 reader_type=config.task_reader.data_generation.query_reader.type,
                 reader_config=config.task_reader.data_generation.query_reader,
             )
