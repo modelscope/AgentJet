@@ -18,6 +18,8 @@ parts:
       - file: en/example_math_agent.md
       - file: en/example_app_world.md
       - file: en/example_werewolves.md
+      - file: en/example_learning_to_ask.md
+      - file: en/example_countdown.md
       - file: en/example_tracing_feedback_loop.md
 
   - caption: 简介
@@ -40,4 +42,6 @@ parts:
       - file: zh/example_math_agent.md
       - file: zh/example_app_world.md
       - file: zh/example_werewolves.md
+      - file: zh/example_learning_to_ask.md
+      - file: zh/example_countdown.md
       - file: zh/example_tracing_feedback_loop.md
