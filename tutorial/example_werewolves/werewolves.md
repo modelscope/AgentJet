@@ -7,7 +7,7 @@
 
 - 定义 AgentScope 的工作流 （把agent的model修改为`astune_proxy`）
     ```python
-    class ExampleWerewolves(AgentScopeLearnProtocol):
+    class ExampleWerewolves(Workflow):
         trainer: str = Field(default="astuner-trinity")
         async def execute(self, init_messages, astune_proxy: ModelTuner, config) -> WorkflowOutput:
 

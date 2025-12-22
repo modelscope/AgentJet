@@ -54,8 +54,8 @@ Judge的返回值： raw_reward, is_success
 
 1. 读取task（对应配置字段 astuner.task_reader）
 2. 定义 Workflow（对应配置字段 astuner.rollout.agentscope_workflow ）
-    - 举例如果 agentscope workflow 定义在 `tutorial/appworld.py` 的`ExampleAgentScopeLearnProtocol` 类
-    - 则填写 astuner.rollout.agentscope_workflow=`tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol`
+    - 举例如果 agentscope workflow 定义在 `tutorial/appworld.py` 的`ExampleAgentScopeWorkflow` 类
+    - 则填写 astuner.rollout.agentscope_workflow=`tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow`
 3. 定义评分函数（对应配置字段 astuner.task_judge.judge_protocol ）
     - 填写 astuner.task_judge.judge_protocol=`astuner.task_judge.env_service_as_judge->EnvServiceJudge`
 4. 指定模型（对应配置字段 astuner.model.path ）
@@ -72,7 +72,7 @@ astuner
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ 编写并选择Agent
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1
