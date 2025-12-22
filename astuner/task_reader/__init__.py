@@ -12,7 +12,7 @@ from astuner.task_reader.task_reader_base import BaseTaskReader
 from astuner.task_reader.tracing_reader import TracingReader
 
 
-class RandomDummyGenerator(BaseTaskReader):
+class RandomDummyTaskReader(BaseTaskReader):
     def __init__(self, reader_config):
         super().__init__(reader_config)
 
@@ -60,7 +60,7 @@ class RouterTaskReader(BaseTaskReader):
         elif task_reader_type == "data_generation":
             self.task_reader = DataGeneratorTaskReader(reader_config)
         elif task_reader_type == "random_dummy":
-            self.task_reader = RandomDummyGenerator(reader_config)
+            self.task_reader = RandomDummyTaskReader(reader_config)
         else:
             raise ValueError(f"Unsupported task reader type: {task_reader_type}")
 
