@@ -4,7 +4,7 @@ from pydantic import Field
 from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
-class ExampleAgentScopeLearnProtocol(Workflow):
+class ExampleAgentScopeWorkflow(Workflow):
     trainer: str = Field(default="astuner-trinity")
 
     async def execute(
