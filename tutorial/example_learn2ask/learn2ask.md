@@ -14,12 +14,11 @@ Run the following command to preprocess the dataset:
 ```bash
 export DASHSCOPE_API_KEY=your_api_key
 
-python tutorial/example_learn2ask/data_preprocess/step1.py --input_file data/realmedconv/train_original.jsonl --output_file data/realmedconv/train_processed.jsonl
-python tutorial/example_learn2ask/data_preprocess/step2.py --input_file data/realmedconv/train_processed.jsonl --output_file data/realmedconv/train.jsonl
-
-python tutorial/example_learn2ask/data_preprocess/step1.py --input_file data/realmedconv/test_original.jsonl --output_file data/realmedconv/test_processed.jsonl
-python tutorial/example_learn2ask/data_preprocess/step2.py --input_file data/realmedconv/test_processed.jsonl --output_file data/realmedconv/test.jsonl
+cd tutorial/example_learn2ask/data_preprocess
+./run_process.sh data/realmedconv
 ```
+
+Or download the processed dataset from [here](TODO) and put the files in `data/realmedconv`.
 
 You now will get two datasets:
 - `train.jsonl`: the train split
