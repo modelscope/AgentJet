@@ -2,8 +2,7 @@ from typing import Iterable, List
 
 from astuner.schema.task import Task
 from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
-
-from ..fn import Fn
+from astuner.utils.fn import Fn
 from .base import Filter
 
 EVALUATE_PROMPT = """You are now acting as a **strict QA quality reviewer**. You will be given a data sample containing a “query” (user question/task) and an “answer” (assistant reply). Evaluate it **only based on the text itself**, without inventing facts or performing external retrieval.
