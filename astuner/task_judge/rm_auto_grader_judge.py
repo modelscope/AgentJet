@@ -177,9 +177,9 @@ class AutoGraderJudge(BaseJudge):
 
     async def read_reference_samples_from_dataset(self) -> List[Task]:
         # read dataset from config
-        from astuner.task_reader import TaskReaderRouter
+        from astuner.task_reader import RouterTaskReader
 
-        reader = TaskReaderRouter(
+        reader = RouterTaskReader(
             reader_type=self.config.astuner.task_judge.rubrics_auto_grader.input_data_type,
             reader_config=self.config.astuner.task_judge.rubrics_auto_grader,
         )

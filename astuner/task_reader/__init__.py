@@ -44,7 +44,7 @@ class RandomDummyGenerator(BaseTaskReader):
         return self._load_dataset_split("dataset_name", "split")
 
 
-class TaskReaderRouter(BaseTaskReader):
+class RouterTaskReader(BaseTaskReader):
     def __init__(self, reader_type, reader_config):
         super().__init__(None)
 

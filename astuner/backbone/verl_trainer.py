@@ -1801,9 +1801,9 @@ class ASTunerRayPPOTrainer:
         return ctx_trackers, tasks, val_metrics
 
     def get_eval_dataset(self):
-        from astuner.task_reader import TaskReaderRouter
+        from astuner.task_reader import RouterTaskReader
 
-        task_reader = TaskReaderRouter(
+        task_reader = RouterTaskReader(
             self.config.astuner.task_reader.type,
             self.config.astuner.task_reader,
         )

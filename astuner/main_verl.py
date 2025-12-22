@@ -230,10 +230,10 @@ class TaskRunner:
         from verl.utils.dataset.rl_dataset import collate_fn
 
         # Create training and validation datasets.
-        from astuner.task_reader import TaskReaderRouter, task_to_standard_dataset
+        from astuner.task_reader import RouterTaskReader, task_to_standard_dataset
         from astuner.utils.process_dataset import create_rl_sampler
 
-        task_reader = TaskReaderRouter(
+        task_reader = RouterTaskReader(
             config.astuner.task_reader.type,
             config.astuner.task_reader,
         )

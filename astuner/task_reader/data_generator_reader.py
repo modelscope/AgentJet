@@ -84,9 +84,9 @@ class DataGeneratorTaskReader(BaseTaskReader):
             base_url=self.reader_config.data_generation.filter.params.base_url,
         )
         # Initialize task reader
-        from astuner.task_reader import TaskReaderRouter
+        from astuner.task_reader import RouterTaskReader
 
-        task_reader = TaskReaderRouter(
+        task_reader = RouterTaskReader(
             reader_type=self.reader_config.data_generation.query_reader.type,
             reader_config=self.reader_config.data_generation.query_reader,
         )

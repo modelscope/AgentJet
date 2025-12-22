@@ -210,9 +210,9 @@ try:
 
             astune_config = get_astune_config_from_trinity_side()
 
-            from astuner.task_reader import TaskReaderRouter, task_to_standard_dataset
+            from astuner.task_reader import RouterTaskReader, task_to_standard_dataset
 
-            task_reader = TaskReaderRouter(
+            task_reader = RouterTaskReader(
                 astune_config.astuner.task_reader.type,
                 astune_config.astuner.task_reader,
             )
