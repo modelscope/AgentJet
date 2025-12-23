@@ -29,7 +29,7 @@ astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' 
 
 ## 3. 理解实现
 
-### 3.1 核心流程/原理
+### 3.1 核心流程
 
 从训练迭代视角来看，整体流程可以概括为：
 - 生成一局新的游戏设置（玩家、角色分配、初始状态）。
@@ -59,7 +59,7 @@ astuner:
     agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves
 ```
 
-### 3.3 代码解读（Code Map）
+### 3.3 代码解读
 
 - `tutorial/example_werewolves/werewolves.yaml`：将 task reader、judge、model 与 workflow 入口串联起来。
 - `tutorial/example_werewolves/start.py`：AgentScope Workflow 实现（`ExampleWerewolves`）。
@@ -68,7 +68,7 @@ astuner:
 - `tutorial/example_werewolves/structured_model.py`：定义了各个角色的输出结构化格式。
 - `tutorial/example_werewolves/utils.py`：包含游戏状态管理和辅助函数。
 
-### 3.4 奖励/评估机制
+### 3.4 奖励
 
 当 `judge_protocol: null` 时，训练默认依赖 rollout / environment 内部给出的 reward 或胜负结果。在本示例中，reward 在 `tutorial/example_werewolves/start.py` 的 workflow 中给出。
 
@@ -86,7 +86,7 @@ astuner:
 
 ## 4. 结果
 
-### 4.1 训练曲线/指标
+### 4.1 训练曲线
 
 `Qwen2-7B` 在大约 20 个 step 左右，可以达到约 60% 的胜率。
 

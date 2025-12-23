@@ -29,7 +29,7 @@ astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' 
 
 ## 3. Understand
 
-### 3.1 Core Process/Principles
+### 3.1 Core Process
 
 At a high level, each training iteration follows this flow:
 - The task reader generates a new game setup (players, role assignments, initial state).
@@ -67,7 +67,7 @@ astuner:
 - `tutorial/example_werewolves/structured_model.py`: defines structured output formats for different roles.
 - `tutorial/example_werewolves/utils.py`: game state management and helper functions.
 
-### 3.4 Reward/Evaluation Mechanism
+### 3.4 Reward
 
 When `judge_protocol: null`, training relies on the reward (or win/loss outcome) produced inside the rollout / environment. In this example, the reward is produced in the workflow in `tutorial/example_werewolves/start.py`.
 
@@ -85,7 +85,7 @@ If you need a more fine-grained evaluation (e.g., giving partial credit for key 
 
 ## 4. Results
 
-### 4.1 Training Curves/Metrics
+### 4.1 Training Curves
 
 `Qwen2-7B` is able to reach about 60% win rate in about 20 steps.
 
