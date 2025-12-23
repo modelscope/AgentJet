@@ -148,7 +148,7 @@ class AsyncLlmBridge(object):
             input_messages = copy.deepcopy(messages)
             for i in range(self.max_llm_retries):
                 try:
-                    # this function is defined in `astuner/main_vllm.py`
+                    # this function is defined in `astuner/backbone/main_vllm.py`
                     output_message = self.async_rollout_manager.submit_chat_completions(
                         messages=input_messages,
                         sampling_params=updated_sampling_params,

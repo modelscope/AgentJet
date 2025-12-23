@@ -191,9 +191,9 @@ def get_backbone_target(backbone):
     """
     backbone_target = "astuner.backbone.main_trinity"  # Default to trinity
     if backbone == "verl":
-        backbone_target = "astuner.main_verl"
+        backbone_target = "astuner.backbone.main_verl"
     if backbone == "debug":
-        backbone_target = "astuner.main_vllm"
+        backbone_target = "astuner.backbone.main_vllm"
     if backbone == "trinity":
         backbone_target = "astuner.backbone.main_trinity"
     return backbone_target
