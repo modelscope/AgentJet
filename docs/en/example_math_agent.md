@@ -1,157 +1,260 @@
-# Math
-This page demonstrates how to prepare data, build an Agent and Workflow, set up Rewards, and finally train a Math Agent from scratch.
+# Math Agent
 
-## 1. Prepare Dataset
-Download the `openai/gsm8k` dataset
+Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems.  
+Rewards come from a **judge** that checks final-answer correctness (and can optionally penalize bad tool-call behaviors).
+
+---
+
+### 1. Overview
+
+In **Math Agent**, each training sample is a math word problem (e.g., GSM8K). The agent learns to:
+
+- **reason step by step** (ReAct-style),
+- **call a Python tool** when computation is needed,
+- produce a final answer that matches the reference.
+
+This tutorial is organized in two steps:
+
+1) **Run it**: download the dataset and start training with the default YAML config.  
+2) **Understand & customize**: read the workflow (`ExampleMathLearn`) and the judge/reward (`MathAnswerAndLlmAsJudge`).
+
+---
+
+### 2. Quick Start
+
+#### 2.1 Prepare Dataset
+
+Download the `openai/gsm8k` dataset:
 
 ```bash
 python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/store/dataset
 ```
 
-## 2. Prepare AgentScope Workflow
-See details in `tutorial/example_math_agent/math_agent.py`. You can create new AgentScope Workflow code anywhere in the project.
+#### 2.2 Start Training
 
-+ Define the AgentScope workflow
-
-```python
-self.toolkit = Toolkit()
-self.toolkit.register_tool_function(execute_python_code)
-self.agent = ReActAgent(
-    name="math_react_agent",
-    sys_prompt=system_prompt,
-    model=astune_proxy,  # type: ignore
-    formatter=DashScopeChatFormatter(),
-    toolkit=self.toolkit,
-    memory=InMemoryMemory(),
-)
-msg = Msg("user", init_messages[0]['content'], role="user")
-result = await self.agent.reply(msg, structured_model=FinalResult)
-```
-
-In the AgentScope Workflow, register any key data needed by the evaluation function.
-
-```python
-astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
-```
-
-
-
-## 3. Prepare Reward
-Two simple Judges are provided in `astune/task_judge/math_answer_as_judge.py`. You can create new Judge code anywhere in the project.
-
-Judge input parameters include:
-
-```python
-judge_input_dictionary['env']: env_service external environment (if env_service is used)
-judge_input_dictionary['workflow_task']: Task information (if reference answer is included, it can be retrieved from here)
-judge_input_dictionary['grouped_steps']: History of every LLM conversation turn (if intermediate processes are important, they can be retrieved from here)
-judge_input_dictionary['final_answer']: By default, there is no final_answer. You need to manually call astune_proxy.update_judge_input_dictionary(final_answer=final_answer) in the agentscope workflow to register it.
-```
-
-Judge return values:
-
-+ raw_reward
-+ is_success
-
-## 4. Start Training
-### 4.1 Configure
-Copy and modify key parameters in `tutorial/example_math_agent/math_agent.yaml`. The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
-
-1. Read task (corresponds to configuration field `astune.task_reader`)
-2. Define Workflow (corresponds to configuration field `astune.rollout.agentscope_workflow`)
-    - Example: If agentscope workflow is defined in `ExampleMathLear` class of `tutorial/math_agent.py`
-    - Then set `astune.rollout.agentscope_workflow`=`tutorial.math_agent->ExampleMathLearn`
-3. Define scoring function (corresponds to configuration field `astune.task_judge.judge_protocol`)
-    - Example: If agentscope workflow is defined in `MathAnswerAndLlmAsJudge` class of `astune/task_judge/math_answer_as_judge.py`
-    - Then set `astune.task_judge.judge_protocol`=`astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge`
-4. Specify model (corresponds to configuration field `astune.model.path`)
-
-```yaml
-astune:
-    task_reader:
-        type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
-    rollout:
-        agentscope_workflow: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ Write and select Agent
-    task_judge:
-        # ✨✨✨✨ Write and select evaluation function
-        judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
-    model:
-        # ✨✨✨✨ Set the model to be trained
-        path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
-```
-
-
-
-### 4.2 Debug
 ```bash
-# It is recommended to kill all ray and env_service processes before starting ( astuner --kill="python|ray" )
+# (optional) recommended cleanup before training
+# astuner --kill="python|ray|vllm"
+
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+```
+
+#### 2.3 Debug Locally (No Ray)
+
+If you want to breakpoint-debug the workflow/judge locally:
+
+```bash
+# (optional) recommended cleanup before debug
+# astuner --kill="python|ray"
+
 clear && \
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
-When --backbone=debug, the program no longer uses Ray. You can configure vscode's launch.json for convenient breakpoint debugging. launch.json configuration:
+When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` like below:
 
 ```json
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Launch rollout",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "launcher.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--backbone",  "debug",
-                "--conf", "xxxx/xxxx/xxxx.yaml"
-            ],
-            "env": {
-            }
-        },
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Launch rollout",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "launcher.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--backbone", "debug",
+        "--conf", "xxxx/xxxx/xxxx.yaml"
+      ],
+      "env": {}
+    }
+  ]
 }
 ```
 
+---
 
+### 3. Understand
 
-### 4.3 Start Training
-```bash
-# It is recommended to kill all ray, vllm, and env_service processes before starting ( astuner --kill="python|ray|vllm" )
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+#### 3.1 What happens each step
+
+Each training step does:
+
+1. **Load one problem** from the dataset (`task_reader`).
+2. Run the **AgentScope workflow**:
+
+   * Build the prompt from the problem text,
+   * Let the ReAct agent optionally call a Python tool for computation,
+   * Extract the **final answer**.
+3. Register key info for evaluation (important!):
+
+   * The workflow must call:
+
+     * `astune_proxy.update_judge_input_dictionary(final_answer=final_answer)`
+4. Run the **judge** to compute reward:
+
+   * compare `final_answer` with the reference answer from the task,
+   * output `raw_reward` and `is_success`,
+   * the trainer uses them to update the policy.
+
+#### 3.2 YAML Configuration
+
+Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`. The key fields are:
+
+* `astune.task_reader`: where tasks come from
+* `astune.rollout.agentscope_workflow`: which workflow runs per sample
+* `astune.task_judge.judge_protocol`: which judge computes rewards
+* `astune.model.path`: pretrained model you fine-tune
+
+Minimal example:
+
+```yaml
+astune:
+  task_reader:
+    type: huggingface_dat_repo   # also supports: dataset_file / env_service (if enabled)
+
+  rollout:
+    agentscope_workflow: tutorial.math_agent->ExampleMathLearn
+
+  task_judge:
+    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+  model:
+    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 ```
 
-## 5 Reference Result
+#### 3.3 Code Walkthrough
+
+**Workflow (AgentScope):** `tutorial/example_math_agent/math_agent.py`
+
+The workflow typically:
+
+* registers tools (e.g., `execute_python_code`)
+* constructs a ReAct agent
+* runs one turn from the user problem
+* parses the final answer
+* exposes it to the judge via `update_judge_input_dictionary`
+
+Workflow sketch:
+
+```python
+self.toolkit = Toolkit()
+self.toolkit.register_tool_function(execute_python_code)
+
+self.agent = ReActAgent(
+    name="math_react_agent",
+    sys_prompt=system_prompt,
+    model=astune_proxy,  # trainer-managed model wrapper
+    formatter=DashScopeChatFormatter(),
+    toolkit=self.toolkit,
+    memory=InMemoryMemory(),
+)
+
+msg = Msg("user", init_messages[0]["content"], role="user")
+result = await self.agent.reply(msg, structured_model=FinalResult)
+
+# IMPORTANT: provide final answer to the judge
+astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
+```
+
+**Judge / Reward:** `astune/task_judge/math_answer_as_judge.py`
+
+Two simple judges are provided there; you can add your own judge anywhere in the project.
+
+#### 3.4 Reward
+
+The judge reads from `judge_input_dictionary`, commonly including:
+
+* `env`: env_service external environment (if enabled)
+* `workflow_task`: task info; reference answer can be retrieved from here
+* `grouped_steps`: all LLM conversation turns (useful if you want process-based scoring)
+* `final_answer`: not present by default — you must set it in the workflow via:
+
+  * `astune_proxy.update_judge_input_dictionary(final_answer=final_answer)`
+
+The judge returns:
+
+* `raw_reward`
+* `is_success`
+
+**Practical tip:**
+If you observe the model “almost solved it but messed up tool-call formatting / impatiently skipped tool execution”, you can extend the judge to:
+
+* add a format penalty (invalid `<tool_call>`)
+* add a behavior penalty (tool called but no `print` / execution result not used)
+* keep answer correctness as the primary signal
+
+---
+
+### 4. Results
+
+#### 4.1 Training Curve
 
 ![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
 
-## Tuning Observation
+Interpretation: as training progresses, reward increases. This usually means the agent becomes more stable on **two things**:
 
-Agents are already able to deal with the majority of problems at the begining of the training process, however, small models inevitably produce many answers that does not satisfy standard `<tool_call>` format. In some problems, the agent writes python code to compute the answer but it is so eager to produce answer right away that it immediately guessed an answer and skipped tool_call execution phrase.
+* **Using tools when it should**: it can correctly emit a `<tool_call>` and call `execute_python_code` for computation.
+* **Producing more reliable answers**: it can use the tool return (e.g., `<tool_response>`) to output a final answer aligned with the reference.
 
+> In practice, the gain here is often less about “stronger math ability” and more about “better tool discipline + more consistent use of execution results”.
 
-```
-# bad case 1: forget to print result in python code.
-<|im_start|>assistant
-To find the height difference between Bella and Anne's sister, let's first determine their heights based on the information provided.
-- Anne's height = 80 cm
-- Anne is 2 times as tall as her sister, so Anne's sister's height = \( \frac{Anne's\ height}{2} \)
-- Bella is 3 times as tall as Anne, so Bella's height = \( 3 \times Anne's\ height \)
-We can calculate these values and then determine the height difference between Bella and Anne's sister.
+---
+
+#### 4.2 Case Study: from “can solve” to “can solve with tools”
+
+Before training, the agent may already solve many problems. However, smaller models often fail at **tool-call discipline**, e.g.:
+
+* forgetting to `print` the computed value in Python (the tool ran, but produced no usable output),
+* outputting the final answer before the tool execution finishes (premature answering),
+* malformed `<tool_call>` blocks (tool not triggered / parsing fails).
+
+##### Bad cases: what typical failures look like
+
+```text
+# bad case 1: forgot to print the result in python code
 <tool_call>
-{"name": "execute_python_code", "arguments": {"code": "anne_height = 80\nsister_height = anne_height / 2\nbella_height = 3 * anne_height\nheight_difference = bella_height - sister_height\nheight_difference"}}
-</tool_call><|im_end|>
-
-# bad case 2: too impatient to wait for tool execution.
-<|im_start|>assistant
-To find the number of board members who attended the meeting, let's break down the information given: 1. There are 40 chairs, each with a capacity of 2 people. 2. The total capacity of the chairs is \( 40 \times 2 = 80 \) people. 3. Since the number of board members is the same as the chairs' capacity, there are 80 board members in total. 4. \( \frac{2}{5} \) of the chairs were not occupied, so \( \frac{2}{5} \times 40 = 16 \) chairs were empty. 5. Therefore, \( 40 - 16 = 24 \) chairs were occupied. 6. Each of these 24 chairs was fully occupied by 2 people, meaning \( 24 \times 2 = 48 \) people attended the meeting.  Let's confirm this with a Python calculation.
-<tool_call> {"name": "execute_python_code", "arguments": {"code": "total_chairs = 40\nchair_capacity = 2\nunoccupied_fraction = 2/5\nunoccupied_chairs = total_chairs * unoccupied_fraction\noccupied_chairs = total_chairs - unoccupied_chairs\nattended_board_members = occupied_chairs * chair_capacity\nattended_board_members"}} </tool_call>
- <tool_call> {"name": "generate_response", "arguments": {"response": "The number of board members who did attend the meeting is \(\boxed{48}\)."}}
+{"name": "execute_python_code", "arguments": {"code": "... height_difference"}}
 </tool_call>
-<|im_end|>
+
+# bad case 2: too impatient — outputs final answer without waiting for the tool result
+<tool_call> {"name": "execute_python_code", ...} </tool_call>
+<tool_call> {"name": "generate_response", "arguments": {"response": "... \\boxed{48} ..."}} </tool_call>
 ```
 
-However, tuning resolves these issues, as shown in the example below:
+These failures are usually not because the model “can’t do math”, but because it **does not close the loop** by incorporating the tool execution result:
 
+* bad case 1: the tool may succeed, but without `print`, `stdout` is empty and the model can’t reliably read the value.
+* bad case 2: the model generates a tool call and a final answer back-to-back in the same turn, effectively **skipping the “wait for `<tool_response>`” step**.
+
+---
+
+##### Good case: after tuning, the tool-use loop becomes closed
+
+After tuning, the agent often follows a clean 3-stage pattern (corresponding to Message 3/4/5 in the screenshots):
+
+1. **Message 3 (assistant)**: decomposes the problem + emits a `<tool_call>`, and uses `print(...)` to output key values
+2. **Message 4 (tool_response)**: the tool returns execution results (e.g., `returncode=0`, `stdout=...`)
+3. **Message 5 (assistant)**: reads `stdout` and then produces the final answer (e.g., `\\boxed{18}`)
 
 ![image](https://img.alicdn.com/imgextra/i4/O1CN01v1gGQZ1ftMiil5Cxg_!!6000000004064-2-tps-1367-684.png)
+
 ![image](https://img.alicdn.com/imgextra/i4/O1CN01WarPpf1yNk4awZOIO_!!6000000006567-2-tps-1363-422.png)
+
+On the right side of the figure, the colored blocks are a **token-level sequence visualization**:
+
+* **each block is one token** (the number inside is the token id),
+* the order of blocks is the order the model **consumed/generated** tokens,
+* what matters is not the token id itself, but whether you can see clear boundary markers such as:
+
+  * `<im_start> assistant ... <tool_call> ... <im_end>`
+  * `<im_start> user <tool_response> ... <stdout>18.0</stdout> ... <im_end>`
+  * `<im_start> assistant ... \\boxed{18} ... <im_end>`
+
+A “good” tool-call behavior typically shows up in logs as:
+
+* `<tool_call>` and `<tool_response>` appear in **separate turns** (call → response → answer),
+* `<tool_response>` contains **non-empty stdout**,
+* the final answer appears **after** the tool returns, rather than being produced prematurely.
+

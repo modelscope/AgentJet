@@ -54,6 +54,7 @@ Explore our rich library of examples to kickstart your journey:
 - 🍳 [**Build a Simple Math Agent**](./example_math_agent.md): Specialized in GSM8K problems and learn how to train it.
 - 🍳 [**Build an AppWorld Agent**](./example_app_world.md): Create an AppWorld agent using AgentScope and train it.
 - 🍳 [**Build Multi-Agent Werewolf Gameplay**](./example_werewolves.md): Develop multiple Werewolves RPG agents and train them.
+- 🫣 [**Build a "Learning to Ask" Agent**](./example_learning_to_ask.md): Train a proactive agent to ask high-value questions using LLM-as-a-judge rewards.
 - 📔 [**Tracing-Feedback Training**](./example_tracing_feedback_loop.md): Learn how to train using user feedback tracing.
 
 To learn the details of each component, please refer to:
