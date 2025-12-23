@@ -9,7 +9,7 @@ ASTuner provides two convenient and **mutually compatible** ways to wrap an Agen
 
 ## Simple Agent Scenario
 
-### 1. Convert your AgentScope Workflow in ASTuner
+### 1. Convert Your AgentScope Workflow in ASTuner
 
 **Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.**
 
@@ -55,7 +55,7 @@ class ExampleMathLearn(Workflow):
 ```
 
 
-### 2. When to use this simple practice
+### 2. When to Use This Simple Practice
 
 This practice suits most users. You can choose it if you:
 
@@ -131,9 +131,9 @@ With a multi-agent setup, you can:
 - ✨ Explicitly define the default model used by agents that are **not being trained**;
 - ⚡ Switch trainable targets on the fly **without modifying** the workflow source code.
 
-### 1. Trainability switch and model lifecycle
+### 1. Trainability Switch and Model Lifecycle
 
-#### Multi-role model registration and usage
+#### Multi-role Model Registration
 
 In a multi-agent workflow, each agent is associated with a role.
 
@@ -144,7 +144,7 @@ Within the workflow, we register roles to be tuned, and specify the role explici
 - **Use (bind)**: `model_tuner.get_model(agent_role)`
   - Definition: when constructing agents or executing the workflow, return the model object bound to the given `agent_role`.
 
-#### Trainable vs. non-trainable models
+#### Trainable vs. Non-trainable Models
 
 In a workflow, trainability can be controlled at the role level. Whether a role participates in training is determined by the workflow's **`trainable_targets`**:
 
@@ -161,7 +161,7 @@ class ExampleMathLearn(Workflow):
 
 Regardless of role differences, all agents share a single model instance; i.e., one set of parameters is used to play different roles.
 
-### 2. Promote to an advanced ASTuner Workflow
+### 2. Promote to An Advanced ASTuner Workflow
 
 This section demonstrates how to register role-specific trainable targets via `model_tuner.register_model`, and bind models to agents by role during construction.
 
@@ -205,7 +205,7 @@ class ExampleMathLearn(Workflow):
         ... your agents and workflow here ...
 ```
 
-### 3. A multi-agent example
+### 3. A Multi-agent Example
 
 ```python
 roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
