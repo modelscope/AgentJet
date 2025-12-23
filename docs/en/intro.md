@@ -1,98 +1,110 @@
-# AgentScope Tuner
+# Introduction
 
-AgentScope Tuner, or **ASTuner**, is an advanced agent training framework designed to optimize AgentScope workflows and agents.
-Simply provide your AgentScope workflow, training data, and reward function to enhance your agents to their optimal performance.
+**AgentScope Tuner (ASTuner)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
 
+Simply provide your AgentScope workflow, training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
 
+---
 
-## ✨ Features
+### ✨ Features
 
-- **Data Augmentation & User Feedback Tracing**: Automatically augment training data and trace user feedback when training data is limited.
-- **Auto Rubrics**:  Generate LLM-as-judge reward functions by learning from few-shot examples.
-- **Multi-Agent Support**: Build advanced cooperative multi-agent systems with ease.
-- **Highly Efficient Async Training-Inference Separation**: Powered by Trinity-RFT for optimized performance.
-- **Training-Debugging Integration**: Seamlessly toggle between training and debugging modes using a simple `--backbone` switch (`--backbone=trinity` or `--backbone=debug`).
-- **Comprehensive Logging**: Integrate message-level logging from AgentScope Studio and token-level logging for detailed insights.
+We aim to build a easy-to-learn AgentScope tuner that unlock more possibilities for agent developers:
 
+- **Easy and Friendly**. ASTuner helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
+- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](https://github.com/agentscope-ai/agentscope-tuner/tree/main/tutorial) as tutorials.
+- **Efficient and Scalable**. ASTuner uses [trinity](https://github.com/modelscope/Trinity-RFT/) as the default backbone (`--backbone=trinity`), accelerating your tuning process via fully asynchronous RFT. Nevertheless, if actor colocating is your preference, you can still fall back to the [verl](./installation.md) backbone.
+- **Flexible and Fast**. ASTuner supports [multi-agent workflows](docs/en/workflow.md) and adopts a timeline merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
 
+For advanced researchers, ASTuner also provides high-resolution logging and debugging solutions:
+<!-- For advanced researchers, ASTuner provides high-resolution logging and debugging solutions that are, to our knowledge, unprecedented in other prior projects. -->
 
-## 🚀 Quick Start
+- **High-Resolution Logging**: ASTuner allows users to save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
+- **Fast Debugging**: ASTuner also provides the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes and enabling breakpoint debugging in IDEs.
 
-### Installation
+---
 
-We recommend using `uv` for dependency management, though `conda` is also supported.
+### 🚀 Quick Start
 
-1. Clone the repository:
+#### Installation
 
+We recommend using `uv` for dependency management.
+
+1. **Clone the Repository**:
 ```bash
 git clone https://github.com/agentscope-ai/agentscope-tuner.git
 cd agentscope-tuner
+
 ```
 
-3. Create virtual environment and install dependencies:
 
+2. **Set up Environment**:
 ```bash
-uv venv --python=3.10.16  # Create virtual environment
-source .venv/bin/activate  # Activate virtual environment
-
+uv venv --python=3.10.16 && source .venv/bin/activate
 uv pip install -e .[trinity]
+# Note: flash-attn must be installed after other dependencies
 uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
+
 ```
 
 
-### Get Started
+#### Run Training
 
-Run and train an agent in one command:
+You can start training your first agent with a single command using a pre-configured YAML file:
 
 ```bash
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
+Details in [Math agent](./example_math_agent.md)
+
+#### Example Library
 
 Explore our rich library of examples to kickstart your journey:
 
-- 🚀 [**Quick Start**](./quickstart.md): Learn the framework and train your first agent from scratch.
-- 🍳 [**Build a Simple Math Agent**](./example_math_agent.md): Specialized in GSM8K problems and learn how to train it.
-- 🍳 [**Build an AppWorld Agent**](./example_app_world.md): Create an AppWorld agent using AgentScope and train it.
-- 🍳 [**Build Multi-Agent Werewolf Gameplay**](./example_werewolves.md): Develop multiple Werewolves RPG agents and train them.
-- 🫣 [**Build a "Learning to Ask" Agent**](./example_learning_to_ask.md): Train a proactive agent to ask high-value questions using LLM-as-a-judge rewards.
-- 📔 [**Tracing-Feedback Training**](./example_tracing_feedback_loop.md): Learn how to train using user feedback tracing.
-
-To learn the details of each component, please refer to:
-
-- ⚙️ [**Configuration**](./configuration.md): Configure the data, optimization algorithms, rewards, etc.
-- 💼 [**Workflow**](./workflow.md): Build your own agent with trainable workflow.
-- 📊 [**Data Pipeline & Generation**](./data_pipeline.md): Includes building dataset tasks from document materials and expanding datasets from few samples.
+- 🔢 [**Training a math agent that can write python code**](./example_math_agent.md).
+- 📱 [**Creating an AppWorld agent using AgentScope and training it**](./example_app_world.md).
+- 🐺 [**Developing Werewolves RPG agents and training them**](./example_werewolves.md).
+- 👩🏻‍⚕️ [**Learning to ask questions like a doctor**](./example_learning_to_ask.md).
+- 🎴 [**Writing a countdown game using AgentScope and solving it**](./example_countdown.md).
+- 🚶 [**Solving a frozen lake walking puzzle using ASTuner**](./example_frozenlake.md).
 
 
-## 🏗️ Project Architecture
+---
 
-AgentScope Tuner makes agent fine-tuning unprecedentedly straightforward. It encapsulates complex fine-tuning training into a simple module driven by three core inputs:
+### 🧩 Core Concepts
 
-- AgentScope workflows (which can directly utilize your pre-written AgentScope workflows)
-- Task datasets (providing training data)
-- Reward Judge (assessing performance quality).
+ASTuner makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
+
+<div align="center">
+<img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+
+</div>
+
+#### 1. The User-Centric Interface
+
+To optimize an agent, you provide three core inputs:
+
+* **Workflow**: User-defined agent logic (single or multi-agent).
+* **Task Dataset**: Training and validation tasks (e.g., GSM8K).
+* **Task Judge**: A reward function or rubric used to score agent performance.
+
+#### 2. Internal System Architecture
+
+The internal system orchestrates several specialized modules to handle the complexities of RL training and agent interactions.
+
+* **Launcher**: Manages background service processes (Ray, vLLM) and routes the backbone.
+* **Task Reader**: Handles data ingestion, augmentation, and filtering.
+* **Task Rollout**: Bridges LLM engines and manages the Gym environment lifecycle.
+* **Task Runner**: Executes the AgentScope workflow and calculates rewards.
+* **Model Tuner**: Forwards inference requests from the workflow to the LLM engine.
+* **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **3x to 10x**.
 
 
-![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764207569988-69b6926f-301b-4766-9199-3823974aab99.png)
+---
 
-Of course, fine-tuning the workflow would not be possible without the silent support of the following core modules:
+### 🚦 Navigation
 
-![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png)
-- **launcher**: The entry point of the project, helping developers quickly switch between debugging the backbone and training the backbone. It also launches and intelligently monitors the environment service processes related to training in the background.
-- **task rollout**: Bridges different LLM engines (such as FSDP, VLLM, etc.), implements a retry mechanism, and passes the tasks read by the task reader. If the gym environment is required, it initializes the gym environment and ensures resource cleanup.
-- **task runner**: The front-line worker responsible for actually executing the user-provided AgentScope workflow. It also runs the judge and performs preliminary reward calculations.
-- **model tuner**: When the AgentScope workflow sends an LLM inference request, this busy component directly receives and forwards the request to the LLM engine.
-- **context tracker**: A loyal recorder that monitors every LLM call and automatically identifies and archives LLM requests belonging to the same Agent and the same timeline. At the end of the task, it marks the loss mask, merges the recorded LLM input-output timelines, and improves training efficiency by 3 to 10 times.
-
-
-
-## 🗺️ Project Roadmap
-
-Working in progress:
-
-- Enhance data generation module functionality
-- Provide a training → user feedback → data augmentation → retraining data flywheel example
-- Offer refined post-processing options for multi-agent samples
-- Support training with multiple models
-- Optimize configurations for long-context adaptation on smaller GPUs
-- Add LoRA training examples
+* 📖 **[Tutorials]**: From [Installation](./installation.md) to [Tuning your first agent](./tutorial.md) — the essential path for beginners.
+* 🛠️ **[Core Components]**: Define your [Trainable Workflow](./workflow.md) and manage [Data](./data_pipeline.md) and [Reward](./tune_your_first_agent.md).
+* ⚙️ **[Deep Dive]**: Master advanced [Configuration](./configuration.md).
+* 💡 **[Examples]**: Check the [Example Library](#example-library) above for real-world cases like [Math](./example_math_agent.md), [Werewolves game](./example_werewolves.md) and  [Learning to ask task](./example_learning_to_ask.md).
