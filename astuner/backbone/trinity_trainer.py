@@ -8,20 +8,16 @@ import swanlab
 from loguru import logger
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
-from trinity.common.workflows.workflow import WORKFLOWS
+from trinity.common.workflows import WORKFLOWS
 from trinity.common.workflows.workflow import Task as TrinityTask
 from trinity.common.workflows.workflow import Workflow
 
-try:
-    from trinity.buffer.reader import READER
-    from trinity.buffer.reader.file_reader import TaskFileReader, _HFBatchReader
-    from trinity.buffer.schema.formatter import FORMATTER
-    from trinity.utils.log import get_logger
-    from trinity.utils.monitor import MONITOR, Monitor
+from trinity.buffer.reader import READER
+from trinity.buffer.reader.file_reader import TaskFileReader, _HFBatchReader
+from trinity.buffer.schema import FORMATTER
+from trinity.utils.log import get_logger
+from trinity.utils.monitor import MONITOR, Monitor
 
-    logger.success("[New Trinity] Trinity imports successful.")
-except ImportError:
-    logger.success("[Old Trinity] Using old trinity.")
 
 from typing import List, Literal, Optional, cast
 
