@@ -1,4 +1,4 @@
-# Learning2Ask Agent
+# Learning to Ask
 
 Train an agent to **ask the next best question** (instead of answering directly). Rewards come from an **LLM-as-a-judge** that scores whether the question is helpful and relevant.
 

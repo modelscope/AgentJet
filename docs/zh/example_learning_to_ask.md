@@ -1,4 +1,4 @@
-# Learning2Ask Agent
+# Learning to Ask
 
 训练一个智能体去**提出下一个最合适的问题**（而不是直接回答）。奖励来自一个 **LLM-as-a-judge**：它会评估“这个问题是否有帮助、是否相关”，并给出打分。
 

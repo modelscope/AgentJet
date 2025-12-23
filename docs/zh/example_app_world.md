@@ -37,8 +37,6 @@ astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --wi
 
 ### 3.1 核心流程
 
-#### 3.1.1 AgentScope Workflow 交互循环
-
 AppWorld 示例所使用的 AgentScope Workflow 代码位于：`tutorial/example_appworld/appworld.py`。
 
 代码首先定义了 AgentScope Workflow（将 Agent 的 `model` 设置为 `model_tuner`）：

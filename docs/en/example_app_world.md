@@ -37,8 +37,6 @@ This section explains how the AppWorld example is assembled: workflow, reward, c
 
 ### 3.1 Core Process
 
-#### 3.1.1 AgentScope Workflow interaction loop
-
 The AgentScope workflow code for the AppWorld example is located at `tutorial/example_appworld/appworld.py`.
 
 The code first defines the AgentScope workflow (set the agent's `model` to `model_tuner`):
@@ -76,7 +74,6 @@ In the above code:
 
 - `env.step`: simulates the gym interface. It takes an action as input and returns a four-tuple `(observation, reward, terminate_flag, info)`.
 - `model_tuner.get_context_tracker().context_overflow`: checks whether the current context window has exceeded the token limit.
-
 
 
 ### 3.2 Reward
