@@ -13,24 +13,34 @@ ASTuner provides two convenient and **mutually compatible** ways to wrap an Agen
 
 **Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.**
 
-```python
-
-# From >>>
-agent_instance = ReActAgent(
+<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em;">
+  <thead>
+    <tr>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
    name=f"Friday",
    sys_prompt="You are a helpful assistant",
    model=DashScopeChatModel(model_name="qwen-max", stream=False),
    formatter=DashScopeChatFormatter(),
-)
-
-# To <<<
-agent_instance = ReActAgent(
+)</code></pre>
+      </td>
+      <td>
+        <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
    name=f"Friday",
    sys_prompt="You are a helpful assistant",
-   model=model_tuner,	# change here
+   model=model_tuner,  # change here
    formatter=DashScopeChatFormatter(),
-)
-```
+)</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 Then, wrap your workflow in a class that inherits `Workflow` (`from astnuer import Workflow`), and the workflow is ready to be tuned.
 
