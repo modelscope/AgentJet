@@ -27,6 +27,19 @@
 astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
 ```
 
+<details>
+<summary>快速调试（可选）</summary>
+
+不启用 Ray 在本地运行，便于更快迭代：
+
+```bash
+astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-logview
+```
+
+如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
+
+</details>
+
 ## 3. 理解实现
 
 ### 3.1 核心流程

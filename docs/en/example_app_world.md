@@ -46,6 +46,42 @@ Run the training script:
 astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
 ```
 
+<details>
+<summary>Quick Debugging (Optional)</summary>
+
+If you want to breakpoint-debug the workflow/judge locally:
+
+```bash
+# (optional) recommended cleanup before debug
+# astuner --kill="python|ray"
+
+clear && \
+astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+```
+
+When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` like below:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Launch rollout",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "launcher.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--backbone", "debug",
+        "--conf", "./path/to/yaml.yaml"
+      ],
+      "env": {}
+    }
+  ]
+}
+```
+</details>
+
 ## 3. Understand
 
 This section explains how the AppWorld example is assembled: workflow, reward, configuration, and code locations.
