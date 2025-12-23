@@ -9,13 +9,14 @@ from astuner.utils.testing_utils import populate_test_env_metadata, send_test_re
 
 
 class TestBenchmarkLearnToAsk(unittest.TestCase):
-    def test_begin_trinity(self):
+    def test_01_begin_trinity(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "trinity"
         TEST_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.yaml"
         PROBE_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe"
         TARGET_NAME = f"benchmark_learn2ask_{BACKBONE}"
-        PYTHON_EXECUTABLE = "python"
+        # PYTHON_EXECUTABLE = "python"
+        PYTHON_EXECUTABLE = ".venv/bin/python"
         self.execute_benchmark(
             BACKBONE=BACKBONE,
             TEST_TARGET=TEST_TARGET,
@@ -24,13 +25,14 @@ class TestBenchmarkLearnToAsk(unittest.TestCase):
             PYTHON_EXECUTABLE=PYTHON_EXECUTABLE,
         )
 
-    def test_begin_verl(self):
+    def test_02_begin_verl(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "verl"
         TEST_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.yaml"
         PROBE_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe"
         TARGET_NAME = f"benchmark_learn2ask_{BACKBONE}"
-        PYTHON_EXECUTABLE = "python"
+        # PYTHON_EXECUTABLE = "python"
+        PYTHON_EXECUTABLE = ".verl/bin/python"
         self.execute_benchmark(
             BACKBONE=BACKBONE,
             TEST_TARGET=TEST_TARGET,
@@ -44,7 +46,7 @@ class TestBenchmarkLearnToAsk(unittest.TestCase):
     ):
         cur_dir = os.path.dirname(__file__)
         workspace_dir = os.path.abspath(os.path.join(cur_dir, "../../.."))
-        
+
 
         git_hash, req_txt = populate_test_env_metadata(workspace_dir)
         os.environ["ASTUNER_GIT_HASH"] = git_hash
