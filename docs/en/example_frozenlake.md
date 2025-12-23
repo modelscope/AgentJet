@@ -1,6 +1,6 @@
 # Frozen Lake
 
-## 1. Introduction
+## 1. Overview
 
 **Frozen Lake** is a classic reinforcement learning task from [Gymnasium](https://gymnasium.farama.org/environments/toy_text/frozen_lake/).
 
@@ -62,7 +62,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` lik
 ```
 </details>
 
-## 3. Implementation Details
+## 3. Understand
 
 ### 3.1 Implement the Frozen Lake Environment
 
@@ -134,8 +134,4 @@ class FrozenLakeWorkflow(Workflow):
 
 ### 4.1 Training Curve
 
-*(To be added)*
-
-### 4.2 Case Study
-
-*(To be added)*
+![](https://img.alicdn.com/imgextra/i3/O1CN01ZfICUr1Rs4zXrPPXQ_!!6000000002166-2-tps-858-614.png)
