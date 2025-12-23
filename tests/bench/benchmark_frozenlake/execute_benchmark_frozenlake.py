@@ -3,14 +3,12 @@ import unittest
 from tests.bench.benchmark_base import BenchmarkTestCase
 
 
-class TestBenchmarkLearnToAsk(BenchmarkTestCase):
+class TestBenchmarkFrozenLake(BenchmarkTestCase):
     def test_01_begin_trinity(self):
-        # get probe target, so as to get timeout settings
         BACKBONE = "trinity"
-        TEST_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.yaml"
-        PROBE_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe"
-        TARGET_NAME = f"benchmark_learn2ask_{BACKBONE}"
-        # PYTHON_EXECUTABLE = "python"
+        TEST_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.yaml"
+        PROBE_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.py->TestProbe"
+        TARGET_NAME = f"benchmark_frozenlake_{BACKBONE}"
         PYTHON_EXECUTABLE = ".venv/bin/python"
         self.execute_benchmark(
             backbone=BACKBONE,
@@ -21,12 +19,10 @@ class TestBenchmarkLearnToAsk(BenchmarkTestCase):
         )
 
     def test_02_begin_verl(self):
-        # get probe target, so as to get timeout settings
         BACKBONE = "verl"
-        TEST_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.yaml"
-        PROBE_TARGET = "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe"
-        TARGET_NAME = f"benchmark_learn2ask_{BACKBONE}"
-        # PYTHON_EXECUTABLE = "python"
+        TEST_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.yaml"
+        PROBE_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.py->TestProbe"
+        TARGET_NAME = f"benchmark_frozenlake_{BACKBONE}"
         PYTHON_EXECUTABLE = ".verl/bin/python"
         self.execute_benchmark(
             backbone=BACKBONE,

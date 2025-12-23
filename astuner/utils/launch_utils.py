@@ -10,6 +10,13 @@ from loguru import logger
 from astuner.utils.config_utils import align_parameters
 from astuner.utils.smart_daemon import LaunchCommandWhenAbsent
 
+def set_loguru_default_color():
+    logger.remove()
+    colorize = os.environ.get("LOGURU_COLORIZE", "YES").upper() not in ["NO", "0", "FALSE"]
+    logger.add(sys.stderr, colorize=colorize, enqueue=False)
+    if not colorize:
+        os.environ["RAY_COLOR_PREFIX"] = "0"
+    return
 
 def launch_logview(exp_name=None):
     """
@@ -183,3 +190,4 @@ def execute_training_process(
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         sys.exit(1)
+
