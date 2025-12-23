@@ -1,9 +1,22 @@
-# Data
+# Task Reader
 
-AgentScope Tuner establishes a unified training data structure and complete data loading methods for data from various sources. This page provides a detailed description of the data schema and data loaders in AgentScope Tuner.
+AgentScope Tuner loads training tasks from various data sources through Task Reader. This page covers the Task schema definition and different built-in Task Readers for common scenarios.
 
-## Data Schema
-Data structures that can be read and used by AgentScope Tuner must be defined according to the following format:
+## Overview
+
+In agent training, all training data must be represented as **tasks** following a unified schema. AgentScope Tuner provides multiple Task Readers to load tasks from different data sources:
+
+- **Unified Schema**: All tasks conform to the `Task` structure regardless of source
+- **Multiple Sources**: Load from local files, HuggingFace datasets, interactive environments, or auto-generate new tasks
+- **Automatic Routing**: The framework selects the appropriate reader based on `astuner.task_reader.type` in your configuration
+
+```
+Data Source → Task Reader → Unified Task Schema → Training Pipeline
+```
+
+## Task Schema
+
+All training tasks must be defined according to the following structure:
 
 ```python
 class Task(BaseModel):
@@ -14,104 +27,196 @@ class Task(BaseModel):
     metadata: dict = Field(default_factory=dict)
 ```
 
-The meanings of each field are as follows:
+### Field Descriptions
 
-+ `main_query`: The main instruction or question of the task.
-+ `init_messages`: List of initial conversation messages, typically used to include system messages, etc. Each element must contain `role` and `content` fields.
-+ `task_id`: The unique identifier of the task.
-+ `env_type`: The environment type corresponding to the task.
-+ `metadata`: Metadata dictionary for the task, used to store additional context information.
+| Field | Type | Description |
+|-------|------|-------------|
+| `main_query` | `str` | The main instruction or question for the agent to solve |
+| `init_messages` | `List[dict]` | Initial conversation messages (e.g., system prompts). Each must have `role` and `content` fields |
+| `task_id` | `str` | Unique identifier for the task |
+| `env_type` | `str` | Environment type (e.g., "math", "appworld") |
+| `metadata` | `dict` | Additional context information (e.g., reference answers for reward calculation) |
 
-The fields in `metadata` are related to the actual training task currently being processed. For example, we can use `metadata` to save data used for reward calculation, etc.
-
-## Data Readers
-To facilitate usage, we have prepared various data readers for common scenarios, including reading from files, reading from Huggingface repos, reading from EnvService, reading with custom code. In this section, we will introduce each reader in detail.
-
-### File Reader
-The File Reader can read a dataset in jsonl format from a local path. Setting `astuner.task_reader.type` to `dataset_file` in the configuration file enables this reader.
-
-After enabling this reader, you also need to set the file paths for the training and validation sets.
-
-```yaml
-astuner:
-  task_reader:
-    dataset_file:
-      training:
-        # the path of training dataset
-        file_path: "xxxx.jsonl"
-      validation:
-        # the path of validation dataset
-        file_path: "xxxx.jsonl"
-```
-
-
-
-Each line in the JSONL should be a JSON object with the following structure:
+### Example Task
 
 ```json
 {
-  "main_query": "the query",
+  "main_query": "What is 15 * 23?",
   "init_messages": [
     {
       "role": "system",
-      "content": "openai format message",
+      "content": "You are a helpful math assistant."
     }
   ],
-  "task_id": "the task id",
-  "env_type": "the environment of the task",
+  "task_id": "math_001",
+  "env_type": "math",
   "metadata": {
-    "other": "other metadata",
+    "answer": "345",
+    "difficulty": "easy"
   }
 }
 ```
 
-JSONL files conforming to the above format will be automatically loaded and used as datasets.
+**Best Practices:**
+- Use `metadata` to store information needed for reward computation (e.g., reference answers, scoring rubrics)
+- Keep `main_query` clear and concise
+- Use `init_messages` for system prompts or few-shot examples
 
-### Huggingface Repo Reader
-The Huggingface Repo Reader can read a remote dataset from a Huggingface Repo. Setting `astuner.task_reader.type` to `huggingface_dat_repo` in the configuration file enables this reader.
+## Built-in Task Readers
 
-After enabling this reader, you also need to set the repo name and split names:
+AgentScope Tuner provides six built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `astuner.task_reader.type` in your configuration.
+
+### Quick Selection Guide
+
+| Scenario | Reader Type | When to Use |
+|----------|-------------|-------------|
+| **Local JSONL file** | `jsonl_dataset_file` | You have prepared task data in JSONL format |
+| **HuggingFace dataset** | `huggingface_dat_repo` | Load tasks from HuggingFace Hub (e.g., GSM8K) |
+| **Interactive environment** | `env_service` | Tasks come from a running environment service (e.g., AppWorld, FrozenLake) |
+| **Auto-generate from documents** | `data_generation` | Generate tasks from knowledge documents or existing tasks |
+
+---
+
+### 1. JSONL File Reader
+
+**When to use:** You have prepared training tasks in JSONL format locally.
+
+**Configuration:**
 
 ```yaml
 astuner:
   task_reader:
-    huggingface_dat_repo:
-      # the repo name
-      dataset_path: "gsm8k"
-      # the name of training split
-      training_split: "train"
-      # the name of validation split
-      validation_split: "validation"
+    type: jsonl_dataset_file
+    jsonl_dataset_file:
+      training:
+        file_path: "data/train.jsonl"
+      validation:
+        file_path: "data/val.jsonl"
 ```
 
-### EnvService Reader
-The EnvService Reader can automatically pull remote datasets from the EnvService. Setting `astuner.task_reader.type` to `env_service` in the configuration file enables this reader.
+**JSONL Format:**
 
-After enabling this reader, you also need to set the service URL, environment type, and split names:
+Each line should be a JSON object conforming to the Task schema:
+
+```json
+{"main_query": "Solve: x + 5 = 12", "task_id": "algebra_01", "env_type": "math", "metadata": {"answer": "7"}}
+{"main_query": "What is the capital of France?", "task_id": "geo_01", "env_type": "qa", "metadata": {"answer": "Paris"}}
+```
+
+**How it works:**
+- Reads tasks line-by-line from specified JSONL files
+- Automatically validates against Task schema
+- Supports separate training and validation splits
+
+---
+
+### 2. HuggingFace Dataset Reader
+
+**When to use:** Load tasks from HuggingFace Hub datasets (e.g., GSM8K, MATH).
+
+**Configuration:**
 
 ```yaml
 astuner:
   task_reader:
+    type: huggingface_dat_repo
+    huggingface_dat_repo:
+      dataset_path: "gsm8k"           # HF dataset repo name
+      dataset_name: "main"            # Optional: dataset subset name
+      training_split: "train"         # Training split name
+      validation_split: "test"        # Validation split name
+```
+
+**How it works:**
+- Downloads dataset from HuggingFace Hub using `datasets` library
+- Automatically maps dataset fields to Task schema
+- Caches downloaded data locally for faster subsequent runs
+
+**Supported datasets:** Any HuggingFace dataset that can be mapped to the Task schema.
+
+---
+
+### 3. EnvService Reader
+
+**When to use:** Tasks are provided by an interactive environment service (e.g., AppWorld, RL gym environments).
+
+**Configuration:**
+
+```yaml
+astuner:
+  task_reader:
+    type: env_service
     env_service:
-      # the type of env, must be init in EnvService first
-      env_type: "appworld"
-      # the url of the service
-      env_url: "http://127.0.0.1:8080"
-      # code, text, box
-      env_action_preference: code
-      # the name of training split in this environment
+      env_type: "appworld"                 # Environment type
+      env_url: "http://127.0.0.1:8080"    # Service URL
+      env_action_preference: code          # Action format: code/text/box
       training_split: train
-      # the name of validation split in this environment
       validation_split: dev
 ```
 
-### Random Dummy Reader
-If you want to customize the data pipeline, simply use this reader.
+**How it works:**
+- Connects to a running environment service via HTTP
+- Pulls task instances from the environment
+- Supports dynamic task generation from interactive environments
 
-The Random Dummy Reader will leave all things to you, passing a random integer as `workflow_task.task_id` in the `Workflow` for you to load the data with your own process.
+**Use cases:**
+- Training agents in simulated environments (e.g., FrozenLake, game environments)
+- Complex interactive scenarios where tasks are generated dynamically
+
+---
+
+### 4. Data Generation Reader
+
+**When to use:** Automatically generate training tasks from knowledge documents or augment existing tasks.
+
+**Configuration:**
 
 ```yaml
 astuner:
   task_reader:
-    type: random_dummy
+    type: data_generation
+    data_generation:
+      augmentor_type: knowledge        # 'knowledge' or 'task'
+      num_workers: 4                   # Parallel generation workers
+      
+      # For knowledge-based generation:
+      knowledge:
+        doc_reader_type: pdf
+        doc_reader_config:
+          base_url: "docs/knowledge_base/"
+        generator_config:
+          model_name: "gpt-4"
+          num_tasks_per_doc: 5
+      
+      # For task-based augmentation:
+      task:
+        base_tasks_path: "data/seed_tasks.jsonl"
+        augmentor_config:
+          model_name: "gpt-4"
+          augmentation_ratio: 2.0
 ```
+
+**Two Generation Modes:**
+
+1. **Knowledge Augmentation** (`augmentor_type: knowledge`)
+   - Reads knowledge documents (PDF, TXT, Markdown)
+   - Uses LLM to generate tasks based on document content
+   - Useful for domain-specific knowledge training
+
+2. **Task Augmentation** (`augmentor_type: task`)
+   - Takes existing seed tasks
+   - Uses LLM to create variations and similar tasks
+   - Expands training data from a small set of examples
+
+**How it works:**
+- Generates tasks using configured LLM
+- Applies deduplication filters to ensure diversity
+- Caches generated tasks (keyed by configuration hash)
+- Supports parallel generation with multiple workers
+
+**Use cases:**
+- Bootstrap training data from documentation
+- Augment limited training examples
+- Create diverse task variations
+
+
