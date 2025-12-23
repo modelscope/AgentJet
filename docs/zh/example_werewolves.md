@@ -1,5 +1,7 @@
 # 狼人杀
 
+本教程展示了如何使用 AgentScope Tuner 来处理多智能体训练，令多个 Agent 在狼人杀游戏中决策、对抗和协作。
+
 ## 1. 概述
 
 狼人杀角色扮演游戏是一个典型的 POMDP（部分可观测马尔可夫决策过程，Partially Observable Markov Decision Process）问题。我们可以在这个协作型多智能体问题中使用「参数共享」的方法来训练 Agent。
