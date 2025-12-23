@@ -2,12 +2,19 @@
 
 本页展示在 AppWorld 场景下，从环境与数据准备、构建 AgentScope Workflow、配置奖励模块（Judge），到完成从调试到正式训练的完整流程。
 
-## 场景概述
+## 1. 概述
 
-- **场景**：Appworld 是一个仿真的应用环境，包含 9 个日常应用，可通过 457 个 API 操作，并预置了 106 个在模拟世界中生活的数字用户行为数据。
-- **目标**：训练一个 Agent，能够正确使用这些 APP 并完成指定任务。
+AppWorld 是一个模拟现实 APP 操作的沙盒环境，包含 9 个日常应用，可通过 457 个 API 操作，并预置了 106 个在模拟世界中生活的数字用户行为数据。我们的目标是调优一个 Agent，使其能够有效地在这些应用中执行并完成复杂任务。
 
-## 1. 准备数据集与环境
+本文结构如下：
+
+- 快速开始
+- 理解实现：Workflow 核心流程、配置、代码位置、奖励机制
+- 结果：训练曲线与案例对比
+
+## 2. 快速开始
+
+### 2.1 准备工作
 
 首先，需要准备 AppWorld 所需的环境服务：
 
@@ -16,136 +23,109 @@
 
 详细的安装与启动步骤，请参考 [EnvService 文档](https://modelscope.github.io/AgentEvolver/tutorial/install/#step-2-setup-env-service-appworld-as-example)。
 
-## 2. 准备 AgentScope Workflow
+### 2.2 开始训练
+
+运行训练脚本：
+
+```bash
+astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+```
+
+## 3. 理解实现
+
+本节将对如何搭建 AppWorld workflow 进行更详细的说明，包括核心流程、配置与关键代码位置。
+
+### 3.1 核心流程
+
+#### 3.1.1 AgentScope Workflow 交互循环
 
 AppWorld 示例所使用的 AgentScope Workflow 代码位于：`tutorial/example_appworld/appworld.py`。
 
-代码首先定义了 AgentScope Workflow（将 Agent 的 `model` 设置为 `astune_proxy`）：
+代码首先定义了 AgentScope Workflow（将 Agent 的 `model` 设置为 `model_tuner`）：
 
 ```python
 agent = ReActAgent(
     name="Qwen",
-    sys_prompt=first_msg['content'],
-    model=astune_proxy,  # type: ignore
+    sys_prompt=first_msg["content"],
+    model=model_tuner,
     formatter=DashScopeChatFormatter(),
     memory=InMemoryMemory(),
     toolkit=None,
     print_hint_msg=False,
 )
 
-for _ in range(config.astune.rollout.multi_turn.max_steps):
-    # AgentScope 负责和环境交互的消息
+env = workflow_task.gym_env
+for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
+    # agentscope 处理交互消息
     reply_message = await agent(interaction_message)
-    # env_service 协议：将模型输出发送给环境，作为 action
-    obs, _, terminate, _ = astune_proxy.gym_step(
+    # env_service 协议
+    obs, _, terminate, _ = env.step(
         action={"content": reply_message.content, "role": "assistant"}
     )
     # 使用环境的输出构造新的交互消息
     interaction_message = Msg(name="env", content=obs, role="user")
-    # 判断是否终止本次 rollout
+    # 是否终止？
     if terminate:
         break
-    if astune_proxy.context_overflow:
+    if model_tuner.get_context_tracker().context_overflow:
         break
 ```
 
-在上述代码中，`astune_proxy` 提供了与 AgentScope 运行时环境交互的接口：
+在上述代码中：
 
-- `astune_proxy.gym_step`：模拟 gym 接口。输入一个 action，返回四元组 `(observation, reward, terminate_flag, info)`。
-- `astune_proxy.context_overflow`：检查当前上下文窗口是否已经超过 token 限制。
+- `env.step`：模拟 gym 接口。输入一个 action，返回四元组 `(observation, reward, terminate_flag, info)`。
+- `model_tuner.get_context_tracker().context_overflow`：检查当前上下文窗口是否已经超过 token 限制。
 
 
-## 3. 准备 Judge（奖励模块）
+### 3.2 奖励
 
-在 `astune/task_judge/env_service_as_judge.py` 中，我们直接向 `env_service` 发送 HTTP 请求，并从环境中读取奖励信号。
+在 `astuner/task_judge/env_service_as_judge.py` 中，我们通过 `env.evaluate(...)` 从环境中读取奖励信号。
 
 你也可以参考该文件，为自己的任务实现专用的 Judge 模块。
 
 
-## 4. 测试与训练
+### 3.3 配置说明
 
-### 4.1 配置 YAML
+`tutorial/example_appworld/appworld.yaml` 中的关键配置参数用 ✨✨✨✨ 标出：
 
-拷贝并修改 `tutorial/example_appworld/appworld.yaml` 中的关键配置参数。与本文最相关的部分在 yaml 文件中用 ✨✨✨✨ 标出：
-
-1. **读取任务**（对应字段：`astune.task_reader`）
-2. **定义 Workflow**（对应字段：`astune.rollout.agentscope_workflow`）
-   - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_appworld/appworld.py` 中的 `ExampleAgentScopeLearnProtocol` 类里
+1. **读取任务**（对应字段：`astuner.task_reader`）
+2. **定义 Workflow**（对应字段：`astuner.rollout.agentscope_workflow`）
+   - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_appworld/appworld.py` 中的 `ExampleAgentScopeWorkflow` 类里
    - 则配置：
-`astune.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol"`
-3. **定义评分函数**（对应字段：`astune.task_judge.judge_protocol`）
+`astuner.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"`
+3. **定义评分函数**（对应字段：`astuner.task_judge.judge_protocol`）
    - 示例：
-`astune.task_judge.judge_protocol = "astune.task_judge.env_service_as_judge->EnvServiceJudge"`
-4. **指定模型**（对应字段：`astune.model.path`）
+`astuner.task_judge.judge_protocol = "astuner.task_judge.env_service_as_judge->EnvServiceJudge"`
+4. **指定模型**（对应字段：`astuner.model.path`）
 
 ```yaml
-astune:
-  project_name: appworld_astune
+astuner:
+  project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评估函数
-    judge_protocol: astune.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # ✨✨✨✨ 设置需要训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
     # ✨✨✨✨ 编写并选择 Agent
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
 ```
 
-### 4.2 调试
+## 4. 结果
 
-```bash
-# 建议在启动前先杀掉所有 ray 和 env_service 相关进程
-# ( astuner --kill="python|ray" )
-astuner --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
-```
-
-当 `--backbone=debug` 时，程序不再使用 Ray。你可以在 VSCode 中配置 `launch.json`，方便进行断点调试。配置示例：
-
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Launch rollout",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "launcher.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--backbone",  "debug",
-                "--with-appworld",
-                "--conf", "xxxx/xxxx/xxxx.yaml"
-            ],
-            "env": {
-            }
-        }
-    ]
-}
-```
-
-### 4.3 开始训练
-
-在完成调试后，只需要将 `backbone` 切换为 `trinity` 即可启动正式训练：
-
-```bash
-# 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程
-# ( astuner --kill="python|ray|vllm" )
-astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity'
-```
-
-## 5 参考结果
+### 4.1 训练曲线
 
 ![Training curve (small batch)](https://img.alicdn.com/imgextra/i2/O1CN01toRt2c1Nj8nKDqoTd_!!6000000001605-2-tps-1410-506.png)
 
-## 6 现象与案例观察
+### 4.2 案例展示
 
-### 调优前：
+#### 调优前：
 
 1. 频繁调用不存在的 API
 
@@ -155,7 +135,7 @@ astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity'
 
 ![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN01bGZ1s01VyjCSrTJte_!!6000000002722-2-tps-1181-954.png)
 
-### 调优后：
+#### 调优后：
 
 1. 会先查阅 API 文档，并学会使用有效的 API
 

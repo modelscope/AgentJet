@@ -1,10 +1,12 @@
-# Countdown Task Training
-This page shows how to prepare the environment and data, build the AgentScope workflow, configure the reward module (Judge), and finally complete the full process from debugging to training in the countdown task.
+# Countdown Task
 
-## Task Overview
+## 1. Introduction
+
 Countdown is a math puzzle game. Given a list of numbers and a target number, the player needs to use the numbers and the four basic arithmetic operations (addition, subtraction, multiplication, and division) to form an expression that evaluates to the target number. Each number can be used only once, but parentheses can be used freely to change the order of operations.
 
-## 1. Prepare Dataset
+## 2. Quick Start
+
+### 2.1 Prepare Dataset
 Download the `Jiayi-Pan/Countdown-Tasks-3to4` dataset and split it into training and test sets:
 
 ```bash
@@ -23,9 +25,22 @@ task = Task(
 )
 ```
 
+### 2.2 Start Training
 
-## 2. Prepare AgentScope Workflow
-See details in `tutorial/example_countdown/countdown.py`。You can create new AgentScope Workflow code anywhere in the project.
+Simply run the following command:
+
+```bash
+# It is recommended to kill all ray, vllm, and env_service processes before starting ( python launcher.py --kill="python|ray|vllm" )
+astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
+```
+
+## 3. Preparation
+
+In this section, we will cover the details of this tutorial.
+
+
+### 3.1 Prepare AgentScope Workflow
+See details in `tutorial/example_countdown/countdown.py`. You can create new AgentScope Workflow code anywhere in the project.
 
 - **Define the AgentScope workflow**
 
@@ -55,8 +70,8 @@ WorkflowOutput(
 )
 ```
 
-## 3. Prepare Reward
-A simple Judge are provided in `astuner/task_judge/countdown_answer_as_judge.py.py`. You can create new Judge code anywhere in the project.
+### 3.2 Prepare Reward
+A simple Judge is provided in `astuner/task_judge/countdown_answer_as_judge.py.py`. You can create new Judge code anywhere in the project.
 
 Judge input parameters include:
 
@@ -70,9 +85,9 @@ Judge return values:
 - raw_reward
 - is_success
 
-## 4. Start Training
+### 3.3 Start Training
 
-### 4.1 Configure
+#### 3.1 Configure
 Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
 
 1. Read task (corresponds to configuration field `astuner.task_reader`)
@@ -98,29 +113,20 @@ astuner:
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 ```
 
-### 4.2 Debug
-
-```bash
-# It is recommended to kill all ray and env_service processes before starting ( python launcher.py --kill="python|ray" )
-clear && \
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='debug'
-```
-
-When set `--backbone='debug'`, the program no longer uses Ray.
-
-
-### 4.3 Start Training
+#### 3.2 Start Training
 
 ```bash
 # It is recommended to kill all ray, vllm, and env_service processes before starting ( python launcher.py --kill="python|ray|vllm" )
 astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 ```
 
-## 5. Reference Result
+## 4. Reference Result
+
+### 4.1 Training Curve
 
 ![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01TtaeD91rnfBF736Zu_!!6000000005676-2-tps-1328-630.png)
 
-## Tuning Observation
+### 4.2 Case Study
 
 Agents are already able to deal with some simple problems at the beginning of the training process; however, small models inevitably produce many answers that fail to fully meet the requirements. In some problems, the agent does not strictly follow the instructions, such as invalid output format, reusing numbers, or missing expression outputs.
 

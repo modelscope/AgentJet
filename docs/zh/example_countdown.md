@@ -1,17 +1,19 @@
-# Countdown 任务训练示例
-本页展示在 Countdown 任务下，从环境与数据准备、构建 AgentScope Workflow、配置奖励模块（Judge），到完成从调试到正式训练的完整流程。
+# Countdown 任务
 
-## 任务概述
-Countdown任务是一个数学益智游戏：给定一组数字和一个目标数字，玩家需要利用这组数字，通过加、减、乘、除四则运算，构造一个算式，使其计算结果等于目标数字。每个数字只能使用一次，但可以自由使用括号改变运算顺序。
+## 1. 介绍
 
-## 1. 准备数据集
+Countdown 任务是一个数学益智游戏：给定一组数字和一个目标数字，玩家需要利用这组数字，通过加、减、乘、除四则运算，构造一个算式，使其计算结果等于目标数字。每个数字只能使用一次，但可以自由使用括号改变运算顺序。
+
+## 2. 快速开始
+
+### 2.1 准备数据集
 下载 `Jiayi-Pan/Countdown-Tasks-3to4` 数据集，并划分训练、测试集：
 
 ```bash
 python tutorial/example_countdown/prepare_data.py --target=Jiayi-Pan/Countdown-Tasks-3to4 --path=/the/path/to/store/dataset
 ```
 
-Countdown数据集包含`target`和`nums`两个字段，需要自定义数据格式化逻辑。例如：使用`huggingface_dat_repo`的读取方式时，需要修改`astuner/task_reader/hf_dataset_reader.py`中的`_load_dataset_split`方法：
+Countdown 数据集包含 `target` 和 `nums` 两个字段，需要自定义数据格式化逻辑。例如：使用 `huggingface_dat_repo` 的读取方式时，需要修改 `astuner/task_reader/hf_dataset_reader.py` 中的 `_load_dataset_split` 方法：
 
 ```python
 task = Task(
@@ -23,9 +25,21 @@ task = Task(
 )
 ```
 
+### 2.2 启动训练
 
-## 2. 准备 AgentScope Workflow
-详细示例见 `tutorial/example_countdown/countdown.py`。你可以在项目中的任意位置编写新的 AgentScope Workflow 代码。
+直接运行以下命令：
+
+```bash
+# 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程（ python launcher.py --kill="python|ray|vllm" ）
+astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
+```
+
+## 3. 准备
+
+本节将介绍本教程的实现细节。
+
+### 3.1 准备 AgentScope Workflow
+详见 `tutorial/example_countdown/countdown.py`。你可以在项目中的任意位置编写新的 AgentScope Workflow 代码。
 
 - **定义 AgentScope Workflow**
 
@@ -55,7 +69,7 @@ WorkflowOutput(
 )
 ```
 
-## 3. 准备 Reward
+### 3.2 准备 Reward
 在 `astuner/task_judge/countdown_answer_as_judge.py.py` 中提供了一个简单的 Judge 示例。你也可以在项目任意位置实现自己的 Judge 逻辑。
 
 Judge 的输入参数包括：
@@ -70,9 +84,9 @@ Judge 的返回值包括：
 - raw_reward
 - is_success
 
-## 4. 启动训练
+### 3.3 启动训练
 
-### 4.1 配置
+#### 3.1 配置
 拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 ✨✨✨✨ 标出。
 
 1. 读取任务（对应配置字段 `astuner.task_reader`）
@@ -98,31 +112,22 @@ astuner:
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 ```
 
-### 4.2 调试
-
-```bash
-# 建议在启动前先杀掉所有 ray 和 env_service 相关进程（ python launcher.py --kill="python|ray" ）
-clear && \
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='debug'
-```
-
-当 `--backbone='debug'` 时，程序不再使用 Ray。
-
-
-### 4.3 正式训练
+#### 3.2 启动训练
 
 ```bash
 # 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程（ python launcher.py --kill="python|ray|vllm" ）
 astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 ```
 
-## 5. 参考结果
+## 4. 参考结果
+
+### 4.1 训练曲线
 
 ![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01TtaeD91rnfBF736Zu_!!6000000005676-2-tps-1328-630.png)
 
-## 调参与现象观察
+### 4.2 案例分析
 
-在训练初期，Agent 能够解决一些简单的问题。但由于模型规模有限，仍然会产生许多不符合要求的回答。例如，在部分题目中，Agent 未能严格遵循指令，存在未按指定格式进行输出、重复使用数字、未给出表达式等问题。
+在训练初期，Agent 已经能够处理一些简单问题；但由于小模型的能力限制，仍然会产生许多无法完全满足要求的答案。在一些题目中，Agent 没有严格遵循指令，例如输出格式不正确、重复使用数字、或缺少表达式输出。
 
 ```
 bad case 1: 回答格式不符合要求。
@@ -145,7 +150,7 @@ bad case 3: 没有正确给出表达式。
 boxing the answer as \boxed{{64}}.<|im_end|>
 ```
 
-经过调优后，这些问题会得到明显改善，例如下图所示：
+不过，经过调优后，这些问题会得到明显改善，例如下图所示：
 
 
 ![After tuning](https://img.alicdn.com/imgextra/i1/O1CN011HjAxo20DKIcPAPVr_!!6000000006815-2-tps-1658-506.png)
