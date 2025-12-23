@@ -34,7 +34,6 @@ We recommend using `uv` for dependency management.
 ```bash
 git clone https://github.com/agentscope-ai/agentscope-tuner.git
 cd agentscope-tuner
-
 ```
 
 
@@ -44,7 +43,6 @@ uv venv --python=3.10.16 && source .venv/bin/activate
 uv pip install -e .[trinity]
 # Note: flash-attn must be installed after other dependencies
 uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
-
 ```
 
 
@@ -84,9 +82,9 @@ ASTuner makes agent fine-tuning straightforward by separating the developer inte
 
 To optimize an agent, you provide three core inputs:
 
-* **Workflow**: User-defined agent logic (single or multi-agent).
-* **Task Dataset**: Training and validation tasks (e.g., GSM8K).
-* **Task Judge**: A reward function or rubric used to score agent performance.
+* [**Trainable Workflow**](./workflow.md): Define your agent logic by inheriting the Workflow class, supporting both simple agent setups and advanced multi-agent collaborations.
+* [**Task Reader**](./data_pipeline.md): Load training tasks from JSONL files, HuggingFace datasets, interactive environments, or auto-generate them from documents.
+* [**Task Judger**](./task_judger.md): Evaluates agent outputs and assigns rewards to guide training.
 
 #### 2. Internal System Architecture
 
@@ -104,7 +102,7 @@ The internal system orchestrates several specialized modules to handle the compl
 
 ### 🚦 Navigation
 
-* 📖 **[Tutorials]**: From [Installation](./installation.md) to [Tuning your first agent](./tutorial.md) — the essential path for beginners.
-* 🛠️ **[Core Components]**: Define your [Trainable Workflow](./workflow.md) and manage [Data](./data_pipeline.md) and [Reward](./tune_your_first_agent.md).
-* ⚙️ **[Deep Dive]**: Master advanced [Configuration](./configuration.md).
-* 💡 **[Examples]**: Check the [Example Library](#example-library) above for real-world cases like [Math](./example_math_agent.md), [Werewolves game](./example_werewolves.md) and  [Learning to ask task](./example_learning_to_ask.md).
+* 📖 **Tutorials**: From [Installation](./installation.md) to [Tuning your first agent](./tutorial.md) — the essential path for beginners.
+* 🛠️ **Core Components**: Define your [Trainable Workflow](./workflow.md) and manage [Data](./data_pipeline.md) and [Reward](./tune_your_first_agent.md).
+* 💡 **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](./example_math_agent.md), [Werewolves game](./example_werewolves.md) and  [Learning to ask task](./example_learning_to_ask.md).
+* ⚙️ **Deep Dive**: Master advanced [Configuration](./configuration.md).
