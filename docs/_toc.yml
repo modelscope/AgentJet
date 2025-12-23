@@ -16,7 +16,6 @@ parts:
       - file: en/example_werewolves.md
       - file: en/example_learning_to_ask.md
       - file: en/example_frozenlake.md
-      - file: en/example_countdown.md
       
   - caption: Component
     chapters:
