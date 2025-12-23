@@ -16,12 +16,27 @@ This document is organized as follows:
 
 ### 2.1 Preparation
 
-Prepare the environment services required by AppWorld:
+First, download and unpack the Appworld services. The script below is idempotent: it clears any existing folder and re-downloads the archive.
 
-- Download and deploy `env_service`
-- Download and deploy `appworld`
+```bash
+base_path="/tmp"
+export APPWORLD_PATH="${base_path}/pack_all_in_one"
+export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 
-For detailed installation and startup steps, refer to the [EnvService documentation](https://modelscope.github.io/AgentEvolver/tutorial/install/#step-2-setup-env-service-appworld-as-example).
+rm -rf "${APPWORLD_PATH}"
+rm -f ./appworld_pack_v2.tar.gz
+
+wget -q "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v2.tar.gz" -O appworld_pack_v2.tar.gz
+tar -xzf ./appworld_pack_v2.tar.gz -C "${base_path}"
+```
+
+Then export the environment variables (re-run in every new shell):
+
+```bash
+export BASE_PATH=/tmp
+export APPWORLD_PATH="${BASE_PATH}/pack_all_in_one"
+export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
+```
 
 ### 2.2 Start Training
 
