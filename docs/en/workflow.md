@@ -2,7 +2,7 @@
 
 This tutorial introduces how to define a trainable workflow 🚀 with AgentScope.
 
-ASTuner offers two convenient and mutually compatible encapsulation methods for AgentScope Workflow. The first emphasizes **simplicity, convenience, and ease ofunderstanding**, while the second focuses on **flexibility, controllability, and extensibility**.
+ASTuner offers two convenient and mutually compatible encapsulation methods for AgentScope Workflow. The first emphasizes **simplicity, convenience, and ease of understanding**, while the second focuses on **flexibility, controllability, and extensibility**.
 
 ## Simple Agent Scenario
 

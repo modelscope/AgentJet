@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Multiple versions to build
-# VERSIONS=("preview")
-VERSIONS=("main")
+VERSIONS=("preview")
+# VERSIONS=("main")
 OUTPUT_DIR="_build"
 
 # ANSI color codes for better display

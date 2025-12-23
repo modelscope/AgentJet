@@ -1,27 +1,34 @@
 format: jb-book
 root: en/introduction.md
 parts:
+  # --- 英文部分 ---
   - caption: Tutorial
     chapters:
+      - file: en/intro.md
       - file: en/installation.md
       - file: en/quickstart.md
-      - file: en/configuration.md
 
-  - caption: Component
-    chapters:
-      - file: en/data_pipeline.md
-      - file: en/data_generation.md
-      - file: en/workflow.md
-
-  - caption: Cookbook
+  - caption: Example
     chapters:
       - file: en/example_math_agent.md
       - file: en/example_app_world.md
       - file: en/example_werewolves.md
       - file: en/example_learning_to_ask.md
-      - file: en/example_countdown.md
+      
+  - caption: Component
+    chapters:
+      - file: en/workflow.md
+      - file: en/data_pipeline.md
+      - file: en/task_judger.md
+      
+  - caption: Deep Dive
+    chapters:
+      - file: en/data_generation.md
       - file: en/example_tracing_feedback_loop.md
+      - file: en/example_countdown.md
+      - file: en/configuration.md
 
+  # --- 中文部分 ---
   - caption: 简介
     chapters:
       - file: zh/introduction.md
@@ -31,6 +38,7 @@ parts:
     chapters:
       - file: zh/installation.md
       - file: zh/quickstart.md
+
   - caption: 组件
     chapters:
       - file: zh/data_pipeline.md
