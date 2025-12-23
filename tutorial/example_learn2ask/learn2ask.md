@@ -9,16 +9,19 @@ This document demonstrates how to prepare data, build an agent and workflow, set
 ## 1. Prepare Dataset
 Download [RealMedConv](https://huggingface.co/datasets/datajuicer/RealMedConv) dataset from HuggingFace, and put the files in `data/realmedconv`.
 
-Run the following command to preprocess the dataset:
+- [Option 1] Run the following command to preprocess the dataset:
 
-```bash
-export DASHSCOPE_API_KEY=your_api_key
+    ```bash
+    export DASHSCOPE_API_KEY=your_api_key
 
-cd tutorial/example_learn2ask/data_preprocess
-./run_process.sh data/realmedconv
-```
+    cd tutorial/example_learn2ask/data_preprocess
+    ./run_process.sh data/realmedconv
+    ```
 
-Or download the processed dataset from [here](TODO) and put the files in `data/realmedconv`.
+- [Option 2] download the processed dataset from [here](TODO) and put the files in `data/realmedconv`.
+    ```bash
+    bash tutorial/example_learn2ask/data_preprocess/download_processed.sh
+    ```
 
 You now will get two datasets:
 - `train.jsonl`: the train split
