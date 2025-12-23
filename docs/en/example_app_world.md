@@ -1,6 +1,6 @@
 # AppWorld
 
-This page shows the end-to-end process for the AppWorld scenario: prepare the environment, build the AgentScope workflow, configure the Judge (reward module), and run from debugging to training.
+This tutorial demonstrates how to train an agent to interact with AppWorld and solve complex tasks through tool usage.
 
 ## 1. Overview
 

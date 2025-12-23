@@ -1,5 +1,7 @@
 # Werewolves
 
+This tutorial demonstrates how to train **multiple agents** to play the Werewolves game.
+
 ## 1. Overview
 
 The Werewolves role-playing game is a typical POMDP (Partially Observable Markov Decision Process) problem. We can train agents in this cooperative multi-agent problem using shared-parameter methods.

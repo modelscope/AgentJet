@@ -1,6 +1,6 @@
 # AppWorld
 
-本页展示在 AppWorld 场景下，从环境与数据准备、构建 AgentScope Workflow、配置奖励模块（Judge），到完成从调试到正式训练的完整流程。
+本教程介绍如何训练一个 Agent 与 AppWorld 交互并解决复杂的任务。
 
 ## 1. 概述
 
