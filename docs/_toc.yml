@@ -7,13 +7,16 @@ parts:
       - file: en/intro.md
       - file: en/installation.md
       - file: en/quickstart.md
-
+      - file: en/tune_your_first_agent.md
+  
   - caption: Example
     chapters:
       - file: en/example_math_agent.md
       - file: en/example_app_world.md
       - file: en/example_werewolves.md
       - file: en/example_learning_to_ask.md
+      - file: en/example_frozenlake.md
+      - file: en/example_countdown.md
       
   - caption: Component
     chapters:
@@ -38,6 +41,8 @@ parts:
     chapters:
       - file: zh/installation.md
       - file: zh/quickstart.md
+      - file: zh/tune_your_first_agent.md
+  
 
   - caption: 组件
     chapters:
@@ -51,5 +56,6 @@ parts:
       - file: zh/example_app_world.md
       - file: zh/example_werewolves.md
       - file: zh/example_learning_to_ask.md
+      - file: zh/example_frozenlake.md
       - file: zh/example_countdown.md
       - file: zh/example_tracing_feedback_loop.md

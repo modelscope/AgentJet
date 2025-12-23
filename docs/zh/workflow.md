@@ -15,26 +15,36 @@ ASTuner 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封�
 
 **只需要在初始化 ReActAgent 时，把 `model` 参数替换为 `model_tuner` 即可。**
 
-```python
-
-# 修改前 >>>
-agent_instance = ReActAgent(
+<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em;">
+  <thead>
+    <tr>
+      <th>修改前</th>
+      <th>修改后</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
    name=f"Friday",
    sys_prompt="You are a helpful assistant",
    model=DashScopeChatModel(model_name="qwen-max", stream=False),
    formatter=DashScopeChatFormatter(),
-)
-
-# 修改后 <<<
-agent_instance = ReActAgent(
+)</code></pre>
+      </td>
+      <td>
+        <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
    name=f"Friday",
    sys_prompt="You are a helpful assistant",
    model=model_tuner,  # change here
    formatter=DashScopeChatFormatter(),
-)
-```
+)</code></pre>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-然后，将你的 Workflow 封装到一个继承自 `Workflow` 的类中（`from astnue import Workflow`），这样这个 Workflow 就可以被 ASTuner 训练了。
+然后，将你的 Workflow 封装到一个继承自 `Workflow` 的类中（`from astnuer import Workflow`），这样这个 Workflow 就可以被 ASTuner 训练了。
 
 ```python
 class ExampleMathLearn(Workflow):
@@ -111,11 +121,46 @@ class ExampleMathLearn(Workflow):
 
 ## 进阶 Agent 场景
 
-当你设计的是一个**多 Agent 协作**的复杂 Workflow，并且每个 Agent 扮演不同角色时，如果 ASTuner 能够「知道」每个 Agent 的身份，那么在训练和调试时就能提供更好的能力和更高的可控性。
+当设计的是一个**多 Agent 协作**的复杂 Workflow，并且每个 Agent 扮演不同**角色**时，如果 ASTuner 能够「知道」每个 Agent 的身份，那么在训练和调试时就能提供更好的能力和更高的可控性。
 
-### 1. 升级为进阶 ASTuner Workflow
+通过多 Agent 协作，你可以
+- 🌟 **精细地控制**哪些 Agent 会被微调；
+- ✨ 为「当前未被训练」的 Agent 明确定义其使用的默认模型；
+- ⚡ 在**不修改 Workflow 源码**的前提下，动态切换不同的可训练目标（trainable agent targets）。
 
-核心思路是：使用 `ModelTuner.register_model` 注册不同的「可训练目标」（agent targets）。
+### 1. 可训练开关与模型生命周期
+
+#### 模型多角色注册与使用
+
+在多 Agent 协作中，每个 Agent 拥有自己的「角色」。
+
+在 Workflow 中，我们需要显式的注册待训练的 Agent 角色，并在创建 Agent 的时候显式的指明角色：
+
+- **注册（register）**：`model_tuner.register_model(agent_role, default_model=...)`
+  - 定义：向 Tuner 注册一个待训练的 Agent 角色，并指定该角色在未训练/不训练时的默认模型。
+- **使用（get/bind）**：`model_tuner.get_model(agent_role)`
+  - 定义：在构建 Agent 或执行 Workflow 时，根据 `agent_role` 返回该 Agent 的模型对象。
+
+#### 可训练模型 vs 不可训练模型
+
+在 Workflow 中能够自由地控制每个 Agent 的训练状态。一个 Agent 是否参与训练由 Workflow 的 **`trainable_targets`** 声明决定：
+
+```python
+class ExampleMathLearn(Workflow):
+    name: str = "a_workflow"
+    trainable_targets: list = ["TYPE-ZERO", ...]
+
+    # ...
+```
+
+- **可训练（trainable）**：如果 Agent（角色）在 `trainable_targets` 列表中，则设置可训练模型。
+- **不可训练（non-trainable）**：Agent（角色）不在 `trainable_targets` 列表中，则 Agent 将使用默认模型。
+
+无论角色异同，所有 Agent（角色）共享一个模型实例。也就是具有相同参数的模型将分别扮演不同的角色。
+
+### 2. 升级为进阶 ASTuner Workflow
+
+本节通过一个简单的例子展示使用 `ModelTuner.register_model` 为不同角色注册「可训练模型」，并在构建 Agent 时以角色维度进行模型绑定。
 
 - 先从一个基础的 AgentScope `ReActAgent` 开始：
 
@@ -147,7 +192,7 @@ agent_instance = ReActAgent(
 )
 ```
 
-- 最后，将 Workflow 封装到类中，并定义 `trainable_tragets`：
+- 最后，将 Workflow 封装到类中，并定义 `trainable_targets`：
 
 ```python
 class ExampleMathLearn(Workflow):
@@ -157,15 +202,6 @@ class ExampleMathLearn(Workflow):
     async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         ... your agents and workflow here ...
 ```
-
-### 2. 何时使用进阶 Workflow，而不是简单 Workflow
-
-推荐在以下场景下采用这种进阶写法：
-
-- 🌟 需要**精细地控制**哪些 Agent 会被微调；
-- ✨ 希望为「当前未被训练」的 Agent 明确定义其使用的默认模型；
-- ⚡ 希望在**不修改 Workflow 源码**的前提下，动态切换不同的可训练目标（trainable agent targets）。
-
 
 ### 3. 一个多 Agent 示例
 
@@ -178,10 +214,11 @@ for i, role in enumerate(roles):
     default_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
     default_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
     chosen_model = default_model_for_good_guys if role != "werewolf" else default_model_for_bad_guys  # 🌟
+    model_tuner.register_model(role, default_model=chosen_model)
     players += [ReActAgent(
         name=f"Player{i + 1}",
         sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
-        model=model_tuner.register_model(role, default_model=chosen_model),
+        model=model_tuner.get_model(role),
         formatter=OpenAIMultiAgentFormatter(),
     )]
 ```

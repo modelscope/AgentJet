@@ -61,15 +61,17 @@ export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 数据相关的配置主要包括两部分：`task_reader` 和 `task_judge`。
 
 ### Task Reader
-`task_reader` 用于定义如何读取训练集和验证集。目前支持以下三种类型：
+`task_reader` 用于定义如何读取训练集和验证集。支持多种 reader 类型。
 
 ```yaml
 astuner:
   task_reader:
     # options:
     #   env_service: read dataset from EnvService
-    #   dataset_file: read dataset from local file
-    #   huggingface_dat_repo# read dataset from huggingface repo
+    #   jsonl_dataset_file: read dataset from local JSONL file
+    #   huggingface_dat_repo: read dataset from huggingface repo
+    #   data_generation: generate dataset from documents and queries
+    #   random_dummy: generate random dummy tasks for quick pipeline checks
     type: env_service
 
     # 1. env_service reader config
@@ -80,8 +82,8 @@ astuner:
       training_split: train
       validation_split: dev
 
-    # 2. dataset_file reader config
-    dataset_file:
+    # 2. jsonl_dataset_file reader config
+    jsonl_dataset_file:
       training:
         file_path: "xxxx.jsonl"
       validation:
@@ -92,6 +94,34 @@ astuner:
       dataset_path: "gsm8k"
       training_split: "train"
       validation_split: "validation"
+
+    # 4. data_generation reader config
+    data_generation:
+      document_reader:
+        document_path:
+          - 'dataset/document/your-document1.pdf'
+        languages:
+          - eng
+      query_reader:
+        type: dataset_file
+        dataset_file:
+          training:
+            file_path: 'dataset/jsonl/your-queries.jsonl'
+      task_num: 10
+      llm_model: qwen-long
+      llm_response_length: 8192
+      num_workers: 32
+      sampling_params:
+        temperature: 0
+      filter:
+        type: deduplication
+        enabled: true
+        params:
+          similarity_threshold: 0.8
+          db_path: ./.similarity_db
+          model: text-embedding-v4
+          api_key: null
+          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
 ```
 
 + `env_service`：从 EnvService 中读取数据，适用于需要与 EnvService 交互的任务。
@@ -100,7 +130,7 @@ astuner:
     - `env_action_preference`：偏好的 Action 形式，可选 `code`、`text` 或 `box`。
     - `training_split`：在环境中用于训练的数据切分名称。
     - `validation_split`：在环境中用于验证的数据切分名称。
-+ `dataset_file`：从本地文件中读取数据，通常为 JSONL 格式。
++ `jsonl_dataset_file`：从本地文件中读取数据，通常为 JSONL 格式。
     - `training.file_path`：训练数据集的本地路径。
     - `validation.file_path`：验证数据集的本地路径。
 + `huggingface_dat_repo`：直接从 HuggingFace 仓库中读取数据集。
@@ -108,14 +138,16 @@ astuner:
     - `training_split`：用于训练的数据集切分名称。
     - `validation_split`：用于验证的数据集切分名称。
 
+`data_generation` 和 `random_dummy` 也可用于特殊工作流（完整 schema 可参考 `astune_default.yaml`）。
+
 ### Task Judge
 `task_judge` 用于评估 Agent 的表现并计算奖励。
 
 ```yaml
 astuner:
   task_judge:
-    # options: 'customized_protocal', 'rubrics_auto_grader'
-    judge_type: customized_protocal
+    # options: 'customized_protocol', 'rubrics_auto_grader'
+    judge_type: customized_protocol
     # the package path to judge (reward) function
     judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
     # LLM, which may be used by judge
@@ -130,13 +162,17 @@ astuner:
 ```
 
 + `judge_type`：评测方式。
-    - `customized_protocal`：使用自定义 Python 类进行打分。需要通过 `judge_protocol` 指定类路径（例如 `package.module->ClassName`）。
+    - `customized_protocol`：使用自定义 Python 类进行打分。需要通过 `judge_protocol` 指定类路径（例如 `package.module->ClassName`）。
     - `rubrics_auto_grader`：使用基于 LLM 的自动打分。
 + `alien_llm_model`：评测时可能用到的辅助 LLM 模型。
 
 ## 训练配置
 ### 后端
 AgentScope Tuner 支持三种训练后端：**trinity**、**verl**，以及一个额外的 **debug** 模式。
+
++ **trinity**：默认选项。一个通用、灵活且可扩展的框架，用于大模型的强化微调。
++ **verl**：Volcano engine reinforcement learning for LLMs。
++ **debug**：允许用户设置断点并调试代码的后端。
 
 要配置所使用的后端，可以修改：
 
@@ -152,7 +188,7 @@ astuner:
 ```yaml
 astuner:
   rollout:
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     max_env_worker: 128
     temperature: 0.9
     top_p: 1.0
@@ -243,17 +279,16 @@ astuner:
 
 ## 日志与训练监控
 ### 配置 Logger
-AgentScope Tuner 支持多种日志后端，可通过 `trainer_common.logger` 列表进行配置：
+AgentScope Tuner 支持多种日志后端，可通过 `trainer_common.logger` 进行配置：
 
 + `console`：将日志输出到标准输出，方便快速查看训练进度。
 + `wandb`：对接 wandb 平台，提供可视化训练曲线和指标监控。
++ `swanlab`：使用 SwanLab 进行日志记录。
 
 ```yaml
 astuner:
   trainer_common:
-    logger:
-      - console
-      - wandb
+    logger: swanlab
 ```
 
 ### 日志结构
@@ -261,8 +296,7 @@ astuner:
 
 + **Logs：** 训练过程生成的日志与错误信息。
 + **Metrics：**
-    - 如果启用了 `console`，日志中会包含训练指标。
-    - 如果启用了 `wandb`，训练指标、日志以及其他相关数据也会同步到云端。
+    - 具体的指标输出位置取决于所选的 logger 后端。
 + **Checkpoint：** 训练得到的模型 checkpoint。
 
 
@@ -294,7 +328,7 @@ astuner:
   rollout:
 
     # the path to the workflow class
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeLearnProtocol
+    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: False
@@ -359,11 +393,13 @@ astuner:
     # the type of task_reader
     # options:
     #   env_service: read dataset from EnvService
-    #   dataset_file: read dataset from local file
-    #   huggingface_dat_repo# read dataset from huggingface repo
-    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`
-    # when `type == dataset_file`
-    dataset_file:
+    #   jsonl_dataset_file: read dataset from local JSONL file
+    #   huggingface_dat_repo: read dataset from huggingface repo
+    #   data_generation: generate dataset from documents and queries
+    #   random_dummy: generate random dummy tasks for quick pipeline checks
+    type: env_service # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
+    # when `type == jsonl_dataset_file`
+    jsonl_dataset_file:
       training:
         file_path: "/path/to/training/data.jsonl"
       validation:
@@ -389,10 +425,38 @@ astuner:
       # the name of validation split
       validation_split: "validation"
 
+    # when `type == data_generation`
+    data_generation:
+      document_reader:
+        document_path:
+          - 'dataset/document/your-document1.pdf'
+          - 'dataset/document/your-document2.pdf'
+        languages:
+          - eng
+      query_reader:
+        type: dataset_file
+        dataset_file:
+          training:
+            file_path: 'dataset/jsonl/your-queries.jsonl'
+      task_num: 10
+      llm_model: qwen-long
+      llm_response_length: 8192
+      num_workers: 32
+      sampling_params:
+        temperature: 0
+      filter:
+        type: deduplication
+        enabled: true
+        params:
+          similarity_threshold: 0.8
+          db_path: ./.similarity_db
+          model: text-embedding-v4
+          api_key: null # load from the env
+          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+
   # task judge. it provide rewards for agent training
   task_judge:
-    # options: 'customized_protocal', 'rubrics_auto_grader'
-    judge_type: customized_protocal
+    judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
     # the package path to judge (reward) function
     judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
 
@@ -406,24 +470,21 @@ astuner:
       grader_mode: pointwise
       # the language of prompts, tasks, llm outputs
       language: en
-      # the range of score
-      min_score: 0
-      max_score: 1
-      success_threshold: 0.7
-      sampling_mode: all_samples
-      generate_number: 1
-      max_epochs: 2
-      max_retries: 3
-      aggregation_mode: keep_all
+      query_specific_generate_number: 1
+      enable_categorization: false
+      categories_number: 5
       grader_name: "auto_grader"
-      num_reference_samples: 20
       query_field: main_query
       answer_field: final_answer
       reference_field: answer
+      custom_evaluation_prompt: null # dict or PromptTemplate or None
       input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
       dataset_file:
         training:
           file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
+      # Pointwise mode settings
+      min_score: 0
+      max_score: 1
 
 
   # when backbone is `debug`, debug related configurations
@@ -450,13 +511,7 @@ astuner:
     nnodes: 1
     # the number of gpus in each node
     n_gpus_per_node: 8
-    # loggers that are enabled
-    # options:
-    #   console: log in the console
-    #   wandb: log with wandb
-    logger:
-      - console
-      - wandb
+    logger: swanlab
     # optimization algorithms
     algorithm:
       task_norm_patch: False
@@ -480,6 +535,15 @@ astuner:
     # type of KL loss
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
+    checkpoint_base_dir: ./saved_checkpoints
+
+
+  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
+  context_tracker:
+    context_tracker_type: "linear"
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
+    max_env_len: 4096
 
 
 

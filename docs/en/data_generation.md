@@ -6,107 +6,6 @@
 + **Document-based data generation**: Automatically extracts knowledge from documents (PDF, Word, text files) to generate context-relevant queries
 + **Few-shot data generation**: Uses existing queries as references to generate new queries with consistent style and semantic similarity
 
-## Document-based Data Generation
-### Overview
-**Document-based Data Generation** automatically produces high-quality training tasks based on documents. Leveraging the knowledge augmentation capability of LLMs, this module generates new queries along with their corresponding context.
-
-### Architecture
-The module consists of two main components:
-
-1. **DocReader**: Parses documents (PDF, TXT, Word, etc.) and provides smart caching.
-2. **KnowledgeAugmentor**: Generates new queries from the document content.
-
-### Features
-**Knowledge augmentation**
-
-+ ✅ **Comprehensive Coverage**: Extracts factual, conceptual, analytical, and applicational queries from the document.
-+ ✅ **Context Alignment**: Each generated query includes a related document context to ensure answer traceability.
-+ ✅ **Configurable Output**: You can specify how many queries to generate (currently supports N < 10; if N > 10, please run in batches).
-
-### 🚀 Quick Start
-#### Step 1: Prepare data
-Place your document in the specified directory:
-
-```bash
-mkdir -p dataset/document
-cp your-document.pdf dataset/document/
-```
-
-#### Step 2: Create a configuration file
-Create a `.yaml` config file. Example (`tests/data_gen.yaml`):
-
-```yaml
-# tests/data_gen.yaml
-astuner:
-  data_generation:
-    document_reader:
-      document_path: 'dataset/document/your-document.pdf'
-      languages: ['eng']
-    cache_enabled: true
-    llm_model: qwen-long
-    knowledge_augmentor:
-      n: 10  # generate 10 queries
-```
-
-#### Step 3: Run the Generation Script
-**Option A: Use the test script**
-
-```bash
-cd /path/to/astuner
-export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
-export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
-python tests/data_gen.py
-```
-
-**Option B: Custom script**
-
-```python
-import sys
-sys.path.insert(0, '/path/to/astuner')
-import dotenv
-dotenv.load_dotenv()
-
-from astuner.utils.config_utils import read_astuner_config
-from astuner.task_reader.document_reader.doc_reader import DocReader
-from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
-
-# Load config
-config = read_astuner_config('tests/data_gen.yaml')
-
-# Initialize
-document_reader = DocReader(config)
-knowledge_augmentor = KnowledgeAugmentor(config)
-
-# Load document (with caching)
-document = document_reader.get_document()
-print(f"Document loaded: {len(document.content)} characters.")
-
-# Generate knowledge-based queries
-generated_tasks = knowledge_augmentor.generate_task(
-    document=document
-)
-
-print(f"Generated {len(generated_tasks)} queries.")
-for i, task in enumerate(generated_tasks[:3]):
-    print(f"{i+1}. {task.main_query}")
-```
-
-### Sample Output
-```json
-[
-  {
-    "main_query": "What are the key requirements of Customer Due Diligence in AML procedures?",
-    "related_doc": "Customer Due Diligence measures should include: (a) identifying the customer and verifying the customer's identity..."
-  },
-  {
-    "main_query": "How should financial institutions handle Suspicious Transaction Reports?",
-    "related_doc": "When someone knows or suspects that any property represents the proceeds of an indictable offense..."
-  }
-]
-```
-
-
-
 ## Few-shot Data Generation
 ### Overview
 Few-shot Data Generation is a module based on few-shot learning that helps you **automatically generate new queries**:
@@ -238,6 +137,105 @@ for i, task in enumerate(new_tasks):
 ]
 ```
 
+
+## Document-based Data Generation
+### Overview
+**Document-based Data Generation** automatically produces high-quality training tasks based on documents. Leveraging the knowledge augmentation capability of LLMs, this module generates new queries along with their corresponding context.
+
+### Architecture
+The module consists of two main components:
+
+1. **DocReader**: Parses documents (PDF, TXT, Word, etc.) and provides smart caching.
+2. **KnowledgeAugmentor**: Generates new queries from the document content.
+
+### Features
+**Knowledge augmentation**
+
++ ✅ **Comprehensive Coverage**: Extracts factual, conceptual, analytical, and applicational queries from the document.
++ ✅ **Context Alignment**: Each generated query includes a related document context to ensure answer traceability.
++ ✅ **Configurable Output**: You can specify how many queries to generate (currently supports N < 10; if N > 10, please run in batches).
+
+### 🚀 Quick Start
+#### Step 1: Prepare data
+Place your document in the specified directory:
+
+```bash
+mkdir -p dataset/document
+cp your-document.pdf dataset/document/
+```
+
+#### Step 2: Create a configuration file
+Create a `.yaml` config file. Example (`tests/data_gen.yaml`):
+
+```yaml
+# tests/data_gen.yaml
+astuner:
+  data_generation:
+    document_reader:
+      document_path: 'dataset/document/your-document.pdf'
+      languages: ['eng']
+    cache_enabled: true
+    llm_model: qwen-long
+    knowledge_augmentor:
+      n: 10  # generate 10 queries
+```
+
+#### Step 3: Run the Generation Script
+**Option A: Use the test script**
+
+```bash
+cd /path/to/astuner
+export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
+export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
+python tests/data_gen.py
+```
+
+**Option B: Custom script**
+
+```python
+import sys
+sys.path.insert(0, '/path/to/astuner')
+import dotenv
+dotenv.load_dotenv()
+
+from astuner.utils.config_utils import read_astuner_config
+from astuner.task_reader.document_reader.doc_reader import DocReader
+from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
+
+# Load config
+config = read_astuner_config('tests/data_gen.yaml')
+
+# Initialize
+document_reader = DocReader(config)
+knowledge_augmentor = KnowledgeAugmentor(config)
+
+# Load document (with caching)
+document = document_reader.get_document()
+print(f"Document loaded: {len(document.content)} characters.")
+
+# Generate knowledge-based queries
+generated_tasks = knowledge_augmentor.generate_task(
+    document=document
+)
+
+print(f"Generated {len(generated_tasks)} queries.")
+for i, task in enumerate(generated_tasks[:3]):
+    print(f"{i+1}. {task.main_query}")
+```
+
+### Sample Output
+```json
+[
+  {
+    "main_query": "What are the key requirements of Customer Due Diligence in AML procedures?",
+    "related_doc": "Customer Due Diligence measures should include: (a) identifying the customer and verifying the customer's identity..."
+  },
+  {
+    "main_query": "How should financial institutions handle Suspicious Transaction Reports?",
+    "related_doc": "When someone knows or suspects that any property represents the proceeds of an indictable offense..."
+  }
+]
+```
 
 
 ## Detailed Config

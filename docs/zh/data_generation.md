@@ -6,107 +6,6 @@
 + **基于文档的数据生成**：自动从文档（PDF、Word、文本文件）中提取知识，生成与上下文相关的查询
 + **Few-shot数据生成**：利用现有查询作为参考，创建风格一致、语义相似的新查询
 
-## 基于文档的数据生成
-### 方法简介
-`Document-based Data Generation` 能够基于文档自动生成高质量的训练任务。该模块借助大语言模型（LLM）的知识增强能力，自动生成新的查询（Query）数据及其对应的上下文信息。
-
-### 架构
-模块由两个主要组件组成：
-
-1. **DocReader**: 解析文档（PDF、TXT、Word等）并提供智能缓存
-2. **KnowledgeAugmentor**: 从文档内容生成新的任务
-
-### 核心特性
-**知识增强特性**
-
-+ ✅ **全面覆盖**: 从文档中提取事实性、概念性、分析性和应用性任务
-+ ✅ **上下文关联**: 每个生成任务都包含对应的文档摘录，确保答案可追溯
-+ ✅ **可配置输出**: 可自定义生成任务数量（暂只支持N<10，若N>10，建议分batch跑）
-
-### 🚀 快速开始
-#### 步骤 1: 准备数据
-将文档放置在指定目录：
-
-```bash
-mkdir -p dataset/document
-cp your-document.pdf dataset/document/
-```
-
-#### 步骤 2: 编写配置文件
-你需要创建一个 `.yaml` 配置文件，以下是一个配置示例 (`tests/data_gen.yaml`)：
-
-```yaml
-# tests/data_gen.yaml
-astune:
-  data_generation:
-    document_reader:
-      document_path: 'dataset/document/your-document.pdf'
-      languages: ['eng']
-      cache_enabled: true
-    llm_model: qwen-long
-    knowledge_augmentor:
-      n: 10  # 生成10个任务
-```
-
-#### 步骤 3: 运行生成脚本
-**方式A：使用测试脚本**
-
-```bash
-cd /path/to/astune
-export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
-export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
-python tests/data_gen.py
-```
-
-**方式B：自定义脚本**
-
-```python
-import sys
-sys.path.insert(0, '/path/to/astune')
-import dotenv
-dotenv.load_dotenv()
-
-from astune.utils.config_utils import read_astune_config
-from astune.task_reader.document_reader.doc_reader import DocReader
-from astune.data_generator.knowledge_augmentation import KnowledgeAugmentor
-
-# 加载配置
-config = read_astune_config('tests/data_gen.yaml')
-
-# 初始化组件
-document_reader = DocReader(config)
-knowledge_augmentor = KnowledgeAugmentor(config)
-
-# 加载文档（带缓存）
-document = document_reader.get_document()
-print(f"文档已加载：{len(document.content)} 字符")
-
-# 生成基于知识的任务
-generated_tasks = knowledge_augmentor.generate_task(
-    document=document
-)
-
-print(f"生成了 {len(generated_tasks)} 个任务")
-for i, task in enumerate(generated_tasks[:3]):
-    print(f"{i+1}. {task.main_query}")
-```
-
-### 示例输出
-```json
-[
-  {
-    "main_query": "What are the key requirements of Customer Due Diligence in AML procedures?",
-    "related_doc": "Customer Due Diligence measures should include: (a) identifying the customer and verifying the customer's identity..."
-  },
-  {
-    "main_query": "How should financial institutions handle Suspicious Transaction Reports?",
-    "related_doc": "When someone knows or suspects that any property represents the proceeds of an indictable offense..."
-  }
-]
-```
-
-
-
 ## 少样本数据生成
 ### 方法简介
 `Few-shot Data Generation`是一个基于 Few-shot Learning 的数据生成模块，它可以帮助你**自动生成新的查询（Query）数据**：
@@ -235,6 +134,105 @@ for i, task in enumerate(new_tasks):
   },
   {
     "main_query": "What are the requirements for banks to verify customer identities under anti-money laundering regulations?"
+  }
+]
+```
+
+## 基于文档的数据生成
+### 方法简介
+`Document-based Data Generation` 能够基于文档自动生成高质量的训练任务。该模块借助大语言模型（LLM）的知识增强能力，自动生成新的查询（Query）数据及其对应的上下文信息。
+
+### 架构
+模块由两个主要组件组成：
+
+1. **DocReader**: 解析文档（PDF、TXT、Word等）并提供智能缓存
+2. **KnowledgeAugmentor**: 从文档内容生成新的任务
+
+### 核心特性
+**知识增强特性**
+
++ ✅ **全面覆盖**: 从文档中提取事实性、概念性、分析性和应用性任务
++ ✅ **上下文关联**: 每个生成任务都包含对应的文档摘录，确保答案可追溯
++ ✅ **可配置输出**: 可自定义生成任务数量（暂只支持N<10，若N>10，建议分batch跑）
+
+### 🚀 快速开始
+#### 步骤 1: 准备数据
+将文档放置在指定目录：
+
+```bash
+mkdir -p dataset/document
+cp your-document.pdf dataset/document/
+```
+
+#### 步骤 2: 编写配置文件
+你需要创建一个 `.yaml` 配置文件，以下是一个配置示例 (`tests/data_gen.yaml`)：
+
+```yaml
+# tests/data_gen.yaml
+astune:
+  data_generation:
+    document_reader:
+      document_path: 'dataset/document/your-document.pdf'
+      languages: ['eng']
+      cache_enabled: true
+    llm_model: qwen-long
+    knowledge_augmentor:
+      n: 10  # 生成10个任务
+```
+
+#### 步骤 3: 运行生成脚本
+**方式A：使用测试脚本**
+
+```bash
+cd /path/to/astune
+export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
+export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
+python tests/data_gen.py
+```
+
+**方式B：自定义脚本**
+
+```python
+import sys
+sys.path.insert(0, '/path/to/astune')
+import dotenv
+dotenv.load_dotenv()
+
+from astune.utils.config_utils import read_astune_config
+from astune.task_reader.document_reader.doc_reader import DocReader
+from astune.data_generator.knowledge_augmentation import KnowledgeAugmentor
+
+# 加载配置
+config = read_astune_config('tests/data_gen.yaml')
+
+# 初始化组件
+document_reader = DocReader(config)
+knowledge_augmentor = KnowledgeAugmentor(config)
+
+# 加载文档（带缓存）
+document = document_reader.get_document()
+print(f"文档已加载：{len(document.content)} 字符")
+
+# 生成基于知识的任务
+generated_tasks = knowledge_augmentor.generate_task(
+    document=document
+)
+
+print(f"生成了 {len(generated_tasks)} 个任务")
+for i, task in enumerate(generated_tasks[:3]):
+    print(f"{i+1}. {task.main_query}")
+```
+
+### 示例输出
+```json
+[
+  {
+    "main_query": "What are the key requirements of Customer Due Diligence in AML procedures?",
+    "related_doc": "Customer Due Diligence measures should include: (a) identifying the customer and verifying the customer's identity..."
+  },
+  {
+    "main_query": "How should financial institutions handle Suspicious Transaction Reports?",
+    "related_doc": "When someone knows or suspects that any property represents the proceeds of an indictable offense..."
   }
 ]
 ```
