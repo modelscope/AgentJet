@@ -26,7 +26,7 @@ dependencies = [
     "swanlab",
     "modelscope>=1.18.1",
     "pydantic",
-    "beast_logger",
+    "beast-logger>=0.1.3",
     "pytest>=8.0.0",
 ]
 

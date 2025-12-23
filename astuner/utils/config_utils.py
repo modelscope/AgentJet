@@ -4,7 +4,7 @@ import time
 from functools import cache
 
 import yaml
-from best_logger import print_dict
+from beast_logger import print_dict
 from hydra import compose, initialize
 from loguru import logger
 from omegaconf import DictConfig

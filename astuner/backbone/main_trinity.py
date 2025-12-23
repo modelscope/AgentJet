@@ -6,6 +6,8 @@ from trinity.trainer.trainer import Trainer
 
 import astuner.backbone.trinity_trainer  # noqa: F401
 from astuner.utils.core_env_vars import get_runtime_env
+from astuner.utils.launch_utils import set_loguru_default_color
+set_loguru_default_color()
 
 
 def patch_runtime_env_to_get_actor():

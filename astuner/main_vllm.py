@@ -1,14 +1,14 @@
 import atexit
 import os
 import sys
-from types import SimpleNamespace
-
 import hydra
-from openai import OpenAI
 
+from types import SimpleNamespace
+from openai import OpenAI
 from astuner.backbone.warm_up import warm_up_process
 from astuner.task_rollout.native_parallel_worker import VerlRolloutManager
-
+from astuner.utils.launch_utils import set_loguru_default_color
+set_loguru_default_color()
 
 class TokenAndProb:
     def __init__(self, t):

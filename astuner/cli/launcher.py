@@ -12,12 +12,11 @@ from astuner.utils.launch_utils import (
     execute_training_process,
     launch_logview,
     start_ray_service,
+    set_loguru_default_color,
 )
 from astuner.utils.pty import pty_launch
 
-logger.remove()
-colorize = os.environ.get("LOGURU_COLORIZE", "YES").upper() not in ["NO", "0", "FALSE"]
-logger.add(sys.stderr, colorize=colorize, enqueue=False)
+set_loguru_default_color()
 load_dotenv()
 
 def parse_args():
@@ -230,6 +229,15 @@ def setup_environment_vars(args, exp_config, main_yaml_fp):
     return env
 
 
+def check_model_file_exists(exp_config):
+    model_path = exp_config["astuner"]["model"]["path"]
+    # if model_path has more than 2 '/', we consider it as a dir path
+    if model_path.count("/") > 2:
+        assert os.path.exists(
+            model_path
+        ), f"Model path {model_path} does not exist. Please check your configuration."
+
+
 def main():
     args = parse_args()
 
@@ -252,6 +260,7 @@ def main():
                 logger.warning(f"No processes found matching keyword: {keyword}")
         if not args.conf:
             return
+
     # Initialize variables with default values to avoid "possibly unbound" errors
     main_yaml_fp = None
     exe_exp_base = None
@@ -300,6 +309,7 @@ def main():
         start_ray_service(args, env, cluster=True)
 
     if args.conf and main_yaml_fp and exe_exp_base and exp_config:
+        check_model_file_exists(exp_config)
         execute_training_process(
             args,
             backbone_target,
