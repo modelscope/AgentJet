@@ -307,20 +307,3 @@ class DashScopeClient:
         return
 
 
-# demo
-if __name__ == "__main__":
-    client = DashScopeClient(model_name="qwq-32b")
-
-    messages = [{"role": "user", "content": "Write a poem about Spring."}]
-
-    # print("=== request ===")
-    # response = client.chat_completion(messages)
-    # print(response)
-
-    print("\n=== streaming ===")
-    for chunk in client.chat_completion(messages, stream=True):
-        print(chunk, end="", flush=True)
-
-    print("\n\n=== streaming with retry ===")
-    for chunk in client.chat_stream(messages, {}):
-        print(chunk, end="", flush=True)

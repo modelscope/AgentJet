@@ -27,7 +27,6 @@ from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
 
 from astuner.utils.core_env_vars import get_runtime_env
-from astuner.utils.sms_agent import send_train_message
 
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
@@ -59,7 +58,6 @@ def run_ppo(config) -> None:
             num_cpus=config.ray_init.num_cpus,
         )
 
-    atexit.register(lambda: send_train_message("0000"))
     atexit.register(lambda: ray.shutdown())  # ray shutdown on exit
 
     # Create a remote instance of the TaskRunner class, and

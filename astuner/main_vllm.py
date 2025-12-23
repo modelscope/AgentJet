@@ -8,7 +8,6 @@ from openai import OpenAI
 
 from astuner.backbone.warm_up import warm_up_process
 from astuner.task_rollout.native_parallel_worker import VerlRolloutManager
-from astuner.utils.sms_agent import send_train_message
 
 
 class TokenAndProb:
@@ -192,5 +191,4 @@ def main(config):
 
 
 if __name__ == "__main__":
-    atexit.register(lambda: send_train_message("0000"))
     main()
