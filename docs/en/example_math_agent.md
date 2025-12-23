@@ -39,7 +39,8 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
-#### 2.3 Debug Locally (No Ray)
+<details>
+<summary>Quick Debugging (Optional)</summary>
 
 If you want to breakpoint-debug the workflow/judge locally:
 
@@ -72,6 +73,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` lik
   ]
 }
 ```
+</details>
 
 ---
 
