@@ -4,7 +4,7 @@
 project: "AgentScope Tuner"
 title: "<span style='font-weight: 700; color: #2196f3;'>AgentScope</span> <br><span style='font-weight: 900; color: #ff5722;'>Tuner</span>"
 author: Alibaba Tongyi Lab
-logo: logo.svg
+logo: logo.png
 copyright: "2025, Tongyi Lab, Alibaba Inc."
 only_build_toc_files: true
 
@@ -70,7 +70,7 @@ sphinx:
     # Theme Configuration
     html_theme: furo
     pygments_style: "friendly"
-    html_favicon: logo.svg
+    html_favicon: logo.png
     html_show_sphinx: false
     html_last_updated_fmt: "%Y-%m-%d"
     html_copy_source: false

@@ -16,6 +16,7 @@ parts:
       - file: en/example_werewolves.md
       - file: en/example_learning_to_ask.md
       - file: en/example_frozenlake.md
+      - file: en/example_countdown.md
       
   - caption: Component
     chapters:
@@ -25,10 +26,10 @@ parts:
       
   - caption: Deep Dive
     chapters:
+      - file: en/configuration.md
       - file: en/data_generation.md
       - file: en/example_tracing_feedback_loop.md
-      - file: en/example_countdown.md
-      - file: en/configuration.md
+     
 
   # --- 中文部分 ---
   - caption: 简介
