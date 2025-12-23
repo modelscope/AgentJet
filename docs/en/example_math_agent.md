@@ -1,6 +1,6 @@
 # Math Agent
 
-Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems.  
+Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems.
 Rewards come from a **judge** that checks final-answer correctness (and can optionally penalize bad tool-call behaviors).
 
 ---
@@ -15,7 +15,7 @@ In **Math Agent**, each training sample is a math word problem (e.g., GSM8K). Th
 
 This tutorial is organized in two steps:
 
-1) **Run it**: download the dataset and start training with the default YAML config.  
+1) **Run it**: download the dataset and start training with the default YAML config.
 2) **Understand & customize**: read the workflow (`ExampleMathLearn`) and the judge/reward (`MathAnswerAndLlmAsJudge`).
 
 ---
@@ -65,7 +65,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` lik
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
-        "--conf", "xxxx/xxxx/xxxx.yaml"
+        "--conf", "./path/to/yaml.yaml"
       ],
       "env": {}
     }
@@ -89,9 +89,7 @@ Each training step does:
    * Extract the **final answer**.
 3. Register key info for evaluation (important!):
 
-   * The workflow must call:
-
-     * `astune_proxy.update_judge_input_dictionary(final_answer=final_answer)`
+    * The workflow should return a `WorkflowOutput` whose `metadata` carries the final answer, e.g. `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`. Judges read this metadata directly; no extra API call is needed.
 4. Run the **judge** to compute reward:
 
    * compare `final_answer` with the reference answer from the task,
@@ -115,7 +113,7 @@ astune:
     type: huggingface_dat_repo   # also supports: dataset_file / env_service (if enabled)
 
   rollout:
-    agentscope_workflow: tutorial.math_agent->ExampleMathLearn
+    agentscope_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
 
   task_judge:
     judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
@@ -134,7 +132,7 @@ The workflow typically:
 * constructs a ReAct agent
 * runs one turn from the user problem
 * parses the final answer
-* exposes it to the judge via `update_judge_input_dictionary`
+* returns it via `WorkflowOutput(..., metadata={"final_answer": final_answer})` so the judge can score
 
 Workflow sketch:
 
@@ -145,17 +143,18 @@ self.toolkit.register_tool_function(execute_python_code)
 self.agent = ReActAgent(
     name="math_react_agent",
     sys_prompt=system_prompt,
-    model=astune_proxy,  # trainer-managed model wrapper
+    model=model_tuner,  # trainer-managed model wrapper
     formatter=DashScopeChatFormatter(),
     toolkit=self.toolkit,
     memory=InMemoryMemory(),
 )
 
 msg = Msg("user", init_messages[0]["content"], role="user")
-result = await self.agent.reply(msg, structured_model=FinalResult)
+result = await self.agent.reply(msg)
+final_answer = extract_final_answer(result)
 
-# IMPORTANT: provide final answer to the judge
-astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
+# IMPORTANT: provide final answer to the judge via WorkflowOutput metadata
+return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
 **Judge / Reward:** `astune/task_judge/math_answer_as_judge.py`
@@ -164,14 +163,10 @@ Two simple judges are provided there; you can add your own judge anywhere in the
 
 #### 3.4 Reward
 
-The judge reads from `judge_input_dictionary`, commonly including:
+The judge receives two objects:
 
-* `env`: env_service external environment (if enabled)
 * `workflow_task`: task info; reference answer can be retrieved from here
-* `grouped_steps`: all LLM conversation turns (useful if you want process-based scoring)
-* `final_answer`: not present by default — you must set it in the workflow via:
-
-  * `astune_proxy.update_judge_input_dictionary(final_answer=final_answer)`
+* `workflow_output`: returned by the workflow; access the final answer with `workflow_output.metadata["final_answer"]`
 
 The judge returns:
 
@@ -251,6 +246,7 @@ On the right side of the figure, the colored blocks are a **token-level sequence
   * `<im_start> assistant ... <tool_call> ... <im_end>`
   * `<im_start> user <tool_response> ... <stdout>18.0</stdout> ... <im_end>`
   * `<im_start> assistant ... \\boxed{18} ... <im_end>`
+* Yellow tokens: tokens that are excluded from loss computation. Blue tokens: tokens that participant loss computation (Blue color from light to dark indicates `logprob` from high to low).
 
 A “good” tool-call behavior typically shows up in logs as:
 
