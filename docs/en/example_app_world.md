@@ -56,7 +56,7 @@ If you want to breakpoint-debug the workflow/judge locally:
 # astuner --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_appworld/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` like below:
