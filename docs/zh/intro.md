@@ -1,96 +1,107 @@
-# AgentScope Tuner
+# 项目简介
 
-AgentScope Tuner，简称 **ASTuner**，是一个专用于优化 AgentScope 智能体的先进训练框架。
-你只需提供 AgentScope 工作流、训练数据与奖励函数，ASTuner 即可帮助将智能体优化到最佳状态。
+**AgentScope Tuner (ASTuner)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的 Agent 和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
 
+您只需提供 AgentScope 工作流、训练数据和奖励函数，我们就能助您的 Agent 达到最佳性能！
 
+---
 
-## ✨ 特性
+### ✨ 特性
 
-- **数据增强 & 数据回流追踪**：当训练数据有限时，自动进行数据增强，并追踪用户反馈。
-- **自动 Rubrics 构建**：通过少量示例学习，自动构建基于 LLM-as-a-judge 的奖励函数。
-- **多智能体支持**：轻松构建高级协作多智能体系统。
-- **高效的异步训练-推理分离**：基于 Trinity-RFT 实现性能优化。
-- **训练-调试一体化**：通过简单的 `--backbone` 开关即可在训练与调试模式间无缝切换（`--backbone=trinity` 或 `--backbone=debug`）。
-- **完备的日志记录**：集成来自 AgentScope Studio 的消息级日志与 token 级日志，便于深入分析。
+我们致力于构建一个易于上手的 AgentScope 微调工具，为 Agent 开发者解锁更多可能性：
 
+* **简单友好**：ASTuner 帮助您轻松微调 Agent 工作流背后的模型，以极小的开发成本优化 Agent 性能。
+* **丰富的教程库**：ASTuner 提供了丰富的 [示例库](https://github.com/agentscope-ai/agentscope-tuner/tree/main/tutorial) 作为学习教程。
+* **高效且可扩展**：ASTuner 默认使用 [trinity](https://github.com/modelscope/Trinity-RFT/) 作为后端（`--backbone=trinity`），通过全异步 RFT 加速微调过程。如果您更倾向于 Actor 共位置部署，也可以回退到 [verl](./installation.md) 后端。
+* **灵活且快速**：ASTuner 支持 [多 Agent 工作流](./workflow.md)，并采用了时间线合并技术（Timeline Merging）。当工作流涉及多轮（或多 Agent）对话时，可将训练速度提升 1.5 倍至 20 倍。
+* **可靠性与可复现性**：我们的团队持续追踪框架在多个 [任务 + 主分支版本 + 训练后端](https://benchmark.agent-matrix.com/) 上的表现（正在建设中，数据收集后即将上线）。
 
+针对进阶研究者，ASTuner 还提供了高分辨率的日志记录和调试方案：
 
-## 🚀 快速开始
+* **高分辨率日志**：ASTuner 允许用户保存并检查 Token 级的 Rollout 详情，记录 Token ID、Token Loss Mask，甚至是 Token Logprobs，以便于工作流开发和 Agent 诊断。
+* **快速调试**：ASTuner 提供了 `--backbone=debug` 选项，提供极致的调试体验，将代码修改后的等待时间从分钟级缩短至秒级，并支持在 IDE 中进行断点调试。
 
-### 安装
+---
 
-优先推荐使用 `uv`，也同样支持 `conda`。
+### 🚀 快速上手
 
-1. 克隆仓库：
+#### 安装
+
+我们推荐使用 `uv` 进行依赖管理。
+
+1. **克隆仓库**：
 
 ```bash
 git clone https://github.com/agentscope-ai/agentscope-tuner.git
 cd agentscope-tuner
+
 ```
 
-2. 创建虚拟环境并安装依赖：
+2. **设置环境**：
 
 ```bash
-uv venv --python=3.10.16  # 创建虚拟环境
-source .venv/bin/activate  # 激活虚拟环境
-
+uv venv --python=3.10.16 && source .venv/bin/activate
 uv pip install -e .[trinity]
+# 注意：flash-attn 必须在其他依赖安装完成后安装
 uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
+
 ```
 
+#### 运行训练
 
-### 开始使用
-
-一键启动并训练一个数学智能体：
+您可以使用预配置的 YAML 文件，通过单条命令开始训练您的第一个 Agent。以 [数学 Agent](./example_math_agent.md) 为例：
 
 ```bash
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+
 ```
 
-你可以从以下示例入手，快速上手 ASTuner：
+#### 示例库
 
-- 🚀 [**快速开始（Quick Start）**](./quickstart.md)：了解整体框架，并从零开始训练你的第一个智能体。
-- 🍳 [**构建一个简单的数学智能体**](./example_math_agent.md)：面向 GSM8K 任务，学习如何训练一个数学 Agent。
-- 🍳 [**构建 AppWorld 智能体**](./example_app_world.md)：基于 AgentScope 构建 AppWorld 智能体并进行训练。
-- 🍳 [**构建多智能体狼人杀游戏**](./example_werewolves.md)：开发参与狼人杀博弈的多智能体并对其进行训练。
-- 📔 [**追踪-反馈训练（Tracing-Feedback Training）**](./example_tracing_feedback_loop.md)：学习如何基于用户反馈回流进行训练。
+探索我们丰富的示例库，开启您的探索之旅：
 
-如果你希望了解各个组件的细节，可以参考：
+* 🔢 **[训练一个可以编写 Python 代码的数学 Agent](./example_math_agent.md)**。
+* 📱 **[使用 AgentScope 创建并训练 AppWorld Agent](./example_app_world.md)**。
+* 🐺 **[开发并训练“狼人杀”RPG Agent](./example_werewolves.md)**。
+* 👩🏻‍⚕️ **[学习像医生一样进行提问](./example_learning_to_ask.md)**。
+* 🎴 **[使用 AgentScope 编写并解决“倒计时”游戏](./example_countdown.md)**。
+* 🚶 **[使用 ASTuner 解决“冰湖”行走谜题](./example_frozenlake.md)**。
 
-- ⚙️ [**配置（Configuration）**](./configuration.md)：配置数据、优化算法、奖励函数等。
-- 💼 [**工作流（Workflow）**](./workflow.md)：构建你自己的、可训练的智能体工作流。
-- 📊 [**数据流水线与生成（Data Pipeline & Generation）**](./data_pipeline.md)：包含从文档构建数据集任务，以及从少量样本扩展数据集。
+---
 
+### 🧩 核心概念
 
+ASTuner 通过将开发者接口与内部执行逻辑分离，使 Agent 微调变得直观明了。
 
-## 🏗️ 项目架构
+<div align="center">
+<img width="480" alt="image" src="[https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg](https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg)"/>
 
-AgentScope Tuner 简化了智能体微调流程，将复杂的训练封装进三类核心模块：
+</div>
 
-- AgentScope 工作流（可直接复用已有 AgentScope 工作流）
-- 任务数据集（提供训练数据）
-- 奖励评判器（Reward Judge，用于评估表现质量）
+#### 1. 以用户为中心的接口
 
+为了优化 Agent，您需要提供三个核心输入：
 
-![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764207569988-69b6926f-301b-4766-9199-3823974aab99.png)
+* **[可训练工作流 (Trainable Workflow)](./workflow.md)**：通过继承 `Workflow` 类来定义您的 Agent 逻辑，支持简单的 Agent 设置以及高级的多 Agent 协作。
+* **[任务读取器 (Task Reader)](./data_pipeline.md)**：从 JSONL 文件、HuggingFace 数据集、交互式环境加载训练任务，或从文档自动生成任务。
+* **[任务判别器 (Task Judger)](./task_judger.md)**：评估 Agent 输出并分配奖励（Reward）以指导训练。
 
-为顺利完成工作流微调，我们在三类模块之下实现了以下核心模块
+#### 2. 内部系统架构
 
-![undefined](https://intranetproxy.alipay.com/skylark/lark/0/2025/png/144856612/1764705947150-753d77f0-a1a7-4491-8b8b-a0f9f998ed0a.png)
-- **launcher**：项目的入口，帮助开发者在调试 backbone 与训练 backbone 之间快速切换，同时负责启动并智能监控与训练相关的环境服务进程。
-- **task rollout**：桥接不同的 LLM 引擎（如 FSDP、VLLM 等），实现重试机制，并传递 task reader 读取的任务。同时负责 gym 环境的初始化与资源清理。
-- **task runner**：任务执行者，负责真正运行用户提供的 AgentScope 工作流，同时运行评判器并完成初步奖励计算。
-- **model tuner**：当前端 AgentScope 工作流发出 LLM 推理请求时，该组件会直接接收并将请求转发给 LLM 引擎。
-- **context tracker**：上下文记录员，监控每一次 LLM 调用，自动识别并归档属于同一 Agent、同一时间线的 LLM 请求。在任务结束时，负责标记 loss 掩膜，合并 LLM 输入输出，从而将训练效率提升约 3～10 倍。
+内部系统协调多个专门模块，以处理强化学习（RL）训练和 Agent 交互的复杂性。
 
-## 🗺️ 项目规划
+* **启动器 (Launcher)**：管理后台服务进程（Ray, vLLM）并路由后端。
+* **任务读取器 (Task Reader)**：处理数据摄取、增强和过滤。
+* **任务展开 (Task Rollout)**：连接大语言模型（LLM）引擎并管理 Gym 环境生命周期。
+* **任务运行器 (Task Runner)**：执行 AgentScope 工作流并计算奖励。
+* **模型微调器 (Model Tuner)**：将工作流中的推理请求转发至 LLM 引擎。
+* **上下文追踪器 (Context Tracker)**：监控 LLM 调用，并自动合并共享历史的时间线，将训练效率提升 **3 到 10 倍**。
 
-正在进行中的工作：
+---
 
-- 增强数据生成模块的功能
-- 提供一个「训练 → 用户反馈 → 数据增强 → 重新训练」的飞轮式示例
-- 为多智能体样本提供更精细的后处理方案
-- 支持多模型联合训练
-- 针对小显存 GPU 优化长上下文适配配置
-- 增加基于 LoRA 的训练示例
+### 🚦 导航
+
+* 📖 **教程**：从 [安装](./installation.md) 到 [微调您的第一个 Agent](./tutorial.md) —— 初学者的必经之路。
+* 🛠️ **核心组件**：定义您的 [可训练工作流](./workflow.md)，并管理 [数据](./data_pipeline.md) 和 [奖励](./tune_your_first_agent.md)。
+* 💡 **示例**：查看上方的 [示例库](#example-librar)，了解 [数学](./example_math_agent.md)、[狼人杀游戏](./example_werewolves.md) 和 [学习提问](./example_learning_to_ask.md) 等真实案例。
+* ⚙️ **深入了解**：掌握高级 [配置方案](./configuration.md)。
