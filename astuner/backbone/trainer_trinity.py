@@ -1,27 +1,22 @@
 import asyncio
 import os
-from typing import Dict
+from typing import Dict, List, Literal, Optional, cast
 
 import datasets
 import openai
 import swanlab
 from loguru import logger
+from transformers import AutoTokenizer
+from trinity.buffer.reader import READER
+from trinity.buffer.reader.file_reader import TaskFileReader, _HFBatchReader
+from trinity.buffer.schema import FORMATTER
 from trinity.common.experience import Experience
 from trinity.common.models.model import ModelWrapper
 from trinity.common.workflows import WORKFLOWS
 from trinity.common.workflows.workflow import Task as TrinityTask
 from trinity.common.workflows.workflow import Workflow
-
-from trinity.buffer.reader import READER
-from trinity.buffer.reader.file_reader import TaskFileReader, _HFBatchReader
-from trinity.buffer.schema import FORMATTER
 from trinity.utils.log import get_logger
 from trinity.utils.monitor import MONITOR, Monitor
-
-
-from typing import List, Literal, Optional, cast
-
-from transformers import AutoTokenizer
 
 from astuner.backbone.warm_up import warm_up_process
 from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (

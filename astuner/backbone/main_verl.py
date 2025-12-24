@@ -242,7 +242,7 @@ class TaskRunner:
         train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
-        from astuner.backbone.verl_trainer import ASTunerRayPPOTrainer
+        from astuner.backbone.trainer_verl import ASTunerRayPPOTrainer
 
         # Initialize the PPO trainer.
         trainer = ASTunerRayPPOTrainer(
