@@ -88,10 +88,10 @@ WorkflowOutput(
 1. 读取任务（对应配置字段 `astuner.task_reader`）
 2. 定义 Workflow（对应配置字段 `astuner.rollout.agentscope_workflow`）
    - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_countdown/countdown.py` 的 `ExampleCountdownLearn` 类中
-   - 则配置 `astuner.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
+   - 则配置 `astuner.rollout.agentscope_workflow` = `tutorial.example_countdown.countdown->ExampleCountdownLearn`
 3. 定义评分函数（对应配置字段 `astuner.task_judge.judge_protocol`）
-   - 示例：如果评分逻辑定义在 `astuner/task_judge/countdown_answer_as_judge.py` 的 `CountdownAnswerAsJudge` 类中
-   - 则配置 `astuner.task_judge.judge_protocol`=`astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge`
+   - 示例：如果评分逻辑定义在 `tutorial/example_countdown/countdown_answer_as_judge.py` 的 `CountdownAnswerAsJudge` 类中
+   - 则配置 `tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
 4. 指定模型（对应配置字段 `astuner.model.path`）
 
 ```yaml
@@ -102,7 +102,7 @@ astuner:
         agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ 编写并选择智能体
     task_judge:
         # ✨✨✨✨ 编写并选择评估函数
-        judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
+        judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
     model:
         # ✨✨✨✨ 设置需要训练的模型
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
@@ -114,7 +114,7 @@ astuner:
 - `tutorial/example_countdown/countdown.yaml`：将 task_reader、workflow、judge、model 等模块连接起来。
 
 ### 3.4 奖励/评估机制
-在 `astuner/task_judge/countdown_answer_as_judge.py` 中提供了一个简单的 Judge 示例。你也可以在项目任意位置实现自己的 Judge 逻辑。
+在 `tutorial/example_countdown/countdown_answer_as_judge.py` 中提供了一个简单的 Judge 示例。你也可以在项目任意位置实现自己的 Judge 逻辑。
 
 Judge 的输入参数包括：
 

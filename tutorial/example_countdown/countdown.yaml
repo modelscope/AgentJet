@@ -93,7 +93,7 @@ astuner:
     judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
 
     # ✨✨✨✨ when `judge_type == customized_protocol`
-    judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
+    judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
 
   # when backbone is `debug`, debug related configurations
   debug:

@@ -4,7 +4,7 @@
 astuner
   # Task judge configuration using RM Auto Grader
   task_judge:
-    # Use RMAutoGraderJudge for pre-generated rubrics
+    # Use AutoGraderJudge for pre-generated rubrics
     # Or use RMAutoGraderBatchJudge for online rubric generation
 
     # ========================================
@@ -94,7 +94,7 @@ astuner
 # ============================================
 # astuner
 #   task_judge:
-#     class_name: RMAutoGraderJudge
+#     class_name: AutoGraderJudge
 #     model_name: "qwen-plus"
 #     grader_mode: "pointwise"
 #     language: "en"
@@ -116,7 +116,7 @@ astuner
 # ============================================
 # astuner
 #   task_judge:
-#     class_name: RMAutoGraderJudge
+#     class_name: AutoGraderJudge
 #     model_name: "gpt-4"
 #     grader_mode: "pointwise"
 #     language: "en"

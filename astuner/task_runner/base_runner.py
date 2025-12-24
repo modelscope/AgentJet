@@ -2,8 +2,8 @@ from typing import Any, Callable, Union
 
 from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.task_judge.base_judge import BaseJudge
+from astuner.utils.async_utils import run_async_coroutine_with_timeout
 from astuner.utils.dynamic_import import dynamic_import
-from astuner.utils.utils import run_async_coroutine_with_timeout
 
 
 class BaseAgentRunner(object):
@@ -26,9 +26,9 @@ class BaseAgentRunner(object):
 
         elif self.config.astuner.task_judge.judge_type == "rubrics_auto_grader":
             # astuner/task_judge/rm_auto_grader_judge.py
-            from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+            from astuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
 
-            judge = RMAutoGraderJudge(self.config)
+            judge = AutoGraderJudge(self.config)
             run_async_coroutine_with_timeout(judge.load_rubrics_from_cache())
             return judge
 

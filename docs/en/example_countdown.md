@@ -114,8 +114,8 @@ Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. T
    - Example: If agentscope workflow is defined in `ExampleCountdownLearn` class of `tutorial/example_countdown/countdown.py`
    - Then set `astuner.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
 3. Define scoring function (corresponds to configuration field `astuner.task_judge.judge_protocol`)
-   - Example: If agentscope workflow is defined in `CountdownAnswerAsJudge` class of `astuner/task_judge/countdown_answer_as_judge.py`
-   - Then set `astuner.task_judge.judge_protocol`=`astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge`
+  - Example: If agentscope workflow is defined in `CountdownAnswerAsJudge` class of `tutorial/example_countdown/countdown_answer_as_judge.py`
+  - Then set `astuner.task_judge.judge_protocol`=`tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
 4. Specify model (corresponds to configuration field `astuner.model.path`)
 
 ```yaml
@@ -126,7 +126,7 @@ astuner:
         agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ Write and select Agent
     task_judge:
         # ✨✨✨✨ Write and select evaluation function
-        judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
+        judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
     model:
         # ✨✨✨✨ Set the model to be trained
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
@@ -138,7 +138,7 @@ astuner:
 - `tutorial/example_countdown/countdown.yaml`: wires together task reader, workflow, judge, and model.
 
 ### 3.4 Reward/Evaluation Mechanism
-A simple Judge is provided in `astuner/task_judge/countdown_answer_as_judge.py`. You can create new Judge code anywhere in the project.
+A simple Judge is provided in `tutorial/example_countdown/countdown_answer_as_judge.py`. You can create new Judge code anywhere in the project.
 
 Judge input parameters include:
 

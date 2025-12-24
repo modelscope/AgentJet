@@ -31,7 +31,7 @@ from astuner.workflow import WorkflowOutput, WorkflowTask
 
 async def example_pregerated_rubrics():
     """
-    Example of using RMAutoGraderJudge with iteratively-generated rubrics (Pointwise mode).
+    Example of using AutoGraderJudge with iteratively-generated rubrics (Pointwise mode).
 
     This approach uses the IterativeRubricsGenerator to automatically create
     evaluation rubrics from reference samples using a Propose-Evaluate-Revise loop.
@@ -109,7 +109,7 @@ async def example_pregerated_rubrics():
 
 async def example_listwise_mode():
     """
-    Example of using RMAutoGraderJudge in Listwise mode with iterative rubrics.
+    Example of using AutoGraderJudge in Listwise mode with iterative rubrics.
 
     Listwise mode ranks multiple candidate answers for the same query.
     This is useful for:
