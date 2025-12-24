@@ -3,7 +3,12 @@ import colorsys
 
 def adjust_color_hsl(base_color, logprob):
     """
-    Adjust color saturation using the HSL color space based on logprob
+    Adjust color saturation using the HSL color space based on log probability.
+    Args:
+        base_color (str): Hexadecimal color string (e.g., '#ff0000').
+        logprob (float): Log probability value to determine saturation.
+    Returns:
+        str: Adjusted hexadecimal color string.
     """
     # Map logprob to a saturation adjustment factor in the range [sat_min, sat_max]
     sat_min = 0.333

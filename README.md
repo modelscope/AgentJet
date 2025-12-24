@@ -63,7 +63,7 @@ Clone the AgentScope Tuner repository from GitHub and navigate into the project 
 2. Set up dependencies.
     ```bash
     uv venv --python=3.10 && source .venv/bin/activate
-    uv pip install -e .[trinity]
+    uv pip install -e .[trinity]  # or `uv pip install -e .[verl]` if you prefer using verl as backbone
     uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps
     ```
 

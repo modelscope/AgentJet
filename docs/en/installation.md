@@ -40,7 +40,7 @@ We recommend using `uv` to manage your Python environment as it is incredibly fa
   uv venv --python=3.10
   source .venv/bin/activate
   uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-  uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps
   ```
 
 
@@ -48,7 +48,7 @@ We recommend using `uv` to manage your Python environment as it is incredibly fa
   ```bash
   source .venv/bin/activate
   uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
-  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps, export MAX_JOBS=${N_CPU} to build faster
   ```
 
 #### 2. Install one-click via docker

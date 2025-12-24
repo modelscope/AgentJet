@@ -1,4 +1,12 @@
 def get_sample_params(mode, config):
+    """
+    Generate sampling parameters for text generation based on mode and config.
+    Args:
+        mode (str): The mode of operation, e.g., 'validate'.
+        config: Configuration object containing rollout parameters.
+    Returns:
+        dict: Sampling parameters for the model.
+    """
     response_length_eps = (
         16  # Reserve a few tokens for later handling of special tokens like lm_start.
     )

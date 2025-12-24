@@ -5,7 +5,6 @@ import logging
 import os
 import subprocess
 import sys
-import re
 import time
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -16,6 +15,13 @@ from loguru import logger
 
 
 def string_to_base64(s):
+    """
+    Convert a string to its base64 encoded representation.
+    Args:
+        s (str): Input string.
+    Returns:
+        str: Base64 encoded string.
+    """
     # First, encode the string to bytes
     s_bytes = s.encode("utf-8")
     # Then convert bytes to base64
@@ -113,6 +119,13 @@ class LaunchWhenAbsent:
                 return False, None, None
 
     def is_pgid_running(self, pgid):
+        """
+        Check if a process group ID is running (ignoring zombies).
+        Args:
+            pgid (int): Process group ID.
+        Returns:
+            Tuple[bool, Optional[psutil.Process]]: (is_running, process_if_found)
+        """
         # Treat zombie processes as not running to avoid false positives.
         for proc in psutil.process_iter(["pid", "status"]):
             try:
@@ -163,6 +176,9 @@ class LaunchWhenAbsent:
                 print(f"Cleaned up PGID file: {self.pgid_file}")
 
     def shutdown(self):
+        """
+        Shutdown the process group if running.
+        """
         if self.pgid:
             self._kill_existing_process_group(self.pgid)
 
@@ -190,6 +206,9 @@ class LaunchWhenAbsent:
             force_restart (bool): If True, kill existing process and restart
             launch_wait_time (int): Maximum time to wait for process launch in seconds
             success_std_string (str, List[str]): String to look for in stdout to confirm successful launch
+            env_dict (dict): Environment variables for the process
+        Returns:
+            str: Content that hit the success string, if any.
         """
         is_running, existing_process, pgid = self._is_script_running()
         self.pgid = pgid
@@ -245,13 +264,15 @@ class LaunchWhenAbsent:
 
                     # for key in ['COLORTERM', 'LS_COLORS', 'CLICOLOR', 'CLICOLOR_FORCE', 'FORCE_COLOR']:
                     #     env_dict.pop(key, None)
-                    env_dict.update({
-                        'NO_COLOR': '1',
-                        # 'TERM': 'dumb',
-                        # 'PYTHONUNBUFFERED': '1',
-                        'LOGURU_COLORIZE': 'NO',
-                        # 'LOGURU_AUTOINIT': '1',
-                    })
+                    env_dict.update(
+                        {
+                            "NO_COLOR": "1",
+                            # 'TERM': 'dumb',
+                            # 'PYTHONUNBUFFERED': '1',
+                            "LOGURU_COLORIZE": "NO",
+                            # 'LOGURU_AUTOINIT': '1',
+                        }
+                    )
 
                     proc = subprocess.Popen(
                         self.cmd,
@@ -259,10 +280,7 @@ class LaunchWhenAbsent:
                         stderr=subprocess.STDOUT,
                         stdin=subprocess.DEVNULL,
                         cwd=self.dir,
-                        env={
-                            "ScriptHash": self.script_hash,
-                            **env_dict
-                        },
+                        env={"ScriptHash": self.script_hash, **env_dict},
                         start_new_session=True,  # Start new session
                     )
                     f.close()  # Close append handle
@@ -328,7 +346,7 @@ class LaunchWhenAbsent:
                                     break
                             # if we have reached finish line, then break
                             if hit_success_string:
-                                f_read_trim = inc_read # .replace("\n", " ")
+                                f_read_trim = inc_read  # .replace("\n", " ")
                                 print(
                                     f"Waiting for process launch [PGID {pgid}, PID {proc.pid}] ({f_read_trim})"
                                 )
@@ -339,7 +357,7 @@ class LaunchWhenAbsent:
                         remaining = int(launch_wait_time - (time.time() - start_time))
 
                         # trim output for printing
-                        f_read_trim = inc_read # .replace("\n", " ")
+                        f_read_trim = inc_read  # .replace("\n", " ")
                         if f_read_trim:
                             if previous_r_print:
                                 print("")
@@ -386,7 +404,19 @@ class LaunchWhenAbsent:
 
 
 class LaunchCommandWhenAbsent(LaunchWhenAbsent):
+    """
+    Launch a command as a detached process if not already running, using a hash of the command for uniqueness.
+    """
+
     def __init__(self, full_argument_list: List[str], dir=None, tag="", use_pty=False):
+        """
+        Initialize with the full argument list for the command.
+        Args:
+            full_argument_list (List[str]): Command and arguments to launch.
+            dir (str, optional): Working directory.
+            tag (str, optional): Tag for log file naming.
+            use_pty (bool, optional): Whether to use PTY for the process.
+        """
         if not dir:
             self.dir = os.getcwd()
         else:
