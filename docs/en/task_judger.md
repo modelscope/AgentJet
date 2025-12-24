@@ -65,7 +65,7 @@ Evaluates mathematical answers by exact string matching, designed for tasks wher
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 ```
 
 **How it works:**
