@@ -1,4 +1,4 @@
-# Task Reader
+# 任务加载器
 
 AgentScope Tuner 通过 Task Reader 从多种数据源加载训练任务。本页面介绍 Task 的统一 Schema 定义，以及面向常见场景的内置 Task Reader。
 
@@ -14,7 +14,7 @@ AgentScope Tuner 通过 Task Reader 从多种数据源加载训练任务。本�
 Data Source → Task Reader → Unified Task Schema → Training Pipeline
 ```
 
-## Task Schema
+## 任务结构
 
 所有训练任务都必须按照以下结构定义：
 

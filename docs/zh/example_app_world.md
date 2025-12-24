@@ -1,4 +1,4 @@
-# AppWorld
+# App交互模拟
 
 本教程介绍如何训练一个 Agent 与 AppWorld 交互并解决复杂的任务。
 
