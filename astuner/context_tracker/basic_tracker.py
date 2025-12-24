@@ -658,3 +658,9 @@ class BaseContextTracker(BaseTracker):
         )
         self.generation_prompt = self.tokenizer.decode(self.generation_prompt_token)
         return self.generation_prompt_token
+
+    def generate_log(self, global_step: str | int = "NA"):
+        """
+        Generate log for the context tracker.
+        """
+        raise NotImplementedError

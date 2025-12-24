@@ -13,33 +13,21 @@
 # limitations under the License.
 
 
-import json
-import os
 import uuid
-import warnings
 from collections import defaultdict
-from dataclasses import dataclass, field
-from enum import Enum
 from pprint import pprint
 from typing import List, Optional
 
 import hydra
 import numpy as np
-import ray
 import torch
 from beast_logger import print_dict
-from omegaconf import OmegaConf, open_dict
-from torch.utils.data import Dataset, Sampler
-from torchdata.stateful_dataloader import StatefulDataLoader
+from loguru import logger
+from omegaconf import OmegaConf
 from tqdm import tqdm
 from verl import DataProto
 from verl.experimental.dataset.sampler import AbstractCurriculumSampler
-from verl.single_controller.base import Worker
-from verl.single_controller.ray import (
-    RayClassWithInitArgs,
-    RayResourcePool,
-    RayWorkerGroup,
-)
+from verl.single_controller.ray import RayClassWithInitArgs
 from verl.single_controller.ray.base import create_colocated_worker_cls
 from verl.trainer.config import AlgoConfig
 from verl.trainer.ppo import core_algos
@@ -49,30 +37,22 @@ from verl.trainer.ppo.metric_utils import (
     compute_throughout_metrics,
     compute_timing_metrics,
 )
-from verl.trainer.ppo.reward import compute_reward
-from verl.utils.checkpoint.checkpoint_manager import (
-    find_latest_ckpt_path,
-    should_save_ckpt_esi,
-)
-from verl.utils.config import omega_conf_to_dataclass
-from verl.utils.debug import marked_timer
-from verl.utils.metric import reduce_metrics
-from verl.utils.seqlen_balancing import (
-    get_seqlen_balanced_partitions,
-    log_seqlen_unbalance,
-)
-from verl.utils.torch_functional import masked_mean
-from verl.utils.tracking import ValidationGenerationsLogger
 from verl.trainer.ppo.ray_trainer import (
-    Role, WorkerType, ResourcePoolManager, RayPPOTrainer,
+    RayPPOTrainer,
+    Role,
     apply_kl_penalty,
     compute_response_mask,
 )
+from verl.trainer.ppo.reward import compute_reward
+from verl.utils.checkpoint.checkpoint_manager import should_save_ckpt_esi
+from verl.utils.config import omega_conf_to_dataclass
+from verl.utils.debug import marked_timer
+from verl.utils.metric import reduce_metrics
 
+from astuner.backbone.warm_up import warm_up_process
 from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import Task
 from astuner.task_rollout.native_parallel_worker import VerlRolloutManager
-from astuner.backbone.warm_up import warm_up_process
 
 
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
@@ -217,97 +197,12 @@ def compute_advantage(
 
 class ASTunerRayPPOTrainer(RayPPOTrainer):
     """Distributed PPO trainer using Ray for scalable reinforcement learning.
-
-    This trainer orchestrates distributed PPO training across multiple nodes and GPUs,
-    managing actor rollouts, critic training, and reward computation with Ray backend.
-    Supports various model architectures including FSDP, Megatron, and vLLM integration.
+    Slightly modified from RayPPOTrainer in verl.
     """
 
-    # TODO: support each role have individual ray_worker_group_cls,
-    # i.e., support different backend of different role
-    def __init__(
-        self,
-        config,
-        tokenizer,
-        role_worker_mapping: dict[Role, WorkerType],
-        resource_pool_manager: ResourcePoolManager,
-        ray_worker_group_cls: type[RayWorkerGroup] = RayWorkerGroup,
-        processor=None,
-        reward_fn=None,
-        val_reward_fn=None,
-        train_dataset: Optional[Dataset] = None,
-        val_dataset: Optional[Dataset] = None,
-        collate_fn=None,
-        train_sampler: Optional[Sampler] = None,
-        device_name=None,
-    ):
-        """
-        Initialize distributed PPO trainer with Ray backend.
-        Note that this trainer runs on the driver process on a single CPU/GPU node.
-
-        Args:
-            config: Configuration object containing training parameters.
-            tokenizer: Tokenizer used for encoding and decoding text.
-            role_worker_mapping (dict[Role, WorkerType]): Mapping from roles to worker classes.
-            resource_pool_manager (ResourcePoolManager): Manager for Ray resource pools.
-            ray_worker_group_cls (RayWorkerGroup, optional): Class for Ray worker groups. Defaults to RayWorkerGroup.
-            processor: Optional data processor, used for multimodal data
-            reward_fn: Function for computing rewards during training.
-            val_reward_fn: Function for computing rewards during validation.
-            train_dataset (Optional[Dataset], optional): Training dataset. Defaults to None.
-            val_dataset (Optional[Dataset], optional): Validation dataset. Defaults to None.
-            collate_fn: Function to collate data samples into batches.
-            train_sampler (Optional[Sampler], optional): Sampler for the training dataset. Defaults to None.
-            device_name (str, optional): Device name for training (e.g., "cuda", "cpu"). Defaults to None.
-        """
-
-        # Store the tokenizer for text processing
-        self.tokenizer = tokenizer
-        self.processor = processor
-        self.config = config
-        self.reward_fn = reward_fn
-        self.val_reward_fn = val_reward_fn
-
-        self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
-        assert self.hybrid_engine, "Currently, only support hybrid engine"
-
-        if self.hybrid_engine:
-            assert Role.ActorRollout in role_worker_mapping, f"{role_worker_mapping.keys()=}"
-
-        self.role_worker_mapping = role_worker_mapping
-        self.resource_pool_manager = resource_pool_manager
-        self.use_reference_policy = Role.RefPolicy in role_worker_mapping
-        self.use_rm = Role.RewardModel in role_worker_mapping
-        self.ray_worker_group_cls = ray_worker_group_cls
-        self.device_name = device_name if device_name else self.config.trainer.device
-        self.validation_generations_logger = ValidationGenerationsLogger(
-            project_name=self.config.astuner.project_name,
-            experiment_name=self.config.astuner.experiment_name,
-        )
-
-        # if ref_in_actor is True, the reference policy will be actor without lora applied
-        self.ref_in_actor = config.actor_rollout_ref.model.get("lora_rank", 0) > 0
-
-        # define in-reward KL control
-        # kl loss control currently not suppoorted
-        if self.config.algorithm.use_kl_in_reward:
-            self.kl_ctrl_in_reward = core_algos.get_kl_controller(self.config.algorithm.kl_ctrl)
-
-        if config.critic.enable is not None:
-            self.use_critic = bool(config.critic.enable)
-        elif self.config.algorithm.adv_estimator == AdvantageEstimator.GAE:
-            self.use_critic = True
-        else:
-            warnings.warn(
-                "Disabled critic as algorithm.adv_estimator != gae. "
-                "If it is not intended, please set critic.enable=True",
-                stacklevel=2,
-            )
-            self.use_critic = False
-
-        self._validate_config()
-        self._create_dataloader(train_dataset, val_dataset, collate_fn, train_sampler)
-
+    # #######################################
+    # init
+    # #######################################
     def _validate_config(self):
         config = self.config
         # number of GPUs total
@@ -418,230 +313,6 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
             ), "validation gen temperature should be greater than 0 when enabling do_sample"
 
         print("[validate_config] All configuration checks passed successfully!")
-
-    def _create_dataloader(
-        self,
-        train_dataset,
-        val_dataset,
-        collate_fn,
-        train_sampler: Optional[Sampler],
-    ):
-        """
-        Creates the train and validation dataloaders.
-        """
-        from verl.trainer.main_ppo import create_rl_dataset, create_rl_sampler
-
-        if train_dataset is None:
-            train_dataset = create_rl_dataset(
-                self.config.data.train_files,
-                self.config.data,
-                self.tokenizer,
-                self.processor,
-            )
-        if val_dataset is None:
-            val_dataset = create_rl_dataset(
-                self.config.data.val_files,
-                self.config.data,
-                self.tokenizer,
-                self.processor,
-            )
-        self.train_dataset, self.val_dataset = train_dataset, val_dataset
-
-        if train_sampler is None:
-            train_sampler = create_rl_sampler(self.config.data, self.train_dataset)
-        if collate_fn is None:
-            from verl.utils.dataset.rl_dataset import collate_fn as default_collate_fn
-
-            collate_fn = default_collate_fn
-
-        num_workers = self.config.data["dataloader_num_workers"]
-
-        self.train_dataloader = StatefulDataLoader(
-            dataset=self.train_dataset,
-            batch_size=self.config.data.get(
-                "gen_batch_size", self.config.astuner.data.train_batch_size
-            ),
-            num_workers=num_workers,
-            drop_last=True,
-            collate_fn=collate_fn,
-            sampler=train_sampler,
-        )
-
-        val_batch_size = self.config.data.val_batch_size  # Prefer config value if set
-        if val_batch_size is None:
-            val_batch_size = len(self.val_dataset)
-
-        self.val_dataloader = StatefulDataLoader(
-            dataset=self.val_dataset,
-            batch_size=val_batch_size,
-            num_workers=num_workers,
-            shuffle=self.config.data.get("validation_shuffle", True),
-            drop_last=False,
-            collate_fn=collate_fn,
-        )
-
-        assert len(self.train_dataloader) >= 1, "Train dataloader is empty!"
-        assert len(self.val_dataloader) >= 1, "Validation dataloader is empty!"
-
-        print(
-            f"Size of train dataloader: {len(self.train_dataloader)}, Size of val dataloader: "
-            f"{len(self.val_dataloader)}"
-        )
-
-        total_training_steps = len(self.train_dataloader) * self.config.trainer.total_epochs
-
-        if self.config.trainer.total_training_steps is not None:
-            total_training_steps = self.config.trainer.total_training_steps
-
-        self.total_training_steps = total_training_steps
-        print(f"Total training steps: {self.total_training_steps}")
-
-        try:
-            OmegaConf.set_struct(self.config, True)
-            with open_dict(self.config):
-                if OmegaConf.select(self.config, "actor_rollout_ref.actor.optim"):
-                    self.config.actor_rollout_ref.actor.optim.total_training_steps = (
-                        total_training_steps
-                    )
-                if OmegaConf.select(self.config, "critic.optim"):
-                    self.config.critic.optim.total_training_steps = total_training_steps
-        except Exception as e:
-            print(
-                f"Warning: Could not set total_training_steps in config. Structure missing? Error: {e}"
-            )
-
-
-    def _validate(self):
-        data_source_lst = []
-        reward_extra_infos_dict: dict[str, list] = defaultdict(list)
-
-        # Lists to collect samples for the table
-        sample_inputs = []
-        sample_outputs = []
-        sample_scores = []
-        sample_turns = []
-
-        for test_data in self.val_dataloader:
-            test_data["index"] = torch.tensor(
-                [i for i in range(len(test_data["task_id"]))], dtype=torch.long
-            )
-            test_batch = DataProto.from_single_dict(test_data)
-
-            # repeat test batch
-            test_batch = test_batch.repeat(
-                repeat_times=self.config.astuner.rollout.val_kwargs.num_repeat,
-                interleave=True,
-            )
-
-            # we only do validation on rule-based rm
-            if (
-                self.config.reward_model.enable
-                and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model"
-            ):
-                return {}
-
-            batch_keys_to_pop = ["index"]
-            non_tensor_batch_keys_to_pop = [
-                "task_id",
-                "main_query",
-                "env_type",
-                "metadata",
-                "init_messages",
-            ]
-            if "multi_modal_data" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("multi_modal_data")
-            if "raw_prompt" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("raw_prompt")
-            if "tools_kwargs" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("tools_kwargs")
-            if "interaction_kwargs" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("interaction_kwargs")
-            if "agent_name" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("agent_name")
-            if "extras" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("extras")
-
-            test_gen_batch = test_batch.pop(
-                batch_keys=batch_keys_to_pop,
-                non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
-            )
-
-            test_gen_batch.meta_info = {
-                "eos_token_id": self.tokenizer.eos_token_id,
-                "pad_token_id": self.tokenizer.pad_token_id,
-                "recompute_log_prob": False,
-                "do_sample": self.config.astuner.rollout.val_kwargs.do_sample,
-                "validate": True,
-                "global_steps": self.global_steps,
-            }
-            print(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
-
-            self.async_rollout_manager.wake_up()
-            main_val_dataset, test_normal_dataset, test_chanllenge_dataset = self.get_eval_dataset()
-
-            print("=" * 10 + "start validate rollout" + "=" * 10)
-            context_tracker_arr, tasks, val_metrics = self.eval_dataset(
-                target_dataset=main_val_dataset,
-                target_dataset_name="main_val_dataset",
-                mode="validate",
-                epoch="test.1",
-            )
-            print("=" * 10 + "end validate rollout" + "=" * 10)
-            test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
-            self.async_rollout_manager.sleep()
-            print("validation generation end")
-
-            # Store generated outputs
-            output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = [
-                self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids
-            ]
-            sample_outputs.extend(output_texts)
-
-            test_batch.non_tensor_batch["uid"] = np.array(
-                [str(uuid.uuid4()) for _ in range(len(test_batch.batch))],
-                dtype=object,
-            )
-            tasks = tasks[: len(main_val_dataset)]
-            test_batch = union_gen_batch_via_task_id(tasks, test_batch, test_output_gen_batch)
-            # test_batch = test_batch.union(test_output_gen_batch)
-            test_batch.meta_info["validate"] = True
-
-            # evaluate using reward_function
-            if self.val_reward_fn is None:
-                raise ValueError("val_reward_fn must be provided for validation.")
-            result = self.val_reward_fn(test_batch, return_dict=True)
-            reward_tensor = result["reward_tensor"]
-            scores = reward_tensor.sum(-1).cpu().tolist()
-            sample_scores.extend(scores)
-
-            reward_extra_infos_dict["reward"].extend(scores)
-            print(
-                f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}"
-            )
-            if "reward_extra_info" in result:
-                for key, lst in result["reward_extra_info"].items():
-                    reward_extra_infos_dict[key].extend(lst)
-                    print(
-                        f"len reward_extra_infos_dict['{key}']: {len(reward_extra_infos_dict[key])}"
-                    )
-
-            # collect num_turns of each prompt
-            if "__num_turns__" in test_batch.non_tensor_batch:
-                sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
-
-            data_source_lst.append(
-                test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0])
-            )
-            break  # hack to escape the loop after one batch
-
-        sample_inputs = [
-            m["messages"][0]["content"] for m in test_batch.non_tensor_batch["messages"]
-        ]
-
-        metric_dict = val_metrics
-
-        return metric_dict
 
     def init_workers(self):
         """Initialize distributed training workers using Ray backend.
@@ -771,9 +442,9 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
             tokenizer=self.tokenizer,
         )
 
-
-
-
+    # #######################################
+    # training loop
+    # #######################################
     def fit(self):  # noqa: C901
         """
         The training loop of PPO.
@@ -785,13 +456,12 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
         from verl.utils.tracking import Tracking
 
         warm_up_process(self.config)
-        logger = Tracking(
+        self.verl_logger = Tracking(
             project_name=self.config.astuner.project_name,
             experiment_name=self.config.astuner.experiment_name,
             default_backend=self.config.trainer.logger,
             config=OmegaConf.to_container(self.config, resolve=True),
         )
-        self.tracking_logger = logger
         self.global_steps = 0
 
         # load checkpoint before doing anything
@@ -800,13 +470,14 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
         # wake and sleep to enforce param sync
         self.async_rollout_manager.wake_up()
         self.async_rollout_manager.sleep()
+
         # perform validation before training
         # currently, we only support validation using the reward_function.
         if self.val_reward_fn is not None and self.config.trainer.get("val_before_train", True):
             val_metrics = self._validate()
             assert val_metrics, f"{val_metrics=}"
             pprint(f"Initial validation metrics: {val_metrics}")
-            logger.log(data=val_metrics, step=self.global_steps)
+            self.verl_logger.log(data=val_metrics, step=self.global_steps)
             if self.config.trainer.get("val_only", False):
                 return
 
@@ -875,12 +546,12 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
 
                 with marked_timer("step", timing_raw):
                     # generate a batch
-                    print("=== + rollout step begin ===")
+                    logger.info("=== + rollout step begin ===")
                     with marked_timer("gen", timing_raw, color="red"):
                         assert self.async_rollout_mode
-                        print("=== wake up begin ===")
+                        logger.info("=== wake up begin ===")
                         self.async_rollout_manager.wake_up()
-                        print("=== wake up end ===")
+                        logger.info("=== wake up end ===")
                         tasks = [
                             Task(
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],
@@ -890,21 +561,23 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                             )
                             for i in range(len(gen_batch))
                         ]
-                        print(
-                            [
-                                gen_batch.non_tensor_batch["task_id"][i]
-                                for i in range(len(gen_batch))
-                            ]
+                        logger.info(
+                            str(
+                                [
+                                    gen_batch.non_tensor_batch["task_id"][i]
+                                    for i in range(len(gen_batch))
+                                ]
+                            )
                         )
-                        print("=" * 10 + "start fit rollout" + "=" * 10)
+                        logger.info("=" * 10 + "start fit rollout" + "=" * 10)
                         self.parallel_env.current_global_steps = self.global_steps
                         context_tracker_arr: List[BaseContextTracker] = self.parallel_env.rollout(
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
-                        print("=" * 10 + "end fit rollout" + "=" * 10)
-                        print("begin to convert context_tracker_arr to dataproto")
+                        logger.info("=" * 10 + "end fit rollout" + "=" * 10)
+                        logger.info("begin to convert context_tracker_arr to dataproto")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
-                        print("end convertion")
+                        logger.info("end convertion")
 
                         success_rate = [
                             traj.reward_structure.success_rate for traj in context_tracker_arr
@@ -932,7 +605,7 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
 
                             from astuner.utils.testing_utils import _test_if_test_mode
 
-                            run_info = get_run().public.json()
+                            run_info = get_run().public.json()  # type: ignore
                             data = {
                                 "step": self.global_steps,
                                 "reward_for_test_robot": metrics["critic/real_reward"],
@@ -940,9 +613,11 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                             }
                             _test_if_test_mode(key="reward_probe", value=data, config=self.config)
 
-                        print(f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}")
+                        logger.info(
+                            f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}"
+                        )
                         self.async_rollout_manager.sleep()
-                    print("=== - rollout step end ===")
+                    logger.info("=== - rollout step end ===")
 
                     if self.config.algorithm.adv_estimator == AdvantageEstimator.REMAX:
                         raise NotImplementedError("REMAX is not supported in GRPO yet.")
@@ -985,7 +660,7 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                             )
 
                     # recompute old_log_probs
-                    print("=== + compute log_probs begin ===")
+                    logger.info("=== + compute log_probs begin ===")
                     with marked_timer("old_log_prob", timing_raw, color="blue"):
                         old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
                         entropys = old_log_prob.batch["entropys"]
@@ -1149,9 +824,7 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                 if isinstance(self.train_dataloader.sampler, AbstractCurriculumSampler):
                     self.train_dataloader.sampler.update(batch=batch)
 
-                # TODO: make a canonical logger that supports various backend
-                logger.log(data=metrics, step=self.global_steps)
-
+                self.verl_logger.log(data=metrics, step=self.global_steps)
                 progress_bar.update(1)
                 self.global_steps += 1
 
@@ -1160,11 +833,135 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                     progress_bar.close()
                     return
 
-                # this is experimental and may be changed/removed in the future
-                # in favor of a general-purpose data buffer pool
-                if hasattr(self.train_dataset, "on_batch_end"):
-                    # The dataset may be changed after each training batch
-                    self.train_dataset.on_batch_end(batch=batch)
+    # #######################################
+    # Validate
+    # #######################################
+    def _validate(self):
+        data_source_lst = []
+        reward_extra_infos_dict: dict[str, list] = defaultdict(list)
+
+        # Lists to collect samples for the table
+        sample_outputs = []
+        sample_scores = []
+        sample_turns = []
+
+        for test_data in self.val_dataloader:
+            test_data["index"] = torch.tensor(
+                [i for i in range(len(test_data["task_id"]))], dtype=torch.long
+            )
+            test_batch = DataProto.from_single_dict(test_data)
+
+            # repeat test batch
+            test_batch = test_batch.repeat(
+                repeat_times=self.config.astuner.rollout.val_kwargs.num_repeat,
+                interleave=True,
+            )
+
+            # we only do validation on rule-based rm
+            if (
+                self.config.reward_model.enable
+                and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model"
+            ):
+                return {}
+
+            batch_keys_to_pop = ["index"]
+            non_tensor_batch_keys_to_pop = [
+                "task_id",
+                "main_query",
+                "env_type",
+                "metadata",
+                "init_messages",
+            ]
+            if "multi_modal_data" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("multi_modal_data")
+            if "raw_prompt" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("raw_prompt")
+            if "tools_kwargs" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("tools_kwargs")
+            if "interaction_kwargs" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("interaction_kwargs")
+            if "agent_name" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("agent_name")
+            if "extras" in test_batch.non_tensor_batch:
+                non_tensor_batch_keys_to_pop.append("extras")
+
+            test_gen_batch = test_batch.pop(
+                batch_keys=batch_keys_to_pop,
+                non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
+            )
+
+            test_gen_batch.meta_info = {
+                "eos_token_id": self.tokenizer.eos_token_id,
+                "pad_token_id": self.tokenizer.pad_token_id,
+                "recompute_log_prob": False,
+                "do_sample": self.config.astuner.rollout.val_kwargs.do_sample,
+                "validate": True,
+                "global_steps": self.global_steps,
+            }
+            logger.info(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
+
+            self.async_rollout_manager.wake_up()
+            main_val_dataset = self.get_eval_dataset()
+
+            logger.info("=" * 10 + "start validate rollout" + "=" * 10)
+            context_tracker_arr, tasks, val_metrics = self.eval_dataset(
+                target_dataset=main_val_dataset,
+                target_dataset_name="main_val_dataset",
+                mode="validate",
+                epoch="test.1",
+            )
+            logger.info("=" * 10 + "end validate rollout" + "=" * 10)
+            test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
+            self.async_rollout_manager.sleep()
+            logger.info("validation generation end")
+
+            # Store generated outputs
+            output_ids = test_output_gen_batch.batch["responses"]
+            output_texts = [
+                self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids
+            ]
+            sample_outputs.extend(output_texts)
+
+            test_batch.non_tensor_batch["uid"] = np.array(
+                [str(uuid.uuid4()) for _ in range(len(test_batch.batch))],
+                dtype=object,
+            )
+            tasks = tasks[: len(main_val_dataset)]
+            test_batch = union_gen_batch_via_task_id(tasks, test_batch, test_output_gen_batch)
+            # test_batch = test_batch.union(test_output_gen_batch)
+            test_batch.meta_info["validate"] = True
+
+            # evaluate using reward_function
+            if self.val_reward_fn is None:
+                raise ValueError("val_reward_fn must be provided for validation.")
+            result = self.val_reward_fn(test_batch, return_dict=True)
+            reward_tensor = result["reward_tensor"]
+            scores = reward_tensor.sum(-1).cpu().tolist()
+            sample_scores.extend(scores)
+
+            reward_extra_infos_dict["reward"].extend(scores)
+            logger.info(
+                f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}"
+            )
+            if "reward_extra_info" in result:
+                for key, lst in result["reward_extra_info"].items():
+                    reward_extra_infos_dict[key].extend(lst)
+                    logger.info(
+                        f"len reward_extra_infos_dict['{key}']: {len(reward_extra_infos_dict[key])}"
+                    )
+
+            # collect num_turns of each prompt
+            if "__num_turns__" in test_batch.non_tensor_batch:
+                sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
+
+            data_source_lst.append(
+                test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0])
+            )
+            break  # hack to escape the loop after one batch
+
+        metric_dict = val_metrics
+
+        return metric_dict
 
     def eval_dataset(self, target_dataset, target_dataset_name, mode, epoch):
         """
@@ -1180,8 +977,6 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
             Tuple of (ctx_trackers, tasks) containing trajectory results and task definitions
         """
         pass_n = self.config.astuner.trainer_common.val_pass_n
-        # if pass_n == 1:
-        #     return self.eval_dataset_legacy(target_dataset, target_dataset_name, mode, epoch)
 
         tasks = []
         for _ in range(pass_n):
@@ -1208,10 +1003,6 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
             task_results[task_id]["reward_arr"] += [ctx_tracker.reward_structure.raw_reward]
             task_results[task_id]["scenario"] = task_id.split("_")[0]
 
-        task_scenario = [task_id.split("_")[0] for task_id in task_results.keys()]
-        set_scenarios = set(task_scenario)
-        num_scenarios = len(set_scenarios)
-
         repeated_success_tasks = 0
         num_all_success_tasks = 0  # number of tasks that is successful among all n attempts
         num_pass_n_tasks = 0  # number of tasks that is successful at least once among n attempts
@@ -1225,40 +1016,9 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                 num_pass_n_tasks += 1
             repeated_success_tasks += task_outcomes["tag_arr"].count("success")
 
-        num_all_success_scenarios = 0  # If all tasks in a scenario are successful in all n experiments, then num_all_success_scenarios +1
-        num_pass_n_scenarios = 0  # If all tasks in a scenario are successful in at least one of the n experiments, then num_pass_n_scenarios +1
-        repeated_num_pass_1_scenarios = 0  # In sequential order, if all tasks in a scenario are successful in the x-th experiment, then repeated_num_pass_1_scenarios +1
-        for scenario in set_scenarios:
-            scenario_task_results = {
-                task_id: task_outcomes
-                for task_id, task_outcomes in task_results.items()
-                if task_outcomes["scenario"] == scenario
-            }
-            # num_all_success_scenarios
-            if all(
-                all(tag == "success" for tag in task_outcomes["tag_arr"])
-                for task_outcomes in scenario_task_results.values()
-            ):
-                num_all_success_scenarios += 1
-            # num_pass_n_scenarios
-            if all(
-                any(tag == "success" for tag in task_outcomes["tag_arr"])
-                for task_outcomes in scenario_task_results.values()
-            ):
-                num_pass_n_scenarios += 1
-            # num_pass_1_scenarios
-            for x in range(pass_n):
-                if all(
-                    task_outcomes["tag_arr"][x] == "success"
-                    for task_outcomes in scenario_task_results.values()
-                ):
-                    repeated_num_pass_1_scenarios += 1
-
         # record logs
-        task_scenario_for_ctx_trackers = [ctx_tracker.task_id.split("_")[0] for ctx_tracker in ctx_trackers]
-        for ctx_tracker, scenario in zip(ctx_trackers, task_scenario_for_ctx_trackers):
+        for ctx_tracker in ctx_trackers:
             ctx_tracker.generate_log()
-            reward = ctx_tracker.reward_structure.raw_reward
 
         rewards = [ctx_tracker.reward_structure.raw_reward for ctx_tracker in ctx_trackers]
         num_tasks = len(task_results)
@@ -1270,15 +1030,9 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
             "total_tasks": len(task_results),
             "num_all_success_tasks": num_all_success_tasks,
             f"num_pass_n_tasks(pass@{pass_n})": num_pass_n_tasks,
-            "num_scenarios": num_scenarios,
-            "num_all_success_scenarios": num_all_success_scenarios,
-            f"num_pass_n_scenarios(pass@{pass_n})": num_pass_n_scenarios,
             "TGC@1": repeated_success_tasks / (num_tasks * pass_n),
             f"TGC@{pass_n}": num_pass_n_tasks / num_tasks,
             f"TGC@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
-            "SGC@1": repeated_num_pass_1_scenarios / (num_scenarios * pass_n),
-            f"SGC@{pass_n}": num_pass_n_scenarios / num_scenarios,
-            f"SGC@{pass_n}-all-pass": num_all_success_scenarios / num_scenarios,
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,
         }
         print_dict(
@@ -1288,7 +1042,7 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
             mod="evaluation",
         )
 
-        self.tracking_logger.log(data=val_metrics, step=self.global_steps)
+        self.verl_logger.log(data=val_metrics, step=self.global_steps)
 
         return ctx_trackers, tasks, val_metrics
 
@@ -1301,4 +1055,4 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
         )
         tasks = task_reader.get_validation_tasks()
         self.main_val_dataset = tasks
-        return self.main_val_dataset, None, None
+        return self.main_val_dataset

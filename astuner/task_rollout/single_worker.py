@@ -55,9 +55,10 @@ class BaseRolloutManager:
         self.max_llm_retries: int = max_llm_retries
         self.rollout_n = config.astuner.rollout.num_repeat
         self.tokenizer = tokenizer
-        self.pad_token_id: int = self.tokenizer.pad_token_id
+        self.pad_token_id: int = self.tokenizer.pad_token_id  # type: ignore
+        assert isinstance(self.pad_token_id, int), "pad_token_id must be an integer"
         self.current_token = 0
-        self.current_global_steps = "NA"
+        self.current_global_steps: int | str = "NA"
         self.async_llm_bridge = AsyncLlmBridge(
             config=config,
             async_rollout_manager=async_rollout_manager,
@@ -83,7 +84,9 @@ class BaseRolloutManager:
         (with validation overrides), and robust retry on transient failures.
         """
         sampling_params = get_sample_params(mode, self.config)
-        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn(sampling_params=sampling_params)
+        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn(
+            sampling_params=sampling_params
+        )
 
         workflow_task = WorkflowTask(
             env_type=task.env_type,
