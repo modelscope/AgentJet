@@ -11,7 +11,7 @@ import dotenv
 from loguru import logger
 from tqdm import tqdm
 
-from astuner.data_generator.filters.deduplication_filter import DeduplicationFilter
+from astuner.task_reader.tracing_reader.filters.deduplication_filter import DeduplicationFilter
 from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
 from astuner.data_generator.task_augmentation import TaskAugmentor
 from astuner.schema.task import Task
@@ -215,7 +215,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
 
                         pbar.update(1)
             if self.duplicate_filter is not None:
-                self.doc_tasks = self.duplicate_filter.filter(self.doc_tasks)
+                self.doc_tasks = self.duplicate_filter.filter_sync(self.doc_tasks)
             logger.info(f"Generated {len(self.doc_tasks)} document-based tasks")
 
             # Save doc_tasks as validation tasks cache
@@ -276,7 +276,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
 
                         pbar.update(1)
             if self.duplicate_filter is not None:
-                self.new_tasks = self.duplicate_filter.filter(self.new_tasks)
+                self.new_tasks = self.duplicate_filter.filter_sync(self.new_tasks)
             logger.info(f"Generated {len(self.new_tasks)} augmented tasks")
 
             # Save training tasks

@@ -32,7 +32,7 @@ class DeduplicationFilter(Filter):
         self._similarity_threshold = similarity_threshold
         self._db_path = db_path
 
-    def filter(self, tasks: Iterable[Task]) -> List[Task]:
+    async def filter(self, tasks: Iterable[Task]) -> List[Task]:
         res = []
         for task in tasks:
             similar = self._client.find_top_k_by_text(task.main_query, k=1)

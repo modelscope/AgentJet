@@ -4,7 +4,7 @@ from typing import Iterable, List
 
 import pytest
 
-from astuner.data_generator.filters.base import Filter
+from astuner.task_reader.tracing_reader.filters.base import Filter
 from astuner.schema.task import Task
 from astuner.task_reader.tracing_reader import TracingReader
 
@@ -26,7 +26,7 @@ class DummyFilter(Filter):
         self._kept = kept
         self.last_input: List[Task] | None = None
 
-    def filter(self, tasks: Iterable[Task]) -> List[Task]:
+    async def filter(self, tasks: Iterable[Task]) -> List[Task]:
         self.last_input = list(tasks)
         return self._kept
 
