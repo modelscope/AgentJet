@@ -213,7 +213,7 @@ class MathAgentWorkflow(Workflow):
 astuner:
   # ...
   rollout:
-    agentscope_workflow: math_agent.math_agent->MathAgentWorkflow
+    agentscope_workflow: workflow.py->MathAgentWorkflow
 ```
 
 我们还有一件事情尚未解决：Reward。幸运的是，ASTuner 同样支持通过配置自定义 Reward 计算方法。继续在配置中写入：
@@ -248,7 +248,7 @@ astuner:
 astuner:
   # ...
   rollout:
-    agentscope_workflow: math_agent.math_agent->MathAgentWorkflow
+    agentscope_workflow: workflow.py->MathAgentWorkflow
     # 模型温度
     temperature: 0.7
     # 最大的 rollout 多线程数量
