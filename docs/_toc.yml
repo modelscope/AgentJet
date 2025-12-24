@@ -32,24 +32,13 @@ parts:
      
 
   # --- 中文部分 ---
-  - caption: 简介
-    chapters:
-      - file: zh/intro.md
-        title: "介绍"
-
   - caption: 教程
     chapters:
+      - file: zh/intro.md
       - file: zh/installation.md
       - file: zh/quickstart.md
       - file: zh/tune_your_first_agent.md
   
-
-  - caption: 组件
-    chapters:
-      - file: zh/data_pipeline.md
-      - file: zh/data_generation.md
-      - file: zh/workflow.md
-
   - caption: 示例
     chapters:
       - file: zh/example_math_agent.md
@@ -58,4 +47,16 @@ parts:
       - file: zh/example_learning_to_ask.md
       - file: zh/example_frozenlake.md
       - file: zh/example_countdown.md
+      
+  - caption: 组件
+    chapters:
+      - file: zh/workflow.md
+      - file: zh/data_pipeline.md
+      - file: zh/task_judger.md
+      
+  - caption: 深入探索
+    chapters:
+      - file: zh/configuration.md
+      - file: zh/data_generation.md
       - file: zh/example_tracing_feedback_loop.md
+
