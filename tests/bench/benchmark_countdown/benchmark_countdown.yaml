@@ -105,7 +105,6 @@ astuner:
     n_gpus_per_node: 8
     logger: swanlab
     algorithm:
-      task_norm_patch: False
       adv_estimator: grpo
       use_kl_in_reward: False
     mini_batch_num: 1

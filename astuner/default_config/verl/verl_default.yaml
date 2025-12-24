@@ -213,7 +213,6 @@ algorithm:
   pf_ppo:
     reweight_method: pow
     weight_pow: 2.0
-  task_norm_patch: false
   use_kl_in_reward: false
   use_pf_ppo: false
 

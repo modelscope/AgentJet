@@ -56,7 +56,7 @@ def warm_up_process(config):
 
 def warm_up_task_judge_when_needed(config):
     if config.astuner.task_judge.judge_type == "rubrics_auto_grader":
-        from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+        from astuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
 
         judge = RMAutoGraderJudge(config)
         asyncio.run(judge.generate_rubrics_from_samples())

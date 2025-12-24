@@ -63,12 +63,16 @@ from verl.utils.seqlen_balancing import (
 )
 from verl.utils.torch_functional import masked_mean
 from verl.utils.tracking import ValidationGenerationsLogger
+from verl.trainer.ppo.ray_trainer import (
+    Role, WorkerType, ResourcePoolManager, RayPPOTrainer,
+    apply_kl_penalty,
+    compute_response_mask,
+)
 
 from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import Task
 from astuner.task_rollout.native_parallel_worker import VerlRolloutManager
-
-WorkerType = type[Worker]
+from astuner.backbone.warm_up import warm_up_process
 
 
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
@@ -124,268 +128,6 @@ def union_gen_batch_via_task_id(tasks, batch: DataProto, gen_batch_output: DataP
     batch_extend = batch.select_idxs(indices)
     batch_final = batch_extend.union(gen_batch_output)
     return batch_final
-
-
-class Role(Enum):
-    """
-    To create more roles dynamically, you can subclass Role and add new members
-    """
-
-    Actor = 0
-    Rollout = 1
-    ActorRollout = 2
-    Critic = 3
-    RefPolicy = 4
-    RewardModel = 5
-    ActorRolloutRef = 6
-
-
-@dataclass
-class ResourcePoolManager:
-    """
-    Define a resource pool specification. Resource pool will be initialized first.
-    """
-
-    resource_pool_spec: dict[str, list[int]]
-    mapping: dict[Role, str]
-    resource_pool_dict: dict[str, RayResourcePool] = field(default_factory=dict)
-
-    def create_resource_pool(self):
-        """Create Ray resource pools for distributed training.
-
-        Initializes resource pools based on the resource pool specification,
-        with each pool managing GPU resources across multiple nodes.
-        For FSDP backend, uses max_colocate_count=1 to merge WorkerGroups.
-        For Megatron backend, uses max_colocate_count>1 for different models.
-        """
-        for (
-            resource_pool_name,
-            process_on_nodes,
-        ) in self.resource_pool_spec.items():
-            # max_colocate_count means the number of WorkerGroups (i.e. processes) in each RayResourcePool
-            # For FSDP backend, we recommend using max_colocate_count=1 that merge all WorkerGroups into one.
-            # For Megatron backend, we recommend using max_colocate_count>1
-            # that can utilize different WorkerGroup for differnt models
-            resource_pool = RayResourcePool(
-                process_on_nodes=process_on_nodes,
-                use_gpu=True,
-                max_colocate_count=1,
-                name_prefix=resource_pool_name,
-            )
-            self.resource_pool_dict[resource_pool_name] = resource_pool
-
-        self._check_resource_available()
-
-    def get_resource_pool(self, role: Role) -> RayResourcePool:
-        """Get the resource pool of the worker_cls"""
-        return self.resource_pool_dict[self.mapping[role]]
-
-    def get_n_gpus(self) -> int:
-        """Get the number of gpus in this cluster."""
-        return sum(
-            [
-                n_gpus
-                for process_on_nodes in self.resource_pool_spec.values()
-                for n_gpus in process_on_nodes
-            ]
-        )
-
-    def _check_resource_available(self):
-        """Check if the resource pool can be satisfied in this ray cluster."""
-        node_available_resources = ray.state.available_resources_per_node()
-        node_available_gpus = {
-            node: (node_info.get("GPU", 0) if "GPU" in node_info else node_info.get("NPU", 0))
-            for node, node_info in node_available_resources.items()
-        }
-
-        # check total required gpus can be satisfied
-        total_available_gpus = sum(node_available_gpus.values())
-        total_required_gpus = sum(
-            [
-                n_gpus
-                for process_on_nodes in self.resource_pool_spec.values()
-                for n_gpus in process_on_nodes
-            ]
-        )
-        if total_available_gpus < total_required_gpus:
-            raise ValueError(
-                f"Total available GPUs {total_available_gpus} is less than total desired GPUs {total_required_gpus}"
-            )
-
-        # check each resource pool can be satisfied, O(#resource_pools * #nodes)
-        for (
-            resource_pool_name,
-            process_on_nodes,
-        ) in self.resource_pool_spec.items():
-            num_gpus, num_nodes = process_on_nodes[0], len(process_on_nodes)
-            for node, available_gpus in node_available_gpus.items():
-                if available_gpus >= num_gpus:
-                    node_available_gpus[node] -= num_gpus
-                    num_nodes -= 1
-                    if num_nodes == 0:
-                        break
-            if num_nodes > 0:
-                raise ValueError(
-                    f"Resource pool {resource_pool_name}: {num_gpus}*{num_nodes}"
-                    + "cannot be satisfied in this ray cluster"
-                )
-
-
-def apply_kl_penalty(data: DataProto, kl_ctrl: core_algos.AdaptiveKLController, kl_penalty="kl"):
-    """Apply KL penalty to the token-level rewards.
-
-    This function computes the KL divergence between the reference policy and current policy,
-    then applies a penalty to the token-level rewards based on this divergence.
-
-    Args:
-        data (DataProto): The data containing batched model outputs and inputs.
-        kl_ctrl (core_algos.AdaptiveKLController): Controller for adaptive KL penalty.
-        kl_penalty (str, optional): Type of KL penalty to apply. Defaults to "kl".
-
-    Returns:
-        tuple: A tuple containing:
-            - The updated data with token-level rewards adjusted by KL penalty
-            - A dictionary of metrics related to the KL penalty
-    """
-    response_mask = data.batch["response_mask"]
-    token_level_scores = data.batch["token_level_scores"]
-    batch_size = data.batch.batch_size[0]
-
-    # compute kl between ref_policy and current policy
-    # When apply_kl_penalty, algorithm.use_kl_in_reward=True, so the reference model has been enabled.
-    kld = core_algos.kl_penalty(
-        data.batch["old_log_probs"],
-        data.batch["ref_log_prob"],
-        kl_penalty=kl_penalty,
-    )  # (batch_size, response_length)
-    kld = kld * response_mask
-    beta = kl_ctrl.value
-
-    token_level_rewards = token_level_scores - beta * kld
-
-    current_kl = masked_mean(kld, mask=response_mask, axis=-1)  # average over sequence
-    current_kl = torch.mean(current_kl, dim=0).item()
-
-    # according to https://github.com/huggingface/trl/blob/951ca1841f29114b969b57b26c7d3e80a39f75a0/trl/trainer/ppo_trainer.py#L837
-    kl_ctrl.update(current_kl=current_kl, n_steps=batch_size)
-    data.batch["token_level_rewards"] = token_level_rewards
-
-    metrics = {
-        "actor/reward_kl_penalty": current_kl,
-        "actor/reward_kl_penalty_coeff": beta,
-    }
-
-    return data, metrics
-
-
-def compute_response_mask(data: DataProto):
-    """Compute the attention mask for the response part of the sequence.
-
-    This function extracts the portion of the attention mask that corresponds to the model's response,
-    which is used for masking computations that should only apply to response tokens.
-
-    Args:
-        data (DataProto): The data containing batched model outputs and inputs.
-
-    Returns:
-        torch.Tensor: The attention mask for the response tokens.
-    """
-    responses = data.batch["responses"]
-    response_length = responses.size(1)
-    attention_mask = data.batch["attention_mask"]
-    return attention_mask[:, -response_length:]
-
-
-def compute_grpo_outcome_advantage_new(
-    token_level_rewards: torch.Tensor,
-    response_mask: torch.Tensor,
-    task_index: np.ndarray,
-    rollout_index: np.ndarray,
-    epsilon: float = 1e-6,
-    norm_adv_by_std_in_grpo: bool = True,
-    config: Optional[AlgoConfig] = None,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Compute advantage for GRPO, operating only on Outcome reward
-    (with only one scalar reward for each response).
-
-    Args:
-        token_level_rewards: `(torch.Tensor)`
-            shape is (bs, response_length)
-        response_mask: `(torch.Tensor)`
-            shape is (bs, response_length)
-        task_index: `(np.ndarray)`
-            task_index array for grouping
-        epsilon: `(float)`
-            small value to avoid division by zero
-        norm_adv_by_std_in_grpo: `(bool)`
-            whether to scale the GRPO advantage
-        config: `(Optional[AlgoConfig])`
-            algorithm configuration object
-
-    Note:
-        If norm_adv_by_std_in_grpo is True, the advantage is scaled by the std, as in the original GRPO.
-        If False, the advantage is not scaled, as in Dr.GRPO (https://arxiv.org/abs/2503.20783).
-
-    Returns:
-        advantages: `(torch.Tensor)`
-            shape is (bs, response_length)
-        Returns: `(torch.Tensor)`
-            shape is (bs, response_length)
-    """
-    scores = token_level_rewards.sum(dim=-1)  # 1d-list
-
-    id2score = defaultdict(list)
-    id2pointer = defaultdict(list)
-    id2mean = {}
-    id2std = {}
-
-    with torch.no_grad():
-        bsz = scores.shape[0]
-        for i in range(bsz):
-            id2score[task_index[i]].append(scores[i])
-            id2pointer[task_index[i]].append(i)
-
-        # compute mean and std
-        for idx in id2score:
-            # the score list
-            this_task_all_score = id2score[idx]
-            # get the rollout id list
-            this_task_all_rolloutid = [rollout_index[idx] for idx in id2pointer[idx]]
-            # for same rollout id sample, reduce mean
-            rolloutid2score = defaultdict(list)
-            rolloutid2meanscore = {}
-            for rolloutid, score in zip(this_task_all_rolloutid, this_task_all_score):
-                rolloutid2score[rolloutid].append(score)
-            for rolloutid in rolloutid2score:
-                rolloutid2meanscore[rolloutid] = torch.mean(
-                    torch.tensor(rolloutid2score[rolloutid])
-                )
-
-            this_task_all_score = list(rolloutid2meanscore.values())
-
-            if len(this_task_all_score) == 1:
-                # single sample for
-                id2mean[idx] = torch.tensor(0.0)
-                id2std[idx] = torch.tensor(1.0)
-            elif len(this_task_all_score) > 1:
-                scores_tensor = torch.stack(this_task_all_score)
-                id2mean[idx] = torch.mean(scores_tensor)
-                id2std[idx] = torch.std(scores_tensor)
-                # if id2std[idx] < 0.01:
-                #     id2std[idx] = 0.01
-            else:
-                raise ValueError(f"no score in prompt task_index: {idx}")
-
-        for i in range(bsz):
-            if norm_adv_by_std_in_grpo:
-                scores[i] = (scores[i] - id2mean[task_index[i]]) / (id2std[task_index[i]] + epsilon)
-            else:
-                scores[i] = scores[i] - id2mean[task_index[i]]
-
-        scores = scores.unsqueeze(-1) * response_mask
-
-    return scores, scores
 
 
 def compute_advantage(
@@ -445,21 +187,12 @@ def compute_advantage(
         # This mask is the one intended for GRPO
         grpo_calculation_mask = data.batch["loss_mask"][:, -response_length:]
         # Call compute_grpo_outcome_advantage with parameters matching its definition
-        if config.task_norm_patch:
-            advantages, returns = compute_grpo_outcome_advantage_new(
-                token_level_rewards=data.batch["token_level_rewards"],
-                response_mask=grpo_calculation_mask,
-                task_index=data.non_tensor_batch["uid"],
-                rollout_index=data.non_tensor_batch["rollout_ids"],
-                norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
-            )
-        else:
-            advantages, returns = core_algos.compute_grpo_outcome_advantage(
-                token_level_rewards=data.batch["token_level_rewards"],
-                response_mask=grpo_calculation_mask,
-                index=data.non_tensor_batch["uid"],
-                norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
-            )
+        advantages, returns = core_algos.compute_grpo_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=grpo_calculation_mask,
+            index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
     else:
@@ -482,7 +215,7 @@ def compute_advantage(
     return data
 
 
-class ASTunerRayPPOTrainer:
+class ASTunerRayPPOTrainer(RayPPOTrainer):
     """Distributed PPO trainer using Ray for scalable reinforcement learning.
 
     This trainer orchestrates distributed PPO training across multiple nodes and GPUs,
@@ -777,59 +510,6 @@ class ASTunerRayPPOTrainer:
                 f"Warning: Could not set total_training_steps in config. Structure missing? Error: {e}"
             )
 
-    def _dump_generations(self, inputs, outputs, gts, scores, reward_extra_infos_dict, dump_path):
-        """Dump rollout/validation samples as JSONL."""
-        os.makedirs(dump_path, exist_ok=True)
-        filename = os.path.join(dump_path, f"{self.global_steps}.jsonl")
-
-        n = len(inputs)
-        base_data = {
-            "input": inputs,
-            "output": outputs,
-            "gts": gts,
-            "score": scores,
-            "step": [self.global_steps] * n,
-        }
-
-        for k, v in reward_extra_infos_dict.items():
-            if len(v) == n:
-                base_data[k] = v
-
-        lines = []
-        for i in range(n):
-            entry = {k: v[i] for k, v in base_data.items()}
-            lines.append(json.dumps(entry, ensure_ascii=False))
-
-        with open(filename, "w") as f:
-            f.write("\n".join(lines) + "\n")
-
-        print(f"Dumped generations to {filename}")
-
-    def _maybe_log_val_generations(self, inputs, outputs, scores):
-        """Log a table of validation samples to the configured logger (wandb or swanlab)"""
-
-        generations_to_log = self.config.trainer.log_val_generations
-
-        if generations_to_log == 0:
-            return
-
-        import numpy as np
-
-        # Create tuples of (input, output, score) and sort by input text
-        samples = list(zip(inputs, outputs, scores, strict=True))
-        samples.sort(key=lambda x: x[0])  # Sort by input text
-
-        # Use fixed random seed for deterministic shuffling
-        rng = np.random.RandomState(42)
-        rng.shuffle(samples)
-
-        # Take first N samples after shuffling
-        samples = samples[:generations_to_log]
-
-        # Log to each configured logger
-        self.validation_generations_logger.log(
-            self.config.trainer.logger, samples, self.global_steps
-        )
 
     def _validate(self):
         data_source_lst = []
@@ -958,9 +638,6 @@ class ASTunerRayPPOTrainer:
         sample_inputs = [
             m["messages"][0]["content"] for m in test_batch.non_tensor_batch["messages"]
         ]
-        self._maybe_log_val_generations(
-            inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores
-        )
 
         metric_dict = val_metrics
 
@@ -1094,191 +771,8 @@ class ASTunerRayPPOTrainer:
             tokenizer=self.tokenizer,
         )
 
-    def _save_checkpoint(self):
-        from verl.utils.fs import local_mkdir_safe
 
-        # path: given_path + `/global_step_{global_steps}` + `/actor`
-        local_global_step_folder = os.path.join(
-            self.config.trainer.default_local_dir,
-            f"global_step_{self.global_steps}",
-        )
 
-        print(f"local_global_step_folder: {local_global_step_folder}")
-        actor_local_path = os.path.join(local_global_step_folder, "actor")
-
-        actor_remote_path = (
-            None
-            if self.config.trainer.default_hdfs_dir is None
-            else os.path.join(
-                self.config.trainer.default_hdfs_dir,
-                f"global_step_{self.global_steps}",
-                "actor",
-            )
-        )
-
-        remove_previous_ckpt_in_save = self.config.trainer.get(
-            "remove_previous_ckpt_in_save", False
-        )
-        if remove_previous_ckpt_in_save:
-            print(
-                "Warning: remove_previous_ckpt_in_save is deprecated,"
-                + " set max_actor_ckpt_to_keep=1 and max_critic_ckpt_to_keep=1 instead"
-            )
-        max_actor_ckpt_to_keep = (
-            self.config.trainer.get("max_actor_ckpt_to_keep", None)
-            if not remove_previous_ckpt_in_save
-            else 1
-        )
-        max_critic_ckpt_to_keep = (
-            self.config.trainer.get("max_critic_ckpt_to_keep", None)
-            if not remove_previous_ckpt_in_save
-            else 1
-        )
-
-        self.actor_rollout_wg.save_checkpoint(
-            actor_local_path,
-            actor_remote_path,
-            self.global_steps,
-            max_ckpt_to_keep=max_actor_ckpt_to_keep,
-        )
-
-        if self.use_critic:
-            critic_local_path = os.path.join(local_global_step_folder, "critic")
-            critic_remote_path = (
-                None
-                if self.config.trainer.default_hdfs_dir is None
-                else os.path.join(
-                    self.config.trainer.default_hdfs_dir,
-                    f"global_step_{self.global_steps}",
-                    "critic",
-                )
-            )
-            self.critic_wg.save_checkpoint(
-                critic_local_path,
-                critic_remote_path,
-                self.global_steps,
-                max_ckpt_to_keep=max_critic_ckpt_to_keep,
-            )
-
-        # save dataloader
-        local_mkdir_safe(local_global_step_folder)
-        dataloader_local_path = os.path.join(local_global_step_folder, "data.pt")
-        dataloader_state_dict = self.train_dataloader.state_dict()
-        torch.save(dataloader_state_dict, dataloader_local_path)
-
-        # latest checkpointed iteration tracker (for atomic usage)
-        local_latest_checkpointed_iteration = os.path.join(
-            self.config.trainer.default_local_dir,
-            "latest_checkpointed_iteration.txt",
-        )
-        with open(local_latest_checkpointed_iteration, "w") as f:
-            f.write(str(self.global_steps))
-
-    def _load_checkpoint(self):
-        if self.config.trainer.resume_mode == "disable":
-            return 0
-
-        # load from hdfs
-        if self.config.trainer.default_hdfs_dir is not None:
-            raise NotImplementedError("load from hdfs is not implemented yet")
-        else:
-            checkpoint_folder = self.config.trainer.default_local_dir  # TODO: check path
-            if not os.path.isabs(checkpoint_folder):
-                working_dir = os.getcwd()
-                checkpoint_folder = os.path.join(working_dir, checkpoint_folder)
-            global_step_folder = find_latest_ckpt_path(checkpoint_folder)  # None if no latest
-
-        # find global_step_folder
-        if self.config.trainer.resume_mode == "auto":
-            if global_step_folder is None:
-                print("Training from scratch")
-                return 0
-        else:
-            if self.config.trainer.resume_mode == "resume_path":
-                assert isinstance(
-                    self.config.trainer.resume_from_path, str
-                ), "resume ckpt must be str type"
-                assert (
-                    "global_step_" in self.config.trainer.resume_from_path
-                ), "resume ckpt must specify the global_steps"
-                global_step_folder = self.config.trainer.resume_from_path
-                if not os.path.isabs(global_step_folder):
-                    working_dir = os.getcwd()
-                    global_step_folder = os.path.join(working_dir, global_step_folder)
-        print(f"Load from checkpoint folder: {global_step_folder}")
-        # set global step
-        self.global_steps = int(global_step_folder.split("global_step_")[-1])
-
-        print(f"Setting global step to {self.global_steps}")
-        print(f"Resuming from {global_step_folder}")
-
-        actor_path = os.path.join(global_step_folder, "actor")
-        critic_path = os.path.join(global_step_folder, "critic")
-        # load actor
-        self.actor_rollout_wg.load_checkpoint(
-            actor_path,
-            del_local_after_load=self.config.trainer.del_local_ckpt_after_load,
-        )
-        # load critic
-        if self.use_critic:
-            self.critic_wg.load_checkpoint(
-                critic_path,
-                del_local_after_load=self.config.trainer.del_local_ckpt_after_load,
-            )
-
-        # load dataloader,
-        # TODO: from remote not implemented yet
-        dataloader_local_path = os.path.join(global_step_folder, "data.pt")
-        if os.path.exists(dataloader_local_path):
-            dataloader_state_dict = torch.load(dataloader_local_path, weights_only=False)
-            self.train_dataloader.load_state_dict(dataloader_state_dict)
-        else:
-            print(
-                f"Warning: No dataloader state found at {dataloader_local_path}, will start from scratch"
-            )
-
-    def _start_profiling(self, do_profile: bool) -> None:
-        """Start profiling for all worker groups if profiling is enabled."""
-        if do_profile:
-            self.actor_rollout_wg.start_profile(role="e2e", profile_step=self.global_steps)
-            if self.use_reference_policy:
-                self.ref_policy_wg.start_profile()
-            if self.use_critic:
-                self.critic_wg.start_profile()
-            if self.use_rm:
-                self.rm_wg.start_profile()
-
-    def _stop_profiling(self, do_profile: bool) -> None:
-        """Stop profiling for all worker groups if profiling is enabled."""
-        if do_profile:
-            self.actor_rollout_wg.stop_profile()
-            if self.use_reference_policy:
-                self.ref_policy_wg.stop_profile()
-            if self.use_critic:
-                self.critic_wg.stop_profile()
-            if self.use_rm:
-                self.rm_wg.stop_profile()
-
-    def _balance_batch(self, batch: DataProto, metrics, logging_prefix="global_seqlen"):
-        """Reorder the data on single controller such that each dp rank gets similar total tokens"""
-        attention_mask = batch.batch["attention_mask"]
-        batch_size = attention_mask.shape[0]
-        global_seqlen_lst = (
-            batch.batch["attention_mask"].view(batch_size, -1).sum(-1).tolist()
-        )  # (train_batch_size,)
-        world_size = self.actor_rollout_wg.world_size
-        global_partition_lst = get_seqlen_balanced_partitions(
-            global_seqlen_lst, k_partitions=world_size, equal_size=True
-        )
-        # reorder based on index. The data will be automatically equally partitioned by dispatch function
-        global_idx = torch.tensor([j for partition in global_partition_lst for j in partition])
-        batch.reorder(global_idx)
-        global_balance_stats = log_seqlen_unbalance(
-            seqlen_list=global_seqlen_lst,
-            partitions=global_partition_lst,
-            prefix=logging_prefix,
-        )
-        metrics.update(global_balance_stats)
 
     def fit(self):  # noqa: C901
         """
@@ -1289,8 +783,6 @@ class ASTunerRayPPOTrainer:
         """
         from omegaconf import OmegaConf
         from verl.utils.tracking import Tracking
-
-        from astuner.backbone.warm_up import warm_up_process
 
         warm_up_process(self.config)
         logger = Tracking(
