@@ -1,21 +1,21 @@
 # 狼人杀
 
-本教程展示了如何使用 AgentScope Tuner 来处理多智能体训练，令多个 Agent 在狼人杀游戏中决策、对抗和协作。
+本教程展示了如何使用 AgentScope Tuner 来处理多 Agent 训练，令多个 Agent 在狼人杀游戏中决策、对抗和协作。
 
 ## 1. 概述
 
-狼人杀角色扮演游戏是一个典型的 POMDP（部分可观测马尔可夫决策过程，Partially Observable Markov Decision Process）问题。我们可以在这个协作型多智能体问题中使用「参数共享」的方法来训练 Agent。
+狼人杀角色扮演游戏是一个典型的 POMDP（部分可观测马尔可夫决策过程，Partially Observable Markov Decision Process）问题。我们可以在这个协作型多 Agent 问题中使用「参数共享」的方法来训练 Agent。
 
 术语说明：
 - **部分可观测（Partially Observable）**：Agent 只能接收**局部信息**。即使属于同一阵营，一个 Agent 也无法获得其他 Agent 的观测信息。
 - **马尔可夫决策过程（Markov Decision Process）**：根据当前局面做决策。
 - **参数共享（Shared-parameter）**：多个 Agent 使用同一个模型作为策略。但需要注意：Agent **共享**策略（模型参数），但**不共享**感知（模型输入）。
-- **协作型多智能体问题（Cooperative multi-agent problem）**：Agent 之间目标一致（奖励一致）。
+- **协作型多 Agent 问题（Cooperative multi-agent problem）**：Agent 之间目标一致（奖励一致）。
 - **环境（Environment）**：使用静态 **`Qwen3-235B-A22B`** 作为对手（不可训练 Agent），使用 **`Qwen2-7B`** 作为可训练 Agent（即 `trainable_targets`）。
 
 ![image](https://img.alicdn.com/imgextra/i2/O1CN012JgVZC2ABczBhAzJs_!!6000000008165-0-tps-2048-2048.jpg)
 
-本页展示如何将狼人杀这种社交推理类游戏作为多智能体环境，完成：准备数据与环境、编写 AgentScope Workflow、配置奖励模块，以及从本地调试到正式训练的完整流程。
+本页展示如何将狼人杀这种社交推理类游戏作为多 Agent 环境，完成：准备数据与环境、编写 AgentScope Workflow、配置奖励模块，以及从本地调试到正式训练的完整流程。
 
 场景概述
 - **场景**：经典狼人杀游戏，包括狼人（werewolf）、村民（villager）、预言家（seer）、女巫（witch）、猎人（hunter）等角色。
@@ -24,7 +24,7 @@
 ## 2. 快速开始
 
 正式训练（启用 Ray）：
-```
+```bash
 # ( astuner --kill="python|ray|vllm" )
 astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
 ```
@@ -35,7 +35,7 @@ astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' 
 不启用 Ray 在本地运行，便于更快迭代：
 
 ```bash
-astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_werewolves/learn2ask.yaml --backbone='debug' --with-logview
 ```
 
 如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
