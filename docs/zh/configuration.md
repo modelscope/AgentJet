@@ -12,12 +12,12 @@ AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法
   - `backbone`：选择训练后端，例如 `debug`、`trinity` 或 `verl`。
 - **数据与奖励**
   - `task_reader`：如何加载训练 / 验证样本（EnvService、本地文件、HuggingFace 数据集等）。
-  - `task_judge`：如何评估 Agent 并计算奖励（自定义评测器或基于 LLM 的自动打分器）。
+  - `task_judge`：如何评估智能体并计算奖励（自定义评测器或基于 LLM 的自动打分器）。
   - `data`：Prompt / Response 的长度和 batch 大小等。
 - **模型**
   - `model`：要训练的基础模型从哪里加载（本地路径或 HuggingFace 仓库）。
 - **Rollout 与交互配置**
-  - `rollout`：Agent 如何与环境交互（协议、采样参数、最大步数等）。
+  - `rollout`：智能体如何与环境交互（协议、采样参数、最大步数等）。
   - `context_tracker`：如何管理对话 / 历史信息。
 - **训练配置**
   - `trainer_common`：全局训练超参数（epoch、checkpoint、优化算法参数、损失、FSDP、logger 等）。
@@ -26,7 +26,7 @@ AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法
 你可以从默认 YAML 开始，只修改与你的使用场景相关的部分。文末 *附录* 提供了一个 **完整配置示例** 供参考。
 
 ## 模型
-要训练一个 Agent，首先需要指定待训练的模型，以及训练过程中使用的一些环境变量。
+要训练一个智能体，首先需要指定待训练的模型，以及训练过程中使用的一些环境变量。
 
 在配置文件中，你可以设置从某个位置加载模型参数的路径：
 
@@ -141,7 +141,7 @@ astuner:
 `data_generation` 和 `random_dummy` 也可用于特殊工作流（完整 schema 可参考 `astune_default.yaml`）。
 
 ### Task Judge
-`task_judge` 用于评估 Agent 的表现并计算奖励。
+`task_judge` 用于评估智能体的表现并计算奖励。
 
 ```yaml
 astuner:
@@ -183,7 +183,7 @@ astuner:
 ```
 
 ### Rollout
-`rollout` 配置控制 Agent 在与环境进行交互采样过程中的行为。
+`rollout` 配置控制智能体在与环境进行交互采样过程中的行为。
 
 ```yaml
 astuner:

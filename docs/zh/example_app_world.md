@@ -1,10 +1,10 @@
 # App交互模拟
 
-本教程介绍如何训练一个 Agent 与 AppWorld 交互并解决复杂的任务。
+本教程介绍如何训练一个智能体与 AppWorld 交互并解决复杂的任务。
 
 ## 1. 概述
 
-AppWorld 是一个模拟现实 APP 操作的沙盒环境，包含 9 个日常应用，可通过 457 个 API 操作，并预置了 106 个在模拟世界中生活的数字用户行为数据。我们的目标是调优一个 Agent，使其能够有效地在这些应用中执行并完成复杂任务。
+AppWorld 是一个模拟现实 APP 操作的沙盒环境，包含 9 个日常应用，可通过 457 个 API 操作，并预置了 106 个在模拟世界中生活的数字用户行为数据。我们的目标是调优一个智能体，使其能够有效地在这些应用中执行并完成复杂任务。
 
 本文结构如下：
 
@@ -52,7 +52,7 @@ astuner --conf tutorial/example_appworld/learn2ask.yaml --backbone='debug' --wit
 
 AppWorld 示例所使用的 AgentScope Workflow 代码位于：`tutorial/example_appworld/appworld.py`。
 
-代码首先定义了 AgentScope Workflow（将 Agent 的 `model` 设置为 `model_tuner`）：
+代码首先定义了 AgentScope Workflow（将智能体的 `model` 设置为 `model_tuner`）：
 
 ```python
 agent = ReActAgent(
@@ -120,7 +120,7 @@ astuner:
     # ✨✨✨✨ 设置需要训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
   rollout:
-    # ✨✨✨✨ 编写并选择 Agent
+    # ✨✨✨✨ 编写并选择智能体
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:

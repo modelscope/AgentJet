@@ -7,7 +7,7 @@
 
 ### 1. 概览
 
-在 **Math Agent** 中，每条训练样本是一道数学文字题（如 GSM8K）。智能体将学习：
+在 **Math 智能体** 中，每条训练样本是一道数学文字题（如 GSM8K）。智能体将学习：
 
 * **分步推理**（ReAct 风格），
 * 在需要计算时**调用 Python 工具**，
@@ -136,7 +136,7 @@ astune:
 Workflow 通常会做：
 
 * 注册工具（例如 `execute_python_code`）
-* 构造一个 ReAct agent
+* 构造一个 ReAct 智能体
 * 从用户题目运行一轮对话
 * 解析最终答案
 * 通过 `WorkflowOutput(..., metadata={"final_answer": final_answer})` 返回答案，以便评审器评分。

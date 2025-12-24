@@ -1,6 +1,6 @@
 # 数据回流训练
 
-ASTune 允许你回收 Agent 在执行过程中产生的对话日志，并通过迭代训练持续优化该 Agent，我们将这一过程称为 **数据回流训练**。它主要提供以下能力：
+ASTune 允许你回收 智能体 在执行过程中产生的对话日志，并通过迭代训练持续优化该 Agent，我们将这一过程称为 **数据回流训练**。它主要提供以下能力：
 
 + 从 agentscope studio 数据库中加载追踪日志
 + 将日志转换为结构化的训练数据
@@ -24,10 +24,10 @@ ASTune 允许你回收 Agent 在执行过程中产生的对话日志，并通过
 
 1. 使用 [agentscope](https://github.com/agentscope-ai/agentscope) 编写好了你的 Agent；
 2. 按照 [文档](https://doc.agentscope.io/tutorial/task_tracing.html) 启用了 tracing 模块；
-3. 部署了 Agent 并收集到了数据库文件。
+3. 部署了 智能体 并收集到了数据库文件。
 
 默认情况下，agentscope-studio 会将追踪日志存储在
-`~/AgentScope-Studio/database.sqlite` 中，其中包含了用户与 Agent 之间的全部对话记录。
+`~/AgentScope-Studio/database.sqlite` 中，其中包含了用户与 智能体 之间的全部对话记录。
 
 
 我们在 `tutorials/example_feedback_tracing/agent_deployed.py` 中准备了一个示例 Agent。你可以通过它模拟生成追踪日志，并得到对应的数据库文件。
@@ -78,7 +78,7 @@ astuner:
 astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
-训练完成后，你可以将新的 Agent 部署回生产环境，并继续收集新的日志。通过这样的闭环，你可以持续进行迭代的数据回流训练，不断提升 Agent 的效果。
+训练完成后，你可以将新的 智能体 部署回生产环境，并继续收集新的日志。通过这样的闭环，你可以持续进行迭代的数据回流训练，不断提升 智能体 的效果。
 
 ## 自定义
 

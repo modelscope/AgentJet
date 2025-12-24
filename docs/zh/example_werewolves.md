@@ -1,16 +1,16 @@
 # 狼人杀
 
-本教程展示了如何使用 AgentScope Tuner 来处理多 Agent 训练，令多个 Agent 在狼人杀游戏中决策、对抗和协作。
+本教程展示了如何使用 AgentScope Tuner 来处理多 智能体 训练，令多个 智能体 在狼人杀游戏中决策、对抗和协作。
 
 ## 1. 概述
 
-狼人杀角色扮演游戏是一个典型的 POMDP（部分可观测马尔可夫决策过程，Partially Observable Markov Decision Process）问题。我们可以在这个协作型多 Agent 问题中使用「参数共享」的方法来训练 Agent。
+狼人杀角色扮演游戏是一个典型的 POMDP（部分可观测马尔可夫决策过程，Partially Observable Markov Decision Process）问题。我们可以在这个协作型多 智能体 问题中使用「参数共享」的方法来训练 Agent。
 
 术语说明：
-- **部分可观测（Partially Observable）**：Agent 只能接收**局部信息**。即使属于同一阵营，一个 Agent 也无法获得其他 Agent 的观测信息。
+- **部分可观测（Partially Observable）**：Agent 只能接收**局部信息**。即使属于同一阵营，一个 智能体 也无法获得其他 智能体 的观测信息。
 - **马尔可夫决策过程（Markov Decision Process）**：根据当前局面做决策。
-- **参数共享（Shared-parameter）**：多个 Agent 使用同一个模型作为策略。但需要注意：Agent **共享**策略（模型参数），但**不共享**感知（模型输入）。
-- **协作型多 Agent 问题（Cooperative multi-agent problem）**：Agent 之间目标一致（奖励一致）。
+- **参数共享（Shared-parameter）**：多个 智能体 使用同一个模型作为策略。但需要注意：Agent **共享**策略（模型参数），但**不共享**感知（模型输入）。
+- **协作型多 智能体 问题（Cooperative multi-agent problem）**：Agent 之间目标一致（奖励一致）。
 - **环境（Environment）**：使用静态 **`Qwen3-235B-A22B`** 作为对手（不可训练 Agent），使用 **`Qwen2-7B`** 作为可训练 Agent（即 `trainable_targets`）。
 
 ![image](https://img.alicdn.com/imgextra/i2/O1CN012JgVZC2ABczBhAzJs_!!6000000008165-0-tps-2048-2048.jpg)
@@ -49,7 +49,7 @@ astuner --conf tutorial/example_werewolves/learn2ask.yaml --backbone='debug' --w
 从训练迭代视角来看，整体流程可以概括为：
 - 生成一局新的游戏设置（玩家、角色分配、初始状态）。
 - 调用 AgentScope Workflow 来模拟完整对局。
-- Agent 调用可训练模型（`model_tuner`）做决策，对手使用固定模型。
+- 智能体 调用可训练模型（`model_tuner`）做决策，对手使用固定模型。
 - 环境产出本局的 reward / outcome。
 - 收集对局轨迹更新可训练模型。
 
@@ -115,17 +115,17 @@ astuner:
 
 在实验过程中，我们观察到明显的角色扮演能力提升：
 
-1. 例如，在被投票出局时，原始模型往往会直接暴露自己是 `werewolf`；而经过微调后，Agent 会尝试欺骗对手并保护队友。例如：
+1. 例如，在被投票出局时，原始模型往往会直接暴露自己是 `werewolf`；而经过微调后，智能体会尝试欺骗对手并保护队友。例如：
 
 ![](https://img.alicdn.com/imgextra/i1/O1CN01v8VqLB1aYEMfzyTHr_!!6000000003341-2-tps-2104-1016.png)
 
 > **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md).
 
-2. Agent 会发展出多种取胜策略。例如：
+2. 智能体会发展出多种取胜策略。例如：
 - **误导对手**："重点关注预言家和女巫。他们可能是试图隐藏身份的狼人。"
 - **诉诸理性**："我们要警惕假预言家，注意叙事是否自洽；Player-Y 作为猎人需要谨慎行动。"
 
-3. 有时 Agent 还能利用非狼人玩家之间的相互怀疑，从而淘汰对手。
+3. 有时智能体还能利用非狼人玩家之间的相互怀疑，从而淘汰对手。
 
 ![](https://img.alicdn.com/imgextra/i2/O1CN01Sx7wkU23pHyPXyqPH_!!6000000007304-2-tps-968-575.png)
 

@@ -1,18 +1,18 @@
-# 训练你的第一个 Agent
+# 训练你的第一个智能体
 
 
-在本文档中，我们会从零开始，带你实现并训练这样一个能够使用 Python 进行计算、解决复杂数学问题的 Agent。
+在本文档中，我们会从零开始，带你实现并训练这样一个能够使用 Python 进行计算、解决复杂数学问题的智能体。
 
 我们将依次完成以下步骤：
 
 1. 训练数据与环境准备
-2. Agent 与可训练 workflow 的定义
+2.智能体与可训练 workflow 的定义
 3. Reward 计算
 4. 训练参数设置
 5. 调试
 6. 开始训练 & 监测指标
 
-完成整个过程后，你将得到一个可在数学任务环境中使用的 Math Agent，理解 AgentScope Tuner 中的核心概念，并学会如何设计你自己的训练流程。
+完成整个过程后，你将得到一个可在数学任务环境中使用的 Math 智能体，理解 AgentScope Tuner 中的核心概念，并学会如何设计你自己的训练流程。
 
 ## 准备目录
 首先，我们为训练准备一个目录：
@@ -29,7 +29,7 @@ touch workflow.py
 ```
 /math_agent
     /math_agent.yaml # 配置文件
-    /workflow.py      # 训练 workflow，将包含 agent 和环境交互的定义
+    /workflow.py      # 训练 workflow，将包含智能体和环境交互的定义
 ```
 
 ## 配置参数
@@ -56,7 +56,7 @@ defaults:
 ```
 
 ## 准备训练数据
-Agent 需要在指定的任务环境下，使用训练数据驱动进行训练。本节中我们首先解决数据和环境的问题。
+智能体需要在指定的任务环境下，使用训练数据驱动进行训练。本节中我们首先解决数据和环境的问题。
 
 ASTuner 提供了多种读取数据的方式：
 
@@ -94,7 +94,7 @@ astuner:
 至此，我们就完成了数据相关的全部配置，剩余的工作将由 ASTuner 自动完成。
 
 ## 准备 Workflow
-在 ASTuner 中，workflow 是进行训练的基本单元。它定义了 Agent 的行为、工具、上下文等，Agent 与环境交互的具体流程，以及 Reward 的计算方法。
+在 ASTuner 中，workflow 是进行训练的基本单元。它定义了智能体的行为、工具、上下文等，智能体与环境交互的具体流程，以及 Reward 的计算方法。
 
 我们将在 `workflow.py` 中实现我们的 workflow。
 
@@ -127,7 +127,7 @@ ReActAgent(
 )
 ```
 
-通过这段代码，我们快速地定义了一个完整的 ReAct Agent：
+通过这段代码，我们快速地定义了一个完整的 ReAct智能体：
 - 使用 ReAct 范式与环境/工具交互
 - 设置了 system prompt
 - 注册了一个工具：执行 Python 代码
@@ -135,7 +135,7 @@ ReActAgent(
 
 > 更多具体的配置可参考 AgentScope 官方文档。
 
-接下来，我们实现训练该 Agent 的其余代码：
+接下来，我们实现训练该智能体的其余代码：
 
 ```python
 from astuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
@@ -201,11 +201,11 @@ class MathAgentWorkflow(Workflow):
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-在这段代码中，我们将 Agent 封装进一个 Workflow 中，并实现了其中的 `execute` 函数：
+在这段代码中，我们将智能体封装进一个 Workflow 中，并实现了其中的 `execute` 函数：
 1. 从 `WorkflowTask` 中取出输入
-2. 用与前面相同的方式构造 Agent，但 **指定 model 为 model_tuner** —— 这是使 Agent 可被训练的关键
-3. 执行 Agent
-4. 解析 Agent 输出，并将答案封装为 `WorkflowOutput` 返回
+2. 用与前面相同的方式构造智能体，但 **指定 model 为 model_tuner** —— 这是使智能体可被训练的关键
+3. 执行智能体
+4. 解析智能体输出，并将答案封装为 `WorkflowOutput` 返回
 
 在定义好 workflow 后，我们还需要告诉 ASTuner 使用这个 class 作为训练协议。在 `math_agent.yaml` 中写入：
 
@@ -231,7 +231,7 @@ astuner:
 接下来，为了正式开始训练，还需要补充一些必要的参数配置。
 
 ### 预训练模型
-在 `math_agent.yaml` 中指定 Agent 使用的 LLM，也就是我们将要训练的模型：
+在 `math_agent.yaml` 中指定 智能体 使用的 LLM，也就是我们将要训练的模型：
 
 ```yaml
 astuner:
@@ -287,7 +287,7 @@ trinity:
 ```
 
 ## 调试
-到目前为止，我们已经完成了训练一个 Agent 所需的全部代码与配置。
+到目前为止，我们已经完成了训练一个智能体所需的全部代码与配置。
 
 接下来，我们将在 debug 模式下启动训练流程，检查代码是否有误。你也可以跳过这一步，直接开始训练。
 
