@@ -10,8 +10,8 @@ astuner:
         split_by: "sentence"
         cache_enabled: true
       query_reader:
-        type: dataset_file # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
-        dataset_file:
+        type: jsonl_dataset_file # ✨✨✨✨ `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo`
+        jsonl_dataset_file:
           training:
             file_path: 'xxxx.jsonl'
       task_num: 1000
@@ -20,8 +20,7 @@ astuner:
       num_workers: 32
       sampling_params:
         temperature: 0
-      filters:
-        type: deduplication
+      deduplication_filter:
         enabled: true
         params:
           similarity_threshold: 0.8

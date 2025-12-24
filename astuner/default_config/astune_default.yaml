@@ -112,9 +112,12 @@ astuner:
           - 'dataset/document/your-document2.pdf'
         languages:
           - eng
+        chunk_size: 5120
+        split_by: "sentence"
+        cache_enabled: true
       query_reader:
-        type: dataset_file
-        dataset_file:
+        type: jsonl_dataset_file
+        jsonl_dataset_file:
           training:
             file_path: 'dataset/jsonl/your-queries.jsonl'
       task_num: 10
@@ -123,8 +126,7 @@ astuner:
       num_workers: 32
       sampling_params:
         temperature: 0
-      filter:
-        type: deduplication
+      deduplication_filter:
         enabled: true
         params:
           similarity_threshold: 0.8
@@ -157,8 +159,8 @@ astuner:
       answer_field: final_answer
       reference_field: answer
       custom_evaluation_prompt: null # dict or PromptTemplate or None
-      input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
-      dataset_file:
+      input_data_type: jsonl_dataset_file # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo`
+      jsonl_dataset_file:
         training:
           file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
       # Pointwise mode settings
