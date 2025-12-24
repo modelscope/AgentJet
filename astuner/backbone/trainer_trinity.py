@@ -305,6 +305,7 @@ class SwanlabMonitor(Monitor):
         # Determine experiment name
         exp_name = monitor_args.get("experiment_name") or f"{name}_{role}"
         self.exp_name = exp_name
+        astune_config = get_astune_config_from_trinity_side()
 
         # Prepare init kwargs, passing only non-None values to respect library defaults
         init_kwargs = {
@@ -317,6 +318,7 @@ class SwanlabMonitor(Monitor):
             "mode": monitor_args.get("mode") or "cloud",
             "settings": monitor_args.get("settings"),
             "id": monitor_args.get("id"),
+            "config": astune_config,
             "resume": monitor_args.get("resume"),
             "reinit": monitor_args.get("reinit"),
         }
