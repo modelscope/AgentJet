@@ -1,4 +1,4 @@
-# Countdown Task
+# Countdown
 
 ## 1. Introduction
 
