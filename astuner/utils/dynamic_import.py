@@ -82,5 +82,12 @@ _import_lock = threading.RLock()
 
 
 def dynamic_import(module_class_str: str):
+    """
+    Thread-safe dynamic import of a class from a module string.
+    Args:
+        module_class_str (str): Module and class string, e.g., 'module.path->ClassName' or 'path/to/module.py->ClassName'.
+    Returns:
+        type: The imported class type.
+    """
     with _import_lock:
         return _dynamic_import(module_class_str)

@@ -108,6 +108,45 @@ def start_ray_service(args, env, cluster=False):
     )
 
 
+def verify_python_env(args):
+    """
+    Verify that the current Python environment matches the expected executable.
+
+    Args:
+        args: Command line arguments containing the expected python_executable
+    """
+
+    # check: when args.backbone == "trinity", import verl, verl.__version__.startswith("0.5.0.post")
+    import verl
+
+    if args.backbone == "trinity":
+        if verl.__version__.startswith("0.5.0.post"):
+            cause = "Python environment does not match current backbone 'trinity'."
+            solution = "Please `cd /path/to/project/agentscope-tuner` and run `(uv) pip install -e .[trinity]` to install the correct environment."
+            print_dict(
+                {
+                    "Python Environment Check": "FAILED",
+                    "Cause": cause,
+                    "Solution": solution,
+                }
+            )
+            time.sleep(5)
+            raise ImportError(cause + " " + solution)
+    elif args.backbone == "verl":
+        if not verl.__version__.startswith("0.5.0.post"):
+            cause = "Python environment does not match current backbone 'verl'."
+            solution = "Please `cd /path/to/project/agentscope-tuner` and run `(uv) pip install -e .[verl]` to install the correct environment."
+            print_dict(
+                {
+                    "Python Environment Check": "FAILED",
+                    "Cause": cause,
+                    "Solution": solution,
+                }
+            )
+            time.sleep(5)
+            raise ImportError(cause + " " + solution)
+
+
 def execute_training_process(
     args,
     backbone_target,
@@ -190,6 +229,7 @@ def execute_training_process(
                 "YAML Config": exe_yaml_path,
             }
         )
+        verify_python_env(args)
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")
