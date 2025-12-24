@@ -517,7 +517,6 @@ astuner:
     logger: swanlab
     # optimization algorithms
     algorithm:
-      task_norm_patch: False
       adv_estimator: grpo
       use_kl_in_reward: False
     mini_batch_num: 1
