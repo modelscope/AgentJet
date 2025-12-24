@@ -12,7 +12,6 @@ from astuner.schema.task import Task, WorkflowTask
 from astuner.task_rollout.async_llm_bridge import AsyncLlmBridge
 from astuner.task_rollout.resource_keeper import ResourceKeeper
 from astuner.task_runner.agentscope_runner import AgentScopeRunner
-from astuner.task_runner.classic_runner import AgentRunner
 from astuner.utils.retry import retry_with_backoff
 from astuner.utils.sample import get_sample_params
 from astuner.utils.testing_utils import TestFailException, TestSuccessException
@@ -102,12 +101,9 @@ class BaseRolloutManager:
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
-                Runner = (
-                    AgentScopeRunner
-                )
-                agent_runner: AgentScopeRunner = Runner(
+                agent_runner = AgentScopeRunner(
                     llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
-                )  # type:ignore
+                )
                 tracker = agent_runner.execute(
                     workflow_task=workflow_task,
                 )
