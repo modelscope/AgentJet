@@ -13,7 +13,7 @@ ASTuner provides two convenient and **mutually compatible** ways to wrap an Agen
 
 Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.
 
-<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em;">
+<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em; font-size: 0.5rem;">
   <thead>
     <tr>
       <th>Before</th>
@@ -34,7 +34,10 @@ Simply set ReActAgent's `model` argument to `model_tuner` when initializing your
         <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
    name=f"Friday",
    sys_prompt="You are a helpful assistant",
-   model=model_tuner,  # change here
+   <span style="
+    color: red;
+    font-weight: bold;
+">model=model_tuner,  # change here</span>
    formatter=DashScopeChatFormatter(),
 )</code></pre>
       </td>

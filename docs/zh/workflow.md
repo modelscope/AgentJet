@@ -15,7 +15,7 @@ ASTuner 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封�
 
 **只需要在初始化 ReActAgent 时，把 `model` 参数替换为 `model_tuner` 即可。**
 
-<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em;">
+<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em; font-size: 0.5rem;">
   <thead>
     <tr>
       <th>修改前</th>
@@ -36,7 +36,10 @@ ASTuner 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封�
         <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
    name=f"Friday",
    sys_prompt="You are a helpful assistant",
-   model=model_tuner,  # change here
+   <span style="
+    color: red;
+    font-weight: bold;
+">model=model_tuner,  # change here</span>
    formatter=DashScopeChatFormatter(),
 )</code></pre>
       </td>
