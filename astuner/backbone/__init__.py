@@ -1,7 +1,7 @@
 from loguru import logger
 
 try:
-    from astuner.backbone.trinity_trainer import (
+    from astuner.backbone.trainer_trinity import (
         ASTunerTaskReader,
         ASTunerWorkflowWrap,
         TrinityRolloutManager,
