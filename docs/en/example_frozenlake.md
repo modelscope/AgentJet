@@ -10,7 +10,7 @@ This example demonstrates how to create a trainable agent workflow to solve this
 
 ## 2. Quick Start
 
-### 2.1 Prepare the Environment
+### 2.1 Preparation
 
 Install the dependencies required for the Frozen Lake:
 
@@ -23,7 +23,13 @@ pip install gymnasium[toy_text]
 Use the provided configuration file to quickly start training:
 
 ```bash
-astuner --conf tutorial/example_frozenlake/frozenlake.yaml --backbone=trinity
+astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='trinity' --with-ray
+```
+
+To try a harder setting:
+
+```bash
+astuner --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone=trinity --with-ray
 ```
 
 <details>
@@ -36,7 +42,7 @@ If you want to breakpoint-debug the workflow/judge locally:
 # astuner --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` like below:
@@ -64,7 +70,25 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` lik
 
 ## 3. Understand
 
-### 3.1 Implement the Frozen Lake Environment
+### 3.1 Core Process
+
+This example packages a multi-step environment interaction loop into a trainable `Workflow`:
+
+- The workflow resets the environment and renders the current grid as a text observation for the agent.
+- The agent reads the observation and outputs one of `Up | Down | Left | Right`.
+- The environment executes the action, returns the next observation and reward.
+- The loop stops on success or when the max step limit is reached.
+
+### 3.2 Configuration Details
+
+The key fields in `tutorial/example_frozenlake/frozenlake_easy.yaml` / `frozenlake_hard.yaml` are:
+
+- `astuner.rollout.agentscope_workflow`: entry point of the workflow class, set to `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`.
+- `astuner.rollout.multi_turn.max_steps`: maximum steps per episode (also used by the agent).
+- `frozen_lake.frozen_lake_size`: grid size (e.g. 4 for easy, 6 for hard).
+- `frozen_lake.is_slippery`: whether the action may slip to unintended directions.
+
+### 3.3 Code Map
 
 The `FrozenLakeEnv` class in `tutorial/example_frozenlake/frozenlake.py` wraps the Gymnasium Frozen Lake environment, mainly exposing the `step` and `reset` methods.
 
@@ -80,8 +104,6 @@ The `FrozenLakeEnv` class in `tutorial/example_frozenlake/frozenlake.py` wraps t
     - info: Additional information.
 
 - The `reset` method regenerates the lake environment based on user parameters.
-
-### 3.2 Implement the Agent
 
 The `FrozenLakeAgent` class in `tutorial/example_frozenlake/frozenlake.py` implements the agent's decision logic, mainly through the `step` method, which takes the current environment observation as input and returns the chosen action. The core is a ReActAgent.
 
@@ -104,19 +126,13 @@ class FrozenLakeAgent:
         # Step 3: Parse response and return action
 ```
 
-### 3.3 Integrate Environment and Agent as a Workflow
-
-The `FrozenLakeWorkflow` class in `tutorial/example_frozenlake/frozenlake.py` integrates the environment and agent, mainly exposing the `step` and `reset` methods for external interaction.
-
-The core process is as follows:
+The `FrozenLakeWorkflow` class in `tutorial/example_frozenlake/frozenlake.py` integrates the environment and agent, mainly exposing the `execute` method.
 
 ```python
 class FrozenLakeWorkflow(Workflow):
 
     async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         # init agent and env
-        # self.agent = FrozenLakeAgent(...)
-        # self.env = FrozenLakeEnv(...)
         # reset environment and get initial `observation_str`
         rewards = []
         for _ in range(self.max_steps):
@@ -130,7 +146,13 @@ class FrozenLakeWorkflow(Workflow):
         )
 ```
 
-## 4. Performance
+### 3.4 Reward
+
+- The per-episode reward is the sum of step rewards.
+- In this FrozenLake setup, the agent gets `+1` when reaching the goal, otherwise `0`.
+- The workflow also returns metadata such as `terminate_reason` (`success`, `agent_error`, `max_steps_reached`) and `step_count`.
+
+## 4. Results
 
 ### 4.1 Training Curve
 
