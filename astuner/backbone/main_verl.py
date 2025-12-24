@@ -18,16 +18,19 @@ Note that we don't combine the main with ray_trainer as ray_trainer is used by o
 import atexit
 import os
 import socket
+
 import hydra
 import ray
-
 from beast_logger import print_dict
 from omegaconf import OmegaConf
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
+
 from astuner.utils.core_env_vars import get_runtime_env
 from astuner.utils.launch_utils import set_loguru_default_color
+
 set_loguru_default_color()
+
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
 def main(config):
@@ -168,7 +171,7 @@ class TaskRunner:
         else:
             raise NotImplementedError
 
-        from astuner.backbone.verl_trainer import ResourcePoolManager, Role
+        from verl.trainer.ppo.ray_trainer import ResourcePoolManager, Role
 
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
