@@ -9,7 +9,7 @@ astuner:
       validation_split: "test"
 
   task_judge:
-    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 
   model:
     path: ""

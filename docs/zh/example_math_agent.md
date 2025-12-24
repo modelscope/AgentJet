@@ -122,7 +122,7 @@ astune:
     agentscope_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
 
   task_judge:
-    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
 
   model:
     path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -164,7 +164,7 @@ final_answer = extract_final_answer(result)
 return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-**Judge / Reward：** `astune/task_judge/math_answer_as_judge.py`
+**Judge / Reward：** `tutorial/example_math_agent/math_answer_as_judge.py`
 
 该文件内提供了两个简单的评审器；你也可以在项目的任何位置添加自己的评审器。
 

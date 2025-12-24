@@ -29,7 +29,7 @@ astuner:
 
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 
   model:
     # ✨✨✨✨ 设置待训练的模型

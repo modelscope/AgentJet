@@ -227,7 +227,7 @@ There is one more thing we have not addressed yet: the reward. Fortunately, ASTu
 astuner:
   #...
   task_judge:
-    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 ```
 
 Here we directly use the built-in math judge provided by ASTuner. The judge reads `final_answer` from `metadata` and compares it with the ground-truth answers in the dataset to produce a score.

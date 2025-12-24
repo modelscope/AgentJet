@@ -28,15 +28,15 @@ class BaseJudge:
         self.config = config
 
     def compute_reward(
-        self, 
-        workflow_task: WorkflowTask, 
+        self,
+        workflow_task: WorkflowTask,
         workflow_output: WorkflowOutput
     ) -> tuple:
         """
         Args:
             workflow_task: 包含任务数据，包括 metadata 中的参考答案等信息
             workflow_output: 包含智能体输出，包括 metadata 中的生成答案等信息
-        
+
         Returns:
             tuple: (raw_reward: float, is_success: bool)
         """
@@ -65,7 +65,7 @@ AgentScope Tuner 提供了 4 个内置评测器，用于覆盖常见的评测场
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 ```
 
 **工作原理：**
@@ -163,21 +163,21 @@ astuner:
       # 用于 rubric 生成与评测的模型
       model_name: "qwen-plus"  # or "gpt-4", "claude-3-sonnet"
       api_key: "your-api-key"  # or set DASHSCOPE_API_KEY env var
-      
+
       # 评测模式
       grader_mode: "pointwise"  # or "listwise" for ranking multiple outputs
       language: "en"  # or "zh"
-      
+
       # pointwise 模式配置
       min_score: 0
       max_score: 10
-      
+
       # 用于 rubric 生成的参考数据
       input_data_type: "dataset_file"
       dataset_file:
         training:
           file_path: "path/to/rubrics_train.jsonl"
-      
+
       # 字段映射
       query_field: "main_query"      # query 对应字段名
       answer_field: "final_answer"   # workflow output 中的字段
@@ -237,27 +237,27 @@ class MyCustomJudge(BaseJudge):
         super().__init__(config)
         # 初始化所需资源（例如外部 API、模型等）
         self.threshold = 0.8
-    
+
     def compute_reward(
-        self, 
-        workflow_task: WorkflowTask, 
+        self,
+        workflow_task: WorkflowTask,
         workflow_output: WorkflowOutput
     ) -> tuple:
         # 从 workflow_output 中读取数据
         agent_answer = workflow_output.metadata.get("final_answer", "")
-        
+
         # 从 workflow_task 中读取参考答案
         reference_answer = workflow_task.task.metadata.get("answer", "")
-        
+
         # 自定义评测逻辑
         similarity = self._compute_similarity(agent_answer, reference_answer)
-        
+
         # 基于阈值判断是否成功
         is_success = similarity >= self.threshold
-        
+
         # 返回 (reward, success)
         return similarity, is_success
-    
+
     def _compute_similarity(self, text1: str, text2: str) -> float:
         # 自定义相似度度量
         # 这里只是一个简单示例
@@ -286,7 +286,7 @@ class MyWorkflow(Workflow):
     async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         # 智能体逻辑
         final_answer = await self.agent.reply(msg)
-        
+
         # 返回包含 metadata 的输出，供 judger 使用
         return WorkflowOutput(
             reward=None,  # 将由 judger 填充

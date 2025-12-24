@@ -63,7 +63,7 @@ astune_proxy.update_judge_input_dictionary(final_answer=final_answer)
 
 ### 3. 准备Judge (奖励模块)
 
-在 astuner/task_judge/math_answer_as_judge.py 中，提供了两个简单的Judge。可以在项目任意地方新建新的Judge代码
+在 tutorial/example_math_agent/math_answer_as_judge.py 中，提供了两个简单的Judge。可以在项目任意地方新建新的Judge代码
 
 Judge的输入参数包含：
 
@@ -87,8 +87,8 @@ Judge的返回值： raw_reward, is_success
     - 举例如果 agentscope workflow 定义在 `tutorial/math_agent.py` 的`ExampleMathLear` 类
     - 则填写 astuner.rollout.agentscope_workflow=`tutorial.math_agent->ExampleMathLearn`
 3. 定义评分函数（对应配置字段 astuner.task_judge.judge_protocol ）
-    - 举例如果 agentscope workflow 定义在 `astuner/task_judge/math_answer_as_judge.py` 的`MathAnswerAndLlmAsJudge` 类
-    - 则填写 astuner.task_judge.judge_protocol=`astuner.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge`
+    - 举例如果 agentscope workflow 定义在 `tutorial/example_math_agent/math_answer_as_judge.py` 的`MathAnswerAndLlmAsJudge` 类
+    - 则填写 astuner.task_judge.judge_protocol=`tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge`
 4. 指定模型（对应配置字段 astuner.model.path ）
 
 ```yaml
@@ -99,7 +99,7 @@ astuner
         agentscope_workflow: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ 编写并选择Agent
     task_judge:
         # ✨✨✨✨ 编写并选择评价函数
-        judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
     model:
         # ✨✨✨✨ 设置待训练的模型
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct

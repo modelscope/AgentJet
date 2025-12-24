@@ -118,7 +118,7 @@ astune:
     agentscope_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
 
   task_judge:
-    judge_protocol: astune.task_judge.math_answer_as_judge->MathAnswerAndLlmAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
 
   model:
     path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -159,7 +159,7 @@ final_answer = extract_final_answer(result)
 return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-**Judge / Reward:** `astune/task_judge/math_answer_as_judge.py`
+**Judge / Reward:** `tutorial/example_math_agent/math_answer_as_judge.py`
 
 Two simple judges are provided there; you can add your own judge anywhere in the project.
 
@@ -259,4 +259,3 @@ A “good” tool-call behavior typically shows up in logs as:
 * `<tool_call>` and `<tool_response>` appear in **separate turns** (call → response → answer),
 * `<tool_response>` contains **non-empty stdout**,
 * the final answer appears **after** the tool returns, rather than being produced prematurely.
-

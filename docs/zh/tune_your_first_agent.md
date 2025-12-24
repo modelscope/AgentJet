@@ -222,7 +222,7 @@ astuner:
 astuner:
   #...
   task_judge:
-    judge_protocol: astuner.task_judge.math_answer_as_judge->MathAnswerAsJudge
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 ```
 
 这里我们直接使用 ASTuner 内部提供的 math judge。Judge 会读取 metadata 中的 final_answer，并与数据集中的 ground_truth 对比来得到评分。
