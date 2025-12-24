@@ -136,6 +136,11 @@ astuner:
 
 > **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md).
 
+随着训练的进展，奖励也会增加。这通常意味着智能体在**两个方面**变得更加稳定：
+
+* **遵循正确的 API 协议**：它学会在调用前查阅 API 文档，并使用有效的 API 端点，而不是虚构不存在的 API。
+* **完成多步工作流**：它能够正确获取 access token，并串联多个 API 调用以完成复杂任务。
+
 ### 4.2 案例展示
 
 #### 调优前：
@@ -144,9 +149,13 @@ astuner:
 
 ![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN015FgjqI20Ip3AJybr0_!!6000000006827-2-tps-1259-683.png)
 
+智能体在不检查 API 是否存在的情况下产生幻觉，导致重复失败。
+
 2. 没有学会按照说明去获取 access token
 
 ![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN01bGZ1s01VyjCSrTJte_!!6000000002722-2-tps-1181-954.png)
+
+智能体在未先获取所需的访问令牌（access token）的情况下尝试调用受保护的 API，导致认证错误。
 
 #### 调优后：
 
@@ -154,8 +163,12 @@ astuner:
 
 ![After tuning](https://img.alicdn.com/imgextra/i4/O1CN01VRIDy922PoKD1bETl_!!6000000007113-2-tps-1180-944.png)
 
+智能体现在会先检查可用的 API 再发起调用，从而避免臆造不存在的接口端点。
+
 2. 学会正确获取 access token
 
 ![After tuning](https://img.alicdn.com/imgextra/i2/O1CN01xiF9UU20h62dyrZ4x_!!6000000006880-2-tps-1182-793.png)
+
+智能体在访问受保护的 API 之前，会先正确完成认证步骤。
 
 > **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md).
