@@ -107,6 +107,8 @@ astuner:
 
 ![image](https://img.alicdn.com/imgextra/i3/O1CN01ldZYDT1ZqGLHuwsrS_!!6000000003245-2-tps-2000-839.png)
 
+> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md).
+
 ### 4.2 案例展示
 
 #### 行为变化
@@ -116,6 +118,8 @@ astuner:
 1. 例如，在被投票出局时，原始模型往往会直接暴露自己是 `werewolf`；而经过微调后，Agent 会尝试欺骗对手并保护队友。例如：
 
 ![](https://img.alicdn.com/imgextra/i1/O1CN01v8VqLB1aYEMfzyTHr_!!6000000003341-2-tps-2104-1016.png)
+
+> **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md).
 
 2. Agent 会发展出多种取胜策略。例如：
 - **误导对手**："重点关注预言家和女巫。他们可能是试图隐藏身份的狼人。"

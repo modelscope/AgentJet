@@ -27,6 +27,8 @@ parts:
   - caption: Deep Dive
     chapters:
       - file: en/configuration.md
+      - file: en/visualization.md
+      - file: en/beast_logger.md
       - file: en/data_generation.md
       - file: en/example_tracing_feedback_loop.md
      
@@ -57,6 +59,8 @@ parts:
   - caption: 深入探索
     chapters:
       - file: zh/configuration.md
+      - file: zh/visualization.md
+      - file: zh/beast_logger.md
       - file: zh/data_generation.md
       - file: zh/example_tracing_feedback_loop.md
 

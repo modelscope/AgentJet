@@ -111,6 +111,8 @@ class FrozenLakeWorkflow(Workflow):
 
 ### 4.1 训练曲线
 
+> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md)。
+
 *(留空)*
 
 ### 4.2 案例分析
