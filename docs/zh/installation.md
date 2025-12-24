@@ -13,7 +13,7 @@
 * **简单友好**：ASTuner 帮助您轻松微调 Agent 工作流背后的模型，以极小的开发成本实现 Agent 性能的飞跃。
 * **丰富的教程库**：ASTuner 提供了丰富的 [示例库](https://github.com/agentscope-ai/agentscope-tuner/tree/main/tutorial) 作为学习教程。
 * **高效且可扩展**：ASTuner 默认使用 [trinity](https://github.com/modelscope/Trinity-RFT/) 作为后端（`--backbone=trinity`），通过全异步 RFT 加速微调过程。如果您更偏好 Actor 共位置部署，也可以切换至 [verl](./installation.md) 后端。
-* **灵活且快速**：ASTuner 支持 [多 Agent 工作流](docs/en/workflow.md)，并采用了时间线合并技术（Timeline Merging），在涉及多轮或多 Agent 对话的工作流中，可将训练速度提升 1.5 倍至 20 倍。
+* **灵活且快速**：ASTuner 支持 [多 Agent 工作流](./workflow.md)，并采用了时间线合并技术（Timeline Merging），在涉及多轮或多 Agent 对话的工作流中，可将训练速度提升 1.5 倍至 20 倍。
 * **可靠性与可复现性**：我们的团队持续追踪框架在多个 [任务 + 主分支版本 + 训练后端](https://benchmark.agent-matrix.com/) 上的表现（正在建设中，数据收集后即将上线）。
 
 针对资深研究人员，ASTuner 还提供了高分辨率的日志记录和调试方案：
