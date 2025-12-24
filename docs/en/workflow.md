@@ -11,7 +11,7 @@ ASTuner provides two convenient and **mutually compatible** ways to wrap an Agen
 
 ### 1. Convert Your AgentScope Workflow in ASTuner
 
-**Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.**
+Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.
 
 <table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em;">
   <thead>
