@@ -1,12 +1,12 @@
 # Countdown
 
-## 1. Introduction
+## 1. Overview
 
 Countdown is a math puzzle game. Given a list of numbers and a target number, the player needs to use the numbers and the four basic arithmetic operations (addition, subtraction, multiplication, and division) to form an expression that evaluates to the target number. Each number can be used only once, but parentheses can be used freely to change the order of operations.
 
 ## 2. Quick Start
 
-### 2.1 Prepare Dataset
+### 2.1 Preparation
 Download the `Jiayi-Pan/Countdown-Tasks-3to4` dataset and split it into training and test sets:
 
 ```bash
@@ -44,7 +44,7 @@ If you want to breakpoint-debug the workflow/judge locally:
 # astuner --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` like below:
@@ -70,12 +70,12 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` lik
 ```
 </details>
 
-## 3. Preparation
+## 3. Understand
 
 In this section, we will cover the details of this tutorial.
 
 
-### 3.1 Prepare AgentScope Workflow
+### 3.1 Core Process
 See details in `tutorial/example_countdown/countdown.py`. You can create new AgentScope Workflow code anywhere in the project.
 
 - **Define the AgentScope workflow**
@@ -106,24 +106,7 @@ WorkflowOutput(
 )
 ```
 
-### 3.2 Prepare Reward
-A simple Judge is provided in `astuner/task_judge/countdown_answer_as_judge.py.py`. You can create new Judge code anywhere in the project.
-
-Judge input parameters include:
-
-```
-workflow_task: Task information（if reference answer is included, it can be retrieved from here）
-workflow_output: Task information output (final_answer needs to be added manually)
-```
-
-Judge return values:
-
-- raw_reward
-- is_success
-
-### 3.3 Start Training
-
-#### 3.1 Configure
+### 3.2 Configuration Details
 Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
 
 1. Read task (corresponds to configuration field `astuner.task_reader`)
@@ -149,16 +132,29 @@ astuner:
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 ```
 
-#### 3.2 Start Training
+### 3.3 Code Map
 
-```bash
-# It is recommended to kill all ray, vllm, and env_service processes before starting ( python launcher.py --kill="python|ray|vllm" )
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
+- `tutorial/example_countdown/countdown.py`: defines the AgentScope workflow (e.g., `ExampleCountdownLearn`).
+- `tutorial/example_countdown/countdown.yaml`: wires together task reader, workflow, judge, and model.
+
+### 3.4 Reward/Evaluation Mechanism
+A simple Judge is provided in `astuner/task_judge/countdown_answer_as_judge.py`. You can create new Judge code anywhere in the project.
+
+Judge input parameters include:
+
+```
+workflow_task: Task information（if reference answer is included, it can be retrieved from here）
+workflow_output: Task information output (final_answer needs to be added manually)
 ```
 
-## 4. Reference Result
+Judge return values:
 
-### 4.1 Training Curve
+- raw_reward
+- is_success
+
+## 4. Results
+
+### 4.1 Training Curves/Metrics
 
 ![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01TtaeD91rnfBF736Zu_!!6000000005676-2-tps-1328-630.png)
 

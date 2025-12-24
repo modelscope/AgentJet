@@ -1,12 +1,12 @@
 # 倒计时数字游戏
 
-## 1. 介绍
+## 1. 概述
 
 Countdown 任务是一个数学益智游戏：给定一组数字和一个目标数字，玩家需要利用这组数字，通过加、减、乘、除四则运算，构造一个算式，使其计算结果等于目标数字。每个数字只能使用一次，但可以自由使用括号改变运算顺序。
 
 ## 2. 快速开始
 
-### 2.1 准备数据集
+### 2.1 准备工作
 下载 `Jiayi-Pan/Countdown-Tasks-3to4` 数据集，并划分训练、测试集：
 
 ```bash
@@ -25,7 +25,7 @@ task = Task(
 )
 ```
 
-### 2.2 启动训练
+### 2.2 开始训练
 
 直接运行以下命令：
 
@@ -40,18 +40,18 @@ astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 不启用 Ray 在本地运行，便于更快迭代：
 
 ```bash
-astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-logview
+astuner --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
 ```
 
 如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
 
 </details>
 
-## 3. 准备
+## 3. 理解实现
 
 本节将介绍本教程的实现细节。
 
-### 3.1 准备 AgentScope Workflow
+### 3.1 核心流程
 详见 `tutorial/example_countdown/countdown.py`。你可以在项目中的任意位置编写新的 AgentScope Workflow 代码。
 
 - **定义 AgentScope Workflow**
@@ -82,24 +82,7 @@ WorkflowOutput(
 )
 ```
 
-### 3.2 准备 Reward
-在 `astuner/task_judge/countdown_answer_as_judge.py.py` 中提供了一个简单的 Judge 示例。你也可以在项目任意位置实现自己的 Judge 逻辑。
-
-Judge 的输入参数包括：
-
-```
-workflow_task: 任务信息（如果包含参考答案，可以从这里获取）
-workflow_output: 任务信息输出（final_answer需要手动添加）
-```
-
-Judge 的返回值包括：
-
-- raw_reward
-- is_success
-
-### 3.3 启动训练
-
-#### 3.1 配置
+### 3.2 配置说明
 拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 ✨✨✨✨ 标出。
 
 1. 读取任务（对应配置字段 `astuner.task_reader`）
@@ -125,20 +108,33 @@ astuner:
         path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 ```
 
-#### 3.2 启动训练
+### 3.3 代码解读
 
-```bash
-# 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程（ python launcher.py --kill="python|ray|vllm" ）
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
+- `tutorial/example_countdown/countdown.py`：定义 AgentScope workflow（例如 `ExampleCountdownLearn`）。
+- `tutorial/example_countdown/countdown.yaml`：将 task_reader、workflow、judge、model 等模块连接起来。
+
+### 3.4 奖励/评估机制
+在 `astuner/task_judge/countdown_answer_as_judge.py` 中提供了一个简单的 Judge 示例。你也可以在项目任意位置实现自己的 Judge 逻辑。
+
+Judge 的输入参数包括：
+
+```
+workflow_task: 任务信息（如果包含参考答案，可以从这里获取）
+workflow_output: 任务信息输出（final_answer需要手动添加）
 ```
 
-## 4. 参考结果
+Judge 的返回值包括：
 
-### 4.1 训练曲线
+- raw_reward
+- is_success
 
-![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01TtaeD91rnfBF736Zu_!!6000000005676-2-tps-1328-630.png)
+## 4. 结果
+
+### 4.1 训练曲线/指标
 
 > **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md).
+
+![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01TtaeD91rnfBF736Zu_!!6000000005676-2-tps-1328-630.png)
 
 ### 4.2 案例分析
 
