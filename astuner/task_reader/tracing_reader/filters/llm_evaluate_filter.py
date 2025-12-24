@@ -1,9 +1,16 @@
+import os
 from typing import Iterable, List
 
+from agentscope.agent import ReActAgent
+from agentscope.formatter import DashScopeMultiAgentFormatter
+from agentscope.message import Msg
+from agentscope.model import DashScopeChatModel
+from pydantic import BaseModel, Field
 from astuner.schema.task import Task
 from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
-from astuner.utils.fn import Fn
 from .base import Filter
+
+
 
 EVALUATE_PROMPT = """You are now acting as a **strict QA quality reviewer**. You will be given a data sample containing a “query” (user question/task) and an “answer” (assistant reply). Evaluate it **only based on the text itself**, without inventing facts or performing external retrieval.
 
@@ -34,6 +41,14 @@ If it does not meet the criteria, label it as **BAD**.
 If **any** of the above conditions are triggered, the final result must be **BAD**. Otherwise, it is **GOOD**.
 """
 
+class EvalResModel(BaseModel):
+    reason:str=Field(
+        description="judgment reason, briefly explain the reason",
+    )
+    result:str=Field(
+        description="GOOD/BAD",
+    )
+
 
 class LlmEvaluateFilter(Filter):
     def __init__(
@@ -51,35 +66,26 @@ class LlmEvaluateFilter(Filter):
             alien_llm_model="qwen3-235b-a22b-instruct-2507",
             alien_llm_response_length=512,
         )
-        self._fn = Fn(
-            name="evaluate_quality",
-            description=EVALUATE_PROMPT.format(custom_rubrics=custom_rubrics),
-            external_llm_fn=self.external_llm_fn,
-            input_schema={
-                "query": "user query/task",
-                "answer": "assistant answer",
-            },
-            output_schema={
-                "reason": "judgment reason, briefly explain the reason",
-                "result": "GOOD/BAD",
-            },
-            sampling_params={
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            },
+        self._fn=ReActAgent(
+            name=f"agent",
+            sys_prompt=EVALUATE_PROMPT.format(custom_rubrics=custom_rubrics),
+            model=DashScopeChatModel("qwen3-235b-a22b-instruct-2507",os.environ['DASHSCOPE_API_KEY']),
+            formatter=DashScopeMultiAgentFormatter(),
+            max_iters=1,
         )
 
-    def filter(self, tasks: Iterable[Task]) -> List[Task]:
+    async def filter(self, tasks: Iterable[Task]) -> List[Task]:
         kept: List[Task] = []
         for task in tasks:
-            payload = {
-                "query": task.main_query,
-                "answer": task.metadata.get("answer", ""),
-            }
-            res = self._fn(payload)
-            assert isinstance(res, dict)
+            payload = (
+                "query: " + task.main_query + "\n"
+                "answer: " + task.metadata.get("answer", "")
+            )
+            
+            res = await self._fn(Msg("user",content=payload,role="user"),structured_model=EvalResModel)
+            assert isinstance(res, EvalResModel)
             if self._print_reason:
-                print(res["reason"])
-            if res.get("result") == "GOOD":
+                print(res.reason)
+            if res.result == "GOOD":
                 kept.append(task)
         return kept

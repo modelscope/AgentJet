@@ -4,9 +4,11 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Sequence
 
 from .base import Filter
 from .llm_evaluate_filter import LlmEvaluateFilter
+from .deduplication_filter import DeduplicationFilter
 
 FILTER_REGISTRY: Dict[str, type[Filter]] = {
     "llm_evaluate": LlmEvaluateFilter,
+    "deduplication": DeduplicationFilter,
 }
 
 

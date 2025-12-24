@@ -5,8 +5,8 @@ from typing import Any, List, Mapping, TypedDict
 
 from loguru import logger
 
-from astuner.data_generator.filters.base import Filter
-from astuner.data_generator.filters.factory import build_filters
+from astuner.task_reader.tracing_reader.filters.base import Filter
+from astuner.task_reader.tracing_reader.filters.factory import build_filters
 from astuner.schema.task import Task
 
 from ..task_reader_base import BaseTaskReader
@@ -73,7 +73,7 @@ class TracingReader(BaseTaskReader):
     def _apply_filters(self, tasks: List[Task]) -> List[Task]:
         filtered = tasks
         for flt in self._filters:
-            filtered = flt.filter(filtered)
+            filtered = flt.filter_sync(filtered)
         return filtered
 
     def _init_tasks(self) -> None:
