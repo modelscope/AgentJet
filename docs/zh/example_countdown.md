@@ -138,6 +138,8 @@ astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 
 ![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01TtaeD91rnfBF736Zu_!!6000000005676-2-tps-1328-630.png)
 
+> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md).
+
 ### 4.2 案例分析
 
 在训练初期，Agent 已经能够处理一些简单问题；但由于小模型的能力限制，仍然会产生许多无法完全满足要求的答案。在一些题目中，Agent 没有严格遵循指令，例如输出格式不正确、重复使用数字、或缺少表达式输出。
@@ -168,3 +170,5 @@ boxing the answer as \boxed{{64}}.<|im_end|>
 
 ![After tuning](https://img.alicdn.com/imgextra/i1/O1CN011HjAxo20DKIcPAPVr_!!6000000006815-2-tps-1658-506.png)
 ![After tuning](https://img.alicdn.com/imgextra/i4/O1CN01C3kUnV221zjPi30rd_!!6000000007061-2-tps-1650-730.png)
+
+> **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md).

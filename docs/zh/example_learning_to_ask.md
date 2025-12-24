@@ -122,6 +122,8 @@ astune:
 
 ![curve](https://img.alicdn.com/imgextra/i2/O1CN01STeE8G1ricp6jySto_!!6000000005665-2-tps-866-614.png)
 
+> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md)。
+
 这张训练曲线反映的是reward 变化趋势。reward包括：Format Score（是否只问一个问题）和 Content Score（是否直接追问 Reference Information 中缺失的关键信息）。
 
 因此，曲线升高表示模型逐渐学会：把输出稳定成“一个清晰问题”，并且更频繁地命中缺失信息，而不是泛泛而问或提出含糊、无信息量的问题。

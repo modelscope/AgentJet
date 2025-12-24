@@ -193,6 +193,8 @@ return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 
 #### 4.1 训练曲线
 
+> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md)。
+
 解读：随着训练进行，reward 随之上升。这通常意味着智能体在**两件事**上变得更稳定：
 
 * **该用工具时会用**：能正确发起 `<tool_call>`，并在需要计算时调用 `execute_python_code`。
@@ -240,6 +242,8 @@ return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 3. **Message 5 (assistant)**：读取 `stdout`，然后产出最终答案（如 `\\boxed{18}`）。
 
 图中右侧彩色块是 **token 级别的序列可视化**：
+
+> **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md)。
 
 * **每个小块代表一个 token**（块内数字是 token id）。
 * 块的顺序就是模型**消耗/生成** token 的顺序。
