@@ -11,7 +11,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 我们从最简单的示例开始：一个带工具调用的数学智能体。
 
 * 首先，请查看 [installation guide](docs/en/installation.md) 来搭建训练环境。
-* 然后，使用下面的最小示例来调优你的第一个模型（假设你已经编写了一个名为 `MathToolWorkflow` 的 Agent）。
+* 然后，使用下面的最小示例来调优你的第一个模型（假设你已经编写了一个名为 `MathToolWorkflow` 的智能体）。
 
   ```python
   from astuner import AstunerJob

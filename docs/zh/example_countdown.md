@@ -99,7 +99,7 @@ astuner:
     task_reader:
         type: huggingface_dat_repo # ✨✨✨✨ `env_service` 或 `dataset_file` 或 `huggingface_dat_repo` 或 `data_generation`
     rollout:
-        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ 编写并选择 Agent
+        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ 编写并选择智能体
     task_judge:
         # ✨✨✨✨ 编写并选择评估函数
         judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
@@ -138,7 +138,7 @@ Judge 的返回值包括：
 
 ### 4.2 案例分析
 
-在训练初期，Agent 已经能够处理一些简单问题；但由于小模型的能力限制，仍然会产生许多无法完全满足要求的答案。在一些题目中，Agent 没有严格遵循指令，例如输出格式不正确、重复使用数字、或缺少表达式输出。
+在训练初期，智能体已经能够处理一些简单问题；但由于小模型的能力限制，仍然会产生许多无法完全满足要求的答案。在一些题目中，智能体没有严格遵循指令，例如输出格式不正确、重复使用数字、或缺少表达式输出。
 
 ```
 bad case 1: 回答格式不符合要求。

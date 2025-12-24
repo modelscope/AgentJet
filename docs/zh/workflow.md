@@ -9,7 +9,7 @@ ASTuner 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封�
 
 下面分别说明。
 
-## 简单 Agent 场景
+## 简单智能体场景
 
 ### 1. 在 ASTuner 中转换你的 AgentScope Workflow
 
@@ -59,13 +59,13 @@ class ExampleMathLearn(Workflow):
 
 这种写法适合大多数用户，如果你满足下面的情况，可以优先采用：
 
-- 🌟 很清楚**哪些 Agent 需要被训练**，或者 Agent 的数量本身就不多；
+- 🌟 很清楚**哪些智能体需要被训练**，或者智能体的数量本身就不多；
 - ✨ 已经完成了 Workflow 的基础调试，确认在使用非微调模型（例如 `qwen-max`）时工作流是正常可用的；
-- 🎇 不需要在运行过程中**动态改变**要训练的 Agent 集合。
+- 🎇 不需要在运行过程中**动态改变**要训练的智能体集合。
 
 ### 3. 代码示例
 
-- 假设你已经实现了一个 ReAct Agent，大致如下：
+- 假设你已经实现了一个 ReAct智能体，大致如下：
 
 ```python
 from agentscope.agent import ReActAgent
@@ -119,31 +119,31 @@ class ExampleMathLearn(Workflow):
 ```
 
 
-## 进阶 Agent 场景
+## 进阶智能体场景
 
-当设计的是一个**多 Agent 协作**的复杂 Workflow，并且每个 Agent 扮演不同**角色**时，如果 ASTuner 能够「知道」每个 Agent 的身份，那么在训练和调试时就能提供更好的能力和更高的可控性。
+当设计的是一个**多智能体协作**的复杂 Workflow，并且每个智能体扮演不同**角色**时，如果 ASTuner 能够「知道」每个智能体的身份，那么在训练和调试时就能提供更好的能力和更高的可控性。
 
-通过多 Agent 协作，你可以
-- 🌟 **精细地控制**哪些 Agent 会被微调；
-- ✨ 为「当前未被训练」的 Agent 明确定义其使用的默认模型；
+通过多智能体协作，你可以
+- 🌟 **精细地控制**哪些智能体会被微调；
+- ✨ 为「当前未被训练」的智能体明确定义其使用的默认模型；
 - ⚡ 在**不修改 Workflow 源码**的前提下，动态切换不同的可训练目标（trainable agent targets）。
 
 ### 1. 可训练开关与模型生命周期
 
 #### 模型多角色注册与使用
 
-在多 Agent 协作中，每个 Agent 拥有自己的「角色」。
+在多智能体协作中，每个智能体拥有自己的「角色」。
 
-在 Workflow 中，我们需要显式的注册待训练的 Agent 角色，并在创建 Agent 的时候显式的指明角色：
+在 Workflow 中，我们需要显式的注册待训练的智能体角色，并在创建智能体的时候显式的指明角色：
 
 - **注册（register）**：`model_tuner.register_model(agent_role, default_model=...)`
-  - 定义：向 Tuner 注册一个待训练的 Agent 角色，并指定该角色在未训练/不训练时的默认模型。
+  - 定义：向 Tuner 注册一个待训练的智能体角色，并指定该角色在未训练/不训练时的默认模型。
 - **使用（get/bind）**：`model_tuner.get_model(agent_role)`
-  - 定义：在构建 Agent 或执行 Workflow 时，根据 `agent_role` 返回该 Agent 的模型对象。
+  - 定义：在构建智能体或执行 Workflow 时，根据 `agent_role` 返回该智能体的模型对象。
 
 #### 可训练模型 vs 不可训练模型
 
-在 Workflow 中能够自由地控制每个 Agent 的训练状态。一个 Agent 是否参与训练由 Workflow 的 **`trainable_targets`** 声明决定：
+在 Workflow 中能够自由地控制每个智能体的训练状态。一个智能体是否参与训练由 Workflow 的 **`trainable_targets`** 声明决定：
 
 ```python
 class ExampleMathLearn(Workflow):
@@ -153,14 +153,14 @@ class ExampleMathLearn(Workflow):
     # ...
 ```
 
-- **可训练（trainable）**：如果 Agent（角色）在 `trainable_targets` 列表中，则设置可训练模型。
-- **不可训练（non-trainable）**：Agent（角色）不在 `trainable_targets` 列表中，则 Agent 将使用默认模型。
+- **可训练（trainable）**：如果智能体（角色）在 `trainable_targets` 列表中，则设置可训练模型。
+- **不可训练（non-trainable）**：智能体（角色）不在 `trainable_targets` 列表中，则智能体将使用默认模型。
 
-无论角色异同，所有 Agent（角色）共享一个模型实例。也就是具有相同参数的模型将分别扮演不同的角色。
+无论角色异同，所有智能体（角色）共享一个模型实例。也就是具有相同参数的模型将分别扮演不同的角色。
 
 ### 2. 升级为进阶 ASTuner Workflow
 
-本节通过一个简单的例子展示使用 `ModelTuner.register_model` 为不同角色注册「可训练模型」，并在构建 Agent 时以角色维度进行模型绑定。
+本节通过一个简单的例子展示使用 `ModelTuner.register_model` 为不同角色注册「可训练模型」，并在构建智能体时以角色维度进行模型绑定。
 
 - 先从一个基础的 AgentScope `ReActAgent` 开始：
 
@@ -173,7 +173,7 @@ agent_instance = ReActAgent(
 )
 ```
 
-- 为 Agent 声明一个角色标记（tag），并通过 `model_tuner.register_model` 指定该 Agent **在未被训练时**应当使用的默认模型：
+- 为智能体声明一个角色标记（tag），并通过 `model_tuner.register_model` 指定该智能体**在未被训练时**应当使用的默认模型：
 
 ```python
 agent_role = "TYPE-ZERO"
@@ -203,9 +203,9 @@ class ExampleMathLearn(Workflow):
         ... your agents and workflow here ...
 ```
 
-### 3. 一个多 Agent 示例
+### 3. 一个多智能体示例
 
-下面是一个多 Agent 场景的示例代码片段：
+下面是一个多智能体场景的示例代码片段：
 
 ```python
 roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
@@ -225,7 +225,7 @@ for i, role in enumerate(roles):
 
 在这里：
 
-- `role` 既描述了 Agent 在游戏中的身份（例如狼人、村民等），
+- `role` 既描述了智能体在游戏中的身份（例如狼人、村民等），
 - 又作为 `model_tuner.register_model` 的 key，标识一个**可训练目标**；
 - `chosen_model` 定义了该角色在「当前未训练」时所使用的默认底座模型；
-- 通过这种方式，可以在多 Agent 场景下灵活地指定和切换各角色的训练与推理行为。
+- 通过这种方式，可以在多智能体场景下灵活地指定和切换各角色的训练与推理行为。

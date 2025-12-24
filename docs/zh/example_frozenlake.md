@@ -4,9 +4,9 @@
 
 **Frozen Lake** 是一个经典的强化学习任务，来自 [Gymnasium](https://gymnasium.farama.org/environments/toy_text/frozen_lake/)。
 
-在该环境中，Agent 会被安排在一个随机生成的冰湖上，冰湖由安全的冰面（_），危险的冰洞（O）以及终点（G）组成，Agent 的位置用 P 表示。Agent 的目标是从 P 位置出发到达终点 G，并避开途中的冰洞。Agent 每次行动可以选择向上、下、左、右四个方向移动，但由于冰面的光滑特性，Agent 有一定概率会滑向非预期的方向。
+在该环境中，智能体会被安排在一个随机生成的冰湖上，冰湖由安全的冰面（_），危险的冰洞（O）以及终点（G）组成，智能体的位置用 P 表示。智能体的目标是从 P 位置出发到达终点 G，并避开途中的冰洞。智能体每次行动可以选择向上、下、左、右四个方向移动，但由于冰面的光滑特性，智能体有一定概率会滑向非预期的方向。
 
-本实例展示了如何创建一个可训练的 Agent 工作流来解决这一导航挑战。
+本实例展示了如何创建一个可训练的智能体工作流来解决这一导航挑战。
 
 ## 2. 快速开始
 
@@ -51,8 +51,8 @@ astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debu
 
 本示例将 Frozen Lake 环境封装为可训练的 `Workflow`：
 
-- Workflow 重置环境并将网格地图渲染为文本 observation，提供给 Agent。
-- Agent 读取 observation 并输出 `Up | Down | Left | Right` 中的一个动作。
+- Workflow 重置环境并将网格地图渲染为文本 observation，提供给智能体。
+-智能体读取 observation 并输出 `Up | Down | Left | Right` 中的一个动作。
 - 环境执行动作，返回新的 observation 与 reward。
 - 成功到达目标或超过最大步数则终止。
 
@@ -61,7 +61,7 @@ astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debu
 `tutorial/example_frozenlake/frozenlake_easy.yaml` / `frozenlake_hard.yaml` 中与本任务相关的关键字段包括：
 
 - `astuner.rollout.agentscope_workflow`： Workflow 入口，示例中为 `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`。
-- `astuner.rollout.multi_turn.max_steps`：单次 episode 的最大步数（Agent 与环境均使用）。
+- `astuner.rollout.multi_turn.max_steps`：单次 episode 的最大步数（智能体与环境均使用）。
 - `frozen_lake.frozen_lake_size`：地图大小（easy 为 4，hard 为 6）。
 - `frozen_lake.is_slippery`：是否启用打滑。
 
@@ -69,20 +69,20 @@ astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debu
 
 在 `tutorial/example_frozenlake/frozenlake.py` 中的 `FrozenLakeEnv` 类实现了对 Gymnasium Frozen Lake 环境的封装，主要对外提供 `step` 和 `reset` 两个方法。
 
-- `step` 方法会根据 Agent 的动作（action）返回环境的下一个状态（observation）、奖励（reward）、是否结束（done）以及其他辅助信息。
-    - observation: Agent 移动后冰湖的状态信息，使用字符串表示，例如:
+- `step` 方法会根据智能体的动作（action）返回环境的下一个状态（observation）、奖励（reward）、是否结束（done）以及其他辅助信息。
+    - observation:智能体移动后冰湖的状态信息，使用字符串表示，例如:
         ```
         _  _  G
         _  _  _
         P  O  O
         ```
-    - reward: Agent 每次移动获得的奖励，达到终点 G 时奖励为 1，否则为 0。
-    - done: 布尔值，如果 Agent 是否到达终点或掉入冰洞则为 True，否则为 False。
+    - reward:智能体每次移动获得的奖励，达到终点 G 时奖励为 1，否则为 0。
+    - done: 布尔值，如果智能体是否到达终点或掉入冰洞则为 True，否则为 False。
     - info: 其他辅助信息。
 
 - `reset` 方法可根据用户传入的参数重新生成冰湖环境。
 
-`tutorial/example_frozenlake/frozenlake.py` 中的 `FrozenLakeAgent` 类实现了 Agent 的决策逻辑，主要通过 `step` 方法接收当前环境状态（observation）作为输入，返回 Agent 选择的动作（action），其中的核心是一个 ReActAgent。
+`tutorial/example_frozenlake/frozenlake.py` 中的 `FrozenLakeAgent` 类实现了智能体的决策逻辑，主要通过 `step` 方法接收当前环境状态（observation）作为输入，返回智能体选择的动作（action），其中的核心是一个 ReActAgent。
 
 ```python
 class FrozenLakeAgent:
@@ -103,7 +103,7 @@ class FrozenLakeAgent:
         # Step 3: 解析响应并返回动作
 ```
 
-`tutorial/example_frozenlake/frozenlake.py` 中的 `FrozenLakeWorkflow` 类实现了环境和 Agent 的集成，主要通过 `execute` 方法对外提供训练/评估时的入口。
+`tutorial/example_frozenlake/frozenlake.py` 中的 `FrozenLakeWorkflow` 类实现了环境和 智能体 的集成，主要通过 `execute` 方法对外提供训练/评估时的入口。
 
 其中的核心流程如下：
 
