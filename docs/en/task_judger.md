@@ -97,7 +97,7 @@ Evaluates mathematical equations with partial credit for proper formatting.
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.countdown_answer_as_judge->CountdownAnswerAsJudge
+        judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
 ```
 
 **Scoring:**

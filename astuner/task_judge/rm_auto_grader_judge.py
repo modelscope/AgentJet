@@ -81,7 +81,7 @@ class AutoGraderJudge(BaseJudge):
     """
 
     def __init__(self, config):
-        """Initialize the RMAutoGraderJudge.
+        """Initialize the AutoGraderJudge.
 
         Args:
             config: Configuration object containing model and rubric generation settings
@@ -124,7 +124,7 @@ class AutoGraderJudge(BaseJudge):
         )
 
         logger.info(
-            f"RMAutoGraderJudge initialized with mode={self.generator_config.grader_mode.value}, "
+            f"AutoGraderJudge initialized with mode={self.generator_config.grader_mode.value}, "
             f"language={self.generator_config.language.value}"
         )
 

@@ -102,10 +102,10 @@ Each sample contains a query with multiple ranked candidates:
 ### 3. Basic Usage
 
 ```python
-from astuner.task_judge.rm_auto_grader_judge import RMAutoGraderJudge
+from astuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
 
 # Initialize judge
-judge = RMAutoGraderJudge(config)
+judge = AutoGraderJudge(config)
 
 # Generate rubrics (one-time setup)
 await judge.generate_rubrics_from_samples()
@@ -210,7 +210,7 @@ reference_samples = [
 ]
 
 # Initialize and generate rubrics
-judge = RMAutoGraderJudge(config)
+judge = AutoGraderJudge(config)
 await judge.generate_rubrics_from_samples(reference_samples)
 
 # Create test task and output
@@ -244,7 +244,7 @@ reference_samples = [
 ]
 
 # Initialize and generate rubrics
-judge = RMAutoGraderJudge(config)
+judge = AutoGraderJudge(config)
 await judge.generate_rubrics_from_samples(reference_samples)
 
 # Create test task with multiple candidates

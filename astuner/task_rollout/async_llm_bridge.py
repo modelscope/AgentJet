@@ -18,9 +18,9 @@ from astuner.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from astuner.schema.logprob import TokenAndProb
+from astuner.utils.async_utils import run_async_coroutine_with_timeout
 from astuner.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
 from astuner.utils.tokenizer import astune_apply_chat_template
-from astuner.utils.utils import run_async_coroutine_with_timeout
 
 
 class AsyncLlmBridge(object):
@@ -286,7 +286,9 @@ class AgentScopeLlmProxy(object):
 
         # run llm inference ✨
         llm_output = await asyncio.wait_for(
-            asyncio.to_thread(self.llm_inference_fn, converted_message, custom_sampling_params, tools),
+            asyncio.to_thread(
+                self.llm_inference_fn, converted_message, custom_sampling_params, tools
+            ),
             timeout=1800,
         )
 
