@@ -51,12 +51,12 @@ class DataGeneratorTaskReader(BaseTaskReader):
             "num_workers": getattr(reader_config.data_generation, "num_workers", 32),
             "query_reader_type": getattr(reader_config.data_generation.query_reader, "type", None),
             "document_reader": document_path_str,
-            "filter": {
+            "deduplication_filter": {
                 "similarity_threshold": getattr(
-                    reader_config.data_generation.filter.params, "similarity_threshold", None
+                    reader_config.data_generation.deduplication_filter.params, "similarity_threshold", None
                 ),
-                "db_path": getattr(reader_config.data_generation.filter.params, "db_path", None),
-                "model": getattr(reader_config.data_generation.filter.params, "model", None),
+                "db_path": getattr(reader_config.data_generation.deduplication_filter.params, "db_path", None),
+                "model": getattr(reader_config.data_generation.deduplication_filter.params, "model", None),
             },
         }
         cache_key_str = json.dumps(cache_config, sort_keys=True, ensure_ascii=False)
@@ -76,13 +76,16 @@ class DataGeneratorTaskReader(BaseTaskReader):
         self.lock = threading.Lock()
 
         # Initialize duplicate filter
-        self.duplicate_filter = DeduplicationFilter(
-            similarity_threshold=self.reader_config.data_generation.filter.params.similarity_threshold,
-            db_path=self.reader_config.data_generation.filter.params.db_path,
-            model=self.reader_config.data_generation.filter.params.model,
-            api_key=self.reader_config.data_generation.filter.params.api_key,
-            base_url=self.reader_config.data_generation.filter.params.base_url,
-        )
+        if self.reader_config.data_generation.deduplication_filter.enabled:
+            self.duplicate_filter = DeduplicationFilter(
+                similarity_threshold=self.reader_config.data_generation.deduplication_filter.params.similarity_threshold,
+                db_path=self.reader_config.data_generation.deduplication_filter.params.db_path,
+                model=self.reader_config.data_generation.deduplication_filter.params.model,
+                api_key=self.reader_config.data_generation.deduplication_filter.params.api_key,
+                base_url=self.reader_config.data_generation.deduplication_filter.params.base_url,
+            )
+        else:
+            self.duplicate_filter = None
         # Initialize task reader
         from astuner.task_reader import RouterTaskReader
 
@@ -211,7 +214,8 @@ class DataGeneratorTaskReader(BaseTaskReader):
                                 self.doc_tasks.extend(tasks)
 
                         pbar.update(1)
-            self.doc_tasks = self.duplicate_filter.filter(self.doc_tasks)
+            if self.duplicate_filter is not None:
+                self.doc_tasks = self.duplicate_filter.filter(self.doc_tasks)
             logger.info(f"Generated {len(self.doc_tasks)} document-based tasks")
 
             # Save doc_tasks as validation tasks cache
@@ -271,7 +275,8 @@ class DataGeneratorTaskReader(BaseTaskReader):
                                 self.new_tasks.append(new_task)
 
                         pbar.update(1)
-            self.new_tasks = self.duplicate_filter.filter(self.new_tasks)
+            if self.duplicate_filter is not None:
+                self.new_tasks = self.duplicate_filter.filter(self.new_tasks)
             logger.info(f"Generated {len(self.new_tasks)} augmented tasks")
 
             # Save training tasks
