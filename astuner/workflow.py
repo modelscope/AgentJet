@@ -9,11 +9,12 @@ from astuner.schema.task import WorkflowOutput, WorkflowTask
 class Workflow(BaseModel):
     model_config = {"extra": "allow"}
     name: str = Field(default="default_workflow", description="Name of the workflow.")
-    trainable_targets: List[str] = Field(default=[], description="List of agents to be fine-tuned.")
+    trainable_targets: List[str] | None = Field(
+        default=None,
+        description="List of agents to be fine-tuned. When None, all agents are trainable.",
+    )
 
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         """Run the workflow on a given task."""
         raise NotImplementedError
 

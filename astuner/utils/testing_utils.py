@@ -168,6 +168,14 @@ def update_benchmark_status(status, status_detail, append_log="", data_dashboard
 
 
 class BenchmarkProbe(BaseProbe):
+    """
+    A benchmark probe to test reward during training.
+    Major module input:
+        - self.reward_expectation: dict, key is step, value is [low, high] expected reward range
+        - self.reward_expectation_avg_window: int, number of steps to average reward over
+        - self.expected_train_time: int, expected training time in seconds
+    """
+
     def __init__(self):
         # fmt: off
         self.expected_train_time = 3600 * 24 # 24 hours

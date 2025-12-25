@@ -9,15 +9,19 @@ def is_timeline_mergeable(
     source_timeline: List[ExtendedMessage],
     target_timeline: List[ExtendedMessage],
     debug=False,
+    compare_level="text",  # "text" or "token"
 ) -> bool:
+    # compare_level = "text"  # relaxed compare with text, more easier to match, at very little cost
+    # compare_level = "token" # strict compare with token, cause less aggressive merging
+
     can_merge = False
-    compare_level = "text"  # relaxed compare with text, more easier to match, at very little cost
     if len(source_timeline) >= len(target_timeline):
         all_msg_match = True
         for i in range(len(target_timeline)):
             if compare_level == "text":
                 same = (
-                    # TODO: does not consider tools, may aggressively merge responses with different tool calls
+                    # TODO: currently does not consider tools, may aggressively merge responses with different tool calls
+                    # TODO: maybe we should give option for user to choose merging behavior
                     source_timeline[i].content_for_future
                     == target_timeline[i].content_for_future
                 )
@@ -31,6 +35,7 @@ def is_timeline_mergeable(
         if all_msg_match:
             can_merge = True
 
+    # developer only: code below is only for debugging (print a nice comparison table)
     if debug:
         debug_listofdict = []
         if len(source_timeline) >= len(target_timeline):
@@ -62,8 +67,10 @@ def toggle_author_and_mask(
     source_timeline: List[ExtendedMessage],
     target_timeline: List[ExtendedMessage],
 ) -> List[ExtendedMessage]:
-    # if any message in `target_timeline` is author == 'llm', but same-index message in `source_timeline` is author != 'llm'
+    # if any message in `target_timeline` is author == 'llm',
+    # but same-index message in `source_timeline` is author != 'llm'
     # change source_timeline's message author to 'llm'
+    # overwrite `token_arr` and `token_logprob_arr` accordingly
     for i in range(len(target_timeline)):
         if target_timeline[i].author == "llm" and source_timeline[i].author != "llm":
             source_timeline[i].author = target_timeline[i].author
@@ -76,12 +83,16 @@ def toggle_author_and_mask(
 def merge_tracker_timelines(
     timelines: List[List[ExtendedMessage]],
 ) -> List[List[ExtendedMessage]]:
+    """Merge multiple timelines by absorbing those that can be merged.
+    > Input:  a list of timelines. (a timeline means: List[ExtendedMessage])
+    > Output: a shorter list of timelines after merging
+    """
     absorbed_step_indices = []
     reversed_timelines = list(reversed(timelines))
     for i in range(len(reversed_timelines)):
         if i in absorbed_step_indices:
             continue
-        # check whether [i, len(reversed_timelines)-1] can be merged
+        # check whether [i, i+1, ..., ..., len(reversed_timelines)-1] can be merged
         for j in range(i + 1, len(reversed_timelines)):
             if j in absorbed_step_indices:
                 continue

@@ -133,7 +133,9 @@ def verify_python_env(args):
             time.sleep(5)
             raise ImportError(cause + " " + solution)
     elif args.backbone == "verl":
-        if not verl.__version__.startswith("0.5.0.post"):
+        if not verl.__version__.startswith(
+            "0.5.0.post"
+        ):  # you must install via `pip install -e .[verl]` to get every dependency right
             cause = "Python environment does not match current backbone 'verl'."
             solution = "Please `cd /path/to/project/agentscope-tuner` and run `(uv) pip install -e .[verl]` to install the correct environment."
             print_dict(
