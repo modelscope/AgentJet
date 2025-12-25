@@ -22,6 +22,7 @@ from astuner.cli.launcher import (
     get_backbone_target,
     setup_environment_vars,
 )
+from astuner.default_config.astune_default import Config
 from astuner.utils.config_utils import (
     expand_astune_hierarchical_config,
     prepare_experiment_config,
@@ -42,7 +43,8 @@ class AstunerJob:
         algorithm: Optional[str] = None,
     ) -> None:
         self.backbone = backbone
-        self.config = self.build_job_from_yaml(None)
+        self.config_as_dict: dict = self.build_job_from_yaml(None)
+        self.config_as_dataclass = Config.update_from_dict_recursive(Config(), self.config_as_dict)
         self.config["astuner"]["backbone"] = self.backbone
         self.config["astuner"]["model"]["path"] = model
         self.config["astuner"]["trainer_common"]["n_gpus_per_node"] = n_gpu
