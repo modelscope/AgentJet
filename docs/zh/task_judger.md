@@ -20,8 +20,8 @@ Task Judger 会评估智能体的执行结果，并返回两个值：
 所有 Task Judger 都继承自 `BaseJudge`，并实现 `compute_reward` 方法：
 
 ```python
-from astuner.task_judge.base_judge import BaseJudge
-from astuner.workflow import WorkflowOutput, WorkflowTask
+from agentscope_tuner.task_judge.base_judge import BaseJudge
+from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
 class BaseJudge:
     def __init__(self, config):
@@ -130,7 +130,7 @@ astuner:
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
 ```
 
 **工作原理：**
@@ -229,8 +229,8 @@ astuner:
 
 ```python
 import re
-from astuner.task_judge.base_judge import BaseJudge
-from astuner.workflow import WorkflowOutput, WorkflowTask
+from agentscope_tuner.task_judge.base_judge import BaseJudge
+from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
 class MyCustomJudge(BaseJudge):
     def __init__(self, config):
@@ -307,7 +307,7 @@ class MyWorkflow(Workflow):
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.<module>-><ClassName>
+    judge_protocol: agentscope_tuner.task_judge.<module>-><ClassName>
 ```
 
 ### 使用 Auto Grader

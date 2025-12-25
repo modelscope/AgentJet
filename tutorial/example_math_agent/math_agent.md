@@ -122,7 +122,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --
             "name": "Python Debugger: Launch rollout",
             "type": "debugpy",
             "request": "launch",
-            "program": "astuner/cli/launcher.py",
+            "program": "agentscope_tuner/cli/launcher.py",
             "console": "integratedTerminal",
             "args": [
                 "--backbone",  "debug",

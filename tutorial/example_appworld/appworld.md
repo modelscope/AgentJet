@@ -66,7 +66,7 @@ astuner
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
-    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -96,7 +96,7 @@ clear && astuner --conf tutorial/example_appworld/appworld.yaml --backbone='debu
             "name": "Python Debugger: Launch rollout",
             "type": "debugpy",
             "request": "launch",
-            "program": "astuner/cli/launcher.py",
+            "program": "agentscope_tuner/cli/launcher.py",
             "console": "integratedTerminal",
             "args": [
                 "--backbone",  "debug",

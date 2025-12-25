@@ -116,8 +116,8 @@ astuner:
 
 #### 方式2：单独运行生成脚本
 ```python
-from astuner.data_generator.config import *
-from astuner.task_reader.data_generator_reader import DataGeneratorTaskReader
+from agentscope_tuner.data_generator.config import *
+from agentscope_tuner.task_reader.data_generator_reader import DataGeneratorTaskReader
 
 def run():
     config = TaskReaderConfig(

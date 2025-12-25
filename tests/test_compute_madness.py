@@ -1,6 +1,9 @@
-import pytest
+# flake8: noqa
 
-from astuner.utils.compute_madness import compute_string_madness, compute_string_madness_format
+from agentscope_tuner.utils.compute_madness import (
+    compute_string_madness,
+    compute_string_madness_format,
+)
 
 
 def test_compute_string_madness_examples():
@@ -37,9 +40,14 @@ def test_compute_string_madness_examples():
         == 0
     )
 
-    assert compute_string_madness("""
+    assert (
+        compute_string_madness(
+            """
         Hello <|im_start|> world!
-    """) == -1
+    """
+        )
+        == -1
+    )
 
     assert (
         compute_string_madness(

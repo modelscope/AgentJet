@@ -14,7 +14,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 * 然后，使用下面的最小示例来调优你的第一个模型（假设你已经编写了一个名为 `MathToolWorkflow` 的智能体）。
 
   ```python
-  from astuner import AstunerJob
+  from agentscope_tuner import AstunerJob
   from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
   model_path = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct"
   job = AstunerJob(n_gpu=8, algorithm='grpo', model=model_path)

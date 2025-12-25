@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from astuner.utils.dynamic_import import dynamic_import
+from agentscope_tuner.utils.dynamic_import import dynamic_import
 
 
 class TestDynamicImport(unittest.TestCase):

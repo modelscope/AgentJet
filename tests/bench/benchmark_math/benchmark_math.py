@@ -2,7 +2,7 @@
 import os
 import time
 
-from astuner.utils.testing_utils import BenchmarkProbe, singleton
+from agentscope_tuner.utils.testing_utils import BenchmarkProbe, singleton
 
 
 @singleton

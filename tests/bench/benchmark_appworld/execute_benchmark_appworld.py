@@ -1,7 +1,6 @@
 import os
 import subprocess
 import time
-import unittest
 
 from loguru import logger
 
@@ -55,7 +54,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
 
     def clear_system_processes(self):
         # kill all python + ray + vllm processes
-        from astuner.utils.cleaner import fast_kill_by_keyword_bash
+        from agentscope_tuner.utils.cleaner import fast_kill_by_keyword_bash
 
         total_seconds = 15
         for i in range(total_seconds):

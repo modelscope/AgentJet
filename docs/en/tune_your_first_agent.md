@@ -43,9 +43,9 @@ astuner:
 # ------------------ No need to modify ------------------
 hydra:
   searchpath:
-    - file://astuner/default_config
-    - file://astuner/default_config/verl         # verl only
-    - file://astuner/default_config/trinity      # trinity only
+    - file://agentscope_tuner/default_config
+    - file://agentscope_tuner/default_config/verl         # verl only
+    - file://agentscope_tuner/default_config/trinity      # trinity only
 
 # ------------------ No need to modify ------------------
 defaults:
@@ -142,7 +142,7 @@ With this code, we quickly define a complete ReAct agent:
 Next, we implement the remaining code for training this agent:
 
 ```python
-from astuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+from agentscope_tuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
 

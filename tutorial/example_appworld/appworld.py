@@ -1,15 +1,13 @@
 from agentscope.message import Msg
 from pydantic import Field
 
-from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 class ExampleAgentScopeWorkflow(Workflow):
     trainer: str = Field(default="astuner-trinity")
 
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory

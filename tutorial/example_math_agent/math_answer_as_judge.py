@@ -1,8 +1,8 @@
 import re
 
-from astuner.task_judge.base_judge import BaseJudge
-from astuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
-from astuner.workflow import WorkflowOutput, WorkflowTask
+from agentscope_tuner.task_judge.base_judge import BaseJudge
+from agentscope_tuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
+from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
 
 class MathAnswerAsJudge(BaseJudge):

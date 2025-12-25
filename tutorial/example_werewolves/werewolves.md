@@ -67,7 +67,7 @@
                 "name": "Python Debugger: Launch rollout",
                 "type": "debugpy",
                 "request": "launch",
-                "program": "astuner/cli/launcher.py",
+                "program": "agentscope_tuner/cli/launcher.py",
                 "console": "integratedTerminal",
                 "args": [
                     "--backbone",  "debug",

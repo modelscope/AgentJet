@@ -22,11 +22,11 @@ astuner:
     max_num_seqs: 40
     multi_turn:
       max_sample_per_task: 2
-    
+
     compute_madness_checklist:
       - "nonsense"
     agent_madness_reward: 0.0
-    
+
     max_response_length_in_one_turn: 1024
     max_model_len: 10000
     n_vllm_engine: 2
@@ -56,9 +56,9 @@ trinity:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astuner/default_config
-    - file://astuner/default_config/verl         # verl only
-    - file://astuner/default_config/trinity      # trinity only
+    - file://agentscope_tuner/default_config
+    - file://agentscope_tuner/default_config/verl         # verl only
+    - file://agentscope_tuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:

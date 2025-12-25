@@ -20,9 +20,9 @@ from rm_gallery.core.generator.iterative_rubric.query_rubric_generator import (
     POINTWISE_EVALUATION_TEMPLATE,
 )
 
-from astuner.schema.task import Task
-from astuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
-from astuner.workflow import WorkflowOutput, WorkflowTask
+from agentscope_tuner.schema.task import Task
+from agentscope_tuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
+from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
 # ============================================
 # Example 1: Pre-generated Rubrics Approach

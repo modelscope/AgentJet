@@ -102,7 +102,7 @@ Each sample contains a query with multiple ranked candidates:
 ### 3. Basic Usage
 
 ```python
-from astuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
+from agentscope_tuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
 
 # Initialize judge
 judge = AutoGraderJudge(config)

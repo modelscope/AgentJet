@@ -115,7 +115,7 @@ astuner:
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评估函数
-    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # ✨✨✨✨ 设置需要训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
