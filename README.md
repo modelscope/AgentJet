@@ -18,7 +18,7 @@ Let's begin with the simplest example: a math agent with a tool call.
 - First, please check out the [installation guide](docs/en/installation.md) to set up the training environment.
 - Then, tune your first model using the minimum example below (suppose you have written an Agent called `MathToolWorkflow`).
   ```python
-  from astuner import AstunerJob
+  from agentscope_tuner import AstunerJob
   from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
   model_path = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct"
   job = AstunerJob(n_gpu=8, algorithm='grpo', model=model_path)
@@ -51,7 +51,7 @@ For advanced researchers, ASTuner also provides high-resolution logging and debu
 
 ### Getting Started: Installation
 
-There are many options to install ASTuner. Please refer to [`installation.md`](docs/en/installation.md) for detailed guidelines. Here we demonstrate how to install ASTuner using uv.
+There are many options to install AgentScope-Tuner (ASTuner). Please refer to [`installation.md`](docs/en/installation.md) for detailed guidelines. Here we demonstrate how to install ASTuner using uv.
 
 1. Clone the Repository.
 Clone the AgentScope Tuner repository from GitHub and navigate into the project directory:

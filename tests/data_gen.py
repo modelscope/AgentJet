@@ -4,11 +4,11 @@ import unittest
 import dotenv
 from loguru import logger
 
-from astuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
-from astuner.data_generator.task_augmentation import TaskAugmentor
-from astuner.task_reader import RouterTaskReader
-from astuner.task_reader.document_reader.doc_reader import DocReader
-from astuner.utils.config_utils import read_astune_config
+from agentscope_tuner.data_generator.knowledge_augmentation import KnowledgeAugmentor
+from agentscope_tuner.data_generator.task_augmentation import TaskAugmentor
+from agentscope_tuner.task_reader import RouterTaskReader
+from agentscope_tuner.task_reader.document_reader.doc_reader import DocReader
+from agentscope_tuner.utils.config_utils import read_astune_config
 
 dotenv.load_dotenv()
 

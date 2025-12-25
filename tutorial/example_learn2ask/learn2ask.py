@@ -1,11 +1,11 @@
 import re
 import time
+
 from agentscope.message import Msg
 from loguru import logger
-import asyncio
 
-from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
-from astuner.utils.robust_dashscope import RobustDashScopeChatModel
+from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from agentscope_tuner.utils.robust_dashscope import RobustDashScopeChatModel
 
 system_prompt = """# Task
 You are a medical assistant. Your task is to understand the ongoing conversation and continue the medical inquiry in English.
@@ -78,8 +78,7 @@ async def llm_reward(init_messages: list[Msg], response: str, truth_info: str):
             result[tag] = value
         return result
 
-    history = format_messages(
-        []+init_messages+[Msg("assistant", response, role="assistant")])
+    history = format_messages([] + init_messages + [Msg("assistant", response, role="assistant")])
     messages = [
         {"role": "system", "content": reward_prompt.format(truth_info)},
         {"role": "user", "content": history},
@@ -88,18 +87,18 @@ async def llm_reward(init_messages: list[Msg], response: str, truth_info: str):
     try_count, max_retries = 0, 5
     while try_count <= max_retries:
         try:
+
             async def get_content():
                 from agentscope.model import ChatResponse
+
                 response = await llm(messages)
 
                 if isinstance(response, ChatResponse):
-                    res = ''.join([x['text']
-                                  for x in response.content if 'text' in x])
+                    res = "".join([x["text"] for x in response.content if "text" in x])
                 else:
-                    res = ''
+                    res = ""
                     async for chunk in response:
-                        res += ''.join([x['text']
-                                       for x in chunk.content if 'text' in x])
+                        res += "".join([x["text"] for x in chunk.content if "text" in x])
                 return res
 
             content = await get_content()
@@ -138,9 +137,7 @@ async def reward_fn(init_messages: list[Msg], response: str, truth_action: str, 
         action_score, format_score, content_score = 0.0, 0.0, 0.0
 
     # treat as self.train_mode == "Ra+Rs", the default setting
-    final_reward = (
-        action_score * (1 + 2 * content_score) + format_score
-    )
+    final_reward = action_score * (1 + 2 * content_score) + format_score
 
     return final_reward
 
@@ -148,17 +145,15 @@ async def reward_fn(init_messages: list[Msg], response: str, truth_action: str, 
 class ExampleLearn2Ask(Workflow):
     name: str = "math_agent_workflow"
 
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
 
         messages = workflow_task.task.init_messages
         assert isinstance(messages, list)
-        truth_action = workflow_task.task.metadata['decision_truth'] or 'continue'
-        truth_info = workflow_task.task.metadata['info_truth']
+        truth_action = workflow_task.task.metadata["decision_truth"] or "continue"
+        truth_info = workflow_task.task.metadata["info_truth"]
 
         self.agent = ReActAgent(
             name="math_react_agent",
@@ -172,13 +167,13 @@ class ExampleLearn2Ask(Workflow):
         self.agent.set_console_output_enabled(False)
         msg = [
             # Msg("system", system_prompt, role="system"),
-            *[Msg(name=x['role'],content=x['content'],role=x['role']) for x in messages]
+            *[Msg(name=x["role"], content=x["content"], role=x["role"]) for x in messages]
         ]
         result = await self.agent.reply(msg)
-        if isinstance(result.content,str):
+        if isinstance(result.content, str):
             response = result.content
-        elif isinstance(result.content,list):
-            response = result.content[0]['text'] # type: ignore
+        elif isinstance(result.content, list):
+            response = result.content[0]["text"]  # type: ignore
         else:
             raise NotImplementedError(f"do not know how to handle {type(result.content)}")
         reward = await reward_fn(msg, response, truth_action, truth_info)

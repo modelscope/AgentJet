@@ -1,4 +1,4 @@
-from astuner import AstunerJob
+from agentscope_tuner import AstunerJob
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct"

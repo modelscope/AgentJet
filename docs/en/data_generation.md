@@ -4,7 +4,7 @@
 `Data Generation Reader` provides an intelligent data generation method designed to simplify the creation of high-quality training data. The method is flexible and efficient, capable of generating domain-specific tasks based on few-shot examples and optional documents.
 
 ## Method
-`Data Generation Reader` employs a two-stage task generation process: 
+`Data Generation Reader` employs a two-stage task generation process:
 
 ### Stage 1 (Optional): Document-based Data Generation
 This stage is optional. `Document-based Data Generation` generates knowledge-based tasks based on the provided documents. Users can provide one or more documents (supporting formats like PDF, Word, TXT, etc.):
@@ -58,14 +58,14 @@ These examples will be merged with the tasks generated in the first stage to for
 `Data Generation Reader` can load a few user-provided tasks and optional documents (in various formats such as PDF, Word, and TXT) from a local path, then generates tasks and loads them as training tasks.
 
 ### Step 1: Prepare data
-Provide a few example tasks: 
+Provide a few example tasks:
 
 ```json
 {"main_query": "What is the capital of France?", "answer": "..."}
 {"main_query": "How to cook pasta?", "answer": "..."}
 ```
 
-(Optional) Provide documents and place them in the specified directory: 
+(Optional) Provide documents and place them in the specified directory:
 
 ```bash
 mkdir -p dataset/document
@@ -116,8 +116,8 @@ astuner:
 
 #### Method 2: Run the Generation Script
 ```python
-from astuner.data_generator.config import *
-from astuner.task_reader.data_generator_reader import DataGeneratorTaskReader
+from agentscope_tuner.data_generator.config import *
+from agentscope_tuner.task_reader.data_generator_reader import DataGeneratorTaskReader
 
 def run():
     config = TaskReaderConfig(

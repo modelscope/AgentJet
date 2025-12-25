@@ -5,9 +5,12 @@ from typing import Callable, List, Optional
 
 from beast_logger import print_dict
 
-from astuner.utils.dynamic_import import dynamic_import
-from astuner.utils.smart_daemon import LaunchCommandWhenAbsent
-from astuner.utils.testing_utils import populate_test_env_metadata, send_test_result
+from agentscope_tuner.utils.dynamic_import import dynamic_import
+from agentscope_tuner.utils.smart_daemon import LaunchCommandWhenAbsent
+from agentscope_tuner.utils.testing_utils import (
+    populate_test_env_metadata,
+    send_test_result,
+)
 
 
 class BenchmarkTestCase(unittest.TestCase):
@@ -51,7 +54,7 @@ class BenchmarkTestCase(unittest.TestCase):
         cmd = [
             python_executable,
             "-m",
-            "astuner.cli.launcher",
+            "agentscope_tuner.cli.launcher",
             "--conf",
             test_target,
             "--backbone",

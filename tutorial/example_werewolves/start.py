@@ -17,7 +17,7 @@ from agentscope.model import DashScopeChatModel, OpenAIChatModel
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 from tutorial.example_werewolves.game import BadGuyException, werewolves_game
 
 
@@ -86,9 +86,7 @@ class ExampleWerewolves(Workflow):
         default=["werewolf"], description="List of agents to be fine-tuned."
     )
 
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         # ensure trainable targets is legal
         if "werewolf" in self.trainable_targets:
             assert len(self.trainable_targets) == 1, "Cannot train hostile roles simultaneously."

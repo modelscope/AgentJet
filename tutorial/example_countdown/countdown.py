@@ -1,9 +1,7 @@
-import json
-
 from agentscope.message import Msg
 from loguru import logger
 
-from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 def extract_final_answer(result) -> str:
@@ -37,9 +35,7 @@ You should return your final answer within \\boxed{{}}, for example \\boxed{{(1 
 class ExampleCountdownLearn(Workflow):
     name: str = "countdown_agent_workflow"
 
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
@@ -51,7 +47,7 @@ class ExampleCountdownLearn(Workflow):
         nums = query_data.get("nums")
 
         # Format the query
-        nums_str = ", ".join(map(str, nums))    # type: ignore
+        nums_str = ", ".join(map(str, nums))  # type: ignore
         query = f"Target number: {target}\nAvailable numbers: {nums_str}\n\nPlease find a way to reach the target number using the available numbers."
 
         self.agent = ReActAgent(

@@ -3,7 +3,7 @@ import unittest
 
 import yaml
 
-from astuner.utils.config_utils import (
+from agentscope_tuner.utils.config_utils import (
     align_parameters,
     expand_astune_hierarchical_config,
     prepare_experiment_config,
@@ -32,7 +32,7 @@ class TestConfigUtils(unittest.TestCase):
         from_config_fp = "tests/data/config.yaml"
         # Fixed config asset locations
         TRINITY_CONFIG_AUTO_CONVERSION = (
-            "astuner/default_config/trinity/config_auto_convertion_trinity.jsonc"
+            "agentscope_tuner/default_config/trinity/config_auto_convertion_trinity.jsonc"
         )
 
         with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:
@@ -74,7 +74,7 @@ class TestConfigUtils(unittest.TestCase):
         from_config_fp = "tests/data/config.yaml"
         # Fixed config asset locations
         TRINITY_CONFIG_AUTO_CONVERSION = (
-            "astuner/default_config/verl/config_auto_convertion_verl.jsonc"
+            "agentscope_tuner/default_config/verl/config_auto_convertion_verl.jsonc"
         )
 
         with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:

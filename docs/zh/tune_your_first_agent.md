@@ -43,9 +43,9 @@ astuner:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astuner/default_config
-    - file://astuner/default_config/verl         # verl only
-    - file://astuner/default_config/trinity      # trinity only
+    - file://agentscope_tuner/default_config
+    - file://agentscope_tuner/default_config/verl         # verl only
+    - file://agentscope_tuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
@@ -138,7 +138,7 @@ ReActAgent(
 接下来，我们实现训练该智能体的其余代码：
 
 ```python
-from astuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+from agentscope_tuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
 

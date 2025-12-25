@@ -149,7 +149,7 @@ astuner:
     # options: 'customized_protocol', 'rubrics_auto_grader'
     judge_type: customized_protocol
     # the package path to judge (reward) function
-    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
     # LLM, which may be used by judge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
@@ -458,7 +458,7 @@ astuner:
   task_judge:
     judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
     # the package path to judge (reward) function
-    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
 
     # the helper LLM model used for LLM-AS-Judge
     alien_llm_model: qwen3-235b-a22b-instruct-2507

@@ -20,8 +20,8 @@ These values guide the RL training process, helping agents learn which behaviors
 All Task Judgers inherit from `BaseJudge` and implement the `compute_reward` method:
 
 ```python
-from astuner.task_judge.base_judge import BaseJudge
-from astuner.workflow import WorkflowOutput, WorkflowTask
+from agentscope_tuner.task_judge.base_judge import BaseJudge
+from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
 class BaseJudge:
     def __init__(self, config):
@@ -130,7 +130,7 @@ Delegates evaluation to an external environment service, useful for complex inte
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
 ```
 
 **How it works:**
@@ -152,8 +152,8 @@ For specialized evaluation needs, create your own judger by inheriting `BaseJudg
 Create a new file (e.g., `tutorial/my_task/my_judge.py`):
 
 ```python
-from astuner.task_judge.base_judge import BaseJudge
-from astuner.workflow import WorkflowOutput, WorkflowTask
+from agentscope_tuner.task_judge.base_judge import BaseJudge
+from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
 class MyCustomJudge(BaseJudge):
     def __init__(self, config):
@@ -213,5 +213,5 @@ class MyWorkflow(Workflow):
 astuner:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: astuner.task_judge.<module>-><ClassName>
+    judge_protocol: agentscope_tuner.task_judge.<module>-><ClassName>
 ```

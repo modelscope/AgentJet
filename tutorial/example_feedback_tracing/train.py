@@ -6,7 +6,7 @@ from agentscope.tool import Toolkit, execute_python_code
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 SYSTEM_PROMPT = """
 You are an agent specialized in solving math problems with tools.
@@ -44,9 +44,7 @@ class FinalResult(BaseModel):
 class ExampleTracingFeedbackTrain(Workflow):
     name: str = "tracing_feedback_train"
 
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         query = workflow_task.task.main_query
 
         tool_kit = Toolkit()

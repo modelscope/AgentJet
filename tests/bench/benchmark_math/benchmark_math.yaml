@@ -62,9 +62,9 @@ trinity:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astuner/default_config
-    - file://astuner/default_config/verl         # verl only
-    - file://astuner/default_config/trinity      # trinity only
+    - file://agentscope_tuner/default_config
+    - file://agentscope_tuner/default_config/verl         # verl only
+    - file://agentscope_tuner/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:

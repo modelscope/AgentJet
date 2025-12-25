@@ -18,7 +18,7 @@ from agentscope.message import Msg
 from gymnasium.envs.toy_text.frozen_lake import FrozenLakeEnv as GymFrozenLakeEnv
 from loguru import logger
 
-from astuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 SYSTEM_PROMPT = """You are a helpful assistant. You are walking on a frozen lake.
 
@@ -50,9 +50,7 @@ Please show your thinking process and put the final action in ``` ```. In every 
 
 
 class FrozenLakeWorkflow(Workflow):
-    async def execute(
-        self, workflow_task: WorkflowTask, model_tuner: ModelTuner
-    ) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         config = model_tuner.config
 
         self.env_max_steps = config.astuner.rollout.multi_turn.max_steps
