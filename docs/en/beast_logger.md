@@ -21,7 +21,15 @@ Here is how to use beast-logger in agentscope-tuner.
 <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i4/O1CN01kfiOlZ1SRnsq7NZLP_!!6000000002244-2-tps-1414-968.png"/>
 </div>
 
-5. Fill the **ABSOLUTE** path of the log files and click `submit`. (Beast-logger recursively scans this path and, where possible, selects the innermost directory containing the fewest files)
+5. Fill the **ABSOLUTE** path of the log files and click `submit`.
+
+    > Hint: absolute path is recommended.
+    >
+    > However, you can also use relative path, if `beast_logger_go` command is launched at same working dir.
+
+    > Warning: Beast-logger recursively scans this path,
+    >
+    > thus, where possible, selects the innermost directory containing the fewest files to read logs faster.
 
 <div align="center">
 <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i3/O1CN01v6EZUi1wSf6BZrXWW_!!6000000006307-2-tps-1864-946.png"/>
