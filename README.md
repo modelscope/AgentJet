@@ -124,6 +124,7 @@ ASTuner is a constantly evolving project. We are planning to add the following f
 
 - [ ] Advanced LLM-based multi-agent reinforcement learning.
 - [ ] Training dataset generation from few-shot samples.
+- [ ] Prompt tuning.
 - [ ] Multi-modal training support.
 - [ ] Cross-process Tuner wrapper to pass though process forking.
 - [ ] Providing training → user feedback → data augmentation → retraining data flywheel example.
