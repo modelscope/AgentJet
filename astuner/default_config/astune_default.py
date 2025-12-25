@@ -1,51 +1,58 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 @dataclass
 class AstunerAlgorithm:
-    adv_estimator: Optional[str] = None
+    adv_estimator: str = "grpo"
 
 
 @dataclass
 class AstunerTrainerCommon:
-    n_gpus_per_node: Optional[int] = None
+    n_gpus_per_node: int = 8
     algorithm: AstunerAlgorithm = field(default_factory=AstunerAlgorithm)
 
 
 @dataclass
 class AstunerModel:
-    path: Optional[str] = None
+    path: str = "/path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct"
 
 
 @dataclass
 class AstunerData:
-    max_prompt_length: Optional[int] = None
-    max_response_length: Optional[int] = None
-    train_batch_size: Optional[int] = None
+    max_prompt_length: int = 3000
+    max_response_length: int = 15000
+    train_batch_size: int = 32
 
 
 @dataclass
 class AstunerRollout:
-    agentscope_workflow: Optional[str] = None
+    agentscope_workflow: str = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"
+
+
+@dataclass
+class HuggingfaceDatRepo:
+    dataset_path: str = "gsm8k"
+    training_split: str = "train"
+    validation_split: str = "validation"
 
 
 @dataclass
 class AstunerTaskReader:
-    type: Optional[str] = None
-    huggingface_dat_repo: Optional[Dict[str, Any]] = field(default_factory=dict)
+    type: str = "huggingface_dat_repo"
+    huggingface_dat_repo: HuggingfaceDatRepo = field(default_factory=HuggingfaceDatRepo)
 
 
 @dataclass
 class AstunerDefaultConfig:
-    project_name: Optional[str] = None
-    experiment_name: Optional[str] = None
-    experiment_dir: Optional[str] = None
-    backbone: Optional[str] = None
+    project_name: str = "astune_default_project"
+    experiment_name: str = "read_yaml_name"
+    experiment_dir: str = "auto"
+    backbone: str = "debug"
 
     model: AstunerModel = field(default_factory=AstunerModel)
     data: AstunerData = field(default_factory=AstunerData)
-    rollout: Optional[AstunerRollout] = field(default_factory=AstunerRollout)
+    rollout: AstunerRollout = field(default_factory=AstunerRollout)
     trainer_common: AstunerTrainerCommon = field(default_factory=AstunerTrainerCommon)
     task_reader: AstunerTaskReader = field(default_factory=AstunerTaskReader)
 
@@ -54,31 +61,41 @@ class AstunerDefaultConfig:
 class Config:
     astuner: AstunerDefaultConfig = field(default_factory=AstunerDefaultConfig)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert the dataclass to a dictionary."""
-        from dataclasses import asdict
+    @staticmethod
+    def _to_dict(obj: Any) -> Any:
+        """Recursively convert dataclass objects to dictionaries."""
+        result = {}
+        for key, value in obj.__dict__.items():
+            if hasattr(value, "__dataclass_fields__"):
+                result[key] = Config._to_dict(value)
+            else:
+                result[key] = value
+        return result
 
-        return asdict(self)
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the dataclass to a dictionary, including extra attributes."""
+        return Config._to_dict(self)
 
     @staticmethod
-    def update_from_dict_recursive(config_as_dataclass, config_as_dict: Dict[str, Any]) -> None:
+    def update_from_dict_recursive(config_as_dataclass, config_as_dict: Dict[str, Any]) -> "Config":
         # read and assign
         for key in config_as_dict.keys():
             target_value = config_as_dict[key]
             if isinstance(target_value, dict):
                 if hasattr(config_as_dataclass, key):
-                    setattr(
-                        config_as_dataclass,
-                        key,
-                        Config.update_from_dict_recursive(
-                            getattr(config_as_dataclass, key), target_value
-                        ),
-                    )
+                    if isinstance(getattr(config_as_dataclass, key), dict):
+                        setattr(config_as_dataclass, key, target_value)
+                        continue
+                    else:
+                        setattr(
+                            config_as_dataclass,
+                            key,
+                            Config.update_from_dict_recursive(
+                                getattr(config_as_dataclass, key), target_value
+                            ),
+                        )
                 else:
                     setattr(config_as_dataclass, key, target_value)
             else:
-                if hasattr(config_as_dataclass, key):
-                    setattr(config_as_dataclass, key, target_value)
-                else:
-                    setattr(config_as_dataclass, key, target_value)
+                setattr(config_as_dataclass, key, target_value)
         return config_as_dataclass
