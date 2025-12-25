@@ -8,6 +8,7 @@ from astuner.context_tracker.basic_tracker import BaseContextTracker
 from astuner.schema.task import WorkflowTask
 from astuner.schema.trajectory import Reward
 from astuner.utils.dynamic_import import dynamic_import
+
 from .base_runner import BaseAgentRunner
 
 
@@ -72,7 +73,6 @@ class AgentScopeRunner(BaseAgentRunner):
         )
         context_tracker.process_reward(reward)
         # generate token before merging
-        context_tracker.remove_last_context()
         context_tracker.task_id = task_id
         context_tracker.task_tag = task_tag
         context_tracker.group_merge()

@@ -166,8 +166,11 @@ class ModelTuner(DashScopeChatModel):
         return response_gen
 
     def is_trainable(self, target_name) -> bool:
-        if not self.agentscope_workflow.trainable_targets:
+        if self.agentscope_workflow.trainable_targets is None:
             # always assume trainable when user has never changed trainable_targets
+            return True
+        if not self.agentscope_workflow.trainable_targets:
+            # always assume trainable when trainable_targets is []
             return True
         if target_name in self.agentscope_workflow.trainable_targets:
             return True

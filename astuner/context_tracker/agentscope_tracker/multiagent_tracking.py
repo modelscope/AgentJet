@@ -197,7 +197,7 @@ class MultiAgentContextTracker(BaseContextTracker):
                 token_logprob_arr,
                 loss_mask,
                 lack_normal_eos,
-            ) = self.get_token_inc_from_vllm_response(input_msg_ref, llm_output, tools=tools)
+            ) = self.get_token_inc_from_llm_response(input_msg_ref, llm_output, tools=tools)
             llm_ext_msg.token_arr = precise_manual_token
             llm_ext_msg.token_logprob_arr = token_logprob_arr
             llm_ext_msg.lack_normal_eos = lack_normal_eos
@@ -348,9 +348,9 @@ class MultiAgentContextTracker(BaseContextTracker):
             text_arr = [self.tokenizer.decode(t) for t in tracker_tokenized["input_ids"]]
             input_id_arr = [str(t) for t in tracker_tokenized["input_ids"]]
             # loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in tracker_tokenized["loss_mask"]]
-            logprobs = [INVALID_LOG_PROB_VALUE] * len(tracker_tokenized["prompt_ids"]) + tracker_tokenized[
-                "response_logprobs"
-            ]
+            logprobs = [INVALID_LOG_PROB_VALUE] * len(
+                tracker_tokenized["prompt_ids"]
+            ) + tracker_tokenized["response_logprobs"]
             # Create adjusted color array
             loss_mask_color_abl_arr = [
                 (
