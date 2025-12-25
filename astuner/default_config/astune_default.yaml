@@ -85,7 +85,7 @@ astuner:
 
 
   task_reader:
-    type: env_service # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
+    type: huggingface_dat_repo # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
     # when `type == jsonl_dataset_file`
     jsonl_dataset_file:
       training:

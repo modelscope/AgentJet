@@ -11,7 +11,7 @@ import os
 import tempfile
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Union
 
 import ray
 import yaml
@@ -37,46 +37,46 @@ class AstunerJob:
 
     def __init__(
         self,
-        backbone: Optional[str] = "trinity",
-        model: Optional[str] = None,
-        n_gpu: Optional[int] = None,
-        algorithm: Optional[str] = None,
+        backbone: str = "trinity",
+        model: str = "Qwen/Qwen2___5-7B-Instruct",
+        n_gpu: int = 8,
+        algorithm: str = "grpo",
     ) -> None:
         self.backbone = backbone
         self.config_as_dict: dict = self.build_job_from_yaml(None)
-        self.config_as_dataclass = Config.update_from_dict_recursive(Config(), self.config_as_dict)
-        self.config["astuner"]["backbone"] = self.backbone
-        self.config["astuner"]["model"]["path"] = model
-        self.config["astuner"]["trainer_common"]["n_gpus_per_node"] = n_gpu
-        self.config["astuner"]["trainer_common"]["algorithm"]["adv_estimator"] = algorithm
+        self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
+
+        self.config.astuner.backbone = backbone
+        self.config.astuner.model.path = model
+        self.config.astuner.trainer_common.n_gpus_per_node = n_gpu
+        self.config.astuner.trainer_common.algorithm.adv_estimator = algorithm
 
     def build_job_from_yaml(self, yaml_path: str | None) -> dict:
         self.exp_name = datetime.now().strftime("astuner_job_%Y%m%d_%H%M%S")
         self.exp_dir_final = "saved_experiments"
-        self.config = read_astune_hierarchical_config(
+        self.config_as_dict = read_astune_hierarchical_config(
             yaml_path,
             exp_name=self.exp_name,
             backbone=self.backbone,
             write_to=None,
             exp_dir=self.exp_dir_final,
         )
-        self.config = expand_astune_hierarchical_config(self.config, write_to=None)
+        self.config_as_dict = expand_astune_hierarchical_config(self.config_as_dict, write_to=None)
         logger.info(f"Built ASTuner job config: {yaml_path}")
-        return self.config
+        return self.config_as_dict
 
     def dump_job_as_yaml(self, yaml_path: str) -> str:
-        os.makedirs(os.path.dirname(yaml_path), exist_ok=True)
+        if os.path.dirname(yaml_path):
+            os.makedirs(os.path.dirname(yaml_path), exist_ok=True)
         with open(yaml_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(self.config, f, sort_keys=False)
+            yaml.safe_dump(self.config.to_dict(), f, sort_keys=False)
         logger.info(f"Saved training config to {yaml_path}")
         return yaml_path
 
     def set_workflow(
         self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False
     ) -> "AstunerJob":
-        self.config["astuner"]["rollout"] = {
-            "agentscope_workflow": cls_to_path(workflow),
-        }
+        self.config.astuner.rollout.agentscope_workflow = cls_to_path(workflow)
         # TODO: validate workflow outputs contain reward
         # ensure_reward_in_workflow
         return self
@@ -94,14 +94,12 @@ class AstunerJob:
         # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
 
         if type in {"hf", "huggingface", "huggingface_dat_repo"}:
-            self.config["astuner"]["task_reader"]["type"] = "huggingface_dat_repo"
-            self.config["astuner"]["task_reader"]["huggingface_dat_repo"] = {
-                "dataset_path": dataset_path,
-                "training_split": training_split,
-                "validation_split": validation_split,
-            }
+            self.config.astuner.task_reader.type = "huggingface_dat_repo"
+            self.config.astuner.task_reader.huggingface_dat_repo.dataset_path = dataset_path
+            self.config.astuner.task_reader.huggingface_dat_repo.training_split = training_split
+            self.config.astuner.task_reader.huggingface_dat_repo.validation_split = validation_split
         elif type in {"random_dummy", "dummy"}:
-            self.config["astuner"]["task_reader"]["type"] = "random_dummy"
+            self.config.astuner.task_reader.type = "random_dummy"
         else:
             raise NotImplementedError(
                 f"Please edit yaml to directly set up task reader of type {type}."
@@ -110,14 +108,14 @@ class AstunerJob:
         return self
 
     def tune(self, *args, **kwargs) -> "AstunerJob":
-        ast_cfg = self.config.get("astuner", {})
-        if not ast_cfg.get("rollout") or not ast_cfg["rollout"].get("agentscope_workflow"):
+        ast_cfg = self.config.astuner
+        if not ast_cfg.rollout or not ast_cfg.rollout.agentscope_workflow:
             raise ValueError("Workflow must be set via set_workflow before tuning.")
-        if not ast_cfg.get("task_reader"):
+        if not ast_cfg.task_reader:
             raise ValueError("Data source must be set via set_data before tuning.")
 
-        backbone = self.config["astuner"]["backbone"]
-        exp_dir = self.config["astuner"]["experiment_dir"]
+        backbone = self.config.astuner.backbone
+        exp_dir = self.config.astuner.experiment_dir
 
         with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".yaml") as temp_yaml:
             yaml_path = temp_yaml.name

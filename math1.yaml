@@ -1,0 +1,534 @@
+astuner:
+  rollout:
+    agentscope_workflow: tutorial.example_math_agent.math_agent_simplify->MathToolWorkflow
+  project_name: astune_default_project
+  experiment_name: astuner_job_20251226_010400
+  experiment_dir: saved_experiments/astuner_job_20251226_010400
+  backbone: verl
+  model:
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+  data:
+    max_prompt_length: 3000
+    max_response_length: 15000
+    train_batch_size: 32
+  task_reader:
+    type: huggingface_dat_repo
+    jsonl_dataset_file:
+      training:
+        file_path: /path/to/training/data.jsonl
+      validation:
+        file_path: /path/to/validation/data.jsonl
+    env_service:
+      env_type: appworld
+      env_url: http://127.0.0.1:8080
+      env_action_preference: code
+      training_split: train
+      validation_split: dev
+    huggingface_dat_repo:
+      dataset_path: openai/gsm8k
+      training_split: train
+      validation_split: test
+    data_generation:
+      document_reader:
+        document_path:
+        - dataset/document/your-document1.pdf
+        - dataset/document/your-document2.pdf
+        languages:
+        - eng
+        chunk_size: 5120
+        split_by: sentence
+        cache_enabled: true
+      query_reader:
+        type: jsonl_dataset_file
+        jsonl_dataset_file:
+          training:
+            file_path: dataset/jsonl/your-queries.jsonl
+      task_num: 10
+      llm_model: qwen-long
+      llm_response_length: 8192
+      num_workers: 32
+      sampling_params:
+        temperature: 0
+      deduplication_filter:
+        enabled: true
+        params:
+          similarity_threshold: 0.8
+          db_path: ./.similarity_db
+          model: text-embedding-v4
+          api_key: null
+          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  task_judge:
+    judge_type: customized_protocol
+    judge_protocol: astuner.task_judge.env_service_as_judge->EnvServiceJudge
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
+    rubrics_auto_grader:
+      model_name: qwen-max
+      grader_mode: pointwise
+      language: en
+      query_specific_generate_number: 1
+      enable_categorization: false
+      categories_number: 5
+      grader_name: auto_grader
+      query_field: main_query
+      answer_field: final_answer
+      reference_field: answer
+      custom_evaluation_prompt: null
+      input_data_type: jsonl_dataset_file
+      jsonl_dataset_file:
+        training:
+          file_path: tutorial/example_rm_auto_grader/rubrics_train.jsonl
+      min_score: 0
+      max_score: 1
+  debug:
+    debug_max_parallel: 16
+    debug_first_n_tasks: 2
+    debug_vllm_port: 18000
+    debug_vllm_seed: 12345
+    debug_tensor_parallel_size: 4
+  trainer_common:
+    val_before_train: false
+    val_pass_n: 4
+    save_freq: 20
+    test_freq: 20
+    total_epochs: 50
+    nnodes: 1
+    n_gpus_per_node: 8
+    logger: swanlab
+    algorithm:
+      adv_estimator: grpo
+      use_kl_in_reward: false
+    mini_batch_num: 1
+    fsdp_config:
+      param_offload: true
+      optimizer_offload: true
+    optim:
+      lr: 1.0e-06
+    use_kl_loss: true
+    kl_loss_coef: 0.002
+    kl_loss_type: low_var_kl
+    ulysses_sequence_parallel_size: 1
+    checkpoint_base_dir: ./saved_checkpoints
+  context_tracker:
+    context_tracker_type: linear
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+    alien_llm_response_length: 512
+    max_env_len: 4096
+  execute_test: false
+  execute_testing_lambda: ''
+actor_rollout_ref:
+  actor:
+    _target_: verl.workers.config.FSDPActorConfig
+    checkpoint:
+      _target_: verl.trainer.config.CheckpointConfig
+      async_save: false
+      load_contents:
+      - model
+      - optimizer
+      - extra
+      save_contents:
+      - model
+      - optimizer
+      - extra
+    clip_ratio: 0.2
+    clip_ratio_c: 3.0
+    clip_ratio_high: 0.2
+    clip_ratio_low: 0.2
+    entropy_checkpointing: false
+    entropy_coeff: 0
+    entropy_from_logits_with_chunking: false
+    fsdp_config:
+      _target_: verl.workers.config.FSDPEngineConfig
+      forward_prefetch: false
+      fsdp_size: -1
+      offload_policy: false
+      optimizer_offload: true
+      param_offload: true
+      reshard_after_forward: true
+      wrap_policy:
+        min_num_params: 0
+    grad_clip: 1.0
+    kl_loss_coef: 0.002
+    kl_loss_type: low_var_kl
+    loss_agg_mode: seq-mean-token-mean
+    optim:
+      _target_: verl.workers.config.FSDPOptimizerConfig
+      lr: 1.0e-06
+      lr_warmup_steps: -1
+      lr_warmup_steps_ratio: 0.0
+      min_lr_ratio: 0.0
+      num_cycles: 0.5
+      total_training_steps: -1
+      warmup_style: constant
+      weight_decay: 0.01
+    override_ppo_mini_batch_num: 1
+    policy_loss:
+      _target_: verl.workers.config.PolicyLossConfig
+      clip_cov_lb: 1.0
+      clip_cov_ratio: 0.0002
+      clip_cov_ub: 5.0
+      kl_cov_ratio: 0.0002
+      loss_mode: vanilla
+      ppo_kl_coef: 0.1
+    ppo_epochs: 1
+    ppo_max_token_len_per_gpu: 13000
+    ppo_micro_batch_size: null
+    ppo_micro_batch_size_per_gpu: 1
+    ppo_mini_batch_size: 16
+    shuffle: false
+    strategy: fsdp
+    ulysses_sequence_parallel_size: 1
+    use_dynamic_bsz: true
+    use_fused_kernels: false
+    use_kl_loss: true
+    use_remove_padding: true
+    use_torch_compile: true
+  hybrid_engine: true
+  model:
+    custom_chat_template: null
+    enable_activation_offload: false
+    enable_gradient_checkpointing: true
+    exclude_modules: null
+    external_lib: null
+    fused_kernel_options:
+      impl_backend: torch
+    lora_alpha: 16
+    lora_rank: 0
+    override_config: {}
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    target_modules: all-linear
+    trust_remote_code: false
+    use_fused_kernels: false
+    use_liger: false
+    use_remove_padding: true
+    use_shm: false
+  nccl_timeout: 600
+  profiler:
+    _target_: verl.utils.profiler.ProfilerConfig
+    all_ranks: false
+    discrete: false
+    ranks: []
+  ref:
+    entropy_checkpointing: false
+    entropy_from_logits_with_chunking: false
+    fsdp_config:
+      _target_: verl.workers.config.FSDPEngineConfig
+      forward_prefetch: false
+      param_offload: true
+      reshard_after_forward: true
+      wrap_policy:
+        min_num_params: 0
+    log_prob_max_token_len_per_gpu: 13000
+    log_prob_micro_batch_size: null
+    log_prob_micro_batch_size_per_gpu: 4
+    log_prob_use_dynamic_bsz: true
+    model: null
+    strategy: fsdp
+    ulysses_sequence_parallel_size: 1
+    use_dynamic_bsz: true
+    use_torch_compile: true
+  rollout:
+    agent:
+      agent_loop_config_path: null
+      custom_async_server:
+        name: null
+        path: null
+      num_workers: 8
+    calculate_log_probs: false
+    cudagraph_capture_sizes: null
+    custom_dataflow_cls:
+      name: ''
+      path: ''
+    disable_log_stats: true
+    do_sample: true
+    dtype: bfloat16
+    enable_chunked_prefill: true
+    enforce_eager: true
+    engine_kwargs:
+      sglang:
+        attention_backend: null
+      vllm:
+        disable_mm_preprocessor_cache: false
+        swap_space: null
+    free_cache_engine: true
+    gamma: 1.0
+    gpu_memory_utilization: 0.9
+    ignore_eos: false
+    layered_summon: false
+    load_format: dummy_dtensor
+    log_prob_max_token_len_per_gpu: 13000
+    log_prob_micro_batch_size: null
+    log_prob_micro_batch_size_per_gpu: 4
+    log_prob_use_dynamic_bsz: true
+    max_env_len: 3000
+    max_env_worker: 64
+    max_model_len: 13000
+    max_num_batched_tokens: 8192
+    max_num_seqs: 10
+    mode: async
+    multi_stage_wake_up: false
+    multi_turn:
+      enable: true
+      format: hermes
+      interaction_config_path: null
+      max_assistant_turns: null
+      max_parallel_calls: 1
+      max_sample_per_task: 4
+      max_steps: 30
+      max_tool_response_length: 256
+      max_user_turns: null
+      tokenization_sanity_check_mode: strict
+      tool_config_path: null
+      tool_response_truncate_side: middle
+      use_inference_chat_template: false
+    n: 1
+    name: vllm
+    ppo_micro_batch_size_per_gpu: 1
+    prompt_length: 3000
+    response_length: 10000
+    skip_dump_dir: /tmp/rollout_dump
+    skip_rollout: false
+    temperature: 0.9
+    tensor_model_parallel_size: 1
+    top_k: -1
+    top_p: 1.0
+    trace:
+      backend: null
+      token2text: false
+    update_weights_bucket_megabytes: 512
+    val_kwargs:
+      do_sample: false
+      n: 1
+      num_repeat: 1
+      temperature: 0.0
+      top_k: -1
+      top_p: 1.0
+algorithm:
+  _target_: verl.trainer.config.AlgoConfig
+  adv_estimator: grpo
+  gamma: 1.0
+  kl_ctrl:
+    _target_: verl.trainer.config.KLControlConfig
+    horizon: 10000
+    kl_coef: 0.001
+    target_kl: 0.1
+    type: fixed
+  kl_penalty: kl
+  lam: 1.0
+  norm_adv_by_std_in_grpo: true
+  pf_ppo:
+    reweight_method: pow
+    weight_pow: 2.0
+  use_kl_in_reward: false
+  use_pf_ppo: false
+critic:
+  _target_: verl.workers.config.FSDPCriticConfig
+  checkpoint:
+    _target_: verl.trainer.config.CheckpointConfig
+    async_save: false
+    load_contents:
+    - model
+    - optimizer
+    - extra
+    save_contents:
+    - model
+    - optimizer
+    - extra
+  cliprange_value: 0.5
+  enable: null
+  forward_max_token_len_per_gpu: 32768
+  forward_micro_batch_size: null
+  forward_micro_batch_size_per_gpu: null
+  grad_clip: 1.0
+  loss_agg_mode: seq-mean-token-mean
+  model:
+    _target_: verl.workers.config.FSDPCriticModelCfg
+    enable_activation_offload: false
+    enable_gradient_checkpointing: true
+    external_lib: null
+    fsdp_config:
+      _target_: verl.workers.config.FSDPEngineConfig
+      forward_prefetch: false
+      fsdp_size: -1
+      offload_policy: false
+      optimizer_offload: false
+      param_offload: false
+      reshard_after_forward: true
+      wrap_policy:
+        min_num_params: 0
+    lora_alpha: 16
+    lora_rank: 0
+    override_config: {}
+    path: ~/models/deepseek-llm-7b-chat
+    target_modules: all-linear
+    tokenizer_path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    trust_remote_code: false
+    use_remove_padding: false
+    use_shm: false
+  optim:
+    _target_: verl.workers.config.FSDPOptimizerConfig
+    lr: 1.0e-05
+    lr_warmup_steps: -1
+    lr_warmup_steps_ratio: 0.0
+    min_lr_ratio: null
+    total_training_steps: -1
+    warmup_style: constant
+    weight_decay: 0.01
+  ppo_epochs: 1
+  ppo_max_token_len_per_gpu: 32768
+  ppo_micro_batch_size: null
+  ppo_micro_batch_size_per_gpu: null
+  ppo_mini_batch_size: 16
+  profiler:
+    _target_: verl.utils.profiler.ProfilerConfig
+    all_ranks: false
+    discrete: false
+    ranks: []
+  rollout_n: 1
+  shuffle: false
+  strategy: fsdp
+  ulysses_sequence_parallel_size: 1
+  use_dynamic_bsz: true
+custom_reward_function:
+  name: compute_score
+  path: null
+data:
+  custom_cls:
+    name: null
+    path: null
+  datagen:
+    name: null
+    path: null
+  dataloader_num_workers: 8
+  fast_eval: true
+  filter_overlong_prompts: true
+  filter_overlong_prompts_workers: 1
+  image_key: images
+  max_prompt_length: 3000
+  max_response_length: 10000
+  prompt_key: prompt
+  return_full_prompt: false
+  return_multi_modal_inputs: true
+  return_raw_chat: true
+  return_raw_input_ids: false
+  reward_fn_key: data_source
+  sampler:
+    class_name: null
+    class_path: null
+  shuffle: true
+  tokenizer: null
+  train_batch_size: 264
+  train_files: ~/data/rlhf/gsm8k/train.parquet
+  truncation: error
+  trust_remote_code: false
+  use_shm: false
+  val_batch_size: 100000000000
+  val_files: ~/data/rlhf/gsm8k/test.parquet
+  validation_shuffle: false
+  video_key: videos
+ray_init:
+  num_cpus: null
+  timeline_json_file: null
+reward_model:
+  enable: false
+  forward_max_token_len_per_gpu: 32768
+  launch_reward_fn_async: false
+  max_length: null
+  micro_batch_size: null
+  micro_batch_size_per_gpu: null
+  model:
+    external_lib: null
+    fsdp_config:
+      _target_: verl.workers.config.FSDPEngineConfig
+      forward_prefetch: false
+      fsdp_size: -1
+      param_offload: false
+      reshard_after_forward: true
+      wrap_policy:
+        min_num_params: 0
+    input_tokenizer: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    trust_remote_code: false
+    use_fused_kernels: false
+    use_remove_padding: false
+    use_shm: false
+  profiler:
+    _target_: verl.utils.profiler.ProfilerConfig
+    all_ranks: false
+    discrete: false
+    ranks: []
+  reward_manager: naive
+  sandbox_fusion:
+    max_concurrent: 64
+    memory_limit_mb: 1024
+    url: null
+  strategy: fsdp
+  ulysses_sequence_parallel_size: 1
+  use_dynamic_bsz: true
+trainer:
+  balance_batch: true
+  controller_nsight_options:
+    cuda-graph-trace: graph
+    cuda-memory-usage: 'true'
+    trace: cuda,nvtx,cublas,ucx
+  critic_warmup: 0
+  default_hdfs_dir: null
+  checkpoint_base_dir: ./saved_checkpoints
+  default_local_dir: ${trainer.checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}
+  del_local_ckpt_after_load: false
+  device: cuda
+  esi_redundant_time: 0
+  experiment_name: read_yaml_name
+  hfmodelpath: ''
+  log_val_generations: 0
+  logger:
+  - console
+  - swanlab
+  max_actor_ckpt_to_keep: null
+  max_critic_ckpt_to_keep: null
+  n_gpus_per_node: 8
+  nnodes: 1
+  npu_profile:
+    options:
+      analysis: true
+      level: level1
+      record_shapes: false
+      roles:
+      - all
+      save_path: ./profiler_data
+      with_cpu: true
+      with_memory: false
+      with_module: false
+      with_npu: true
+      with_stack: false
+  profile_continuous_steps: false
+  profile_steps: null
+  project_name: project_name_placeholder
+  ray_wait_register_center_timeout: 300
+  resume_from_path: null
+  resume_mode: auto
+  rollout_data_dir: null
+  save_freq: 99999
+  test_freq: 99999
+  total_epochs: 99999
+  total_training_steps: null
+  use_legacy_worker_impl: auto
+  val_before_train: false
+  val_only: false
+  val_pass_n: 4
+  validation_data_dir: null
+  worker_nsight_options:
+    capture-range: cudaProfilerApi
+    capture-range-end: null
+    cuda-graph-trace: graph
+    cuda-memory-usage: 'true'
+    kill: none
+    trace: cuda,nvtx,cublas,ucx
+defaults:
+- verl_default
+- astune_default
+- _self_
+hydra:
+  searchpath:
+  - file://astuner/default_config
+  - file://astuner/default_config/verl
