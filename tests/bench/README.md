@@ -14,4 +14,5 @@ python -m pytest -s tests/bench/benchmark_countdown/execute_benchmark_countdown.
 python -m pytest -s tests/bench/benchmark_appworld/execute_benchmark_appworld.py
 
 python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_02_begin_trinity
+python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_01_begin_verl
 ```
