@@ -297,27 +297,25 @@ trinity:
 astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
-debug 模式不会启动 ray 集群，非常适合单机代码调试。另外，我们也可以编写 VS Code 的 `launch.json` 进行便捷的断点调试：
+debug 模式不会启动 ray 集群，非常适合单机代码调试。另外，我们也可以编写 VS Code 的 `.vscode/launch.json` 进行便捷的断点调试：
 
 ```json
 {
-
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Launch rollout",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "launcher.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--backbone",  "debug",
-                "--conf", "xxxx/xxxx/xxxx.yaml"
-            ],
-            "env": {
-            }
-        },
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Launch rollout",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agentscope_tuner.cli.launcher",
+      "console": "integratedTerminal",
+      "args": [
+        "--backbone", "debug",
+        "--conf", "math_agent/math_agent.yaml"
+      ],
+      "env": {}
+    }
+  ]
 }
 ```
 

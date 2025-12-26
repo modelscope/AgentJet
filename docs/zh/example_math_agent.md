@@ -52,7 +52,7 @@ clear && \
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
-当 `--backbone=debug` 时，Ray 会被禁用。你可以使用类似下面的 VSCode `launch.json`：
+当 `--backbone=debug` 时，Ray 会被禁用。你可以使用类似下面的 VSCode `.vscode/launch.json`：
 
 ```json
 {
@@ -62,7 +62,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "program": "launcher.py",
+      "module": "agentscope_tuner.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
