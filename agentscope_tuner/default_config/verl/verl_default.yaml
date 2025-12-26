@@ -231,7 +231,7 @@ critic:
     - optimizer
     - extra
   cliprange_value: 0.5
-  enable: null
+  enable: false
   forward_max_token_len_per_gpu: 32768
   forward_micro_batch_size: null
   forward_micro_batch_size_per_gpu: null
