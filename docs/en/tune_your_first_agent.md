@@ -306,27 +306,25 @@ Start training in debug mode:
 astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
-In debug mode, the Ray cluster will not be started, which is very suitable for single-machine debugging. In addition, you can configure `launch.json` in VS Code to conveniently debug with breakpoints:
+In debug mode, the Ray cluster will not be started, which is very suitable for single-machine debugging. In addition, you can configure `.vscode/launch.json` in VS Code to conveniently debug with breakpoints:
 
 ```json
 {
-
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Launch rollout",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "launcher.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--backbone",  "debug",
-                "--conf", "xxxx/xxxx/xxxx.yaml"
-            ],
-            "env": {
-            }
-        },
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: Launch rollout",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agentscope_tuner.cli.launcher",
+      "console": "integratedTerminal",
+      "args": [
+        "--backbone", "debug",
+        "--conf", "math_agent/math_agent.yaml"
+      ],
+      "env": {}
+    }
+  ]
 }
 ```
 
