@@ -11,12 +11,12 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 
 Let's begin with the simplest example: a math agent with a tool call.
 
-- First, please check out the [installation guide](docs/en/installation.md) to set up the training environment.
+- First, please check out the [installation guide](./installation.md) to set up the training environment.
 - Then, tune your first model using the minimum example below (suppose you have written an Agent called `MathToolWorkflow`).
   ```python
   from agentscope_tuner import AstunerJob
   from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
-  model_path = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct"
+  model_path = "YOUR_MODEL_PATH"
   job = AstunerJob(n_gpu=8, algorithm='grpo', model=model_path)
   job.set_workflow(MathToolWorkflow)
   job.set_data(type="hf", dataset_path='openai/gsm8k')

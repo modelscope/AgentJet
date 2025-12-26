@@ -20,7 +20,7 @@ Let's begin with the simplest example: a math agent with a tool call.
   ```python
   from agentscope_tuner import AstunerJob
   from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
-  model_path = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct"
+  model_path = "YOUR_MODEL_PATH"
   job = AstunerJob(n_gpu=8, algorithm='grpo', model=model_path)
   job.set_workflow(MathToolWorkflow)
   job.set_data(type="hf", dataset_path='openai/gsm8k')

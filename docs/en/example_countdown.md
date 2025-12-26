@@ -129,7 +129,7 @@ astuner:
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
     model:
         # ✨✨✨✨ Set the model to be trained
-        path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
+        path: YOUR_MODEL_PATH
 ```
 
 ### 3.3 Code Map

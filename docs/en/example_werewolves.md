@@ -90,7 +90,7 @@ astuner:
     judge_protocol: null
   model:
     # Set the model to be trained
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: YOUR_MODEL_PATH
   rollout:
     # Select the AgentScope Workflow entry
     agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves

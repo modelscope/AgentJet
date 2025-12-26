@@ -69,7 +69,7 @@ astuner
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: YOUR_MODEL_PATH
   rollout:
     # ✨✨✨✨ 编写并选择Agent
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
@@ -134,9 +134,9 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
 - 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
-    - /mnt/data/qingxu.fu/astuner/astuner/saved_experiments
-    - /mnt/data/qingxu.fu/astuner/astuner/saved_experiments/exp_yaml_file_name
-    - /mnt/data/qingxu.fu/astuner/astuner/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
+    - /astuner/astuner/saved_experiments
+    - /astuner/astuner/saved_experiments/exp_yaml_file_name
+    - /astuner/astuner/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
 
 - 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
 

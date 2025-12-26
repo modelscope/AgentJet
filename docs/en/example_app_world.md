@@ -153,7 +153,7 @@ astuner:
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # ✨✨✨✨ Set the model to be trained
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: YOUR_MODEL_PATH
   rollout:
     # ✨✨✨✨ Implement and select the Agent
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow

@@ -68,7 +68,7 @@ astuner:
     judge_protocol: null
   model:
     # 设置需要训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: YOUR_MODEL_PATH
   rollout:
     # 选择 AgentScope Workflow 的入口
     agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves

@@ -11,9 +11,9 @@ Simply provide your AgentScope workflow, training data, and reward function, and
 We aim to build a easy-to-learn AgentScope tuner that unlock more possibilities for agent developers:
 
 - **Easy and Friendly**. ASTuner helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
-- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](https://github.com/agentscope-ai/agentscope-tuner/tree/main/tutorial) as tutorials.
+- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](#example-library) as tutorials.
 - **Efficient and Scalable**. ASTuner uses [trinity](https://github.com/modelscope/Trinity-RFT/) as the default backbone (`--backbone=trinity`), accelerating your tuning process via fully asynchronous RFT. Nevertheless, if actor colocating is your preference, you can still fall back to the [verl](./installation.md) backbone.
-- **Flexible and Fast**. ASTuner supports [multi-agent workflows](./workflow.md) and adopts a timeline merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Flexible and Fast**. ASTuner supports [multi-agent workflows](./workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
 
 For advanced researchers, ASTuner also provides high-resolution logging and debugging solutions:
