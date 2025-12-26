@@ -35,7 +35,7 @@ AgentScope-Tuner 支持多种训练后端（backbone），目前包括 `verl` �
   uv venv --python=3.10
   source .venv/bin/activate
   uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-  uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache  # 提示：flash-attn 必须在其他依赖安装完成后再安装
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
   ```
 
 * 使用 `verl` 训练后端安装
@@ -43,7 +43,7 @@ AgentScope-Tuner 支持多种训练后端（backbone），目前包括 `verl` �
   ```bash
   source .venv/bin/activate
   uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
-  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache  # 提示：flash-attn 必须在其他依赖安装完成后再安装，你可以 (1) 通过 export MAX_JOBS=${N_CPU} 加快编译速度，或者 (2) 通过确保 Github 访问畅通来直接安装预编译轮子
   ```
 
 #### 2）通过 Docker 一键安装

@@ -108,17 +108,28 @@ def start_ray_service(args, env, cluster=False):
     )
 
 
-def verify_python_env(args):
+def verify_python_env(args, exp_config):
     """
     Verify that the current Python environment matches the expected executable.
 
     Args:
         args: Command line arguments containing the expected python_executable
     """
+    if exp_config["astuner"]["trainer_common"]["logger"] == "swanlab":
+        if os.environ.get("SWANLAB_API_KEY", "") == "":
+            cause = "SWANLAB_API_KEY is not set in the environment."
+            solution = "To use the swanlab logger, please set `SWANLAB_API_KEY`. Otherwise, set `astuner.trainer_common.logger=tensorboard`"
+            print_dict(
+                {
+                    "Python Environment Check": "FAILED",
+                    "Cause": cause,
+                    "Solution": solution,
+                }
+            )
+            time.sleep(5)
+            raise ImportError(cause + " " + solution)
 
-    # check: when args.backbone == "trinity", import verl, verl.__version__.startswith("0.5.0.post")
     import verl
-
     if args.backbone == "trinity":
         if verl.__version__.startswith("0.5.0.post"):
             cause = "Python environment does not match current backbone 'trinity'."
@@ -233,7 +244,7 @@ def execute_training_process(
                 "YAML Config": exe_yaml_path,
             }
         )
-        verify_python_env(args)
+        verify_python_env(args, exp_config)
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")

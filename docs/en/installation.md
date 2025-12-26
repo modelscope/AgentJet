@@ -40,7 +40,7 @@ We recommend using `uv` to manage your Python environment as it is incredibly fa
   uv venv --python=3.10
   source .venv/bin/activate
   uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
   ```
 
 
@@ -48,8 +48,9 @@ We recommend using `uv` to manage your Python environment as it is incredibly fa
   ```bash
   source .venv/bin/activate
   uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
-  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps, export MAX_JOBS=${N_CPU} to build faster
+  uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache  # Hint: flash-attn must be installed after other deps, to ensure a successful installation, export MAX_JOBS=${N_CPU} to build faster, or, ensure health connection to Github to install pre-compiled wheels
   ```
+
 
 #### 2. Install one-click via docker
 
