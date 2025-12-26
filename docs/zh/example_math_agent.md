@@ -125,7 +125,7 @@ astune:
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
 
   model:
-    path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+    path: YOUR_MODEL_PATH
 
 ```
 

@@ -105,7 +105,7 @@ astuner:
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
     model:
         # ✨✨✨✨ 设置需要训练的模型
-        path: /mnt/data/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
+        path: YOUR_MODEL_PATH
 ```
 
 ### 3.3 代码解读

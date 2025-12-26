@@ -15,7 +15,7 @@ astuner:
 
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+    path: Qwen/Qwen2.5-7B
 
   rollout:
     agentscope_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
