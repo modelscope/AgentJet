@@ -18,10 +18,26 @@ AppWorld 是一个模拟现实 APP 操作的沙盒环境，包含 9 个日常应
 
 首先，需要准备 AppWorld 所需的环境服务：
 
-- 下载并部署 `env_service`
-- 下载并部署 `appworld`
+```bash
+base_path="/tmp"
+export APPWORLD_PATH="${base_path}/pack_all_in_one"
+export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 
-详细的安装与启动步骤，请参考 [EnvService 文档](https://modelscope.github.io/AgentEvolver/tutorial/install/#step-2-setup-env-service-appworld-as-example)。
+rm -rf "${APPWORLD_PATH}"
+rm -f ./appworld_pack_v2.tar.gz
+
+wget -q "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v2.tar.gz" -O appworld_pack_v2.tar.gz
+tar -xzf ./appworld_pack_v2.tar.gz -C "${base_path}"
+```
+
+然后，设置如下的环境变量（在开启新的 shell 窗口都需要运行）：
+
+```bash
+export BASE_PATH=/tmp
+export APPWORLD_PATH="${BASE_PATH}/pack_all_in_one"
+export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
+```
+
 
 ### 2.2 开始训练
 
