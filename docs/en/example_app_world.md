@@ -59,7 +59,7 @@ clear && \
 astuner --conf tutorial/example_appworld/math_agent.yaml --backbone='debug' --with-logview
 ```
 
-When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` like below:
+When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.json` like below:
 
 ```json
 {
@@ -69,7 +69,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `launch.json` lik
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "program": "launcher.py",
+      "module": "agentscope_tuner.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
