@@ -34,7 +34,7 @@ dependencies = [
 [project.optional-dependencies]
 
 trinity = [
-    "trinity-rft==0.3.3"
+    "trinity-rft @ git+https://github.com/modelscope/Trinity-RFT.git"
 ]
 
 verl = [
