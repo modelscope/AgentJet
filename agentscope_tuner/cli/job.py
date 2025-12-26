@@ -41,6 +41,8 @@ class AstunerJob:
         model: str = "Qwen/Qwen2___5-7B-Instruct",
         n_gpu: int = 8,
         algorithm: str = "grpo",
+        n_gpu_for_infer: int | None = None, # only for trinity backbone
+        *kwargs,
     ) -> None:
         self.backbone = backbone
         self.config_as_dict: dict = self.build_job_from_yaml(None)
@@ -50,6 +52,15 @@ class AstunerJob:
         self.config.astuner.model.path = model
         self.config.astuner.trainer_common.n_gpus_per_node = n_gpu
         self.config.astuner.trainer_common.algorithm.adv_estimator = algorithm
+        if n_gpu_for_infer is None and backbone == "trinity":
+            raise ValueError("Please specify `n_gpu_for_infer` (n_gpu_for_infer < n_gpu) for trinity backbone.")
+        if n_gpu_for_infer is not None and backbone == "verl":
+            raise ValueError("n_gpu_for_infer is only for trinity backbone, please set it to `None`.")
+        else:
+            assert isinstance(n_gpu_for_infer, int)
+            assert n_gpu_for_infer < n_gpu, "`n_gpu_for_infer` should be less than `n_gpu`."
+            self.config.astuner.rollout.n_vllm_engine = n_gpu_for_infer
+            self.config.astuner.rollout.tensor_model_parallel_size = 1
 
     def build_job_from_yaml(self, yaml_path: str | None) -> dict:
         self.exp_name = datetime.now().strftime("astuner_job_%Y%m%d_%H%M%S")

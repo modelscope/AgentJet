@@ -60,7 +60,7 @@ astuner:
     tensor_model_parallel_size: 1
 
     # the number of vllm engines, number of gpus for infer is `n_vllm_engine*tensor_model_parallel_size`, this argument is NOT effective when NOT using trinity
-    n_vllm_engine: 2
+    n_vllm_engine: 1
 
     # how many sequences are allowed to be processed in parallel by each vllm engine
     max_num_seqs: 10
