@@ -106,12 +106,12 @@ At the code level, everything is implemented in `tutorial/example_learn2ask/lear
 - It outputs two scores: **Format Score** + **Content Score** (scored separately, then combined by `reward_fn` into the training reward).
 
 **Format Score**: scored by the number of questions in the doctor’s last message  
-- 1.0: exactly **one question**  
+- 1.0: exactly **one question**, or correctly output `<stop />` when no question is needed
 - 0.5: **two questions**  
 - 0.0: **three or more questions**
 
 **Content Score**: scored by whether the question targets the “missing information” in `Reference Information` (i.e., information the doctor does not yet know)  
-- 1.0: the question **directly asks about** an item in `Reference Information`  
+- 1.0: the question **directly asks about** an item in `Reference Information`, or correctly end the conversation when no more information is needed
 - 0.1: the question is too generic (a general question that could apply to almost any symptom)  
 - 0.0: the question is **irrelevant** to the missing items in `Reference Information`  
 - Additionally: **ambiguous or uninformative questions are treated as low-quality** (e.g., unclear references), and will typically receive a score of 0 or close to 0
