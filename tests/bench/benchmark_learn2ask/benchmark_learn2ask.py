@@ -11,14 +11,13 @@ class TestProbe(BenchmarkProbe):
         self.expected_train_time = 3600 * 24 # 24 hours
         self.begin_time = time.time()
         self.reward_array = []
-        self.reward_expectation_avg_window = 5
+        self.reward_expectation_avg_window = 20
         self.reward_expectation = {
             # step    : expected local average reward range
             # step    :       [low,    high ]
-                5     :       [0.0,  99999.0],
-               10     :       [0.0,  99999.0],
-               20     :       [0.0,  99999.0],
-               30     :       [0.0,  99999.0],
+                50     :       [0.0,  99999.0],
+               100     :       [0.0,  99999.0],
+               200     :       [0.0,  99999.0],
         }
         # fmt: on
         self.probe_list = ["reward_probe"]
