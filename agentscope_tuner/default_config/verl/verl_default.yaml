@@ -166,6 +166,7 @@ actor_rollout_ref:
       max_assistant_turns: null
       max_parallel_calls: 1
       max_sample_per_task: 4
+      expected_steps: 1
       max_steps: 30
       max_tool_response_length: 256
       max_user_turns: null
@@ -326,6 +327,7 @@ data:
   val_files: ~/data/rlhf/gsm8k/test.parquet
   validation_shuffle: false
   video_key: videos
+  seed: 42
 
 
 ray_init:
