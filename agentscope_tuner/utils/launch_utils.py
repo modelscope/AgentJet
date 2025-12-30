@@ -131,7 +131,7 @@ def verify_python_env(args, exp_config):
 
     import verl
     if args.backbone == "trinity":
-        if verl.__version__.startswith("0.5.0.post"):
+        if any([v in verl.__version__ for v in ["0.5.0.post", "0.7.0.post"]]):
             cause = "Python environment does not match current backbone 'trinity'."
             solution = "Please `cd /path/to/project/agentscope-tuner` and run `(uv) pip install -e .[trinity]` to install the correct environment."
             print_dict(
@@ -144,9 +144,7 @@ def verify_python_env(args, exp_config):
             time.sleep(5)
             raise ImportError(cause + " " + solution)
     elif args.backbone == "verl":
-        if not verl.__version__.startswith(
-            "0.5.0.post"
-        ):  # you must install via `pip install -e .[verl]` to get every dependency right
+        if not any([v in verl.__version__ for v in ["0.5.0.post", "0.7.0.post"]]):  # you must install via `pip install -e .[verl]` to get every dependency right
             cause = "Python environment does not match current backbone 'verl'."
             solution = "Please `cd /path/to/project/agentscope-tuner` and run `(uv) pip install -e .[verl]` to install the correct environment."
             print_dict(

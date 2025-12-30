@@ -1,5 +1,8 @@
+
 import re
 import time
+import asyncio
+import threading
 
 from agentscope.message import Msg
 from loguru import logger
@@ -142,6 +145,24 @@ async def reward_fn(init_messages: list[Msg], response: str, truth_action: str, 
     return final_reward
 
 
+_reward_semaphore = threading.Semaphore(16)
+
+async def reward_fn_with_semaphore(*args, **kwargs):
+
+    get_sem_ok = False
+    while not get_sem_ok:
+        get_sem_ok = _reward_semaphore.acquire(blocking=False)
+        if not get_sem_ok:
+            await asyncio.sleep(1)
+
+    try:
+        fn_result = await reward_fn(*args, **kwargs)
+    finally:
+        _reward_semaphore.release()
+
+    return fn_result
+
+
 class ExampleLearn2Ask(Workflow):
     name: str = "math_agent_workflow"
 
@@ -176,5 +197,5 @@ class ExampleLearn2Ask(Workflow):
             response = result.content[0]["text"]  # type: ignore
         else:
             raise NotImplementedError(f"do not know how to handle {type(result.content)}")
-        reward = await reward_fn(msg, response, truth_action, truth_info)
+        reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)
         return WorkflowOutput(reward=reward)

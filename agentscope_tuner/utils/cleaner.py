@@ -20,7 +20,7 @@ def kill_ray_processes():
 
 def fast_kill_by_keyword_bash(
     keyword: str,
-    exclude_substrings=["vscode", "benchmark", "jupyter", "supervisord"],
+    exclude_substrings=["vscode", "benchmark", "jupyter", "supervisord", "download_model"],
     grace_seconds: float = 1.0,
 ):
     """Use bash pipelines to kill processes matching keyword quickly.
