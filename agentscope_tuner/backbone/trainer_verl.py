@@ -52,6 +52,7 @@ from verl.utils.metric import reduce_metrics
 from agentscope_tuner.backbone.warm_up import warm_up_process
 from agentscope_tuner.context_tracker.basic_tracker import BaseContextTracker
 from agentscope_tuner.schema.task import Task
+from agentscope_tuner.task_reader import dict_to_astuner_task
 from agentscope_tuner.task_rollout.native_parallel_worker import VerlRolloutManager
 
 
@@ -552,13 +553,14 @@ class ASTunerRayPPOTrainer(RayPPOTrainer):
                         logger.info("=== wake up begin ===")
                         self.async_rollout_manager.wake_up()
                         logger.info("=== wake up end ===")
-                        tasks = [
-                            Task(
+                        tasks: List[Task] = [
+                            dict_to_astuner_task(dict(
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],
                                 main_query=gen_batch.non_tensor_batch["main_query"][i],
                                 env_type=gen_batch.non_tensor_batch["env_type"][i],
                                 metadata=gen_batch.non_tensor_batch["metadata"][i],
-                            )
+                                init_messages=gen_batch.non_tensor_batch["init_messages"][i],
+                            ))
                             for i in range(len(gen_batch))
                         ]
                         logger.info(
