@@ -23,6 +23,7 @@ from agentscope_tuner.context_tracker.agentscope_tracker.multiagent_tracking imp
     MultiAgentContextTracker,
 )
 from agentscope_tuner.schema.trajectory import Sample
+from agentscope_tuner.task_reader import dict_to_astuner_task
 from agentscope_tuner.task_rollout.native_parallel_worker import DynamicRolloutManager
 from agentscope_tuner.utils.config_utils import read_astune_config_with_cache
 from agentscope_tuner.utils.testing_utils import _test_if_test_mode
@@ -65,13 +66,8 @@ class TrinityRolloutManager(DynamicRolloutManager):
 
     def convert_task(self, task: TrinityTask):
         from agentscope_tuner.schema.task import Task
-
-        d = {}
-        for vip_key in ["main_query", "task_id", "env_type", "metadata", "init_messages"]:
-            if vip_key not in task.raw_task:
-                raise ValueError(f"Key {vip_key} not found in task.raw_task")
-            d[vip_key] = task.raw_task[vip_key]
-        return Task(**d)
+        assert isinstance(task.raw_task, dict)
+        return dict_to_astuner_task(task.raw_task)
 
     def thread_worker(self):
         observation_window = {

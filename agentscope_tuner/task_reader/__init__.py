@@ -101,3 +101,26 @@ def task_to_standard_dataset(tasks: List[Task]) -> datasets.Dataset:
         data["metadata"].append(task.metadata)
 
     return datasets.Dataset.from_dict(data)
+
+
+def dict_to_astuner_task(task_dict: dict) -> Task:
+    """
+    Convert a dictionary to a Task object.
+
+    Args:
+        task_dict (dict): Dictionary containing task fields.
+
+    Returns:
+        Task: Task object created from the dictionary.
+    """
+    for vip_key in ["main_query", "task_id", "env_type", "metadata", "init_messages"]:
+        if vip_key not in task_dict:
+            raise ValueError(f"Key {vip_key} not found in task.raw_task")
+
+    return Task(
+        main_query=task_dict.get("main_query", ""),
+        init_messages=task_dict.get("init_messages", []),
+        task_id=task_dict.get("task_id", ""),
+        env_type=task_dict.get("env_type", ""),
+        metadata=task_dict.get("metadata", {}),
+    )
