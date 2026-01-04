@@ -3,6 +3,15 @@ import time
 
 from agentscope_tuner.utils.testing_utils import BenchmarkProbe, singleton
 
+# trinity b.b. expectation
+# [TestProbe] Step 50: local average reward over last self.reward_expectation_avg_window steps: 2.6618, expected range: [0.0, 99999.0]
+# [TestProbe] Step 100: local average reward over last self.reward_expectation_avg_window steps: 2.8733, expected range: [0.0, 99999.0]
+# [TestProbe] Step 200: local average reward over last self.reward_expectation_avg_window steps: 2.9725, expected range: [0.0, 99999.0]
+
+# verl b.b. expectation
+# [TestProbe] Step 50: local average reward over last self.reward_expectation_avg_window steps: 3.1562, expected range: [0.0, 99999.0]
+# [TestProbe] Step 100: local average reward over last self.reward_expectation_avg_window steps: 3.4732, expected range: [0.0, 99999.0]
+# [TestProbe] Step 200: local average reward over last self.reward_expectation_avg_window steps: 3.5645, expected range: [0.0, 99999.0]
 
 @singleton
 class TestProbe(BenchmarkProbe):
@@ -15,9 +24,9 @@ class TestProbe(BenchmarkProbe):
         self.reward_expectation = {
             # step    : expected local average reward range
             # step    :       [low,    high ]
-                50     :       [0.0,  99999.0],
-               100     :       [0.0,  99999.0],
-               200     :       [0.0,  99999.0],
+                50     :       [2.5,  99999.0],
+               100     :       [2.7,  99999.0],
+               200     :       [2.9,  99999.0],
         }
         # fmt: on
         self.probe_list = ["reward_probe"]
