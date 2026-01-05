@@ -107,9 +107,7 @@ ASTuner provides high-resolution logging and debugging solutions:
 
 ---
 
-## Getting Started
-
-Follow this learning path to master ASTuner:
+## Next Steps
 
 <div class="card-grid">
 <a href="en/installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Installation</h3></div><p class="card-desc">Set up ASTuner environment and dependencies.</p></a>
@@ -122,5 +120,6 @@ Follow this learning path to master ASTuner:
 
 ## 中文文档
 
-<a href="zh/intro/" class="feature-card" style="max-width: 300px;"><div class="card-header"><img src="https://api.iconify.design/mdi:translate.svg" class="card-icon card-icon-multimodal" alt=""><h3>查看中文文档</h3></div><p class="card-desc">完整的中文教程和指南。</p></a>
+<div class="card-grid">
+<a href="zh/intro/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:translate.svg" class="card-icon card-icon-multimodal" alt=""><h3>查看中文文档</h3></div><p class="card-desc">完整的中文教程和指南。</p></a></div>
 
