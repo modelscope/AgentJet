@@ -2,17 +2,22 @@
 
 AgentScope Tuner loads training tasks from various data sources through Task Reader. This page covers the Task schema definition and different built-in Task Readers for common scenarios.
 
+---
+
 ## Overview
 
-In agent training, all training data must be represented as **tasks** following a unified schema. AgentScope Tuner provides multiple Task Readers to load tasks from different data sources:
+In agent training, all training data must be represented as **tasks** following a unified schema.
 
-- **Unified Schema**: All tasks conform to the `Task` structure regardless of source
-- **Multiple Sources**: Load from local files, HuggingFace datasets, interactive environments, or auto-generate new tasks
-- **Automatic Routing**: The framework selects the appropriate reader based on `astuner.task_reader.type` in your configuration
+!!! info "Key Concepts"
+    - **Unified Schema**: All tasks conform to the `Task` structure regardless of source
+    - **Multiple Sources**: Load from local files, HuggingFace datasets, interactive environments, or auto-generate new tasks
+    - **Automatic Routing**: The framework selects the appropriate reader based on `astuner.task_reader.type`
 
 ```
 Data Source → Task Reader → Unified Task Schema → Training Pipeline
 ```
+
+---
 
 ## Task Schema
 
@@ -39,7 +44,7 @@ class Task(BaseModel):
 
 ### Example Task
 
-```json
+```json title="example_task.json"
 {
   "main_query": "What is 15 * 23?",
   "init_messages": [
@@ -57,23 +62,24 @@ class Task(BaseModel):
 }
 ```
 
-**Best Practices:**
-- Use `metadata` to store information needed for reward computation (e.g., reference answers, scoring rubrics)
-- Keep `main_query` clear and concise
-- Use `init_messages` for system prompts or few-shot examples
+!!! tip "Best Practices"
+    - Use `metadata` to store information needed for reward computation (e.g., reference answers, scoring rubrics)
+    - Keep `main_query` clear and concise
+    - Use `init_messages` for system prompts or few-shot examples
+
+---
 
 ## Built-in Task Readers
 
-AgentScope Tuner provides six built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `astuner.task_reader.type` in your configuration.
+AgentScope Tuner provides multiple built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `astuner.task_reader.type`.
 
 ### Quick Selection Guide
 
-| Scenario | Reader Type | When to Use |
-|----------|-------------|-------------|
-| **Local JSONL file** | `jsonl_dataset_file` | You have prepared task data in JSONL format |
-| **HuggingFace dataset** | `huggingface_dat_repo` | Load tasks from HuggingFace Hub (e.g., GSM8K) |
-| **Interactive environment** | `env_service` | Tasks come from a running environment service (e.g., AppWorld, FrozenLake) |
-| **Auto-generate from documents** | `data_generation` | Generate tasks from knowledge documents or existing tasks |
+<div class="card-grid">
+<div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:file-document.svg" class="card-icon card-icon-data" alt=""><h3>JSONL File</h3></div><p class="card-desc">You have prepared task data in JSONL format locally.</p></div>
+<div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/simple-icons:huggingface.svg" class="card-icon card-icon-agent" alt=""><h3>HuggingFace</h3></div><p class="card-desc">Load tasks from HuggingFace Hub (e.g., GSM8K, MATH).</p></div>
+<div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:web.svg" class="card-icon card-icon-tool" alt=""><h3>EnvService</h3></div><p class="card-desc">Tasks come from a running environment service.</p></div>
+</div>
 
 ---
 
@@ -81,32 +87,32 @@ AgentScope Tuner provides six built-in Task Readers for different scenarios. The
 
 **When to use:** You have prepared training tasks in JSONL format locally.
 
-**Configuration:**
+=== "Configuration"
 
-```yaml
-astuner:
-  task_reader:
-    type: jsonl_dataset_file
-    jsonl_dataset_file:
-      training:
-        file_path: "data/train.jsonl"
-      validation:
-        file_path: "data/val.jsonl"
-```
+    ```yaml title="config.yaml"
+    astuner:
+      task_reader:
+        type: jsonl_dataset_file
+        jsonl_dataset_file:
+          training:
+            file_path: "data/train.jsonl"
+          validation:
+            file_path: "data/val.jsonl"
+    ```
 
-**JSONL Format:**
+=== "JSONL Format"
 
-Each line should be a JSON object conforming to the Task schema:
+    Each line should be a JSON object conforming to the Task schema:
 
-```json
-{"main_query": "Solve: x + 5 = 12", "task_id": "algebra_01", "env_type": "math", "metadata": {"answer": "7"}}
-{"main_query": "What is the capital of France?", "task_id": "geo_01", "env_type": "qa", "metadata": {"answer": "Paris"}}
-```
+    ```json title="data/train.jsonl"
+    {"main_query": "Solve: x + 5 = 12", "task_id": "algebra_01", "env_type": "math", "metadata": {"answer": "7"}}
+    {"main_query": "What is the capital of France?", "task_id": "geo_01", "env_type": "qa", "metadata": {"answer": "Paris"}}
+    ```
 
-**How it works:**
-- Reads tasks line-by-line from specified JSONL files
-- Automatically validates against Task schema
-- Supports separate training and validation splits
+!!! note "How it works"
+    - Reads tasks line-by-line from specified JSONL files
+    - Automatically validates against Task schema
+    - Supports separate training and validation splits
 
 ---
 
@@ -114,9 +120,7 @@ Each line should be a JSON object conforming to the Task schema:
 
 **When to use:** Load tasks from HuggingFace Hub datasets (e.g., GSM8K, MATH).
 
-**Configuration:**
-
-```yaml
+```yaml title="config.yaml"
 astuner:
   task_reader:
     type: huggingface_dat_repo
@@ -127,12 +131,10 @@ astuner:
       validation_split: "test"        # Validation split name
 ```
 
-**How it works:**
-- Downloads dataset from HuggingFace Hub using `datasets` library
-- Automatically maps dataset fields to Task schema
-- Caches downloaded data locally for faster subsequent runs
-
-**Supported datasets:** Any HuggingFace dataset that can be mapped to the Task schema.
+!!! note "How it works"
+    - Downloads dataset from HuggingFace Hub using `datasets` library
+    - Automatically maps dataset fields to Task schema
+    - Caches downloaded data locally for faster subsequent runs
 
 ---
 
@@ -140,9 +142,7 @@ astuner:
 
 **When to use:** Tasks are provided by an interactive environment service (e.g., AppWorld, RL gym environments).
 
-**Configuration:**
-
-```yaml
+```yaml title="config.yaml"
 astuner:
   task_reader:
     type: env_service
@@ -154,13 +154,20 @@ astuner:
       validation_split: dev
 ```
 
-**How it works:**
-- Connects to a running environment service via HTTP
-- Pulls task instances from the environment
-- Supports dynamic task generation from interactive environments
+!!! note "How it works"
+    - Connects to a running environment service via HTTP
+    - Pulls task instances from the environment
+    - Supports dynamic task generation from interactive environments
 
-**Use cases:**
-- Training agents in simulated environments (e.g., FrozenLake, game environments)
-- Complex interactive scenarios where tasks are generated dynamically
+!!! example "Use Cases"
+    - Training agents in simulated environments (e.g., FrozenLake, game environments)
+    - Complex interactive scenarios where tasks are generated dynamically
 
+---
 
+## Next Steps
+
+<div class="card-grid">
+<a href="../task_judger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Set up reward functions to evaluate agent outputs.</p></a>
+<a href="../configuration/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:cog.svg" class="card-icon card-icon-tool" alt=""><h3>Configuration</h3></div><p class="card-desc">Complete reference for all configuration options.</p></a>
+</div>

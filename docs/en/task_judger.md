@@ -8,10 +8,13 @@ Task Judger evaluates agent outputs and assigns rewards during training. This pa
 
 A Task Judger evaluates the agent's execution results and returns two values:
 
-- **`raw_reward`** (`float`): Numerical score representing output quality (often normalized, e.g. 0.0 to 1.0, but may exceed 1.0 depending on the judger)
-- **`is_success`** (`bool`): Whether the task was successfully completed
+| Return Value | Type | Description |
+|--------------|------|-------------|
+| `raw_reward` | `float` | Numerical score representing output quality (often 0.0 to 1.0) |
+| `is_success` | `bool` | Whether the task was successfully completed |
 
-These values guide the RL training process, helping agents learn which behaviors produce better outcomes.
+!!! info "Training Guidance"
+    These values guide the RL training process, helping agents learn which behaviors produce better outcomes.
 
 ---
 
@@ -19,7 +22,7 @@ These values guide the RL training process, helping agents learn which behaviors
 
 All Task Judgers inherit from `BaseJudge` and implement the `compute_reward` method:
 
-```python
+```python title="base_judge.py"
 from agentscope_tuner.task_judge.base_judge import BaseJudge
 from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
@@ -53,31 +56,32 @@ AgentScope Tuner provides three built-in judgers for common evaluation scenarios
 
 Evaluates mathematical answers by exact string matching, designed for tasks where answers are formatted in LaTeX `\boxed{}` notation.
 
-**When to use:**
+!!! tip "When to use"
+    - Math problem solving tasks
+    - Tasks with deterministic, exact answers
+    - Answers formatted as `\boxed{result}`
 
-* Math problem solving tasks
-* Tasks with deterministic, exact answers
-* Answers formatted as `\boxed{result}`
+=== "Configuration"
 
-**Configuration:**
-
-```yaml
-astuner:
-  task_judge:
-    judge_type: customized_protocol
+    ```yaml title="config.yaml"
+    astuner:
+      task_judge:
+        judge_type: customized_protocol
         judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
-```
+    ```
 
-**How it works:**
+=== "How it works"
 
-1. Extracts the answer from `\boxed{...}` in the agent's output
-2. Compares with the reference answer from `workflow_task.task.metadata["answer"]`
-3. Returns `(1.0, True)` for correct answers, `(0.0, False)` otherwise
+    1. Extracts the answer from `\boxed{...}` in the agent's output
+    2. Compares with the reference answer from `workflow_task.task.metadata["answer"]`
+    3. Returns `(1.0, True)` for correct answers, `(0.0, False)` otherwise
 
 **Required metadata:**
 
-* `workflow_output.metadata["final_answer"]`: Agent's answer with `\boxed{}` format
-* `workflow_task.task.metadata["answer"]`: Reference answer
+| Field | Source | Description |
+|-------|--------|-------------|
+| `final_answer` | `workflow_output.metadata` | Agent's answer with `\boxed{}` format |
+| `answer` | `workflow_task.task.metadata` | Reference answer |
 
 ---
 
@@ -85,32 +89,27 @@ astuner:
 
 Evaluates mathematical equations with partial credit for proper formatting.
 
-**When to use:**
+!!! tip "When to use"
+    - Number puzzle tasks (e.g., Countdown game)
+    - Tasks where partial credit is appropriate
+    - Need to reward proper formatting even when answer is wrong
 
-* Number puzzle tasks (e.g., Countdown game)
-* Tasks where partial credit is appropriate
-* Need to reward proper formatting even when answer is wrong
+=== "Configuration"
 
-**Configuration:**
-
-```yaml
-astuner:
-  task_judge:
-    judge_type: customized_protocol
+    ```yaml title="config.yaml"
+    astuner:
+      task_judge:
+        judge_type: customized_protocol
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
-```
+    ```
 
-**Scoring:**
+=== "Scoring"
 
-* `0.0`: Invalid or missing answer
-* `0.1`: Properly formatted equation but wrong result
-* `1.0`: Correct equation and result
-
-**Required metadata:**
-
-* `workflow_output.metadata["final_answer"]`: Equation string with `\boxed{}` format
-* `workflow_output.metadata["target"]`: Target number
-* `workflow_output.metadata["nums"]`: Available numbers for the equation
+    | Score | Condition |
+    |-------|-----------|
+    | `0.0` | Invalid or missing answer |
+    | `0.1` | Properly formatted equation but wrong result |
+    | `1.0` | Correct equation and result |
 
 ---
 
@@ -118,28 +117,23 @@ astuner:
 
 Delegates evaluation to an external environment service, useful for complex interactive environments.
 
-**When to use:**
+!!! tip "When to use"
+    - Tasks with external simulators (e.g., AppWorld)
+    - Complex state-based evaluation
+    - Interactive environments with built-in evaluators
 
-* Tasks with external simulators (e.g., AppWorld)
-* Complex state-based evaluation
-* Interactive environments with built-in evaluators
-
-**Configuration:**
-
-```yaml
+```yaml title="config.yaml"
 astuner:
   task_judge:
     judge_type: customized_protocol
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
 ```
 
-**How it works:**
-
-1. Calls `workflow_task.gym_env.evaluate()` to get a score from the environment
-2. Converts the score to a normalized reward:
-
-   * Success (score ≥ 1): `1.0 + score * 0.5`
-   * Failure (score < 1): `0.0 + score * 0.5`
+!!! note "How it works"
+    1. Calls `workflow_task.gym_env.evaluate()` to get a score from the environment
+    2. Converts the score to a normalized reward:
+        - Success (score ≥ 1): `1.0 + score * 0.5`
+        - Failure (score < 1): `0.0 + score * 0.5`
 
 ---
 
@@ -147,11 +141,27 @@ astuner:
 
 For specialized evaluation needs, create your own judger by inheriting `BaseJudge`:
 
+<div class="workflow-single">
+<div class="workflow-header">Custom Judger Steps</div>
+
+<div class="workflow">
+<ol class="workflow-steps">
+<li><strong>Implement Your Judger</strong>
+
+Create a new file with your custom judger class.</li>
+<li><strong>Configure Your Judger</strong>
+
+Point to your custom class in the YAML configuration.</li>
+<li><strong>Pass Data to the Judger</strong>
+
+Populate `workflow_output.metadata` with the data your judger needs.</li>
+</ol>
+</div>
+</div>
+
 ### Step 1: Implement Your Judger
 
-Create a new file (e.g., `tutorial/my_task/my_judge.py`):
-
-```python
+```python title="tutorial/my_task/my_judge.py"
 from agentscope_tuner.task_judge.base_judge import BaseJudge
 from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
 
@@ -180,9 +190,7 @@ class MyCustomJudge(BaseJudge):
 
 ### Step 2: Configure Your Judger
 
-In your YAML configuration:
-
-```yaml
+```yaml title="config.yaml"
 astuner:
   task_judge:
     judge_type: customized_protocol
@@ -191,9 +199,7 @@ astuner:
 
 ### Step 3: Pass Data to the Judger
 
-In your workflow, populate `workflow_output.metadata` with the data your judger needs:
-
-```python
+```python title="workflow.py"
 class MyWorkflow(Workflow):
     async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         final_answer = await self.agent.reply(msg)
@@ -209,9 +215,18 @@ class MyWorkflow(Workflow):
 
 ## Configuration Summary
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   task_judge:
     judge_type: customized_protocol
     judge_protocol: agentscope_tuner.task_judge.<module>-><ClassName>
 ```
+
+---
+
+## Next Steps
+
+<div class="card-grid">
+<a href="../configuration/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:cog.svg" class="card-icon card-icon-tool" alt=""><h3>Configuration</h3></div><p class="card-desc">Complete reference for all configuration options.</p></a>
+<a href="../example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Math Agent</h3></div><p class="card-desc">See MathAnswerAsJudge in a complete training example.</p></a>
+</div>
