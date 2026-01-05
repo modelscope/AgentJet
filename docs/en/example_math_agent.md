@@ -1,28 +1,27 @@
 # Math Agent
 
-Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems.
-Rewards come from a **judge** that checks final-answer correctness (and can optionally penalize bad tool-call behaviors).
+Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems. Rewards come from a **judge** that checks final-answer correctness.
 
 ---
 
-### 1. Overview
+## Overview
 
-In **Math Agent**, each training sample is a math word problem (e.g., GSM8K). The agent learns to:
-
-- **reason step by step** (ReAct-style),
-- **call a Python tool** when computation is needed,
-- produce a final answer that matches the reference.
+<div class="callout-tip">
+<p>
+In <strong>Math Agent</strong>, each training sample is a math word problem (e.g., GSM8K). The agent learns to reason step by step (ReAct-style), call a Python tool when computation is needed, and produce a final answer that matches the reference.
+</p>
+</div>
 
 This tutorial is organized in two steps:
 
-1) **Run it**: download the dataset and start training with the default YAML config.
-2) **Understand & customize**: read the workflow (`ExampleMathLearn`) and the judge/reward (`MathAnswerAndLlmAsJudge`).
+1. **Run it**: Download the dataset and start training with the default YAML config
+2. **Understand & customize**: Read the workflow and the judge/reward logic
 
 ---
 
-### 2. Quick Start
+## Quick Start
 
-#### 2.1 Prepare Dataset
+### Prepare Dataset
 
 Download the `openai/gsm8k` dataset:
 
@@ -30,7 +29,7 @@ Download the `openai/gsm8k` dataset:
 python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/store/dataset
 ```
 
-#### 2.2 Start Training
+### Start Training
 
 ```bash
 # (optional) recommended cleanup before training
@@ -39,80 +38,74 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
-<details>
-<summary>Quick Debugging (Optional)</summary>
+??? tip "Quick Debugging (Optional)"
+    If you want to breakpoint-debug the workflow/judge locally:
 
-If you want to breakpoint-debug the workflow/judge locally:
+    ```bash
+    # (optional) recommended cleanup before debug
+    # astuner --kill="python|ray"
 
-```bash
-# (optional) recommended cleanup before debug
-# astuner --kill="python|ray"
+    clear && \
+    astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+    ```
 
-clear && \
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
-```
+    When `--backbone=debug`, Ray is disabled. You can use a VSCode launch config:
 
-When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.json` like below:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
+    ```json title=".vscode/launch.json"
     {
-      "name": "Python Debugger: Launch rollout",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
-      "console": "integratedTerminal",
-      "args": [
-        "--backbone", "debug",
-        "--conf", "./path/to/yaml.yaml"
-      ],
-      "env": {}
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Python Debugger: Launch rollout",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "agentscope_tuner.cli.launcher",
+          "console": "integratedTerminal",
+          "args": [
+            "--backbone", "debug",
+            "--conf", "./path/to/yaml.yaml"
+          ],
+          "env": {}
+        }
+      ]
     }
-  ]
-}
-```
-</details>
+    ```
 
 ---
 
-### 3. Understand
+## Understanding the Training Pipeline
 
-#### 3.1 What happens each step
+### What Happens Each Step
 
-Each training step does:
+<div class="workflow-single">
+<div class="workflow-header">Training Step Flow</div>
 
-1. **Load one problem** from the dataset (`task_reader`).
-2. Run the **AgentScope workflow**:
+<div class="workflow">
+<ol class="workflow-steps">
+<li><strong>Load one problem</strong>
 
-   * Build the prompt from the problem text,
-   * Let the ReAct agent optionally call a Python tool for computation,
-   * Extract the **final answer**.
-3. Register key info for evaluation (important!):
+Load a math problem from the dataset via `task_reader`.</li>
+<li><strong>Run the AgentScope workflow</strong>
 
-    * The workflow should return a `WorkflowOutput` whose `metadata` carries the final answer, e.g. `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`. Judges read this metadata directly; no extra API call is needed.
-4. Run the **judge** to compute reward:
+Build the prompt, let the ReAct agent call Python tools, and extract the final answer.</li>
+<li><strong>Register info for evaluation</strong>
 
-   * compare `final_answer` with the reference answer from the task,
-   * output `raw_reward` and `is_success`,
-   * the trainer uses them to update the policy.
+Return `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`.</li>
+<li><strong>Run the judge</strong>
 
-#### 3.2 YAML Configuration
+Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</li>
+</ol>
+</div>
+</div>
 
-Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`. The key fields are:
+### YAML Configuration
 
-* `astune.task_reader`: where tasks come from
-* `astune.rollout.agentscope_workflow`: which workflow runs per sample
-* `astune.task_judge.judge_protocol`: which judge computes rewards
-* `astune.model.path`: pretrained model you fine-tune
+Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
 
-Minimal example:
-
-```yaml
-astune:
+```yaml title="math_agent.yaml"
+astuner:
   task_reader:
-    type: huggingface_dat_repo   # also supports: dataset_file / env_service (if enabled)
+    type: huggingface_dat_repo   # also supports: dataset_file / env_service
 
   rollout:
     agentscope_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
@@ -124,21 +117,18 @@ astune:
     path: YOUR_MODEL_PATH
 ```
 
-#### 3.3 Code Walkthrough
+| Field | Description |
+|-------|-------------|
+| `task_reader` | Where tasks come from |
+| `agentscope_workflow` | Which workflow runs per sample |
+| `judge_protocol` | Which judge computes rewards |
+| `model.path` | Pretrained model to fine-tune |
 
-**Workflow (AgentScope):** `tutorial/example_math_agent/math_agent.py`
+### Code Walkthrough
 
-The workflow typically:
+**Workflow:** `tutorial/example_math_agent/math_agent.py`
 
-* registers tools (e.g., `execute_python_code`)
-* constructs a ReAct agent
-* runs one turn from the user problem
-* parses the final answer
-* returns it via `WorkflowOutput(..., metadata={"final_answer": final_answer})` so the judge can score
-
-Workflow sketch:
-
-```python
+```python title="Workflow Sketch"
 self.toolkit = Toolkit()
 self.toolkit.register_tool_function(execute_python_code)
 
@@ -159,103 +149,82 @@ final_answer = extract_final_answer(result)
 return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-**Judge / Reward:** `tutorial/example_math_agent/math_answer_as_judge.py`
+!!! warning "Important"
+    Always provide the final answer via `WorkflowOutput.metadata` so the judge can score it.
 
-Two simple judges are provided there; you can add your own judge anywhere in the project.
+### Reward Computation
 
-#### 3.4 Reward
+The judge receives:
 
-The judge receives two objects:
+| Object | Contains |
+|--------|----------|
+| `workflow_task` | Task info; reference answer from `metadata` |
+| `workflow_output` | Workflow result; final answer from `metadata["final_answer"]` |
 
-* `workflow_task`: task info; reference answer can be retrieved from here
-* `workflow_output`: returned by the workflow; access the final answer with `workflow_output.metadata["final_answer"]`
-
-The judge returns:
-
-* `raw_reward`
-* `is_success`
-
-**Practical tip:**
-If you observe the model “almost solved it but messed up tool-call formatting / impatiently skipped tool execution”, you can extend the judge to:
-
-* add a format penalty (invalid `<tool_call>`)
-* add a behavior penalty (tool called but no `print` / execution result not used)
-* keep answer correctness as the primary signal
+!!! tip "Extending the Judge"
+    If you observe issues like "almost solved but messed up tool-call formatting", you can extend the judge to add:
+    
+    - Format penalty (invalid `<tool_call>`)
+    - Behavior penalty (tool called but no `print`)
+    - Keep answer correctness as the primary signal
 
 ---
 
-### 4. Results
+## Results
 
-#### 4.1 Training Curve
+### Training Curve
 
-![Tracing curve](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
+![Training curve](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
 
-> **Visualization:** Training curves are generated by SwanLab. See [Visualization Tools](./visualization.md) for setup and usage.
+!!! info "Visualization"
+    Training curves are generated by SwanLab. See [Visualization Tools](./visualization.md) for setup.
 
-Interpretation: as training progresses, reward increases. This usually means the agent becomes more stable on **two things**:
+**Interpretation:** As training progresses, reward increases. This usually means the agent becomes more stable at:
 
-* **Using tools when it should**: it can correctly emit a `<tool_call>` and call `execute_python_code` for computation.
-* **Producing more reliable answers**: it can use the tool return (e.g., `<tool_response>`) to output a final answer aligned with the reference.
+- **Using tools when needed**: Correctly emitting `<tool_call>` and calling `execute_python_code`
+- **Producing reliable answers**: Using tool output to produce final answers aligned with reference
 
-> In practice, the gain here is often less about “stronger math ability” and more about “better tool discipline + more consistent use of execution results”.
+### Case Study: Tool Discipline Improvement
+
+Before training, the agent may solve many problems but often fails at **tool-call discipline**:
+
+=== "Bad Cases"
+
+    ```text
+    # bad case 1: forgot to print the result in python code
+    <tool_call>
+    {"name": "execute_python_code", "arguments": {"code": "... height_difference"}}
+    </tool_call>
+
+    # bad case 2: too impatient — outputs final answer without waiting for tool result
+    <tool_call> {"name": "execute_python_code", ...} </tool_call>
+    <tool_call> {"name": "generate_response", "arguments": {"response": "... \\boxed{48} ..."}} </tool_call>
+    ```
+
+    These failures are not because the model "can't do math", but because it **does not close the loop** by incorporating the tool execution result.
+
+=== "Good Case (After Tuning)"
+
+    After tuning, the agent follows a clean 3-stage pattern:
+
+    1. **Message 3 (assistant)**: Decomposes problem + emits `<tool_call>` with `print(...)`
+    2. **Message 4 (tool_response)**: Tool returns execution results
+    3. **Message 5 (assistant)**: Reads `stdout` and produces final answer
+
+    ![Good case](https://img.alicdn.com/imgextra/i4/O1CN01v1gGQZ1ftMiil5Cxg_!!6000000004064-2-tps-1367-684.png)
+
+!!! note "Token-level Visualization"
+    The colored blocks show token-level sequence visualization from [Beast-Logger](./beast_logger.md):
+    
+    - **Yellow tokens**: Excluded from loss computation
+    - **Blue tokens**: Participate in loss computation (light to dark = high to low logprob)
 
 ---
 
-#### 4.2 Case Study: from “can solve” to “can solve with tools”
+## Next Steps
 
-Before training, the agent may already solve many problems. However, smaller models often fail at **tool-call discipline**, e.g.:
-
-* forgetting to `print` the computed value in Python (the tool ran, but produced no usable output),
-* outputting the final answer before the tool execution finishes (premature answering),
-* malformed `<tool_call>` blocks (tool not triggered / parsing fails).
-
-##### Bad cases: what typical failures look like
-
-```text
-# bad case 1: forgot to print the result in python code
-<tool_call>
-{"name": "execute_python_code", "arguments": {"code": "... height_difference"}}
-</tool_call>
-
-# bad case 2: too impatient — outputs final answer without waiting for the tool result
-<tool_call> {"name": "execute_python_code", ...} </tool_call>
-<tool_call> {"name": "generate_response", "arguments": {"response": "... \\boxed{48} ..."}} </tool_call>
-```
-
-These failures are usually not because the model “can’t do math”, but because it **does not close the loop** by incorporating the tool execution result:
-
-* bad case 1: the tool may succeed, but without `print`, `stdout` is empty and the model can’t reliably read the value.
-* bad case 2: the model generates a tool call and a final answer back-to-back in the same turn, effectively **skipping the “wait for `<tool_response>`” step**.
-
----
-
-##### Good case: after tuning, the tool-use loop becomes closed
-
-After tuning, the agent often follows a clean 3-stage pattern (corresponding to Message 3/4/5 in the screenshots):
-
-1. **Message 3 (assistant)**: decomposes the problem + emits a `<tool_call>`, and uses `print(...)` to output key values
-2. **Message 4 (tool_response)**: the tool returns execution results (e.g., `returncode=0`, `stdout=...`)
-3. **Message 5 (assistant)**: reads `stdout` and then produces the final answer (e.g., `\\boxed{18}`)
-
-![image](https://img.alicdn.com/imgextra/i4/O1CN01v1gGQZ1ftMiil5Cxg_!!6000000004064-2-tps-1367-684.png)
-
-![image](https://img.alicdn.com/imgextra/i4/O1CN01WarPpf1yNk4awZOIO_!!6000000006567-2-tps-1363-422.png)
-
-> **Token-level Visualization:** These detailed logs are generated by Beast-Logger. See [Beast-Logger Usage](./beast_logger.md) for more details.
-
-On the right side of the figure, the colored blocks are a **token-level sequence visualization**:
-
-* **each block is one token** (the number inside is the token id),
-* the order of blocks is the order the model **consumed/generated** tokens,
-* what matters is not the token id itself, but whether you can see clear boundary markers such as:
-
-  * `<im_start> assistant ... <tool_call> ... <im_end>`
-  * `<im_start> user <tool_response> ... <stdout>18.0</stdout> ... <im_end>`
-  * `<im_start> assistant ... \\boxed{18} ... <im_end>`
-* Yellow tokens: tokens that are excluded from loss computation. Blue tokens: tokens that participant loss computation (Blue color from light to dark indicates `logprob` from high to low).
-
-A “good” tool-call behavior typically shows up in logs as:
-
-* `<tool_call>` and `<tool_response>` appear in **separate turns** (call → response → answer),
-* `<tool_response>` contains **non-empty stdout**,
-* the final answer appears **after** the tool returns, rather than being produced prematurely.
+<div class="card-grid">
+<a href="../example_werewolves/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:wolf.svg" class="card-icon card-icon-multimodal" alt=""><h3>Werewolves</h3></div><p class="card-desc">Explore multi-agent collaborative training.</p></a>
+<a href="../example_app_world/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:application.svg" class="card-icon card-icon-agent" alt=""><h3>AppWorld</h3></div><p class="card-desc">Train agents for real-world app interactions.</p></a>
+<a href="../visualization/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:chart-line.svg" class="card-icon card-icon-general" alt=""><h3>Visualization</h3></div><p class="card-desc">Monitor and analyze your training progress.</p></a>
+</div>

@@ -83,7 +83,7 @@ WorkflowOutput(
 ```
 
 ### 3.2 配置说明
-拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 ✨✨✨✨ 标出。
+拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> 标出。
 
 1. 读取任务（对应配置字段 `astuner.task_reader`）
 2. 定义 Workflow（对应配置字段 `astuner.rollout.agentscope_workflow`）
@@ -97,14 +97,14 @@ WorkflowOutput(
 ```yaml
 astuner:
     task_reader:
-        type: huggingface_dat_repo # ✨✨✨✨ `env_service` 或 `dataset_file` 或 `huggingface_dat_repo` 或 `data_generation`
+        type: huggingface_dat_repo # [关键] `env_service` 或 `dataset_file` 或 `huggingface_dat_repo` 或 `data_generation`
     rollout:
-        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ 编写并选择智能体
+        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # [关键] 编写并选择智能体
     task_judge:
-        # ✨✨✨✨ 编写并选择评估函数
+        # [关键] 编写并选择评估函数
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
     model:
-        # ✨✨✨✨ 设置需要训练的模型
+        # [关键] 设置需要训练的模型
         path: YOUR_MODEL_PATH
 ```
 

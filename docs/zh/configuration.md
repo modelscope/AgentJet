@@ -2,190 +2,189 @@
 
 本页对 AgentScope Tuner 的配置文件进行详细说明。
 
+---
+
 ## 总览
-AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法、奖励、日志以及其他运行时行为。默认配置文件位于 `astuner/default_config/astune_default.yaml`。
+
+AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法、奖励、日志以及其他运行时行为。
+
+!!! info "默认配置文件"
+    默认配置文件位于 `astuner/default_config/astune_default.yaml`。
 
 一个典型的配置文件包含一个根节点 `astuner`，进一步被划分为若干部分：
 
-- **基础信息**
-  - `project_name`, `experiment_name`, `experiment_dir`：用于标识实验及其保存位置。
-  - `backbone`：选择训练后端，例如 `debug`、`trinity` 或 `verl`。
-- **数据与奖励**
-  - `task_reader`：如何加载训练 / 验证样本（EnvService、本地文件、HuggingFace 数据集等）。
-  - `task_judge`：如何评估智能体并计算奖励（自定义评测器或基于 LLM 的自动打分器）。
-  - `data`：Prompt / Response 的长度和 batch 大小等。
-- **模型**
-  - `model`：要训练的基础模型从哪里加载（本地路径或 HuggingFace 仓库）。
-- **Rollout 与交互配置**
-  - `rollout`：智能体如何与环境交互（协议、采样参数、最大步数等）。
-  - `context_tracker`：如何管理对话 / 历史信息。
-- **训练配置**
-  - `trainer_common`：全局训练超参数（epoch、checkpoint、优化算法参数、损失、FSDP、logger 等）。
-  - `debug`：当 `backbone: debug` 时使用的额外调试配置。
+| 类别 | 配置项 | 说明 |
+|------|--------|------|
+| **基础信息** | `project_name`, `experiment_name`, `experiment_dir`, `backbone` | 标识实验及其保存位置，选择训练后端 |
+| **数据与奖励** | `task_reader`, `task_judge`, `data` | 数据加载、评估和 batch 配置 |
+| **模型** | `model` | 要训练的基础模型路径 |
+| **Rollout** | `rollout`, `context_tracker` | 智能体交互配置和历史管理 |
+| **训练** | `trainer_common`, `debug` | 训练超参数和调试配置 |
 
-你可以从默认 YAML 开始，只修改与你的使用场景相关的部分。文末 *附录* 提供了一个 **完整配置示例** 供参考。
+!!! tip "配置建议"
+    您可以从默认 YAML 开始，只修改与您的使用场景相关的部分。文末*附录*提供了一个**完整配置示例**供参考。
 
-## 模型
-要训练一个智能体，首先需要指定待训练的模型，以及训练过程中使用的一些环境变量。
+---
 
-在配置文件中，你可以设置从某个位置加载模型参数的路径：
+## 模型配置
 
-```yaml
+要训练一个智能体，首先需要指定待训练的模型：
+
+```yaml title="model 配置"
 astuner:
-  # ...
-
-  # 待训练的模型
   model:
     path: path/to/model
-
-  # ...
-
 ```
 
-你可以通过以下方式指定模型来源：
+=== "本地文件"
 
-+ 本地文件：指向包含 Transformers 格式模型的本地目录，例如 `/mnt/data/models/Qwen2.5-14B-Instruct`
-+ HuggingFace 仓库：指向某个 HuggingFace 仓库，例如 `Qwen/Qwen2.5-14B-Instruct`。模型会自动下载并加载。
+    指向包含 Transformers 格式模型的本地目录：
+    
+    ```yaml
+    astuner:
+      model:
+        path: /mnt/data/models/Qwen2.5-14B-Instruct
+    ```
 
+=== "HuggingFace 仓库"
 
+    指向 HuggingFace 仓库，模型会自动下载并加载：
+    
+    ```yaml
+    astuner:
+      model:
+        path: Qwen/Qwen2.5-14B-Instruct
+    ```
 
-另外，如果在训练中使用 LLM-as-a-Judge，则需要配置一些必要的环境变量：
+!!! warning "LLM-as-a-Judge 环境变量"
+    如果在训练中使用 LLM-as-a-Judge，需要配置必要的环境变量：
+    
+    ```bash
+    export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
+    export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
+    ```
 
-```bash
-# the API key of DashScope, which provides the remove LLM calling
-export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
-export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
-```
+---
 
-## 数据
+## 数据配置
+
 数据相关的配置主要包括两部分：`task_reader` 和 `task_judge`。
 
 ### Task Reader
-`task_reader` 用于定义如何读取训练集和验证集。支持多种 reader 类型。
 
-```yaml
-astuner:
-  task_reader:
-    # options:
-    #   env_service: read dataset from EnvService
-    #   jsonl_dataset_file: read dataset from local JSONL file
-    #   huggingface_dat_repo: read dataset from huggingface repo
-    #   data_generation: generate dataset from documents and queries
-    #   random_dummy: generate random dummy tasks for quick pipeline checks
-    type: env_service
+`task_reader` 用于定义如何读取训练集和验证集。支持多种 reader 类型：
 
-    # 1. env_service reader config
-    env_service:
-      env_type: "appworld"
-      env_url: "http://127.0.0.1:8080"
-      env_action_preference: code
-      training_split: train
-      validation_split: dev
+=== "EnvService"
 
-    # 2. jsonl_dataset_file reader config
-    jsonl_dataset_file:
-      training:
-        file_path: "xxxx.jsonl"
-      validation:
-        file_path: "xxxx.jsonl"
+    从 EnvService 中读取数据：
+    
+    ```yaml
+    astuner:
+      task_reader:
+        type: env_service
+        env_service:
+          env_type: "appworld"
+          env_url: "http://127.0.0.1:8080"
+          env_action_preference: code
+          training_split: train
+          validation_split: dev
+    ```
 
-    # 3. huggingface_dat_repo reader config
-    huggingface_dat_repo:
-      dataset_path: "gsm8k"
-      training_split: "train"
-      validation_split: "validation"
+=== "JSONL 文件"
 
-    # 4. data_generation reader config
-    data_generation:
-      document_reader:
-        document_path:
-          - 'dataset/document/your-document1.pdf'
-        languages:
-          - eng
-      query_reader:
-        type: dataset_file
-        dataset_file:
+    从本地 JSONL 文件读取：
+    
+    ```yaml
+    astuner:
+      task_reader:
+        type: jsonl_dataset_file
+        jsonl_dataset_file:
           training:
-            file_path: 'dataset/jsonl/your-queries.jsonl'
-      task_num: 10
-      llm_model: qwen-long
-      llm_response_length: 8192
-      num_workers: 32
-      sampling_params:
-        temperature: 0
-      filter:
-        type: deduplication
-        enabled: true
-        params:
-          similarity_threshold: 0.8
-          db_path: ./.similarity_db
-          model: text-embedding-v4
-          api_key: null
-          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-```
+            file_path: "xxxx.jsonl"
+          validation:
+            file_path: "xxxx.jsonl"
+    ```
 
-+ `env_service`：从 EnvService 中读取数据，适用于需要与 EnvService 交互的任务。
-    - `env_type`：环境类型，需要与 EnvService 中初始化的环境类型保持一致（例如 `appworld`）。
-    - `env_url`：EnvService 的服务地址（例如 `http://127.0.0.1:8080`）。
-    - `env_action_preference`：偏好的 Action 形式，可选 `code`、`text` 或 `box`。
-    - `training_split`：在环境中用于训练的数据切分名称。
-    - `validation_split`：在环境中用于验证的数据切分名称。
-+ `jsonl_dataset_file`：从本地文件中读取数据，通常为 JSONL 格式。
-    - `training.file_path`：训练数据集的本地路径。
-    - `validation.file_path`：验证数据集的本地路径。
-+ `huggingface_dat_repo`：直接从 HuggingFace 仓库中读取数据集。
-    - `dataset_path`：HuggingFace 上的数据集仓库名（例如 `gsm8k`）。
-    - `training_split`：用于训练的数据集切分名称。
-    - `validation_split`：用于验证的数据集切分名称。
+=== "HuggingFace"
 
-`data_generation` 和 `random_dummy` 也可用于特殊工作流（完整 schema 可参考 `astune_default.yaml`）。
+    从 HuggingFace 仓库读取：
+    
+    ```yaml
+    astuner:
+      task_reader:
+        type: huggingface_dat_repo
+        huggingface_dat_repo:
+          dataset_path: "gsm8k"
+          training_split: "train"
+          validation_split: "validation"
+    ```
+
+=== "数据生成"
+
+    从文档自动生成任务：
+    
+    ```yaml
+    astuner:
+      task_reader:
+        type: data_generation
+        data_generation:
+          document_reader:
+            document_path:
+              - 'dataset/document/your-document.pdf'
+            languages:
+              - eng
+          query_reader:
+            type: dataset_file
+            dataset_file:
+              training:
+                file_path: 'dataset/jsonl/your-queries.jsonl'
+          task_num: 10
+          llm_model: qwen-long
+    ```
 
 ### Task Judge
-`task_judge` 用于评估智能体的表现并计算奖励。
 
-```yaml
+`task_judge` 用于评估智能体的表现并计算奖励：
+
+```yaml title="task_judge 配置"
 astuner:
   task_judge:
-    # options: 'customized_protocol', 'rubrics_auto_grader'
-    judge_type: customized_protocol
-    # the package path to judge (reward) function
+    judge_type: customized_protocol  # 或 'rubrics_auto_grader'
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
-    # LLM, which may be used by judge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
-
-    # rubrics_auto_grader config
-    rubrics_auto_grader: # only active when `judge_type: rubrics_auto_grader`
-      model_name: qwen-max
-      grader_mode: pointwise
-      # ...
 ```
 
-+ `judge_type`：评测方式。
-    - `customized_protocol`：使用自定义 Python 类进行打分。需要通过 `judge_protocol` 指定类路径（例如 `package.module->ClassName`）。
-    - `rubrics_auto_grader`：使用基于 LLM 的自动打分。
-+ `alien_llm_model`：评测时可能用到的辅助 LLM 模型。
+| 配置项 | 说明 |
+|--------|------|
+| `judge_type` | 评测方式：`customized_protocol` 或 `rubrics_auto_grader` |
+| `judge_protocol` | 自定义评测器的类路径（格式：`package.module->ClassName`） |
+| `alien_llm_model` | 评测时可能用到的辅助 LLM 模型 |
+
+---
 
 ## 训练配置
-### 后端
-AgentScope Tuner 支持三种训练后端：**trinity**、**verl**，以及一个额外的 **debug** 模式。
 
-+ **trinity**：默认选项。一个通用、灵活且可扩展的框架，用于大模型的强化微调。
-+ **verl**：Volcano engine reinforcement learning for LLMs。
-+ **debug**：允许用户设置断点并调试代码的后端。
+### 后端选择
 
-要配置所使用的后端，可以修改：
+AgentScope Tuner 支持三种训练后端：
+
+| 后端 | 说明 |
+|------|------|
+| **trinity** | 默认选项。通用、灵活且可扩展的大模型强化微调框架 |
+| **verl** | Volcano engine reinforcement learning for LLMs |
+| **debug** | 允许用户设置断点并调试代码 |
 
 ```yaml
 astuner:
-  # debug or trinity or verl
-  backbone: trinity
+  backbone: trinity  # debug 或 trinity 或 verl
 ```
 
-### Rollout
-`rollout` 配置控制智能体在与环境进行交互采样过程中的行为。
+### Rollout 配置
 
-```yaml
+`rollout` 配置控制智能体在与环境进行交互采样过程中的行为：
+
+```yaml title="rollout 配置"
 astuner:
   rollout:
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
@@ -197,15 +196,18 @@ astuner:
     num_repeat: 4
 ```
 
-+ `agentscope_workflow`：指定具体的交互协议实现类。
-+ `temperature` / `top_p`：采样参数。
-+ `name`：推理引擎名称（例如 `vllm`）。
-+ `n_vllm_engine`：使用的 vLLM 引擎数量（仅在 backbone 为 trinity 时生效）。
+| 配置项 | 说明 |
+|--------|------|
+| `agentscope_workflow` | 具体的交互协议实现类 |
+| `temperature` / `top_p` | 采样参数 |
+| `name` | 推理引擎名称（例如 `vllm`） |
+| `n_vllm_engine` | vLLM 引擎数量（仅 trinity 后端有效） |
 
-### 通用参数
+### 通用训练参数
+
 `trainer_common` 包含训练流程控制的通用参数：
 
-```yaml
+```yaml title="trainer_common 配置"
 astuner:
   trainer_common:
     total_epochs: 50
@@ -222,22 +224,23 @@ astuner:
       optimizer_offload: True
 ```
 
-+ `total_epochs`：训练总 epoch 数。
-+ `save_freq`：保存模型 checkpoint 的频率（以 step 计）。
-+ `test_freq`：执行验证 / 测试的频率（以 step 计）。
-+ `val_before_train`：是否在训练开始前先执行一次验证。
-+ `val_pass_n`：验证阶段每个问题的采样数量（Pass@N）。
-+ `nnodes` / `n_gpus_per_node`：分布式训练配置，用于指定节点数以及每个节点的 GPU 数量。
-+ `mini_batch_num`：梯度累积的 mini-batch 数量。
-+ `ulysses_sequence_parallel_size`：Ulysses attention 的序列并行大小。
-+ `fsdp_config`：FSDP（Fully Sharded Data Parallel）配置。
-    - `param_offload`：是否将模型参数 offload 到 CPU 以节省 GPU 显存。
-    - `optimizer_offload`：是否将优化器状态 offload 到 CPU。
+??? note "参数详解"
+    | 配置项 | 说明 |
+    |--------|------|
+    | `total_epochs` | 训练总 epoch 数 |
+    | `save_freq` | 保存模型 checkpoint 的频率（以 step 计） |
+    | `test_freq` | 执行验证/测试的频率（以 step 计） |
+    | `val_before_train` | 是否在训练开始前先执行一次验证 |
+    | `val_pass_n` | 验证阶段每个问题的采样数量（Pass@N） |
+    | `nnodes` / `n_gpus_per_node` | 分布式训练配置 |
+    | `mini_batch_num` | 梯度累积的 mini-batch 数量 |
+    | `fsdp_config` | FSDP 配置，控制参数和优化器 offload |
 
 ### 优化算法
-优化算法及其超参数主要在 `algorithm`、`optim` 和根配置中进行设置：
 
-```yaml
+优化算法及其超参数主要在 `algorithm`、`optim` 中设置：
+
+```yaml title="优化算法配置"
 astuner:
   trainer_common:
     algorithm:
@@ -250,19 +253,18 @@ astuner:
     kl_loss_type: low_var_kl
 ```
 
-+ `optim`：
-    - `lr`：学习率（Learning Rate）。
-+ `algorithm`：
-    - `adv_estimator`：Advantage 计算方法，例如 `grpo`（Group Relative Policy Optimization）。
-    - `use_kl_in_reward`：是否在奖励中加入 KL 散度项。
-+ `use_kl_loss`：是否在损失计算中加入 KL 约束。
-+ `kl_loss_coef`：KL 损失系数。
-+ `kl_loss_type`：KL 损失的计算方式，例如 `low_var_kl`。
+| 配置项 | 说明 |
+|--------|------|
+| `adv_estimator` | Advantage 计算方法（例如 `grpo`） |
+| `lr` | 学习率 |
+| `use_kl_loss` | 是否在损失计算中加入 KL 约束 |
+| `kl_loss_coef` | KL 损失系数 |
 
 ### 调试模式
-当 `backbone` 设置为 `debug` 时所使用的配置。
 
-```yaml
+当 `backbone` 设置为 `debug` 时使用的配置：
+
+```yaml title="debug 配置"
 astuner:
   debug:
     debug_max_parallel: 16
@@ -272,18 +274,23 @@ astuner:
     debug_tensor_parallel_size: 4
 ```
 
-该模式和配置可用于：
+!!! tip "调试模式用途"
+    - **限制任务数与并发数**：在少量任务和较小并发下快速验证训练流程
+    - **固定随机性**：通过 `debug_vllm_seed` 帮助复现问题
 
-- **限制任务数与并发数**：在少量任务和较小并发下快速验证训练流程。
-- **固定随机性**：通过 `debug_vllm_seed` 帮助复现问题。
+---
 
 ## 日志与训练监控
-### 配置 Logger
-AgentScope Tuner 支持多种日志后端，可通过 `trainer_common.logger` 进行配置：
 
-+ `console`：将日志输出到标准输出，方便快速查看训练进度。
-+ `wandb`：对接 wandb 平台，提供可视化训练曲线和指标监控。
-+ `swanlab`：使用 SwanLab 进行日志记录。
+### 配置 Logger
+
+AgentScope Tuner 支持多种日志后端：
+
+| 后端 | 说明 |
+|------|------|
+| `console` | 将日志输出到标准输出 |
+| `wandb` | 对接 Weights & Biases 平台 |
+| `swanlab` | 使用 SwanLab 进行日志记录 |
 
 ```yaml
 astuner:
@@ -292,262 +299,122 @@ astuner:
 ```
 
 ### 日志结构
+
 所有实验输出都会保存在 `./launcher_record/{experiment_name}` 目录下：
 
-+ **Logs：** 训练过程生成的日志与错误信息。
-+ **Metrics：**
-    - 具体的指标输出位置取决于所选的 logger 后端。
-+ **Checkpoint：** 训练得到的模型 checkpoint。
+| 类型 | 说明 |
+|------|------|
+| **Logs** | 训练过程生成的日志与错误信息 |
+| **Metrics** | 具体输出位置取决于所选的 logger 后端 |
+| **Checkpoint** | 训练得到的模型 checkpoint |
 
+---
 
 ## 附录：完整配置示例
 
-```yaml
-# ------------------ main configuration ------------------
-astuner:
-  project_name: "astuner_default_project"
-  experiment_name: "read_yaml_name"
-  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
-  backbone: debug # `debug` or `trinity` or `verl`
-
-
-  model:
-    # which model should be trained
-    path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct
-
-  data:
-    # max number of tokens for prompt
-    max_prompt_length: 3000
-    # max number of tokens for response
-    max_response_length: 15000
-    # how many tasks per training batch
-    train_batch_size: 32
-    # [Hint]: The final number of samples per update will be: N_{sample} = (data.train_batch_size * rollout.num_repeat * rollout.multi_turn.expected_steps)
-
-
-  rollout:
-
-    # the path to the workflow class
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
-
-    # whether or not to disable all tool calls
-    agentscope_disable_toolcalls: False
-
-    # maximum number of parallel environments / simulate workers
-    max_env_worker: 128
-
-    # step reward gamma (experimental, do not change)
-    gamma: 1.0
-
-    # monitor LLM's abormal behaviors during rollout
-    compute_madness_checklist:
-      - "nonsense"
-    # send signal to terminate context tracing when LLM is losing control
-    agent_madness_termination: True # terminate_after_gone_mad
-    # punish the LLM when it is detected as lost control
-    agent_madness_reward: -1.0
-
-    # max response length in one turn
-    max_response_length_in_one_turn: 4096
-
-    # max token length allowed for the model during rollout
-    max_model_len: 18000
-
-    multi_turn:
-      # how many samples should be collected for each task run
-      max_sample_per_task: 30
-      # limit the maximum steps for each task
-      max_steps: 30
-      # the expected steps for each task, used to calculate the training batch size for trinity
-      expected_steps: 1
-
-    # TP size for rollout engine
-    tensor_model_parallel_size: 1
-
-    # the number of vllm engines, number of gpus for infer is `n_vllm_engine*tensor_model_parallel_size`, this argument is NOT effective when NOT using trinity
-    n_vllm_engine: 2
-
-    # how many sequences are allowed to be processed in parallel by each vllm engine
-    max_num_seqs: 10
-
-    # the usage of infer engine, options: (vllm, sglang)
-    name: vllm
-
-    # how many times a task should be repeated
-    num_repeat: 4
-
-    # rollout kwargs
-    temperature: 0.9
-    top_p: 1.0
-
-    # validation kwargs
-    val_kwargs:
-      temperature: 0.0
-      top_k: -1
-      top_p: 1.0
-      do_sample: False
-      num_repeat: 1
-
-
-  task_reader:
-    # the type of task_reader
-    # options:
-    #   env_service: read dataset from EnvService
-    #   jsonl_dataset_file: read dataset from local JSONL file
-    #   huggingface_dat_repo: read dataset from huggingface repo
-    #   data_generation: generate dataset from documents and queries
-    #   random_dummy: generate random dummy tasks for quick pipeline checks
-    type: env_service # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
-    # when `type == jsonl_dataset_file`
-    jsonl_dataset_file:
-      training:
-        file_path: "/path/to/training/data.jsonl"
-      validation:
-        file_path: "/path/to/validation/data.jsonl"
-    # when `type == env_service`
-    env_service:
-      # the type of env, must be init in EnvService first
-      env_type: "appworld"
-      # the url of the service
-      env_url: "http://127.0.0.1:8080"
-      # code, text, box
-      env_action_preference: code
-      # the name of training split in this environment
-      training_split: train
-      # the name of validation split in this environment
-      validation_split: dev
-    # when `type == huggingface_dat_repo`
-    huggingface_dat_repo:
-      # the repo name
-      dataset_path: "gsm8k"
-      # the name of training split
-      training_split: "train"
-      # the name of validation split
-      validation_split: "validation"
-
-    # when `type == data_generation`
-    data_generation:
-      document_reader:
-        document_path:
-          - 'dataset/document/your-document1.pdf'
-          - 'dataset/document/your-document2.pdf'
-        languages:
-          - eng
-      query_reader:
-        type: dataset_file
-        dataset_file:
+??? example "完整配置文件"
+    ```yaml
+    astuner:
+      project_name: "astuner_default_project"
+      experiment_name: "read_yaml_name"
+      experiment_dir: "auto"
+      backbone: debug
+    
+      model:
+        path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct
+    
+      data:
+        max_prompt_length: 3000
+        max_response_length: 15000
+        train_batch_size: 32
+    
+      rollout:
+        agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+        agentscope_disable_toolcalls: False
+        max_env_worker: 128
+        gamma: 1.0
+        compute_madness_checklist:
+          - "nonsense"
+        agent_madness_termination: True
+        agent_madness_reward: -1.0
+        max_response_length_in_one_turn: 4096
+        max_model_len: 18000
+        multi_turn:
+          max_sample_per_task: 30
+          max_steps: 30
+          expected_steps: 1
+        tensor_model_parallel_size: 1
+        n_vllm_engine: 2
+        max_num_seqs: 10
+        name: vllm
+        num_repeat: 4
+        temperature: 0.9
+        top_p: 1.0
+        val_kwargs:
+          temperature: 0.0
+          top_k: -1
+          top_p: 1.0
+          do_sample: False
+          num_repeat: 1
+    
+      task_reader:
+        type: env_service
+        jsonl_dataset_file:
           training:
-            file_path: 'dataset/jsonl/your-queries.jsonl'
-      task_num: 10
-      llm_model: qwen-long
-      llm_response_length: 8192
-      num_workers: 32
-      sampling_params:
-        temperature: 0
-      filter:
-        type: deduplication
-        enabled: true
-        params:
-          similarity_threshold: 0.8
-          db_path: ./.similarity_db
-          model: text-embedding-v4
-          api_key: null # load from the env
-          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-
-  # task judge. it provide rewards for agent training
-  task_judge:
-    judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
-    # the package path to judge (reward) function
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
-
-    # the helper LLM model used for LLM-AS-Judge
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    # when `judge_type == rubrics_auto_grader`
-    rubrics_auto_grader:
-      model_name: qwen-max
-      # reward mode
-      grader_mode: pointwise
-      # the language of prompts, tasks, llm outputs
-      language: en
-      query_specific_generate_number: 1
-      enable_categorization: false
-      categories_number: 5
-      grader_name: "auto_grader"
-      query_field: main_query
-      answer_field: final_answer
-      reference_field: answer
-      custom_evaluation_prompt: null # dict or PromptTemplate or None
-      input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
-      dataset_file:
-        training:
-          file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
-      # Pointwise mode settings
-      min_score: 0
-      max_score: 1
-
-
-  # when backbone is `debug`, debug related configurations
-  debug:
-    debug_max_parallel: 16
-    debug_first_n_tasks: 2
-    debug_vllm_port: 18000
-    debug_vllm_seed: 12345
-    debug_tensor_parallel_size: 4
-
-  # trainer common configurations
-  trainer_common:
-    # validate before the first epoch
-    val_before_train: False
-    # the rollout size in validation phase
-    val_pass_n: 4
-    # the frequency (step) of checkpoint saving
-    save_freq: 20
-    # the frequency (step) of test phase
-    test_freq: 20
-    # totol epochs to train
-    total_epochs: 50
-    # the number of nodes in clusters
-    nnodes: 1
-    # the number of gpus in each node
-    n_gpus_per_node: 8
-    logger: swanlab
-    # optimization algorithms
-    algorithm:
-      adv_estimator: grpo
-      use_kl_in_reward: False
-    mini_batch_num: 1
-    # FSDP config
-    fsdp_config:
-      # offload param to save gpu memory
-      param_offload: True
-      # offload optimizer to save gpu memory
-      optimizer_offload: True
-    # optimizer config
-    optim:
-      # learning rate
-      lr: 1e-6
-    # use KL loss in training
-    use_kl_loss: True
-    # KL loss coefficient
-    kl_loss_coef: 0.002
-    # type of KL loss
-    kl_loss_type: low_var_kl
-    ulysses_sequence_parallel_size: 1
-    checkpoint_base_dir: ./saved_checkpoints
-
-
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
-
-
-
-  # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-  execute_test: False        # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-  execute_testing_lambda: "" # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-
-```
+            file_path: "/path/to/training/data.jsonl"
+          validation:
+            file_path: "/path/to/validation/data.jsonl"
+        env_service:
+          env_type: "appworld"
+          env_url: "http://127.0.0.1:8080"
+          env_action_preference: code
+          training_split: train
+          validation_split: dev
+        huggingface_dat_repo:
+          dataset_path: "gsm8k"
+          training_split: "train"
+          validation_split: "validation"
+    
+      task_judge:
+        judge_type: customized_protocol
+        judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+        alien_llm_model: qwen3-235b-a22b-instruct-2507
+        alien_llm_response_length: 512
+    
+      debug:
+        debug_max_parallel: 16
+        debug_first_n_tasks: 2
+        debug_vllm_port: 18000
+        debug_vllm_seed: 12345
+        debug_tensor_parallel_size: 4
+    
+      trainer_common:
+        val_before_train: False
+        val_pass_n: 4
+        save_freq: 20
+        test_freq: 20
+        total_epochs: 50
+        nnodes: 1
+        n_gpus_per_node: 8
+        logger: swanlab
+        algorithm:
+          adv_estimator: grpo
+          use_kl_in_reward: False
+        mini_batch_num: 1
+        fsdp_config:
+          param_offload: True
+          optimizer_offload: True
+        optim:
+          lr: 1e-6
+        use_kl_loss: True
+        kl_loss_coef: 0.002
+        kl_loss_type: low_var_kl
+        ulysses_sequence_parallel_size: 1
+        checkpoint_base_dir: ./saved_checkpoints
+    
+      context_tracker:
+        context_tracker_type: "linear"
+        alien_llm_model: qwen3-235b-a22b-instruct-2507
+        alien_llm_response_length: 512
+        max_env_len: 4096
+    ```

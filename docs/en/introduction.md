@@ -6,7 +6,7 @@ Simply provide your AgentScope workflow, training data, and reward function, and
 
 ---
 
-### ✨ Features
+### Features
 
 We aim to build a easy-to-learn AgentScope tuner that unlock more possibilities for agent developers:
 
@@ -24,7 +24,7 @@ For advanced researchers, ASTuner also provides high-resolution logging and debu
 
 ---
 
-### 🚀 Quick Start
+### Quick Start
 
 #### Installation
 
@@ -58,17 +58,17 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 
 Explore our rich library of examples to kickstart your journey:
 
-- 🔢 [**Training a math agent that can write python code**](./example_math_agent.md).
-- 📱 [**Creating an AppWorld agent using AgentScope and training it**](./example_app_world.md).
-- 🐺 [**Developing Werewolves RPG agents and training them**](./example_werewolves.md).
-- 👩🏻‍⚕️ [**Learning to ask questions like a doctor**](./example_learning_to_ask.md).
-- 🎴 [**Writing a countdown game using AgentScope and solving it**](./example_countdown.md).
-- 🚶 [**Solving a frozen lake walking puzzle using ASTuner**](./example_frozenlake.md).
+- <img src="https://api.iconify.design/lucide:calculator.svg" class="inline-icon" /> [**Training a math agent that can write python code**](./example_math_agent.md).
+- <img src="https://api.iconify.design/lucide:smartphone.svg" class="inline-icon" /> [**Creating an AppWorld agent using AgentScope and training it**](./example_app_world.md).
+- <img src="https://api.iconify.design/lucide:users.svg" class="inline-icon" /> [**Developing Werewolves RPG agents and training them**](./example_werewolves.md).
+- <img src="https://api.iconify.design/lucide:stethoscope.svg" class="inline-icon" /> [**Learning to ask questions like a doctor**](./example_learning_to_ask.md).
+- <img src="https://api.iconify.design/lucide:timer.svg" class="inline-icon" /> [**Writing a countdown game using AgentScope and solving it**](./example_countdown.md).
+- <img src="https://api.iconify.design/lucide:footprints.svg" class="inline-icon" /> [**Solving a frozen lake walking puzzle using ASTuner**](./example_frozenlake.md).
 
 
 ---
 
-### 🧩 Core Concepts
+### Core Concepts
 
 ASTuner makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
@@ -99,9 +99,9 @@ The internal system orchestrates several specialized modules to handle the compl
 
 ---
 
-### 🚦 Navigation
+### Navigation
 
-* 📖 **Tutorials**: From [Installation](./installation.md) to [Tuning your first agent](./tutorial.md) — the essential path for beginners.
-* 🛠️ **Core Components**: Define your [Trainable Workflow](./workflow.md) and manage [Data](./data_pipeline.md) and [Reward](./tune_your_first_agent.md).
-* 💡 **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](./example_math_agent.md), [Werewolves game](./example_werewolves.md) and  [Learning to ask task](./example_learning_to_ask.md).
-* ⚙️ **Deep Dive**: Master advanced [Configuration](./configuration.md).
+* <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" /> **Tutorials**: From [Installation](./installation.md) to [Tuning your first agent](./tutorial.md) — the essential path for beginners.
+* <img src="https://api.iconify.design/lucide:wrench.svg" class="inline-icon" /> **Core Components**: Define your [Trainable Workflow](./workflow.md) and manage [Data](./data_pipeline.md) and [Reward](./tune_your_first_agent.md).
+* <img src="https://api.iconify.design/lucide:lightbulb.svg" class="inline-icon" /> **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](./example_math_agent.md), [Werewolves game](./example_werewolves.md) and  [Learning to ask task](./example_learning_to_ask.md).
+* <img src="https://api.iconify.design/lucide:settings.svg" class="inline-icon" /> **Deep Dive**: Master advanced [Configuration](./configuration.md).

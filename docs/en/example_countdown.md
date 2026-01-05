@@ -107,7 +107,7 @@ WorkflowOutput(
 ```
 
 ### 3.2 Configuration Details
-Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with ✨✨✨✨ symbols.
+Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> symbols.
 
 1. Read task (corresponds to configuration field `astuner.task_reader`)
 2.  Define Workflow (corresponds to configuration field `astuner.rollout.agentscope_workflow`)
@@ -121,14 +121,14 @@ Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. T
 ```yaml
 astuner:
     task_reader:
-        type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
+        type: huggingface_dat_repo # [key] `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
     rollout:
-        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # ✨✨✨✨ Write and select Agent
+        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # [key] Write and select Agent
     task_judge:
-        # ✨✨✨✨ Write and select evaluation function
+        # [key] Write and select evaluation function
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
     model:
-        # ✨✨✨✨ Set the model to be trained
+        # [key] Set the model to be trained
         path: YOUR_MODEL_PATH
 ```
 
