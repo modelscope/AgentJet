@@ -1,6 +1,6 @@
 # 任务加载器
 
-AgentScope Tuner 通过 Task Reader 从多种数据源加载训练任务。本页面介绍 Task 的统一 Schema 定义，以及面向常见场景的内置 Task Reader。
+AgentJet 通过 Task Reader 从多种数据源加载训练任务。本页面介绍 Task 的统一 Schema 定义，以及面向常见场景的内置 Task Reader。
 
 ---
 
@@ -71,7 +71,7 @@ class Task(BaseModel):
 
 ## 内置 Task Readers
 
-AgentScope Tuner 提供了 6 个内置 Task Reader，覆盖不同场景。框架会根据配置中的 `ajet.task_reader.type` 自动路由到正确的 reader。
+AgentJet 提供了 6 个内置 Task Reader，覆盖不同场景。框架会根据配置中的 `ajet.task_reader.type` 自动路由到正确的 reader。
 
 ### 快速选择指南
 

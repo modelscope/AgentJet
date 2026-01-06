@@ -1,6 +1,6 @@
-# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
-# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
-# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/ajet_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/ajet_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/ajet_default.yaml` INSTEAD
 
 trinity:
   algorithm:
@@ -19,7 +19,7 @@ trinity:
     explorer_input:
       eval_tasksets: []
       taskset:
-        default_workflow_type: astuner_workflow
+        default_workflow_type: ajet_workflow
         format:
           prompt_key: question
           response_key: answer
@@ -36,7 +36,7 @@ trinity:
     trainer_input:
       experience_buffer:
         max_read_timeout: 18000
-        name: "astuner_experience_buffer"
+        name: "ajet_experience_buffer"
         storage_type: queue
         replay_buffer:
           enable: false

@@ -1,6 +1,6 @@
 # Tracing-Feedback Loop
 
-ASTune allows you to recycle the chat logs generated during an Agent's execution and continuously improve the Agent through iterative training, which we call **Tracing-Feedback Training**. It provides features
+AgentJet allows you to recycle the chat logs generated during an Agent's execution and continuously improve the Agent through iterative training, which we call **Tracing-Feedback Training**. It provides features
 
 + Loading tracing log from agentscope studio database
 + Converting log into formatted data

@@ -138,7 +138,6 @@ launcher_record
 .trash
 
 trinity_checkpoints
-astune_test
 good_trinity_checkpoints
 _resources
 auto/auto_grader.json

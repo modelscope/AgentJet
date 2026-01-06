@@ -29,7 +29,7 @@ Auto Grader Judge is an intelligent evaluation system that **learns how to grade
 
 ### 1. Configuration
 
-Add to your `astune_default.yaml`:
+Add to your `ajet_default.yaml`:
 
 ```yaml
 ajet:

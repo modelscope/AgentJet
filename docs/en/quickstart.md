@@ -1,6 +1,6 @@
 # Quick Start
 
-AgentScope Tuner provides a complete feature set for tuning agents. You can try starting training an agent right away:
+AgentJet provides a complete feature set for tuning agents. You can try starting training an agent right away:
 
 ```bash
 ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
@@ -25,7 +25,7 @@ Check out the [installation guide](./installation.md) to set up the training env
 Write an Agent class (e.g., `MathToolWorkflow`) that inherits from the base Workflow class.</li>
 <li><strong>Configure and Run</strong>
 
-Use the `AstunerJob` API to configure and start training.</li>
+Use the `AgentJetJob` API to configure and start training.</li>
 </ol>
 </div>
 </div>
@@ -33,11 +33,11 @@ Use the `AstunerJob` API to configure and start training.</li>
 ### Code Example
 
 ```python title="train_math_agent.py"
-from ajet import AstunerJob
+from ajet import AgentJetJob
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "YOUR_MODEL_PATH"
-job = AstunerJob(n_gpu=8, algorithm='grpo', model=model_path)
+job = AgentJetJob(n_gpu=8, algorithm='grpo', model=model_path)
 job.set_workflow(MathToolWorkflow)
 job.set_data(type="hf", dataset_path='openai/gsm8k')
 

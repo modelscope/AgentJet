@@ -1,15 +1,15 @@
 # 配置指南
 
-本页对 AgentScope Tuner 的配置文件进行详细说明。
+本页对 AgentJet 的配置文件进行详细说明。
 
 ---
 
 ## 总览
 
-AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法、奖励、日志以及其他运行时行为。
+AgentJet 使用 YAML 格式的配置文件来设置数据、训练算法、奖励、日志以及其他运行时行为。
 
 !!! info "默认配置文件"
-    默认配置文件位于 `ajet/default_config/astune_default.yaml`。
+    默认配置文件位于 `ajet/default_config/ajet_default.yaml`。
 
 一个典型的配置文件包含一个根节点 `ajet`，进一步被划分为若干部分：
 
@@ -167,7 +167,7 @@ ajet:
 
 ### 后端选择
 
-AgentScope Tuner 支持三种训练后端：
+AgentJet 支持三种训练后端：
 
 | 后端 | 说明 |
 |------|------|
@@ -284,7 +284,7 @@ ajet:
 
 ### 配置 Logger
 
-AgentScope Tuner 支持多种日志后端：
+AgentJet 支持多种日志后端：
 
 | 后端 | 说明 |
 |------|------|
@@ -315,7 +315,7 @@ ajet:
 ??? example "完整配置文件"
     ```yaml
     ajet:
-      project_name: "astuner_default_project"
+      project_name: "ajet_default_project"
       experiment_name: "read_yaml_name"
       experiment_dir: "auto"
       backbone: debug

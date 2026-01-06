@@ -2,7 +2,7 @@
 
 ## 如何修改 Trinity 配置
 
-1. 🎯 **推荐方式**：在大多数情况下，您无需直接调整 Trinity 参数，只需参考并修改上层的 `ajet/default_config/astune_default.yaml` 配置文件即可，
+1. 🎯 **推荐方式**：在大多数情况下，您无需直接调整 Trinity 参数，只需参考并修改上层的 `ajet/default_config/ajet_default.yaml` 配置文件即可，
    AgentJet 会**自动**帮您完成参数映射。
 
 2. ⚙️ **特殊情况**：部分 Trinity 调优参数目前尚未在 AgentJet 中建立映射，您可以参考 Trinity 的文档，然后通过以下形式进行修改：
@@ -19,7 +19,7 @@ trinity:
 
 ## 配置映射修改 🔄
 
-某些 ASTune 配置与 Trinity 存在重叠，
+某些 AgentJet 配置与 Trinity 存在重叠，
 可通过 `ajet/default_config/trinity/config_auto_convertion_trinity.jsonc` 文件进行映射配置
 
 ## Trinity 超参数简明指南 📊

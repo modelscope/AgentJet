@@ -87,5 +87,5 @@ hydra:
 defaults:
   - verl_default    # verl inherit 1/1
   - trinity_default # trinity inherit 1/1
-  - astune_default
+  - ajet_default
   - _self_

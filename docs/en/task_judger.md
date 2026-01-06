@@ -50,7 +50,7 @@ class BaseJudge:
 
 ## Built-in Task Judgers
 
-AgentScope Tuner provides three built-in judgers for common evaluation scenarios:
+AgentJet provides three built-in judgers for common evaluation scenarios:
 
 ### 1. MathAnswerAsJudge
 

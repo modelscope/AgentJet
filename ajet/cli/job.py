@@ -22,17 +22,17 @@ from ajet.cli.launcher import (
     get_backbone_target,
     setup_environment_vars,
 )
-from ajet.default_config.astune_default import Config
+from ajet.default_config.ajet_default import Config
 from ajet.utils.config_utils import (
-    expand_astune_hierarchical_config,
+    expand_ajet_hierarchical_config,
     prepare_experiment_config,
-    read_astune_hierarchical_config,
+    read_ajet_hierarchical_config,
 )
 from ajet.utils.dynamic_import import cls_to_path
 from ajet.utils.launch_utils import execute_training_process
 
 
-class AstunerJob:
+class AgentJetJob:
     """Lightweight builder that launches AgentJet training as a subprocess."""
 
     def __init__(
@@ -63,16 +63,16 @@ class AstunerJob:
             self.config.ajet.rollout.tensor_model_parallel_size = 1
 
     def build_job_from_yaml(self, yaml_path: str | None) -> dict:
-        self.exp_name = datetime.now().strftime("astuner_job_%Y%m%d_%H%M%S")
+        self.exp_name = datetime.now().strftime("ajet_job_%Y%m%d_%H%M%S")
         self.exp_dir_final = "saved_experiments"
-        self.config_as_dict = read_astune_hierarchical_config(
+        self.config_as_dict = read_ajet_hierarchical_config(
             yaml_path,
             exp_name=self.exp_name,
             backbone=self.backbone,
             write_to=None,
             exp_dir=self.exp_dir_final,
         )
-        self.config_as_dict = expand_astune_hierarchical_config(self.config_as_dict, write_to=None)
+        self.config_as_dict = expand_ajet_hierarchical_config(self.config_as_dict, write_to=None)
         logger.info(f"Built AgentJet job config: {yaml_path}")
         return self.config_as_dict
 
@@ -86,7 +86,7 @@ class AstunerJob:
 
     def set_workflow(
         self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False
-    ) -> "AstunerJob":
+    ) -> "AgentJetJob":
         self.config.ajet.rollout.agentscope_workflow = cls_to_path(workflow)
         # TODO: validate workflow outputs contain reward
         # ensure_reward_in_workflow
@@ -98,7 +98,7 @@ class AstunerJob:
         dataset_path: str,
         training_split: str = "train",
         validation_split: str = "test",
-    ) -> "AstunerJob":
+    ) -> "AgentJetJob":
         """Configure the task reader. Defaults to HuggingFace datasets."""
 
         # available types:
@@ -118,7 +118,7 @@ class AstunerJob:
 
         return self
 
-    def tune(self, *args, **kwargs) -> "AstunerJob":
+    def tune(self, *args, **kwargs) -> "AgentJetJob":
         ast_cfg = self.config.ajet
         if not ast_cfg.rollout or not ast_cfg.rollout.agentscope_workflow:
             raise ValueError("Workflow must be set via set_workflow before tuning.")

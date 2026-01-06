@@ -1,7 +1,7 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-project: "AgentScope Tuner"
+project: "AgentJet"
 title: "<span style='font-weight: 700; color: #2196f3;'>AgentScope</span> <br><span style='font-weight: 900; color: #ff5722;'>Tuner</span>"
 author: Alibaba Tongyi Lab
 logo: logo.png

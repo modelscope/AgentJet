@@ -10,7 +10,7 @@ from ajet.context_tracker.base_tracker import (
     replace_token_ids,
 )
 from ajet.schema.trajectory import Reward, Sample
-from ajet.utils.tokenizer import astune_apply_chat_template
+from ajet.utils.tokenizer import ajet_apply_chat_template
 
 
 class BaseContextTracker(BaseTracker):
@@ -73,14 +73,14 @@ class BaseContextTracker(BaseTracker):
 
         # completion_token_arr will contain generation_prompt header
         completion_token_arr, _ = self.get_inc(
-            astune_apply_chat_template(
+            ajet_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_msg_ref,
                 tokenize=False,
                 tools=tools,
                 add_generation_prompt=False,
             ),
-            astune_apply_chat_template(
+            ajet_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_msg_ref + [llm_output_role_content],
                 tokenize=False,
@@ -418,14 +418,14 @@ class BaseContextTracker(BaseTracker):
     def get_generation_prompt_token(self):
         dummy_msg = [{"role": "assistant", "content": "dummy text"}]
         self.generation_prompt_token, _ = self.get_inc(
-            astune_apply_chat_template(
+            ajet_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=dummy_msg,
                 tools=[],
                 add_generation_prompt=False,
                 tokenize=False,
             ),
-            astune_apply_chat_template(
+            ajet_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=dummy_msg,
                 tools=[],

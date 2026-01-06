@@ -8,7 +8,7 @@ from ajet.data_generator.knowledge_augmentation import KnowledgeAugmentor
 from ajet.data_generator.task_augmentation import TaskAugmentor
 from ajet.task_reader import RouterTaskReader
 from ajet.task_reader.document_reader.doc_reader import DocReader
-from ajet.utils.config_utils import read_astune_config
+from ajet.utils.config_utils import read_ajet_config
 
 dotenv.load_dotenv()
 
@@ -16,7 +16,7 @@ dotenv.load_dotenv()
 class TestConfigUtils(unittest.TestCase):
     def test_data_gen_main(self):
         try:
-            config = read_astune_config("tests/data_gen.yaml")
+            config = read_ajet_config("tests/data_gen.yaml")
 
             task_reader = RouterTaskReader(
                 reader_type=config.task_reader.data_generation.query_reader.type,

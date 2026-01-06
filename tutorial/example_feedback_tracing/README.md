@@ -1,6 +1,6 @@
 # Training a New Agent from Tracing Logs
 
-ASTune allows you to recycle the chat logs generated during an Agent’s execution and continuously improve the Agent through iterative training.
+AgentJet allows you to recycle the chat logs generated during an Agent’s execution and continuously improve the Agent through iterative training.
 This document demonstrates how to train an Agent using tracing log feedback.
 
 ## 1. Preparing the Data

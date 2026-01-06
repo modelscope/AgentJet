@@ -3,30 +3,30 @@ from typing import Any, Dict
 
 
 @dataclass
-class AstunerAlgorithm:
+class AjetAlgorithm:
     adv_estimator: str = "grpo"
 
 
 @dataclass
-class AstunerTrainerCommon:
+class AjetTrainerCommon:
     n_gpus_per_node: int = 8
-    algorithm: AstunerAlgorithm = field(default_factory=AstunerAlgorithm)
+    algorithm: AjetAlgorithm = field(default_factory=AjetAlgorithm)
 
 
 @dataclass
-class AstunerModel:
+class AjetModel:
     path: str = "/path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct"
 
 
 @dataclass
-class AstunerData:
+class AjetData:
     max_prompt_length: int = 3000
     max_response_length: int = 15000
     train_batch_size: int = 32
 
 
 @dataclass
-class AstunerRollout:
+class AjetRollout:
     agentscope_workflow: str = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"
     n_vllm_engine: int = 1
     tensor_model_parallel_size: int = 1
@@ -40,28 +40,28 @@ class HuggingfaceDatRepo:
 
 
 @dataclass
-class AstunerTaskReader:
+class AjetTaskReader:
     type: str = "huggingface_dat_repo"
     huggingface_dat_repo: HuggingfaceDatRepo = field(default_factory=HuggingfaceDatRepo)
 
 
 @dataclass
-class AstunerDefaultConfig:
-    project_name: str = "astune_default_project"
+class AjetDefaultConfig:
+    project_name: str = "ajet_default_project"
     experiment_name: str = "read_yaml_name"
     experiment_dir: str = "auto"
     backbone: str = "debug"
 
-    model: AstunerModel = field(default_factory=AstunerModel)
-    data: AstunerData = field(default_factory=AstunerData)
-    rollout: AstunerRollout = field(default_factory=AstunerRollout)
-    trainer_common: AstunerTrainerCommon = field(default_factory=AstunerTrainerCommon)
-    task_reader: AstunerTaskReader = field(default_factory=AstunerTaskReader)
+    model: AjetModel = field(default_factory=AjetModel)
+    data: AjetData = field(default_factory=AjetData)
+    rollout: AjetRollout = field(default_factory=AjetRollout)
+    trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
+    task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
 
 
 @dataclass
 class Config:
-    ajet: AstunerDefaultConfig = field(default_factory=AstunerDefaultConfig)
+    ajet: AjetDefaultConfig = field(default_factory=AjetDefaultConfig)
 
     @staticmethod
     def _to_dict(obj: Any) -> Any:

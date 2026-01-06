@@ -52,7 +52,7 @@ from verl.utils.metric import reduce_metrics
 from ajet.backbone.warm_up import warm_up_process
 from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import Task
-from ajet.task_reader import dict_to_astuner_task
+from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 
 
@@ -554,7 +554,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         self.async_rollout_manager.wake_up()
                         logger.info("=== wake up end ===")
                         tasks: List[Task] = [
-                            dict_to_astuner_task(dict(
+                            dict_to_ajet_task(dict(
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],
                                 main_query=gen_batch.non_tensor_batch["main_query"][i],
                                 env_type=gen_batch.non_tensor_batch["env_type"][i],

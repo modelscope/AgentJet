@@ -1,6 +1,6 @@
 # 项目简介
 
-**AgentScope Tuner (AgentJet)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的智能体和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
+**AgentJet (AgentJet)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的智能体和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
 
 您只需提供 AgentScope 工作流、训练数据和奖励函数，我们就能助您的智能体达到最佳性能！
 

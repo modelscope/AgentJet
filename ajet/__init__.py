@@ -1,4 +1,4 @@
-from ajet.cli.job import AstunerJob
+from ajet.cli.job import AgentJetJob
 from ajet.schema.task import WorkflowOutput, WorkflowTask
 from ajet.tuner import ModelTuner
 from ajet.workflow import Workflow
@@ -8,7 +8,7 @@ __all__ = [
     "WorkflowTask",
     "WorkflowOutput",
     "ModelTuner",
-    "AstunerJob",
+    "AgentJetJob",
 ]
 
 __version__ = "0.1.0"

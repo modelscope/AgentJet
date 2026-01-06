@@ -1,6 +1,6 @@
 # Task Reader
 
-AgentScope Tuner loads training tasks from various data sources through Task Reader. This page covers the Task schema definition and different built-in Task Readers for common scenarios.
+AgentJet loads training tasks from various data sources through Task Reader. This page covers the Task schema definition and different built-in Task Readers for common scenarios.
 
 ---
 
@@ -71,7 +71,7 @@ class Task(BaseModel):
 
 ## Built-in Task Readers
 
-AgentScope Tuner provides multiple built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `ajet.task_reader.type`.
+AgentJet provides multiple built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `ajet.task_reader.type`.
 
 ### Quick Selection Guide
 

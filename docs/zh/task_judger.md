@@ -50,7 +50,7 @@ class BaseJudge:
 
 ## 内置 Task Judger
 
-AgentScope Tuner 提供了 4 个内置评测器，用于覆盖常见的评测场景：
+AgentJet 提供了 4 个内置评测器，用于覆盖常见的评测场景：
 
 <div class="card-grid">
 <div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>MathAnswerAsJudge</h3></div><p class="card-desc">精确字符串匹配，适用于数学答案评测。</p></div>

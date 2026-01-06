@@ -74,7 +74,7 @@ cp your-document.pdf dataset/document/
 
 ### Step 2: Generate Training Tasks
 #### Method 1: Integrate Data Generation into the Training Pipeline
-Copy and modify the key configuration parameters in `ajet/default_config/astune_default.yaml`, and set `ajet.task_reader.type` to `data_generation` to enable this reader.
+Copy and modify the key configuration parameters in `ajet/default_config/ajet_default.yaml`, and set `ajet.task_reader.type` to `data_generation` to enable this reader.
 
 ```yaml
 ajet:
