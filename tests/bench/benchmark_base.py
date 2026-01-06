@@ -31,9 +31,9 @@ class BenchmarkTestCase(unittest.TestCase):
         workspace_dir = Path(__file__).resolve().parents[2]
 
         git_hash, req_txt = populate_test_env_metadata(str(workspace_dir))
-        os.environ["ASTUNER_GIT_HASH"] = git_hash
-        os.environ["ASTUNER_REQ_TXT"] = req_txt
-        os.environ["ASTUNER_BENCHMARK_NAME"] = target_name
+        os.environ["AJET_GIT_HASH"] = git_hash
+        os.environ["AJET_REQ_TXT"] = req_txt
+        os.environ["AJET_BENCHMARK_NAME"] = target_name
 
         if pre_launch:
             pre_launch()

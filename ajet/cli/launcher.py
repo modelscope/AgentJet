@@ -223,9 +223,9 @@ def setup_environment_vars(args, exp_config, main_yaml_fp):
         if args.conf:
             assert exp_config["ajet"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
     if args.backbone == "trinity":
-        env["ASTUNER_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
+        env["AJET_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
     if args.backbone == "debug":
-        env["ASTUNER_DEBUG"] = "1"  # type: ignore
+        env["AJET_DEBUG"] = "1"  # type: ignore
     return env
 
 
