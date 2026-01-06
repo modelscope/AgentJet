@@ -12,7 +12,7 @@ from omegaconf import DictConfig
 from ajet.utils.config_computer import split_keys_and_operators
 
 
-def read_astune_config(yaml_fp):
+def read_ajet_config(yaml_fp):
     """Load a Hydra configuration relative to this module."""
     yaml_fp = os.path.relpath(
         yaml_fp, os.path.dirname(__file__)
@@ -29,9 +29,9 @@ def read_astune_config(yaml_fp):
 
 
 @cache
-def read_astune_config_with_cache(yaml_fp):
+def read_ajet_config_with_cache(yaml_fp):
     """Load a Hydra configuration relative to this module with caching."""
-    return read_astune_config(yaml_fp)
+    return read_ajet_config(yaml_fp)
 
 
 def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
@@ -167,7 +167,7 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
     return config
 
 
-def read_astune_hierarchical_config(
+def read_ajet_hierarchical_config(
     yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments"
 ):
     if yaml_fp is None:
@@ -183,7 +183,7 @@ def read_astune_hierarchical_config(
             "defaults": [
                 "verl_default",
                 "trinity_default",
-                "astune_default",
+                "ajet_default",
                 "_self_",
             ],
         }
@@ -216,7 +216,7 @@ def read_astune_hierarchical_config(
     return config
 
 
-def expand_astune_hierarchical_config(config, write_to=None):
+def expand_ajet_hierarchical_config(config, write_to=None):
     # create temp yaml file
     import tempfile
 
@@ -224,7 +224,7 @@ def expand_astune_hierarchical_config(config, write_to=None):
         yaml_path = temp_yaml.name
         with open(yaml_path, "w") as file:
             yaml.dump(config, file)
-        full_config = read_astune_config(yaml_path)
+        full_config = read_ajet_config(yaml_path)
         yaml_path = dump_yaml_config(full_config, yaml_fp=yaml_path)
         # put inherit info back
         with open(yaml_path, "r") as file:
@@ -316,9 +316,9 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     shutil.copyfile(yaml_backup_src, yaml_backup_dst)
 
     ## 4. edit new yaml
-    config = read_astune_hierarchical_config(
+    config = read_ajet_hierarchical_config(
         yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir
     )
-    config_final = expand_astune_hierarchical_config(config, write_to=yaml_backup_dst)
+    config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final

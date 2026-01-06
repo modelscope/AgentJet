@@ -3,7 +3,7 @@
 本文档提供 AgentScope-Tuner 的逐步安装说明。
 
 !!! tip "推荐从源码安装"
-    AgentScope Tuner 正处于快速开发与迭代阶段。我们建议从源码安装，以获得最新功能与 Bug 修复。
+    AgentJet 正处于快速开发与迭代阶段。我们建议从源码安装，以获得最新功能与 Bug 修复。
 
 ---
 
@@ -20,7 +20,7 @@
 
 ### Step 1：克隆仓库
 
-从 GitHub 克隆 AgentScope Tuner 仓库，并进入项目目录：
+从 GitHub 克隆 AgentJet 仓库，并进入项目目录：
 
 ```bash
 git clone https://github.com/modelscope/AgentJet.git

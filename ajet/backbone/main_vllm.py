@@ -119,7 +119,7 @@ def run(config):
 
 @hydra.main(
     config_path="ajet/default_config",
-    config_name="astune_default",
+    config_name="ajet_default",
     version_base=None,
 )
 def main(config):

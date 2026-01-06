@@ -33,7 +33,7 @@ Launch the training process and track progress.</li>
     After completing this guide, you will:
 
     - Obtain a Math Agent that can solve math problems using Python
-    - Understand the core concepts in AgentScope Tuner
+    - Understand the core concepts in AgentJet
     - Learn how to design your own training pipeline
 
 ---
@@ -78,7 +78,7 @@ hydra:
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1
-  - astuner_default
+  - ajet_default
   - _self_
 ```
 

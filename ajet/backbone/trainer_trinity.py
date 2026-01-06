@@ -23,18 +23,18 @@ from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from ajet.schema.trajectory import Sample
-from ajet.task_reader import dict_to_astuner_task
+from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import DynamicRolloutManager
-from ajet.utils.config_utils import read_astune_config_with_cache
+from ajet.utils.config_utils import read_ajet_config_with_cache
 from ajet.utils.testing_utils import _test_if_test_mode
 
 
-def get_astune_config_from_trinity_side():
+def get_ajet_config_from_trinity_side():
     yaml_path = os.environ.get("AJET_CONFIG_REDIRECT", None)
     if yaml_path is None:
         raise ValueError("AJET_CONFIG_REDIRECT is not set in environment variables")
-    astune_config = read_astune_config_with_cache(yaml_path)
-    return astune_config
+    ajet_config = read_ajet_config_with_cache(yaml_path)
+    return ajet_config
 
 
 class TrinityRolloutManager(DynamicRolloutManager):
@@ -67,7 +67,7 @@ class TrinityRolloutManager(DynamicRolloutManager):
     def convert_task(self, task: TrinityTask):
         from ajet.schema.task import Task
         assert isinstance(task.raw_task, dict)
-        return dict_to_astuner_task(task.raw_task)
+        return dict_to_ajet_task(task.raw_task)
 
     def thread_worker(self):
         observation_window = {
@@ -75,11 +75,11 @@ class TrinityRolloutManager(DynamicRolloutManager):
             "step": [0],
             "token": [0],
         }
-        astune_task = self.convert_task(self.task)
+        ajet_task = self.convert_task(self.task)
         return self.rollout_env_worker(
-            task=astune_task,
+            task=ajet_task,
             task_batch_index=0,
-            task_tag=f"T{astune_task.task_id}#R",
+            task_tag=f"T{ajet_task.task_id}#R",
             mode="sample" if not self.is_eval else "validate",
             task_thread_index=0,
             observation_window=observation_window,
@@ -92,7 +92,7 @@ class TrinityRolloutManager(DynamicRolloutManager):
         )
 
 
-@WORKFLOWS.register_module("astuner_workflow")
+@WORKFLOWS.register_module("ajet_workflow")
 class AjetWorkflowWrap(Workflow):
     is_async: bool = True
 
@@ -115,14 +115,14 @@ class AjetWorkflowWrap(Workflow):
         self.answer = task.raw_task.get(task.format_args.response_key)  # type: ignore [index]
 
     async def run_async(self):
-        astune_config = get_astune_config_from_trinity_side()
-        warm_up_process(astune_config)
+        ajet_config = get_ajet_config_from_trinity_side()
+        warm_up_process(ajet_config)
         tracker = await TrinityRolloutManager(
             is_eval=self.is_eval,
             task=self.task,
             llm_handle=self.model_client,
             tokenizer=AutoTokenizer.from_pretrained(self.model_client.model_path),
-            config=astune_config,
+            config=ajet_config,
         ).run_in_new_thread()
 
         sample_final = []
@@ -195,7 +195,7 @@ try:
             self.read_batch_size = config.batch_size
             self.split = config.split
 
-            astune_config = get_astune_config_from_trinity_side()
+            ajet_config = get_ajet_config_from_trinity_side()
 
             from ajet.task_reader import (
                 RouterTaskReader,
@@ -203,8 +203,8 @@ try:
             )
 
             task_reader = RouterTaskReader(
-                astune_config.ajet.task_reader.type,
-                astune_config.ajet.task_reader,
+                ajet_config.ajet.task_reader.type,
+                ajet_config.ajet.task_reader,
             )
 
             dataset_segments = []
@@ -304,7 +304,7 @@ class SwanlabMonitor(Monitor):
         # Determine experiment name
         exp_name = monitor_args.get("experiment_name") or f"{name}_{role}"
         self.exp_name = exp_name
-        astune_config = get_astune_config_from_trinity_side()
+        ajet_config = get_ajet_config_from_trinity_side()
 
         # Prepare init kwargs, passing only non-None values to respect library defaults
         init_kwargs = {
@@ -317,7 +317,7 @@ class SwanlabMonitor(Monitor):
             "mode": monitor_args.get("mode") or "cloud",
             "settings": monitor_args.get("settings"),
             "id": monitor_args.get("id"),
-            "config": astune_config,
+            "config": ajet_config,
             "resume": monitor_args.get("resume"),
             "reinit": monitor_args.get("reinit"),
         }
@@ -357,14 +357,14 @@ class SwanlabMonitor(Monitor):
         swanlab.log(data, step=step)
         self.console_logger.info(f"Step {step}: {data}")
 
-        astune_config = get_astune_config_from_trinity_side()
-        experiment_dir = astune_config.ajet.experiment_dir
+        ajet_config = get_ajet_config_from_trinity_side()
+        experiment_dir = ajet_config.ajet.experiment_dir
         trinity_log = f"{experiment_dir}/{self.exp_name}.log"
 
         with open(trinity_log, "a") as f:
             f.write(f"Step {step}: {data}\n")
 
-        if astune_config.ajet.execute_test:  # apply a test probe
+        if ajet_config.ajet.execute_test:  # apply a test probe
             if "critic/score/mean" in data:
                 return
             if "experience_pipeline/group_advantages/reward_mean/mean" not in data:
@@ -375,7 +375,7 @@ class SwanlabMonitor(Monitor):
             test_robot_data["reward_for_test_robot"] = data[
                 "experience_pipeline/group_advantages/reward_mean/mean"
             ]
-            _test_if_test_mode(key="reward_probe", value=test_robot_data, config=astune_config)
+            _test_if_test_mode(key="reward_probe", value=test_robot_data, config=ajet_config)
 
     def close(self) -> None:
         try:

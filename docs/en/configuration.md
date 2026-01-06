@@ -1,15 +1,15 @@
 # Configuration
 
-This page provides a detailed description of the configuration files for AgentScope Tuner.
+This page provides a detailed description of the configuration files for AgentJet.
 
 ---
 
 ## Overview
 
-AgentScope Tuner uses YAML-format configuration files to set up data, algorithms, rewards, logging, and other runtime behaviors.
+AgentJet uses YAML-format configuration files to set up data, algorithms, rewards, logging, and other runtime behaviors.
 
 !!! info "Default Configuration"
-    The default config is located at `ajet/default_config/astune_default.yaml`.
+    The default config is located at `ajet/default_config/ajet_default.yaml`.
 
 At a high level, a typical config contains a single root section `ajet`, which is divided into several logical parts:
 
@@ -129,7 +129,7 @@ ajet:
 
 ### Backend Selection
 
-AgentScope Tuner supports three training backends:
+AgentJet supports three training backends:
 
 | Backend | Description |
 |---------|-------------|
@@ -269,7 +269,7 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
 ??? example "Complete Configuration Template"
     ```yaml title="config.yaml"
     ajet:
-      project_name: "astuner_default_project"
+      project_name: "ajet_default_project"
       experiment_name: "read_yaml_name"
       experiment_dir: "auto"
       backbone: debug

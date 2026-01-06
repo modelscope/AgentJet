@@ -59,13 +59,13 @@ class AgentScopeRunner(BaseAgentRunner):
 
         assert not isinstance(
             raw_reward, list
-        ), "ASTune will support step reward in future versions."
+        ), "AgentJet will support step reward in future versions."
 
         # register reward
         # TODO: support multi-step reward
         reward = Reward(
             raw_reward=raw_reward,
-            raw_step_reward=None,  # "ASTune will support step reward in future versions."
+            raw_step_reward=None,  # "AgentJet will support step reward in future versions."
             success_rate=1.0 if is_success else 0.0,
             madness=0,
             description="",

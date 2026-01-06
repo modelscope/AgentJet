@@ -1,6 +1,6 @@
 # 快速开始
 
-AgentScope Tuner 提供了一套完整的智能体调优功能。您可以立刻尝试启动一个智能体的训练：
+AgentJet 提供了一套完整的智能体调优功能。您可以立刻尝试启动一个智能体的训练：
 
 ```bash
 ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
@@ -25,7 +25,7 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
 编写一个继承自 Workflow 基类的 Agent 类（例如 `MathToolWorkflow`）。</li>
 <li><strong>配置并运行</strong>
 
-使用 `AstunerJob` API 配置并启动训练。</li>
+使用 `AgentJetJob` API 配置并启动训练。</li>
 </ol>
 </div>
 </div>
@@ -33,11 +33,11 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
 ### 代码示例
 
 ```python title="train_math_agent.py"
-from ajet import AstunerJob
+from ajet import AgentJetJob
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "YOUR_MODEL_PATH"
-job = AstunerJob(n_gpu=8, algorithm='grpo', model=model_path)
+job = AgentJetJob(n_gpu=8, algorithm='grpo', model=model_path)
 job.set_workflow(MathToolWorkflow)
 job.set_data(type="hf", dataset_path='openai/gsm8k')
 

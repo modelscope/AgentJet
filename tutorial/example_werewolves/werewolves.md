@@ -5,29 +5,29 @@
 
 详细请见 `tutorial/werewolves/start.py`。可以在项目任意地方新建新的 AgentScope Workflow 代码
 
-- 定义 AgentScope 的工作流 （把agent的model修改为`astune_proxy`）
+- 定义 AgentScope 的工作流 （把agent的model修改为`ajet_proxy`）
     ```python
     class ExampleWerewolves(Workflow):
         trainer: str = Field(default="ajet-trinity")
-        async def execute(self, init_messages, astune_proxy: ModelTuner, config) -> WorkflowOutput:
+        async def execute(self, init_messages, ajet_proxy: ModelTuner, config) -> WorkflowOutput:
 
             train_which_role = "witch"
             roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
 
             # Set random seed for reproducibility
-            workflow_task = astune_proxy.get_agentscope_input_dictionary()[workflow_task]
+            workflow_task = ajet_proxy.get_agentscope_input_dictionary()[workflow_task]
             task_id = workflow_task.task.task_id
 
             np.random.seed(int(task_id))
             np.random.shuffle(roles)
 
-            players = [get_official_agents(f"Player{x + 1}", roles[x], train_which_role, astune_proxy) for x in range(9)]
+            players = [get_official_agents(f"Player{x + 1}", roles[x], train_which_role, ajet_proxy) for x in range(9)]
 
             good_guy_win = await werewolves_game(players, roles)
             raw_reward = 1 if (good_guy_win and train_which_role != "werewolf") or (not good_guy_win and train_which_role == "werewolf") else 0
-            astune_proxy.update_judge_input_dictionary(raw_reward = raw_reward)
-            astune_proxy.update_judge_input_dictionary(is_success = (raw_reward == 1))
-            return astune_proxy
+            ajet_proxy.update_judge_input_dictionary(raw_reward = raw_reward)
+            ajet_proxy.update_judge_input_dictionary(is_success = (raw_reward == 1))
+            return ajet_proxy
 
     ```
 

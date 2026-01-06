@@ -18,7 +18,7 @@ from ajet.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from ajet.schema.trajectory import Reward
 from ajet.utils.color_hsl import adjust_color_hsl
 from ajet.utils.compute_madness import compute_string_madness
-from ajet.utils.tokenizer import astune_apply_chat_template
+from ajet.utils.tokenizer import ajet_apply_chat_template
 
 
 class MultiAgentContextTracker(BaseContextTracker):
@@ -426,7 +426,7 @@ class MultiAgentContextTracker(BaseContextTracker):
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore
         dict_messages = self.to_role_content(ext_messages)
-        prompt_text = astune_apply_chat_template(
+        prompt_text = ajet_apply_chat_template(
             tokenizer=self.tokenizer,
             conversation=dict_messages,
             tools=tools,
@@ -446,7 +446,7 @@ class MultiAgentContextTracker(BaseContextTracker):
     def check_context_token_num_safe(
         self, messages: List, tools: List = []
     ) -> Tuple[bool, bool, str]:
-        prompt_text = astune_apply_chat_template(
+        prompt_text = ajet_apply_chat_template(
             tokenizer=self.tokenizer,
             conversation=messages,
             tools=tools,

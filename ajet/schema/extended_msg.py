@@ -4,7 +4,7 @@ from typing import List
 from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from ajet.utils.tokenizer import astune_apply_chat_template
+from ajet.utils.tokenizer import ajet_apply_chat_template
 
 # import numpy as np
 # INVALID_LOG_PROB_VALUE = np.inf # when debuging, set to np.inf, if anything goes wrong, we can sense that immediately
@@ -126,7 +126,7 @@ class ExtendedMessage:
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
-            self.token_arr = astune_apply_chat_template(
+            self.token_arr = ajet_apply_chat_template(
                 tokenizer=tokenizer,
                 conversation=[auto_tokenize_target],
                 tokenize=True,
@@ -143,7 +143,7 @@ class ExtendedMessage:
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
-            text_frag_to = astune_apply_chat_template(
+            text_frag_to = ajet_apply_chat_template(
                 tokenizer=tokenizer,
                 conversation=DUMMY_MSG + [auto_tokenize_target],
                 tokenize=False,
@@ -154,7 +154,7 @@ class ExtendedMessage:
                 f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}"
             )
         self.token_arr, _ = self.get_inc_simple(
-            text_frag_from=astune_apply_chat_template(
+            text_frag_from=ajet_apply_chat_template(
                 tokenizer=tokenizer,
                 conversation=DUMMY_MSG,
                 tokenize=False,
@@ -307,14 +307,14 @@ class ExtendedMessage:
                 {"role": msg.role, "content": msg.content_for_future} for msg in group
             ]
             merged.token_arr, _ = merged.get_inc_simple(
-                text_frag_from=astune_apply_chat_template(
+                text_frag_from=ajet_apply_chat_template(
                     tokenizer=tokenizer,
                     conversation=DUMMY_MSG,
                     tokenize=False,
                     tools=merged.tools,
                     add_generation_prompt=False,
                 ),
-                text_frag_to=astune_apply_chat_template(
+                text_frag_to=ajet_apply_chat_template(
                     tokenizer,
                     conversation=DUMMY_MSG + auto_tokenize_targets,
                     tokenize=False,

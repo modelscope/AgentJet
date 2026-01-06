@@ -9,14 +9,14 @@
 
 详细请见 `tutorial/math_agent.py`。可以在项目任意地方新建新的 AgentScope Workflow 代码
 
-- 定义 AgentScope 的工作流 （把agent的model修改为`astune_proxy`）
+- 定义 AgentScope 的工作流 （把agent的model修改为`ajet_proxy`）
 
 ```python
 
 agent = ReActAgent(
     name="Qwen",
     sys_prompt=first_msg['content'],
-    model=astune_proxy,  # type: ignore
+    model=ajet_proxy,  # type: ignore
     formatter=DashScopeChatFormatter(),
     memory=InMemoryMemory(),
     toolkit=None,
@@ -27,18 +27,18 @@ for _ in range(config.ajet.rollout.multi_turn.max_steps):
     # agentscope deal with interaction message
     reply_message = await agent(interaction_message)
     # env service protocol
-    obs, _, terminate, _ = astune_proxy.gym_step(action={"content": reply_message.content, "role": "assistant"})
+    obs, _, terminate, _ = ajet_proxy.gym_step(action={"content": reply_message.content, "role": "assistant"})
     # generate new message from env output
     interaction_message = Msg(name="env", content=obs, role="user")
     # is terminated?
     if terminate: break
-    if astune_proxy.context_overflow: break
+    if ajet_proxy.context_overflow: break
 
 ```
 
-- 其中，使用了 astune_proxy 与 agentscope runtime 环境交互的一些接口如下：
-    - `astune_proxy.gym_step` 模拟gym接口，输入动作，输出 observation, reward, terminate_flag, info 四元组
-    - `astune_proxy.context_overflow` 查询当前的context窗口是否token溢出
+- 其中，使用了 ajet_proxy 与 agentscope runtime 环境交互的一些接口如下：
+    - `ajet_proxy.gym_step` 模拟gym接口，输入动作，输出 observation, reward, terminate_flag, info 四元组
+    - `ajet_proxy.context_overflow` 查询当前的context窗口是否token溢出
 
 ### 3. 准备Judge (奖励模块)
 
@@ -62,7 +62,7 @@ Judge的返回值： raw_reward, is_success
 
 ```yaml
 ajet
-  project_name: appworld_astune
+  project_name: appworld_ajet
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数

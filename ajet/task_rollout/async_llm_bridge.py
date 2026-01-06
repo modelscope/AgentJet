@@ -20,7 +20,7 @@ from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
 from ajet.schema.logprob import TokenAndProb
 from ajet.utils.async_utils import run_async_coroutine_with_timeout
 from ajet.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
-from ajet.utils.tokenizer import astune_apply_chat_template
+from ajet.utils.tokenizer import ajet_apply_chat_template
 
 
 class AsyncLlmBridge(object):
@@ -54,7 +54,7 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.update(custom_sampling_params)
 
             input_messages = copy.deepcopy(messages)
-            prompt_text = astune_apply_chat_template(
+            prompt_text = ajet_apply_chat_template(
                 tokenizer=self.tokenizer,
                 conversation=input_messages,
                 tools=tools,
@@ -275,11 +275,11 @@ class AgentScopeLlmProxy(object):
             logger.warning(f"[{info}] detected.")
             self.context_tracker.context_overflow = True
             if token_overflow:
-                # astune_action_when_overflow = self.config.ajet.rollout.astune_action_when_overflow
+                # ajet_action_when_overflow = self.config.ajet.rollout.ajet_action_when_overflow
                 # cannot proceed due to context overflow
                 return ChatResponse(
                     content=[
-                        {"type": "text", "text": "astune_proxy: Exceeded max model context length."}
+                        {"type": "text", "text": "ajet_proxy: Exceeded max model context length."}
                     ],
                 )
             # else: # otherwise, for abnormal output, can still proceed, but we do not track output anymore

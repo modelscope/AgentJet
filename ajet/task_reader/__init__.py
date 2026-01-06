@@ -103,7 +103,7 @@ def task_to_standard_dataset(tasks: List[Task]) -> datasets.Dataset:
     return datasets.Dataset.from_dict(data)
 
 
-def dict_to_astuner_task(task_dict: dict) -> Task:
+def dict_to_ajet_task(task_dict: dict) -> Task:
     """
     Convert a dictionary to a Task object.
 

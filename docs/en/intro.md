@@ -1,6 +1,6 @@
 # Introduction
 
-**AgentScope Tuner (AgentJet)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
+**AgentJet (AgentJet)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
 
 Simply provide your AgentScope workflow, training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
 
@@ -8,7 +8,7 @@ Simply provide your AgentScope workflow, training data, and reward function, and
 
 ## Features
 
-We aim to build an easy-to-learn AgentScope tuner that unlocks more possibilities for agent developers:
+We aim to build an easy-to-learn AgentJet that unlocks more possibilities for agent developers:
 
 <div class="card-grid">
 <a href="./configuration/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:rocket.svg" class="card-icon card-icon-agent" alt=""><h3>Easy and Friendly</h3></div><p class="card-desc">AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.</p></a>

@@ -1,6 +1,6 @@
 # ------------------ main configuration ------------------
 ajet:
-  project_name: "astune_default_project"
+  project_name: "ajet_default_project"
   experiment_name: "read_yaml_name"
   experiment_dir: "auto"  # {exp-dir}/{experiment_name}
   backbone: debug # `debug` or `trinity` or `verl`

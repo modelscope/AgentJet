@@ -2,7 +2,7 @@
 
 ## How to Modify Trinity Configuration in AgentJet
 
-1. 🎯 **Recommended Method**: In most cases, you do not need to directly adjust Trinity parameters. Simply refer to and modify the upper-level `ajet/default_config/astune_default.yaml` configuration file, and AgentJet will **automatically** handle parameter mapping for you.
+1. 🎯 **Recommended Method**: In most cases, you do not need to directly adjust Trinity parameters. Simply refer to and modify the upper-level `ajet/default_config/ajet_default.yaml` configuration file, and AgentJet will **automatically** handle parameter mapping for you.
 
 2. ⚙️ **Special Cases**: Some Trinity tuning parameters are not yet mapped in AgentJet. You can refer to Trinity’s documentation and modify them in the following format:
 
@@ -18,7 +18,7 @@ trinity:
 
 ## Configuration Mapping Modification 🔄
 
-Some ASTune configurations overlap with Trinity.
+Some AgentJet configurations overlap with Trinity.
 You can configure mappings via the `ajet/default_config/trinity/config_auto_convertion_trinity.jsonc` file.
 
 ## Trinity Hyperparameter Quick Guide 📊

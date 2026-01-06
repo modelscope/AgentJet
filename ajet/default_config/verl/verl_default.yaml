@@ -1,6 +1,6 @@
-# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
-# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
-# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/ajet_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/ajet_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/ajet_default.yaml` INSTEAD
 
 ajet:
   rollout:

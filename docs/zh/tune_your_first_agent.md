@@ -30,7 +30,7 @@
 </div>
 </div>
 
-完成整个过程后，您将得到一个可在数学任务环境中使用的 Math 智能体，理解 AgentScope Tuner 中的核心概念，并学会如何设计您自己的训练流程。
+完成整个过程后，您将得到一个可在数学任务环境中使用的 Math 智能体，理解 AgentJet 中的核心概念，并学会如何设计您自己的训练流程。
 
 ---
 
@@ -74,7 +74,7 @@ hydra:
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1
-  - astuner_default
+  - ajet_default
   - _self_
 ```
 
