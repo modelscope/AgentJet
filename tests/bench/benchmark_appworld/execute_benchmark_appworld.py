@@ -17,7 +17,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
         # tests/bench/benchmark_appworld/benchmark_appworld.yaml
         TARGET_NAME = f"benchmark_appworld_{BACKBONE}"
         PYTHON_EXECUTABLE = ".verl/bin/python"
-        multi_nodes = True
+        multi_nodes = False
 
         self.execute_benchmark(
             backbone=BACKBONE,

@@ -86,12 +86,14 @@ ajet:
 
   task_reader:
     type: huggingface_dat_repo # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
+
     # when `type == jsonl_dataset_file`
     jsonl_dataset_file:
       training:
         file_path: "/path/to/training/data.jsonl"
       validation:
         file_path: "/path/to/validation/data.jsonl"
+
     # when `type == env_service`
     env_service:
       env_type: "appworld"
@@ -99,11 +101,13 @@ ajet:
       env_action_preference: code # code, text, box
       training_split: train
       validation_split: dev
+
     # when `type == huggingface_dat_repo`
     huggingface_dat_repo:
       dataset_path: "gsm8k"
       training_split: "train"
       validation_split: "validation"
+
     # when `type == data_generation`
     data_generation:
       document_reader:
