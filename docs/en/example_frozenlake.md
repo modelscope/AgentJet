@@ -23,13 +23,13 @@ pip install gymnasium[toy_text]
 Use the provided configuration file to quickly start training:
 
 ```bash
-astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='trinity' --with-ray
 ```
 
 To try a harder setting:
 
 ```bash
-astuner --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone=trinity --with-ray
+ajet --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone=trinity --with-ray
 ```
 
 <details>
@@ -39,10 +39,10 @@ If you want to breakpoint-debug the workflow/judge locally:
 
 ```bash
 # (optional) recommended cleanup before debug
-# astuner --kill="python|ray"
+# ajet --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.json` like below:
@@ -55,7 +55,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -83,8 +83,8 @@ This example packages a multi-step environment interaction loop into a trainable
 
 The key fields in `tutorial/example_frozenlake/frozenlake_easy.yaml` / `frozenlake_hard.yaml` are:
 
-- `astuner.rollout.agentscope_workflow`: entry point of the workflow class, set to `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`.
-- `astuner.rollout.multi_turn.max_steps`: maximum steps per episode (also used by the agent).
+- `ajet.rollout.agentscope_workflow`: entry point of the workflow class, set to `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`.
+- `ajet.rollout.multi_turn.max_steps`: maximum steps per episode (also used by the agent).
 - `frozen_lake.frozen_lake_size`: grid size (e.g. 4 for easy, 6 for hard).
 - `frozen_lake.is_slippery`: whether the action may slip to unintended directions.
 

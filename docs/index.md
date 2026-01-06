@@ -43,7 +43,7 @@ uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
 You can start training your first agent with a single command using a pre-configured YAML file:
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ---

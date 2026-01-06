@@ -23,8 +23,8 @@ A Task Judger evaluates the agent's execution results and returns two values:
 All Task Judgers inherit from `BaseJudge` and implement the `compute_reward` method:
 
 ```python title="base_judge.py"
-from agentscope_tuner.task_judge.base_judge import BaseJudge
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.task_judge.base_judge import BaseJudge
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 class BaseJudge:
     def __init__(self, config):
@@ -64,7 +64,7 @@ Evaluates mathematical answers by exact string matching, designed for tasks wher
 === "Configuration"
 
     ```yaml title="config.yaml"
-    astuner:
+    ajet:
       task_judge:
         judge_type: customized_protocol
         judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
@@ -97,7 +97,7 @@ Evaluates mathematical equations with partial credit for proper formatting.
 === "Configuration"
 
     ```yaml title="config.yaml"
-    astuner:
+    ajet:
       task_judge:
         judge_type: customized_protocol
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
@@ -123,10 +123,10 @@ Delegates evaluation to an external environment service, useful for complex inte
     - Interactive environments with built-in evaluators
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
 ```
 
 !!! note "How it works"
@@ -162,8 +162,8 @@ Populate `workflow_output.metadata` with the data your judger needs.</li>
 ### Step 1: Implement Your Judger
 
 ```python title="tutorial/my_task/my_judge.py"
-from agentscope_tuner.task_judge.base_judge import BaseJudge
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.task_judge.base_judge import BaseJudge
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 class MyCustomJudge(BaseJudge):
     def __init__(self, config):
@@ -191,7 +191,7 @@ class MyCustomJudge(BaseJudge):
 ### Step 2: Configure Your Judger
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
     judge_protocol: tutorial.my_task.my_judge->MyCustomJudge
@@ -216,10 +216,10 @@ class MyWorkflow(Workflow):
 ## Configuration Summary
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: agentscope_tuner.task_judge.<module>-><ClassName>
+    judge_protocol: ajet.task_judge.<module>-><ClassName>
 ```
 
 ---

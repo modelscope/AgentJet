@@ -1,5 +1,5 @@
 # ------------------ main config ------------------
-astuner:
+ajet:
   project_name: benchmarking
 
   task_reader:
@@ -84,9 +84,9 @@ frozen_lake:
 # ------------------ do not edit ------------------
 hydra:
   searchpath:
-    - file://agentscope_tuner/default_config
-    - file://agentscope_tuner/default_config/verl         # verl only
-    - file://agentscope_tuner/default_config/trinity      # trinity only
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
+    - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ do not edit ------------------
 defaults:

@@ -1,7 +1,7 @@
 # Example configuration for RM Auto Grader Judge
-# This configuration integrates RM Gallery's AutoGrader capabilities into astuner
+# This configuration integrates RM Gallery's AutoGrader capabilities into ajet
 
-astuner
+ajet
   # Task judge configuration using RM Auto Grader
   task_judge:
     # Use AutoGraderJudge for pre-generated rubrics
@@ -76,7 +76,7 @@ astuner
 # ============================================
 # Uncomment and use these settings when using RMAutoGraderBatchJudge
 
-# astuner
+# ajet
 #   task_judge:
 #     class_name: RMAutoGraderBatchJudge
 #
@@ -92,7 +92,7 @@ astuner
 # ============================================
 # Example for Math Problem Evaluation
 # ============================================
-# astuner
+# ajet
 #   task_judge:
 #     class_name: AutoGraderJudge
 #     model_name: "qwen-plus"
@@ -114,7 +114,7 @@ astuner
 # ============================================
 # Example for Agent Task Evaluation
 # ============================================
-# astuner
+# ajet
 #   task_judge:
 #     class_name: AutoGraderJudge
 #     model_name: "gpt-4"

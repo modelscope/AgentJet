@@ -1,7 +1,7 @@
 import re
 
-from agentscope_tuner.task_judge.base_judge import BaseJudge
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.task_judge.base_judge import BaseJudge
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 
 class CountdownAnswerAsJudge(BaseJudge):

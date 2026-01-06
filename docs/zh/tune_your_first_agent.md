@@ -60,15 +60,15 @@ touch workflow.py
 我们在配置文件中为项目起一个名字：
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   project_name: math_agent
 
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://agentscope_tuner/default_config
-    - file://agentscope_tuner/default_config/verl         # verl only
-    - file://agentscope_tuner/default_config/trinity      # trinity only
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
+    - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
@@ -86,11 +86,11 @@ defaults:
 
 !!! info "支持的数据源"
     ASTuner 提供了多种读取数据的方式：
-    
+
     - 从本地硬盘中的文件读取
     - 从 HuggingFace Repo 中读取
     - 从 EnvService 中读取
-    
+
     所有数据在读取后，都会被转换为 ASTuner 中统一的数据格式。
 
 在本示例中，我们将直接从 HuggingFace Repo 获取 `openai/gsm8k` 作为训练数据。
@@ -101,7 +101,7 @@ defaults:
 在 `math_agent.yaml` 中添加数据配置：
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   project_name: math_agent
   task_reader:
     type: huggingface_dat_repo
@@ -168,12 +168,12 @@ ReActAgent(
 
 !!! note "ReActAgent 说明"
     通过这段代码，我们定义了一个完整的 ReAct 智能体：
-    
+
     - 使用 ReAct 范式与环境/工具交互
     - 设置了 system prompt
     - 注册了一个工具：执行 Python 代码
     - 实现了 in-memory 的记忆机制
-    
+
     更多具体的配置可参考 AgentScope 官方文档。
 
 ### 封装为 Workflow
@@ -181,7 +181,7 @@ ReActAgent(
 接下来，将智能体封装进一个 Workflow 类中：
 
 ```python title="workflow.py"
-from agentscope_tuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+from ajet import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
 
@@ -252,7 +252,7 @@ class MathAgentWorkflow(Workflow):
 在 `math_agent.yaml` 中添加 workflow 和奖励配置：
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   # ...
   rollout:
     agentscope_workflow: workflow.py->MathAgentWorkflow
@@ -273,7 +273,7 @@ astuner:
 在 `math_agent.yaml` 中指定智能体使用的 LLM，也就是我们将要训练的模型：
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   model:
     path: Qwen/Qwen2.5-14B-Instruct
 ```
@@ -286,7 +286,7 @@ astuner:
 添加必要的训练参数配置：
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   # ...
   rollout:
     agentscope_workflow: workflow.py->MathAgentWorkflow
@@ -327,7 +327,7 @@ trinity:
 使用 debug 模式启动训练：
 
 ```bash
-astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
+ajet --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 !!! info "Debug 模式特点"
@@ -345,7 +345,7 @@ astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -364,7 +364,7 @@ astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 调试完成后，即可开始正式训练：
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 !!! success "训练输出"

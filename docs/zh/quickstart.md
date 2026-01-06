@@ -3,7 +3,7 @@
 AgentScope Tuner 提供了一套完整的智能体调优功能。您可以立刻尝试启动一个智能体的训练：
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ---
@@ -33,7 +33,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 ### 代码示例
 
 ```python title="train_math_agent.py"
-from agentscope_tuner import AstunerJob
+from ajet import AstunerJob
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "YOUR_MODEL_PATH"
@@ -54,7 +54,7 @@ tuned_model = job.tune()
 !!! tip "命令行替代方案"
     上述代码等价于在终端执行：
     ```bash
-    astuner --conf ./saved_experiments/math.yaml
+    ajet --conf ./saved_experiments/math.yaml
     ```
 
 ---

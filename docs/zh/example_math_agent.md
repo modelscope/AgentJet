@@ -33,9 +33,9 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 
 ```bash
 # （可选）训练前建议清理残留进程
-# astuner --kill="python|ray|vllm"
+# ajet --kill="python|ray|vllm"
 
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ??? tip "快速调试（可选）"
@@ -43,10 +43,10 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 
     ```bash
     # （可选）调试前建议清理残留进程
-    # astuner --kill="python|ray"
+    # ajet --kill="python|ray"
 
     clear && \
-    astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+    ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
     ```
 
     当 `--backbone=debug` 时，Ray 会被禁用。您可以使用类似下面的 VSCode 配置：
@@ -59,7 +59,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
           "name": "Python Debugger: Launch rollout",
           "type": "debugpy",
           "request": "launch",
-          "module": "agentscope_tuner.cli.launcher",
+          "module": "ajet.cli.launcher",
           "console": "integratedTerminal",
           "args": [
             "--backbone", "debug",
@@ -103,7 +103,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 大部分"连线"都在 `tutorial/example_math_agent/math_agent.yaml` 中完成：
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   task_reader:
     type: huggingface_dat_repo   # 也支持: dataset_file / env_service
 
@@ -163,7 +163,7 @@ return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 
 !!! tip "扩展 Judge"
     如果您观察到模型"几乎做对了，但搞错了工具调用格式"，可以扩展评审器来：
-    
+
     - 增加格式惩罚（无效的 `<tool_call>`）
     - 增加行为惩罚（调用了工具但没 `print`）
     - 同时保持"答案正确性"作为主要信号
@@ -215,7 +215,7 @@ return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 
 !!! note "Token 级可视化"
     图中彩色块是 [Beast-Logger](./beast_logger.md) 生成的 token 级别序列可视化：
-    
+
     - **黄色 token**：排除在损失函数（loss）计算之外的 token
     - **蓝色 token**：参与损失计算的 token（从浅蓝到深蓝表示 logprob 从高到低）
 

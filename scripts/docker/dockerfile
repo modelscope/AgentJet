@@ -1,8 +1,8 @@
 # Build and run the docker image with the following command:
 #
 # cd <AgentScope-Tuner root dir>
-# docker build -f scripts/docker/dockerfile -t astuner:latest .
-# docker run -it --gpus all --shm-size="64g" --rm -v $PWD:/workspace -v <root_path_of_data_and_checkpoints>:/data astuner:latest
+# docker build -f scripts/docker/dockerfile -t ajet:latest .
+# docker run -it --gpus all --shm-size="64g" --rm -v $PWD:/workspace -v <root_path_of_data_and_checkpoints>:/data ajet:latest
 
 
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04

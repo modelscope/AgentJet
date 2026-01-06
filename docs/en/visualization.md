@@ -21,7 +21,7 @@ Monitoring training progress through visualized metrics is essential for underst
 Simply set the logger backend to `swanlab` in your YAML configuration:
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   trainer_common:
     logger: swanlab
 ```
@@ -31,14 +31,14 @@ astuner:
 Launch your training as usual:
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ### Step 3: View Training Curves
 
 !!! success "Automatic Tracking"
     Once training starts, SwanLab will automatically:
-    
+
     1. Track key metrics (reward, success rate, loss, etc.)
     2. Generate real-time training curves
     3. Provide a web dashboard for visualization
@@ -91,7 +91,7 @@ Compare different hyperparameter settings by running multiple experiments and co
 Balance between logging detail and training overhead:
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   trainer_common:
     log_freq: 1  # Log every N steps
 ```
@@ -101,7 +101,7 @@ astuner:
 Configure checkpoint saving to preserve models at peak performance:
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   trainer_common:
     save_freq: 100  # Save every 100 steps
 ```

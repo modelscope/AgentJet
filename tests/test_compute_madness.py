@@ -1,6 +1,6 @@
 # flake8: noqa
 
-from agentscope_tuner.utils.compute_madness import (
+from ajet.utils.compute_madness import (
     compute_string_madness,
     compute_string_madness_format,
 )

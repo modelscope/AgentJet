@@ -9,9 +9,9 @@
 AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法、奖励、日志以及其他运行时行为。
 
 !!! info "默认配置文件"
-    默认配置文件位于 `astuner/default_config/astune_default.yaml`。
+    默认配置文件位于 `ajet/default_config/astune_default.yaml`。
 
-一个典型的配置文件包含一个根节点 `astuner`，进一步被划分为若干部分：
+一个典型的配置文件包含一个根节点 `ajet`，进一步被划分为若干部分：
 
 | 类别 | 配置项 | 说明 |
 |------|--------|------|
@@ -31,7 +31,7 @@ AgentScope Tuner 使用 YAML 格式的配置文件来设置数据、训练算法
 要训练一个智能体，首先需要指定待训练的模型：
 
 ```yaml title="model 配置"
-astuner:
+ajet:
   model:
     path: path/to/model
 ```
@@ -39,9 +39,9 @@ astuner:
 === "本地文件"
 
     指向包含 Transformers 格式模型的本地目录：
-    
+
     ```yaml
-    astuner:
+    ajet:
       model:
         path: /mnt/data/models/Qwen2.5-14B-Instruct
     ```
@@ -49,16 +49,16 @@ astuner:
 === "HuggingFace 仓库"
 
     指向 HuggingFace 仓库，模型会自动下载并加载：
-    
+
     ```yaml
-    astuner:
+    ajet:
       model:
         path: Qwen/Qwen2.5-14B-Instruct
     ```
 
 !!! warning "LLM-as-a-Judge 环境变量"
     如果在训练中使用 LLM-as-a-Judge，需要配置必要的环境变量：
-    
+
     ```bash
     export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
     export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
@@ -77,9 +77,9 @@ astuner:
 === "EnvService"
 
     从 EnvService 中读取数据：
-    
+
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: env_service
         env_service:
@@ -93,9 +93,9 @@ astuner:
 === "JSONL 文件"
 
     从本地 JSONL 文件读取：
-    
+
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: jsonl_dataset_file
         jsonl_dataset_file:
@@ -108,9 +108,9 @@ astuner:
 === "HuggingFace"
 
     从 HuggingFace 仓库读取：
-    
+
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: huggingface_dat_repo
         huggingface_dat_repo:
@@ -122,9 +122,9 @@ astuner:
 === "数据生成"
 
     从文档自动生成任务：
-    
+
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: data_generation
         data_generation:
@@ -147,10 +147,10 @@ astuner:
 `task_judge` 用于评估智能体的表现并计算奖励：
 
 ```yaml title="task_judge 配置"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol  # 或 'rubrics_auto_grader'
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
 ```
@@ -176,7 +176,7 @@ AgentScope Tuner 支持三种训练后端：
 | **debug** | 允许用户设置断点并调试代码 |
 
 ```yaml
-astuner:
+ajet:
   backbone: trinity  # debug 或 trinity 或 verl
 ```
 
@@ -185,7 +185,7 @@ astuner:
 `rollout` 配置控制智能体在与环境进行交互采样过程中的行为：
 
 ```yaml title="rollout 配置"
-astuner:
+ajet:
   rollout:
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     max_env_worker: 128
@@ -208,7 +208,7 @@ astuner:
 `trainer_common` 包含训练流程控制的通用参数：
 
 ```yaml title="trainer_common 配置"
-astuner:
+ajet:
   trainer_common:
     total_epochs: 50
     save_freq: 20
@@ -241,7 +241,7 @@ astuner:
 优化算法及其超参数主要在 `algorithm`、`optim` 中设置：
 
 ```yaml title="优化算法配置"
-astuner:
+ajet:
   trainer_common:
     algorithm:
       adv_estimator: grpo
@@ -265,7 +265,7 @@ astuner:
 当 `backbone` 设置为 `debug` 时使用的配置：
 
 ```yaml title="debug 配置"
-astuner:
+ajet:
   debug:
     debug_max_parallel: 16
     debug_first_n_tasks: 2
@@ -293,7 +293,7 @@ AgentScope Tuner 支持多种日志后端：
 | `swanlab` | 使用 SwanLab 进行日志记录 |
 
 ```yaml
-astuner:
+ajet:
   trainer_common:
     logger: swanlab
 ```
@@ -314,20 +314,20 @@ astuner:
 
 ??? example "完整配置文件"
     ```yaml
-    astuner:
+    ajet:
       project_name: "astuner_default_project"
       experiment_name: "read_yaml_name"
       experiment_dir: "auto"
       backbone: debug
-    
+
       model:
         path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct
-    
+
       data:
         max_prompt_length: 3000
         max_response_length: 15000
         train_batch_size: 32
-    
+
       rollout:
         agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
         agentscope_disable_toolcalls: False
@@ -356,7 +356,7 @@ astuner:
           top_p: 1.0
           do_sample: False
           num_repeat: 1
-    
+
       task_reader:
         type: env_service
         jsonl_dataset_file:
@@ -374,20 +374,20 @@ astuner:
           dataset_path: "gsm8k"
           training_split: "train"
           validation_split: "validation"
-    
+
       task_judge:
         judge_type: customized_protocol
-        judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+        judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
         alien_llm_model: qwen3-235b-a22b-instruct-2507
         alien_llm_response_length: 512
-    
+
       debug:
         debug_max_parallel: 16
         debug_first_n_tasks: 2
         debug_vllm_port: 18000
         debug_vllm_seed: 12345
         debug_tensor_parallel_size: 4
-    
+
       trainer_common:
         val_before_train: False
         val_pass_n: 4
@@ -411,7 +411,7 @@ astuner:
         kl_loss_type: low_var_kl
         ulysses_sequence_parallel_size: 1
         checkpoint_base_dir: ./saved_checkpoints
-    
+
       context_tracker:
         context_tracker_type: "linear"
         alien_llm_model: qwen3-235b-a22b-instruct-2507

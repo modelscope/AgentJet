@@ -54,7 +54,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
 
     def clear_system_processes(self):
         # kill all python + ray + vllm processes
-        from agentscope_tuner.utils.cleaner import fast_kill_by_keyword_bash
+        from ajet.utils.cleaner import fast_kill_by_keyword_bash
 
         total_seconds = 15
         for i in range(total_seconds):

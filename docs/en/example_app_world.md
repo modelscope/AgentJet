@@ -43,7 +43,7 @@ export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 Run the training script:
 
 ```bash
-astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
 ```
 
 <details>
@@ -53,10 +53,10 @@ If you want to breakpoint-debug the workflow/judge locally:
 
 ```bash
 # (optional) recommended cleanup before debug
-# astuner --kill="python|ray"
+# ajet --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_appworld/math_agent.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_appworld/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.json` like below:
@@ -69,7 +69,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -105,7 +105,7 @@ agent = ReActAgent(
 
 env = workflow_task.gym_env
 
-for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
+for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
     # agentscope deal with interaction message
     reply_message = await agent(interaction_message)
     # env service protocol
@@ -129,28 +129,28 @@ In the above code:
 
 ### 3.2 Reward
 
-In `astuner/task_judge/env_service_as_judge.py`, we read the reward signal from the environment via `env.evaluate(...)`.
+In `ajet/task_judge/env_service_as_judge.py`, we read the reward signal from the environment via `env.evaluate(...)`.
 
 You can also refer to this file to implement your own Judge for your specific task.
 
 ### 3.3 Configuration Details
 Copy and modify the key parameters in `tutorial/example_appworld/appworld.yaml`. The parts most relevant to this document are marked with <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> in the yaml file:
 
-1. **Read tasks** (corresponding config field: `astuner.task_reader`)
-2. **Define the workflow** (corresponding config field: `astuner.rollout.agentscope_workflow`)
+1. **Read tasks** (corresponding config field: `ajet.task_reader`)
+2. **Define the workflow** (corresponding config field: `ajet.rollout.agentscope_workflow`)
     - Example: if the AgentScope workflow is defined in the `ExampleAgentScopeWorkflow` class in `tutorial/example_appworld/appworld.py`
-    - Then set `astuner.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"`
-3. **Define the scoring function** (corresponding config field: `astuner.task_judge.judge_protocol`)
-    - Example: `astuner.task_judge.judge_protocol = "astuner.task_judge.env_service_as_judge->EnvServiceJudge"`
-4. **Specify the model** (corresponding config field: `astuner.model.path`)
+    - Then set `ajet.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"`
+3. **Define the scoring function** (corresponding config field: `ajet.task_judge.judge_protocol`)
+    - Example: `ajet.task_judge.judge_protocol = "ajet.task_judge.env_service_as_judge->EnvServiceJudge"`
+4. **Specify the model** (corresponding config field: `ajet.model.path`)
 
 ```yaml
-astuner:
+ajet:
   project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
     # [key] Implement and select the evaluation function
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # [key] Set the model to be trained
     path: YOUR_MODEL_PATH

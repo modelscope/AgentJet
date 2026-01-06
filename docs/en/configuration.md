@@ -9,9 +9,9 @@ This page provides a detailed description of the configuration files for AgentSc
 AgentScope Tuner uses YAML-format configuration files to set up data, algorithms, rewards, logging, and other runtime behaviors.
 
 !!! info "Default Configuration"
-    The default config is located at `astuner/default_config/astune_default.yaml`.
+    The default config is located at `ajet/default_config/astune_default.yaml`.
 
-At a high level, a typical config contains a single root section `astuner`, which is divided into several logical parts:
+At a high level, a typical config contains a single root section `ajet`, which is divided into several logical parts:
 
 <div class="key-features" markdown>
 
@@ -38,7 +38,7 @@ At a high level, a typical config contains a single root section `astuner`, whic
 ### Specifying the Model
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   model:
     path: path/to/model
 ```
@@ -69,7 +69,7 @@ export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 === "EnvService"
 
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: env_service
         env_service:
@@ -83,7 +83,7 @@ export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 === "JSONL File"
 
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: jsonl_dataset_file
         jsonl_dataset_file:
@@ -96,7 +96,7 @@ export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 === "HuggingFace"
 
     ```yaml
-    astuner:
+    ajet:
       task_reader:
         type: huggingface_dat_repo
         huggingface_dat_repo:
@@ -110,10 +110,10 @@ export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 `task_judge` evaluates agent performance and calculates rewards.
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol  # or 'rubrics_auto_grader'
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
 ```
@@ -138,7 +138,7 @@ AgentScope Tuner supports three training backends:
 | **debug** | Allows breakpoint debugging in IDEs |
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   backbone: trinity  # debug, trinity, or verl
 ```
 
@@ -147,7 +147,7 @@ astuner:
 Controls agent behavior during environment interaction:
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   rollout:
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     max_env_worker: 128
@@ -168,7 +168,7 @@ astuner:
 ### Common Training Parameters
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   trainer_common:
     total_epochs: 50
     save_freq: 20
@@ -194,7 +194,7 @@ astuner:
 ### Optimization Algorithms
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   trainer_common:
     algorithm:
       adv_estimator: grpo
@@ -220,7 +220,7 @@ astuner:
 When `backbone: debug`, additional settings are available:
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   debug:
     debug_max_parallel: 16
     debug_first_n_tasks: 2
@@ -241,7 +241,7 @@ astuner:
 ### Logger Selection
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   trainer_common:
     logger: swanlab  # console, wandb, or swanlab
 ```
@@ -268,7 +268,7 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
 
 ??? example "Complete Configuration Template"
     ```yaml title="config.yaml"
-    astuner:
+    ajet:
       project_name: "astuner_default_project"
       experiment_name: "read_yaml_name"
       experiment_dir: "auto"
@@ -322,7 +322,7 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
 
       task_judge:
         judge_type: customized_protocol
-        judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+        judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
         alien_llm_model: qwen3-235b-a22b-instruct-2507
         alien_llm_response_length: 512
 

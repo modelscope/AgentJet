@@ -1,5 +1,5 @@
 """
-Example: Using RM Iterative Rubric Judge with astuner
+Example: Using RM Iterative Rubric Judge with ajet
 
 This example demonstrates how to use the RM Gallery IterativeRubricsGenerator integration
 for data-driven evaluation of workflow outputs.
@@ -20,9 +20,9 @@ from rm_gallery.core.generator.iterative_rubric.query_rubric_generator import (
     POINTWISE_EVALUATION_TEMPLATE,
 )
 
-from agentscope_tuner.schema.task import Task
-from agentscope_tuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.schema.task import Task
+from ajet.task_judge.rm_auto_grader_judge import AutoGraderJudge
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 # ============================================
 # Example 1: Pre-generated Rubrics Approach
@@ -40,7 +40,7 @@ async def example_pregerated_rubrics():
 
     # Mock config object
     class MockConfig:
-        class Astuner:
+        class Ajet:
             class TaskJudge:
                 class RubricsAutoGrader:
                     # Model configuration
@@ -73,7 +73,7 @@ async def example_pregerated_rubrics():
             task_judge = TaskJudge()
             experiment_dir = "/tmp/rm_grader_example"
 
-        astuner = Astuner()
+        ajet = Ajet()
 
     config = MockConfig()
 
@@ -121,7 +121,7 @@ async def example_listwise_mode():
 
     # Mock config object
     class MockConfig:
-        class Astuner:
+        class Ajet:
             class TaskJudge:
                 class RubricsAutoGrader:
                     # Model configuration
@@ -153,7 +153,7 @@ async def example_listwise_mode():
             task_judge = TaskJudge()
             experiment_dir = "/tmp/rm_grader_example_listwise"
 
-        astuner = Astuner()
+        ajet = Ajet()
 
     config = MockConfig()
 

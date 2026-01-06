@@ -1,6 +1,6 @@
 services:
 
-  astuner-node-1:
+  ajet-node-1:
     image: agentscope-tuner-unittest:latest
     pull_policy: never
     command: bash -c "uv pip install -e .[trinity] && ray start --head --dashboard-host 0.0.0.0 --include-dashboard true --block"
@@ -10,7 +10,7 @@ services:
       - RAY_ADDRESS=auto
     working_dir: /workspace
     volumes:
-      - astuner-volume:/mnt
+      - ajet-volume:/mnt
       - ../../..:/workspace
     shm_size: "64G"
     deploy:
@@ -22,5 +22,5 @@ services:
             capabilities: [gpu]
 
 volumes:
-  astuner-volume:
+  ajet-volume:
     external: true

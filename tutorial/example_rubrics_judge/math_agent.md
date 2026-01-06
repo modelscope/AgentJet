@@ -82,17 +82,17 @@ Judge的返回值： raw_reward, is_success
 
 4.1 复制并修改 [tutorial/example_rubrics_judge/math_agent.yaml](../tutorial/example_rubrics_judge/math_agent.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
-1. 读取task（对应配置字段 astuner.task_reader）
-2. 定义 Workflow（对应配置字段 astuner.rollout.agentscope_workflow ）
+1. 读取task（对应配置字段 ajet.task_reader）
+2. 定义 Workflow（对应配置字段 ajet.rollout.agentscope_workflow ）
     - 举例如果 agentscope workflow 定义在 `tutorial/math_agent.py` 的`ExampleMathLear` 类
-    - 则填写 astuner.rollout.agentscope_workflow=`tutorial.math_agent->ExampleMathLearn`
-3. 定义评分函数（对应配置字段 astuner.task_judge.judge_protocol ）
+    - 则填写 ajet.rollout.agentscope_workflow=`tutorial.math_agent->ExampleMathLearn`
+3. 定义评分函数（对应配置字段 ajet.task_judge.judge_protocol ）
     - 举例如果 agentscope workflow 定义在 `tutorial/example_math_agent/math_answer_as_judge.py` 的`MathAnswerAndLlmAsJudge` 类
-    - 则填写 astuner.task_judge.judge_protocol=`tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge`
-4. 指定模型（对应配置字段 astuner.model.path ）
+    - 则填写 ajet.task_judge.judge_protocol=`tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge`
+4. 指定模型（对应配置字段 ajet.model.path ）
 
 ```yaml
-astuner
+ajet
     task_reader:
         type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     rollout:
@@ -108,9 +108,9 @@ astuner
 
 4.2 全链路调试（脱离ray快速调试:--backbone='debug'）
 ```bash
-# （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( astuner --kill="python|ray" )
+# （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( ajet --kill="python|ray" )
 clear && \
-astuner --conf tutorial/example_rubrics_judge/math_agent.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_rubrics_judge/math_agent.yaml --backbone='debug' --with-logview
 ```
 备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置:
 ```json
@@ -122,7 +122,7 @@ astuner --conf tutorial/example_rubrics_judge/math_agent.yaml --backbone='debug'
             "name": "Python Debugger: Launch rollout",
             "type": "debugpy",
             "request": "launch",
-            "program": "agentscope_tuner/cli/launcher.py",
+            "program": "ajet/cli/launcher.py",
             "console": "integratedTerminal",
             "args": [
                 "--backbone",  "debug",
@@ -138,8 +138,8 @@ astuner --conf tutorial/example_rubrics_judge/math_agent.yaml --backbone='debug'
 
 4.3 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
 ```bash
-# 建议开始前杀死所有ray、vllm、env_service进程 ( astuner --kill="python|ray|vllm" )
-astuner --conf tutorial/example_rubrics_judge/math_agent.yaml --backbone='trinity' --with-ray
+# 建议开始前杀死所有ray、vllm、env_service进程 ( ajet --kill="python|ray|vllm" )
+ajet --conf tutorial/example_rubrics_judge/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 
@@ -159,9 +159,9 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
 - 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
-    - /astuner/astuner/saved_experiments
-    - /astuner/astuner/saved_experiments/exp_yaml_file_name
-    - /astuner/astuner/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
+    - /ajet/ajet/saved_experiments
+    - /ajet/ajet/saved_experiments/exp_yaml_file_name
+    - /ajet/ajet/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
 
 - 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
 

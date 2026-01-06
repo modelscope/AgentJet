@@ -13,7 +13,7 @@ Countdown 任务是一个数学益智游戏：给定一组数字和一个目标�
 python tutorial/example_countdown/prepare_data.py --target=Jiayi-Pan/Countdown-Tasks-3to4 --path=/the/path/to/store/dataset
 ```
 
-Countdown 数据集包含 `target` 和 `nums` 两个字段，需要自定义数据格式化逻辑。例如：使用 `huggingface_dat_repo` 的读取方式时，需要修改 `astuner/task_reader/hf_dataset_reader.py` 中的 `_load_dataset_split` 方法：
+Countdown 数据集包含 `target` 和 `nums` 两个字段，需要自定义数据格式化逻辑。例如：使用 `huggingface_dat_repo` 的读取方式时，需要修改 `ajet/task_reader/hf_dataset_reader.py` 中的 `_load_dataset_split` 方法：
 
 ```python
 task = Task(
@@ -31,7 +31,7 @@ task = Task(
 
 ```bash
 # 建议在启动前先杀掉所有 ray、vllm 和 env_service 相关进程（ python launcher.py --kill="python|ray|vllm" ）
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
+ajet --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 ```
 
 <details>
@@ -40,7 +40,7 @@ astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 不启用 Ray 在本地运行，便于更快迭代：
 
 ```bash
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
 ```
 
 如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
@@ -85,17 +85,17 @@ WorkflowOutput(
 ### 3.2 配置说明
 拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> 标出。
 
-1. 读取任务（对应配置字段 `astuner.task_reader`）
-2. 定义 Workflow（对应配置字段 `astuner.rollout.agentscope_workflow`）
+1. 读取任务（对应配置字段 `ajet.task_reader`）
+2. 定义 Workflow（对应配置字段 `ajet.rollout.agentscope_workflow`）
    - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_countdown/countdown.py` 的 `ExampleCountdownLearn` 类中
-   - 则配置 `astuner.rollout.agentscope_workflow` = `tutorial.example_countdown.countdown->ExampleCountdownLearn`
-3. 定义评分函数（对应配置字段 `astuner.task_judge.judge_protocol`）
+   - 则配置 `ajet.rollout.agentscope_workflow` = `tutorial.example_countdown.countdown->ExampleCountdownLearn`
+3. 定义评分函数（对应配置字段 `ajet.task_judge.judge_protocol`）
    - 示例：如果评分逻辑定义在 `tutorial/example_countdown/countdown_answer_as_judge.py` 的 `CountdownAnswerAsJudge` 类中
    - 则配置 `tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
-4. 指定模型（对应配置字段 `astuner.model.path`）
+4. 指定模型（对应配置字段 `ajet.model.path`）
 
 ```yaml
-astuner:
+ajet:
     task_reader:
         type: huggingface_dat_repo # [关键] `env_service` 或 `dataset_file` 或 `huggingface_dat_repo` 或 `data_generation`
     rollout:

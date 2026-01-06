@@ -7,8 +7,8 @@ import threading
 from agentscope.message import Msg
 from loguru import logger
 
-from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
-from agentscope_tuner.utils.robust_dashscope import RobustDashScopeChatModel
+from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet.utils.robust_dashscope import RobustDashScopeChatModel
 
 system_prompt = """# Task
 You are a medical assistant. Your task is to understand the ongoing conversation and continue the medical inquiry in English.

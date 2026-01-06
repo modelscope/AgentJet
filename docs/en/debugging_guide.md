@@ -25,7 +25,7 @@ For more details, please refer to VSCode official documents.
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -44,7 +44,7 @@ For more details, please refer to VSCode official documents.
 
 ```bash
 export DASHSCOPE_API_KEY="sk-abcdefg"
-astuner --conf tutorial/example_appworld/appworld.yaml --with-appworld --backbone='verl'
+ajet --conf tutorial/example_appworld/appworld.yaml --with-appworld --backbone='verl'
 ```
 
 Then, the modified launch.json will be
@@ -57,7 +57,7 @@ Then, the modified launch.json will be
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",  // verl -> debug

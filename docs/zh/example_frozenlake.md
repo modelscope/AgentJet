@@ -23,13 +23,13 @@ pip install gymnasium[toy_text]
 使用提供的配置文件快速开始训练：
 
 ```bash
-astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='trinity' --with-ray
 ```
 
 尝试更困难的设置：
 
 ```bash
-astuner --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone='trinity' --with-ray
 ```
 
 <details>
@@ -38,7 +38,7 @@ astuner --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone='trin
 不启用 Ray 在本地运行，便于更快迭代：
 
 ```bash
-astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' --with-logview
 ```
 
 如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
@@ -60,8 +60,8 @@ astuner --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debu
 
 `tutorial/example_frozenlake/frozenlake_easy.yaml` / `frozenlake_hard.yaml` 中与本任务相关的关键字段包括：
 
-- `astuner.rollout.agentscope_workflow`： Workflow 入口，示例中为 `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`。
-- `astuner.rollout.multi_turn.max_steps`：单次 episode 的最大步数（智能体与环境均使用）。
+- `ajet.rollout.agentscope_workflow`： Workflow 入口，示例中为 `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`。
+- `ajet.rollout.multi_turn.max_steps`：单次 episode 的最大步数（智能体与环境均使用）。
 - `frozen_lake.frozen_lake_size`：地图大小（easy 为 4，hard 为 6）。
 - `frozen_lake.is_slippery`：是否启用打滑。
 

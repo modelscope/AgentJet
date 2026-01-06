@@ -66,7 +66,7 @@ ASTuner 还提供了高分辨率的日志记录和调试方案：
 您可以使用预配置的 YAML 文件，通过单条命令开始训练您的第一个智能体：
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 !!! example "了解更多"

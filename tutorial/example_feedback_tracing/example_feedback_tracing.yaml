@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astuner:
+ajet:
   project_name: example_feedback_training
   task_reader:
     type: tracing
@@ -65,9 +65,9 @@ trainer:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://agentscope_tuner/default_config
-    - file://agentscope_tuner/default_config/verl         # verl only
-    - file://agentscope_tuner/default_config/trinity      # trinity only
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
+    - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:

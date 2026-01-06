@@ -33,7 +33,7 @@ AgentScope-Tuner supports multiple backbones. Currently we have `verl` and `trin
 
 !!! info "Package Manager"
     We recommend using `uv` to manage your Python environment as it is incredibly fast. See also [`uv` installation document](https://docs.astral.sh/uv/getting-started/installation/).
-    
+
     If you prefer `conda`, you can also install via conda and pip (simply change `uv pip` to `pip`).
 
 === "Trinity (Recommended)"
@@ -98,8 +98,8 @@ docker run -it \
 After installation, verify that everything is working correctly:
 
 ```python
-import agentscope_tuner
-print(agentscope_tuner.__version__)
+import ajet
+print(ajet.__version__)
 ```
 
 ---
@@ -108,7 +108,7 @@ print(agentscope_tuner.__version__)
 
 ??? note "Common Issues"
     **Issue**: `flash-attn` installation fails
-    
+
     **Solution**: Make sure you have CUDA toolkit installed and `MAX_JOBS` environment variable set:
     ```bash
     export MAX_JOBS=4
@@ -117,7 +117,7 @@ print(agentscope_tuner.__version__)
 
 ??? note "GPU Not Detected"
     **Issue**: Docker container doesn't see GPU
-    
+
     **Solution**: Ensure nvidia-docker is properly installed:
     ```bash
     nvidia-smi  # Should show GPU info

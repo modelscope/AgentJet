@@ -52,7 +52,7 @@ uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
 您可以使用预配置的 YAML 文件，通过单条命令开始训练您的第一个 智能体。以 [数学 智能体](./example_math_agent.md) 为例：
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 
 ```
 

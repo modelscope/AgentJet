@@ -4,7 +4,7 @@
 
 !!! info "两种封装方式"
     ASTuner 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封装方式：
-    
+
     - **简单模式**：强调简单、易用、容易理解
     - **进阶模式**：强调灵活、可控、易扩展
 
@@ -41,7 +41,7 @@
 然后，将您的 Workflow 封装到一个继承自 `Workflow` 的类中：
 
 ```python
-from agentscope_tuner import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
+from ajet import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
 
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
@@ -55,7 +55,7 @@ class ExampleMathLearn(Workflow):
 
 !!! tip "适用场景"
     这种写法适合大多数用户，如果您满足下面的情况，可以优先采用：
-    
+
     - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> 很清楚**哪些智能体需要被训练**，或者智能体的数量本身就不多
     - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> 已经完成了 Workflow 的基础调试，确认在使用非微调模型时工作流正常可用
     - <img src="https://api.iconify.design/lucide:sparkle.svg" class="inline-icon" /> 不需要在运行过程中**动态改变**要训练的智能体集合
@@ -123,7 +123,7 @@ class ExampleMathLearn(Workflow):
 
 !!! success "进阶模式的优势"
     通过多智能体协作，您可以：
-    
+
     - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> **精细地控制**哪些智能体会被微调
     - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> 为「当前未被训练」的智能体明确定义其使用的默认模型
     - <img src="https://api.iconify.design/lucide:zap.svg" class="inline-icon" /> 在**不修改 Workflow 源码**的前提下，动态切换不同的可训练目标
@@ -217,10 +217,10 @@ for i, role in enumerate(roles):
     default_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
     default_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
     chosen_model = default_model_for_good_guys if role != "werewolf" else default_model_for_bad_guys
-    
+
     # 注册角色
     model_tuner.register_model(role, default_model=chosen_model)
-    
+
     # 创建智能体
     players += [ReActAgent(
         name=f"Player{i + 1}",

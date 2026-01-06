@@ -1,0 +1,26 @@
+{
+    "ajet.trainer_common.nnodes": "cluster.node_num",
+    "ajet.trainer_common.n_gpus_per_node": "cluster.gpu_per_node",
+    "ajet.trainer_common.total_epochs": "buffer.total_epochs",
+    "ajet.trainer_common.test_freq": "explorer.eval_interval",
+    "ajet.trainer_common.save_freq": "trainer.save_interval",
+    "ajet.trainer_common.ulysses_sequence_parallel_size": "trainer.ulysses_sequence_parallel_size",
+    "ajet.trainer_common.optim.lr": "algorithm.optimizer.lr",
+    "ajet.trainer_common.logger": "monitor.monitor_type",
+    "ajet.trainer_common.checkpoint_base_dir": "checkpoint_root_dir",
+    "ajet.rollout.n_vllm_engine": "explorer.rollout_model.engine_num",
+    "ajet.model.path": "model.model_path",
+    "ajet.project_name": "project",
+    "ajet.experiment_name": "name",
+    "ajet.data.max_response_length": "model.max_response_tokens",
+    "ajet.rollout.num_repeat": "algorithm.repeat_times",
+    "ajet.rollout.tensor_model_parallel_size": "explorer.rollout_model.tensor_parallel_size",
+    "ajet.rollout.max_model_len": [
+        "model.max_model_len",
+        "trainer.max_token_len_per_gpu"
+    ],
+
+    "ajet.data.train_batch_size": "buffer.batch_size",
+    "(ajet.data.train_batch_size * ajet.rollout.num_repeat * ajet.rollout.multi_turn.expected_steps)": "buffer.train_batch_size",
+    "(min(ajet.rollout.max_env_worker, 128) // ajet.rollout.n_vllm_engine)": "explorer.runner_per_model"
+}
