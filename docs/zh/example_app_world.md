@@ -1,20 +1,28 @@
-# App交互模拟
+# AppWorld 智能体
 
 本教程介绍如何训练一个智能体与 AppWorld 交互并解决复杂的任务。
 
-## 1. 概述
+---
 
+## 概述
+
+<div class="callout-tip">
+<p>
 AppWorld 是一个模拟现实 APP 操作的沙盒环境，包含 9 个日常应用，可通过 457 个 API 操作，并预置了 106 个在模拟世界中生活的数字用户行为数据。我们的目标是调优一个智能体，使其能够有效地在这些应用中执行并完成复杂任务。
+</p>
+</div>
 
 本文结构如下：
 
-- 快速开始
-- 理解实现：Workflow 核心流程、配置、代码位置、奖励机制
-- 结果：训练曲线与案例对比
+1. 快速开始
+2. 理解实现：Workflow 核心流程、配置、代码位置、奖励机制
+3. 结果：训练曲线与案例对比
 
-## 2. 快速开始
+---
 
-### 2.1 准备工作
+## 快速开始
+
+### 准备工作
 
 首先，需要准备 AppWorld 所需的环境服务：
 
@@ -30,16 +38,16 @@ wget -q "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appwor
 tar -xzf ./appworld_pack_v2.tar.gz -C "${base_path}"
 ```
 
-然后，设置如下的环境变量（在开启新的 shell 窗口都需要运行）：
+!!! warning "环境变量设置"
+    每次开启新的 shell 窗口都需要运行以下环境变量设置：
+    
+    ```bash
+    export BASE_PATH=/tmp
+    export APPWORLD_PATH="${BASE_PATH}/pack_all_in_one"
+    export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
+    ```
 
-```bash
-export BASE_PATH=/tmp
-export APPWORLD_PATH="${BASE_PATH}/pack_all_in_one"
-export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
-```
-
-
-### 2.2 开始训练
+### 开始训练
 
 运行训练脚本：
 
@@ -47,30 +55,24 @@ export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
 ```
 
-<details>
-<summary>快速调试（可选）</summary>
+??? tip "快速调试（可选）"
+    不启用 Ray 在本地运行，便于更快迭代：
 
-不启用 Ray 在本地运行，便于更快迭代：
+    ```bash
+    astuner --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
+    ```
 
-```bash
-astuner --conf tutorial/example_appworld/learn2ask.yaml --backbone='debug' --with-logview
-```
+    如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与您的代码位置一致。
 
-如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
+---
 
-</details>
+## 理解实现
 
-## 3. 理解实现
-
-本节将对如何搭建 AppWorld workflow 进行更详细的说明，包括核心流程、配置与关键代码位置。
-
-### 3.1 核心流程
+### 核心流程
 
 AppWorld 示例所使用的 AgentScope Workflow 代码位于：`tutorial/example_appworld/appworld.py`。
 
-代码首先定义了 AgentScope Workflow（将智能体的 `model` 设置为 `model_tuner`）：
-
-```python
+```python title="Workflow 核心代码"
 agent = ReActAgent(
     name="Qwen",
     sys_prompt=first_msg["content"],
@@ -98,45 +100,34 @@ for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
         break
 ```
 
-在上述代码中：
+| 关键点 | 说明 |
+|--------|------|
+| `env.step` | 模拟 gym 接口。输入一个 action，返回 `(observation, reward, terminate_flag, info)` |
+| `context_overflow` | 检查当前上下文窗口是否已经超过 token 限制 |
 
-- `env.step`：模拟 gym 接口。输入一个 action，返回四元组 `(observation, reward, terminate_flag, info)`。
-- `model_tuner.get_context_tracker().context_overflow`：检查当前上下文窗口是否已经超过 token 限制。
+### 奖励机制
 
+在 `astuner/task_judge/env_service_as_judge.py` 中，通过 `env.evaluate(...)` 从环境中读取奖励信号。
 
-### 3.2 奖励
+!!! tip "自定义 Judge"
+    您可以参考该文件，为自己的任务实现专用的 Judge 模块。
 
-在 `astuner/task_judge/env_service_as_judge.py` 中，我们通过 `env.evaluate(...)` 从环境中读取奖励信号。
+### 配置说明
 
-你也可以参考该文件，为自己的任务实现专用的 Judge 模块。
+`tutorial/example_appworld/appworld.yaml` 中的关键配置参数：
 
-
-### 3.3 配置说明
-
-`tutorial/example_appworld/appworld.yaml` 中的关键配置参数用 ✨✨✨✨ 标出：
-
-1. **读取任务**（对应字段：`astuner.task_reader`）
-2. **定义 Workflow**（对应字段：`astuner.rollout.agentscope_workflow`）
-   - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_appworld/appworld.py` 中的 `ExampleAgentScopeWorkflow` 类里
-   - 则配置：
-`astuner.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"`
-3. **定义评分函数**（对应字段：`astuner.task_judge.judge_protocol`）
-   - 示例：
-`astuner.task_judge.judge_protocol = "astuner.task_judge.env_service_as_judge->EnvServiceJudge"`
-4. **指定模型**（对应字段：`astuner.model.path`）
-
-```yaml
+```yaml title="appworld.yaml"
 astuner:
   project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
-    # ✨✨✨✨ 编写并选择评估函数
+    # [关键] 编写并选择评估函数
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
-    # ✨✨✨✨ 设置需要训练的模型
+    # [关键] 设置需要训练的模型
     path: YOUR_MODEL_PATH
   rollout:
-    # ✨✨✨✨ 编写并选择智能体
+    # [关键] 编写并选择智能体
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:
@@ -144,47 +135,69 @@ astuner:
     debug_first_n_tasks: 1
 ```
 
-## 4. 结果
+| 配置项 | 说明 |
+|--------|------|
+| `task_reader` | 读取任务 |
+| `agentscope_workflow` | 定义 Workflow |
+| `judge_protocol` | 定义评分函数 |
+| `model.path` | 指定模型 |
 
-### 4.1 训练曲线
+---
 
-![Training curve (small batch)](https://img.alicdn.com/imgextra/i2/O1CN01toRt2c1Nj8nKDqoTd_!!6000000001605-2-tps-1410-506.png)
+## 结果
 
-> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md).
+### 训练曲线
+
+<div align="center">
+<img width="600" alt="训练曲线" src="https://img.alicdn.com/imgextra/i2/O1CN01toRt2c1Nj8nKDqoTd_!!6000000001605-2-tps-1410-506.png"/>
+</div>
+
+!!! info "可视化说明"
+    训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md)。
 
 随着训练的进展，奖励也会增加。这通常意味着智能体在**两个方面**变得更加稳定：
 
-* **遵循正确的 API 协议**：它学会在调用前查阅 API 文档，并使用有效的 API 端点，而不是虚构不存在的 API。
-* **完成多步工作流**：它能够正确获取 access token，并串联多个 API 调用以完成复杂任务。
+- <img src="https://api.iconify.design/lucide:check-circle.svg" class="inline-icon" /> **遵循正确的 API 协议**：学会在调用前查阅 API 文档，并使用有效的 API 端点
+- <img src="https://api.iconify.design/lucide:workflow.svg" class="inline-icon" /> **完成多步工作流**：能够正确获取 access token，并串联多个 API 调用以完成复杂任务
 
-### 4.2 案例展示
+### 案例展示
 
-#### 调优前：
+=== "调优前"
 
-1. 频繁调用不存在的 API
+    **问题 1：频繁调用不存在的 API**
+    
+    ![调优前 - 幻觉 API](https://img.alicdn.com/imgextra/i1/O1CN015FgjqI20Ip3AJybr0_!!6000000006827-2-tps-1259-683.png)
+    
+    智能体在不检查 API 是否存在的情况下产生幻觉，导致重复失败。
+    
+    **问题 2：没有学会按照说明获取 access token**
+    
+    ![调优前 - Token 问题](https://img.alicdn.com/imgextra/i1/O1CN01bGZ1s01VyjCSrTJte_!!6000000002722-2-tps-1181-954.png)
+    
+    智能体在未先获取所需的访问令牌的情况下尝试调用受保护的 API，导致认证错误。
 
-![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN015FgjqI20Ip3AJybr0_!!6000000006827-2-tps-1259-683.png)
+=== "调优后"
 
-智能体在不检查 API 是否存在的情况下产生幻觉，导致重复失败。
+    **改进 1：会先查阅 API 文档，使用有效的 API**
+    
+    ![调优后 - 正确的 API](https://img.alicdn.com/imgextra/i4/O1CN01VRIDy922PoKD1bETl_!!6000000007113-2-tps-1180-944.png)
+    
+    智能体现在会先检查可用的 API 再发起调用，从而避免臆造不存在的接口端点。
+    
+    **改进 2：学会正确获取 access token**
+    
+    ![调优后 - Token 正确](https://img.alicdn.com/imgextra/i2/O1CN01xiF9UU20h62dyrZ4x_!!6000000006880-2-tps-1182-793.png)
+    
+    智能体在访问受保护的 API 之前，会先正确完成认证步骤。
 
-2. 没有学会按照说明去获取 access token
+!!! note "Token 级可视化"
+    这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md)。
 
-![Before tuning](https://img.alicdn.com/imgextra/i1/O1CN01bGZ1s01VyjCSrTJte_!!6000000002722-2-tps-1181-954.png)
+---
 
-智能体在未先获取所需的访问令牌（access token）的情况下尝试调用受保护的 API，导致认证错误。
+## 下一步
 
-#### 调优后：
-
-1. 会先查阅 API 文档，并学会使用有效的 API
-
-![After tuning](https://img.alicdn.com/imgextra/i4/O1CN01VRIDy922PoKD1bETl_!!6000000007113-2-tps-1180-944.png)
-
-智能体现在会先检查可用的 API 再发起调用，从而避免臆造不存在的接口端点。
-
-2. 学会正确获取 access token
-
-![After tuning](https://img.alicdn.com/imgextra/i2/O1CN01xiF9UU20h62dyrZ4x_!!6000000006880-2-tps-1182-793.png)
-
-智能体在访问受保护的 API 之前，会先正确完成认证步骤。
-
-> **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md).
+<div class="card-grid">
+<a href="../example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>数学智能体</h3></div><p class="card-desc">训练带工具调用的数学推理智能体。</p></a>
+<a href="../example_werewolves/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:wolf.svg" class="card-icon card-icon-multimodal" alt=""><h3>狼人杀游戏</h3></div><p class="card-desc">探索多智能体协作训练。</p></a>
+</div>

@@ -1,0 +1,134 @@
+site_name: AgentScope Tuner
+site_url: https://agentscope-ai.github.io/agentscope-tuner/
+site_description: "A cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes."
+site_author: "Alibaba Tongyi Lab"
+repo_url: https://github.com/agentscope-ai/agentscope-tuner
+repo_name: agentscope-ai/agentscope-tuner
+copyright: "Copyright &copy; 2025 Alibaba Tongyi Lab"
+theme:
+  name: shadcn
+  show_stargazers: true
+  git_enabled: false
+  nav_sort: false
+  features:
+    - content.code.copy
+    - content.code.annotate
+nav:
+  - Overview: index.md
+
+  - Tutorial:
+      - Introduction: en/intro.md
+      - Installation: en/installation.md
+      - Quick Start: en/quickstart.md
+      - Tune Your First Agent: en/tune_your_first_agent.md
+
+  - Examples:
+      - Math Agent: en/example_math_agent.md
+      - AppWorld Agent: en/example_app_world.md
+      - Werewolves Game: en/example_werewolves.md
+      - Learning to Ask: en/example_learning_to_ask.md
+      - Frozen Lake: en/example_frozenlake.md
+      - Countdown Game: en/example_countdown.md
+
+  - Components:
+      - Workflow: en/workflow.md
+      - Data Pipeline: en/data_pipeline.md
+      - Task Judger: en/task_judger.md
+
+  - Deep Dive:
+      - Configuration: en/configuration.md
+      - Visualization: en/visualization.md
+      - Beast Logger: en/beast_logger.md
+      - Data Generation: en/data_generation.md
+      - Tracing Feedback Loop: en/example_tracing_feedback_loop.md
+
+  - 中文文档:
+      - 简介: zh/intro.md
+      - 安装: zh/installation.md
+      - 快速开始: zh/quickstart.md
+      - 调优你的第一个 Agent: zh/tune_your_first_agent.md
+      - 示例:
+          - 数学 Agent: zh/example_math_agent.md
+          - AppWorld Agent: zh/example_app_world.md
+          - 狼人杀游戏: zh/example_werewolves.md
+          - 学会提问: zh/example_learning_to_ask.md
+          - 冰湖问题: zh/example_frozenlake.md
+          - 倒计时游戏: zh/example_countdown.md
+      - 组件:
+          - 工作流: zh/workflow.md
+          - 数据管道: zh/data_pipeline.md
+          - 任务评判器: zh/task_judger.md
+      - 深入探索:
+          - 配置: zh/configuration.md
+          - 可视化: zh/visualization.md
+          - Beast Logger: zh/beast_logger.md
+          - 数据生成: zh/data_generation.md
+          - Tracing 反馈循环: zh/example_tracing_feedback_loop.md
+
+plugins:
+  - search:
+      lang:
+        - en
+        - zh
+      separator: '[\s\-\.\(\)\/]+'
+      min_search_length: 2
+      prebuild_index: true
+      indexing: 'full'
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            show_submodules: true
+markdown_extensions:
+  - admonition
+  - footnotes
+  - tables
+  - extra
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.progressbar
+  - pymdownx.snippets
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - shadcn.extensions.iconify
+
+extra_css:
+  - https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap
+  - stylesheets/feature-cards.css
+  - stylesheets/tabbed-code.css
+  - stylesheets/readability-enhancements.css
+  - stylesheets/code-enhancements.css
+  - stylesheets/syntax-highlight.css
+  - stylesheets/table-enhancements.css
+  - stylesheets/jupyter-simple.css
+  - stylesheets/nav-scroll-fix.css
+  - stylesheets/workflow.css
+  - stylesheets/animations.css
+  - stylesheets/mermaid.css
+  - stylesheets/mkdocstrings.css
+  - stylesheets/responsive.css
+
+extra_javascript:
+  - javascripts/tabbed-code.js
+  - javascripts/code-copy.js
+  - javascripts/search-fix.js
+  - javascripts/code-zoom.js
+  - javascripts/nav-scroll-fix.js
+  - javascripts/animations.js
+  - javascripts/responsive.js
+

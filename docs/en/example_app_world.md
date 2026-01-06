@@ -134,7 +134,7 @@ In `astuner/task_judge/env_service_as_judge.py`, we read the reward signal from 
 You can also refer to this file to implement your own Judge for your specific task.
 
 ### 3.3 Configuration Details
-Copy and modify the key parameters in `tutorial/example_appworld/appworld.yaml`. The parts most relevant to this document are marked with ✨✨✨✨ in the yaml file:
+Copy and modify the key parameters in `tutorial/example_appworld/appworld.yaml`. The parts most relevant to this document are marked with <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> in the yaml file:
 
 1. **Read tasks** (corresponding config field: `astuner.task_reader`)
 2. **Define the workflow** (corresponding config field: `astuner.rollout.agentscope_workflow`)
@@ -149,13 +149,13 @@ astuner:
   project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
-    # ✨✨✨✨ Implement and select the evaluation function
+    # [key] Implement and select the evaluation function
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
   model:
-    # ✨✨✨✨ Set the model to be trained
+    # [key] Set the model to be trained
     path: YOUR_MODEL_PATH
   rollout:
-    # ✨✨✨✨ Implement and select the Agent
+    # [key] Implement and select the Agent
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:

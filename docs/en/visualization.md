@@ -1,33 +1,32 @@
 # Training Visualization
 
-Monitoring training progress through visualized metrics is essential for understanding model behavior and tuning hyperparameters effectively. AgentScope Tuner supports multiple visualization backends to track training curves, reward trends, and other key metrics in real-time.
+Monitoring training progress through visualized metrics is essential for understanding model behavior and tuning hyperparameters effectively.
 
 ---
 
-### 1. Supported Visualization Tools
+## Supported Visualization Tools
 
-AgentScope Tuner supports the following visualization backends:
-
-- **SwanLab** (Recommended): A modern experiment tracking platform designed for AI research. [Learn more about SwanLab](https://docs.swanlab.cn/guide_cloud/general/what-is-swanlab.html)
-- **WandB**: Weights & Biases experiment tracking platform
-- **TensorBoard**: Traditional visualization toolkit from TensorFlow
-- **Console**: Simple text-based logging to standard output
+<div class="card-grid">
+<div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:chart-line.svg" class="card-icon card-icon-agent" alt=""><h3>SwanLab ⭐</h3></div><p class="card-desc">Modern experiment tracking platform designed for AI research. Recommended.</p></div>
+<div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/simple-icons:weightsandbiases.svg" class="card-icon card-icon-general" alt=""><h3>WandB</h3></div><p class="card-desc">Weights & Biases experiment tracking platform.</p></div>
+<div class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:console.svg" class="card-icon card-icon-tool" alt=""><h3>Console</h3></div><p class="card-desc">Simple text-based logging to standard output.</p></div>
+</div>
 
 ---
 
-### 2. Quick Start with SwanLab
+## Quick Start with SwanLab
 
-#### 2.1 Configure SwanLab
+### Step 1: Configure SwanLab
 
 Simply set the logger backend to `swanlab` in your YAML configuration:
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   trainer_common:
     logger: swanlab
 ```
 
-#### 2.2 Start Training
+### Step 2: Start Training
 
 Launch your training as usual:
 
@@ -35,72 +34,73 @@ Launch your training as usual:
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
-#### 2.3 View Training Curves
+### Step 3: View Training Curves
 
-Once training starts, SwanLab will automatically:
+!!! success "Automatic Tracking"
+    Once training starts, SwanLab will automatically:
+    
+    1. Track key metrics (reward, success rate, loss, etc.)
+    2. Generate real-time training curves
+    3. Provide a web dashboard for visualization
 
-1. Track key metrics (reward, success rate, loss, etc.)
-2. Generate real-time training curves
-3. Provide a web dashboard for visualization
-
-You can access the SwanLab dashboard through the URL printed in the training logs, or visit the SwanLab web interface to view your experiments.
+You can access the SwanLab dashboard through the URL printed in the training logs.
 
 ---
 
-### 3. Understanding Training Curves
+## Understanding Training Curves
 
-#### 3.1 Key Metrics to Monitor
+### Key Metrics to Monitor
 
-The following metrics are typically tracked during training:
+| Metric | Description |
+|--------|-------------|
+| **Reward** | Average reward per episode, indicating task performance |
+| **Success Rate** | Percentage of successfully completed tasks |
+| **Loss** | Training loss from the policy optimization algorithm |
+| **Response Length** | Average length of model responses |
+| **KL Divergence** | Divergence between current and reference policy |
 
-- **Reward**: The average reward per episode, indicating task performance
-- **Success Rate**: Percentage of successfully completed tasks
-- **Loss**: Training loss from the policy optimization algorithm
-- **Response Length**: Average length of model responses
-- **KL Divergence**: Divergence between the current policy and the reference policy
+### Interpreting the Curves
 
-#### 3.2 Interpreting the Curves
-
-**Reward Curve:**
+**Example Training Curve:**
 
 ![Example Training Curve](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
 
 A typical reward curve shows:
 
-- **Initial Phase**: Reward may be low or unstable as the model explores
-- **Learning Phase**: Reward gradually increases as the model learns better strategies
-- **Convergence**: Reward plateaus when the model reaches optimal performance
+| Phase | Description |
+|-------|-------------|
+| **Initial** | Reward may be low or unstable as the model explores |
+| **Learning** | Reward gradually increases as the model learns better strategies |
+| **Convergence** | Reward plateaus when the model reaches optimal performance |
 
-**What to look for:**
-
-- **Rising trend**: Indicates successful learning
-- **Plateaus**: May indicate convergence or need for hyperparameter adjustment
-- **Sudden drops**: Could signal instability or overfitting
+!!! tip "What to Look For"
+    - **Rising trend**: Indicates successful learning
+    - **Plateaus**: May indicate convergence or need for hyperparameter adjustment
+    - **Sudden drops**: Could signal instability or overfitting
 
 ---
 
-### 4. Best Practices
+## Best Practices
 
-#### 4.1 Monitor Multiple Runs
+### Monitor Multiple Runs
 
-Compare different hyperparameter settings by running multiple experiments and comparing their curves side-by-side in SwanLab or WandB.
+Compare different hyperparameter settings by running multiple experiments and comparing their curves side-by-side.
 
-#### 4.2 Set Appropriate Logging Frequency
+### Set Appropriate Logging Frequency
 
 Balance between logging detail and training overhead:
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   trainer_common:
-    # Log every N steps
-    log_freq: 1
+    log_freq: 1  # Log every N steps
 ```
 
-#### 4.3 Save Checkpoints at Key Points
+### Save Checkpoints at Key Points
 
 Configure checkpoint saving to preserve models at peak performance:
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   trainer_common:
     save_freq: 100  # Save every 100 steps
@@ -108,10 +108,10 @@ astuner:
 
 ---
 
-### 5. Learn More
+## Next Steps
 
-For more detailed information about visualization and monitoring:
-
-- [SwanLab Documentation](https://docs.swanlab.cn/guide_cloud/general/what-is-swanlab.html)
-- [Configuration Guide](./configuration.md#logging--monitoring)
-- [Beast-Logger Usage](./beast_logger.md) - Token-level debugging visualization
+<div class="card-grid">
+<a href="../beast_logger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:bug.svg" class="card-icon card-icon-tool" alt=""><h3>Beast Logger</h3></div><p class="card-desc">Token-level debugging and visualization.</p></a>
+<a href="../data_generation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:auto-fix.svg" class="card-icon card-icon-data" alt=""><h3>Data Generation</h3></div><p class="card-desc">Auto-generate training data from documents.</p></a>
+<a href="https://docs.swanlab.cn/guide_cloud/general/what-is-swanlab.html" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:book-open-variant.svg" class="card-icon card-icon-general" alt=""><h3>SwanLab Docs</h3></div><p class="card-desc">Official SwanLab documentation.</p></a>
+</div>
