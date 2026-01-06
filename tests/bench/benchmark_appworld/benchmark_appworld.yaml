@@ -6,6 +6,15 @@ ajet:
     # ✨✨✨✨ 编写并选择评价函数
     judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
 
+  task_reader:
+    type: env_service # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
+    env_service:
+      env_type: "appworld"
+      env_url: "http://127.0.0.1:8080"
+      env_action_preference: code # code, text, box
+      training_split: train
+      validation_split: dev
+
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
@@ -48,10 +57,6 @@ ajet:
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
   execute_testing_lambda: "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe" #
 
-trinity:
-  synchronizer:
-    sync_offset: 1
-    sync_method: nccl
 
 # ------------------ 不需要修改 ------------------
 hydra:
