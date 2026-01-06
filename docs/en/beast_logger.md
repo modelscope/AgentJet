@@ -4,11 +4,11 @@ Beast-logger is a logging kit built for LLM systems,
 providing reliable high-resolution token-level LLM activity
 that is unprecedented in any other projects.
 
-Here is how to use beast-logger in agentscope-tuner.
+Here is how to use beast-logger in AgentJet.
 
-## Usage in agentscope-tuner
+## Usage in AgentJet
 
-1. Start training or debugging with agentscope-tuner launcher.
+1. Start training or debugging with AgentJet launcher.
 
 2. Wait until the first batch is completed.
 

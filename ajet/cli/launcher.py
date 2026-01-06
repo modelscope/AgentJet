@@ -20,7 +20,7 @@ load_dotenv()
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="AgentScope-Tuner Launcher")
+    parser = argparse.ArgumentParser(description="AgentJet Launcher")
     parser.add_argument(
         "--backbone",
         type=str,

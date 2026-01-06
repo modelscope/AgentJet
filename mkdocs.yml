@@ -1,9 +1,9 @@
-site_name: AgentScope Tuner
-site_url: https://agentscope-ai.github.io/agentscope-tuner/
+site_name: AgentJet
+site_url: https://agentscope-ai.github.io/AgentJet/
 site_description: "A cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes."
 site_author: "Alibaba Tongyi Lab"
-repo_url: https://github.com/agentscope-ai/agentscope-tuner
-repo_name: agentscope-ai/agentscope-tuner
+repo_url: https://github.com/modelscope/AgentJet
+repo_name: modelscope/AgentJet
 copyright: "Copyright &copy; 2025 Alibaba Tongyi Lab"
 theme:
   name: shadcn

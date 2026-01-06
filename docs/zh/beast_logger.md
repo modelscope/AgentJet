@@ -7,7 +7,7 @@ Beast-logger 是一个面向 LLM 系统构建的日志工具包，能够提供�
 
 ---
 
-## 在 agentscope-tuner 中使用
+## 在 AgentJet 中使用
 
 <div class="workflow-single">
 <div class="workflow-header">使用流程</div>
@@ -16,7 +16,7 @@ Beast-logger 是一个面向 LLM 系统构建的日志工具包，能够提供�
 <ol class="workflow-steps">
 <li><strong>启动训练</strong>
 
-使用 agentscope-tuner 的 launcher 启动训练或调试。</li>
+使用 AgentJet 的 launcher 启动训练或调试。</li>
 <li><strong>等待数据生成</strong>
 
 等待第一个 batch 完成，日志文件会自动生成。</li>
@@ -36,7 +36,7 @@ Beast-logger 是一个面向 LLM 系统构建的日志工具包，能够提供�
 
 ### Step 1：启动训练
 
-使用 agentscope-tuner 的 launcher 启动训练或调试。
+使用 AgentJet 的 launcher 启动训练或调试。
 
 ### Step 2：找到日志文件
 
