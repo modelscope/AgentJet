@@ -42,8 +42,8 @@ We recommend using `uv` for dependency management.
 === "Step 1: Clone Repository"
 
     ```bash
-    git clone https://github.com/agentscope-ai/agentscope-tuner.git
-    cd agentscope-tuner
+    git clone https://github.com/modelscope/AgentJet.git
+    cd AgentJet
     ```
 
 === "Step 2: Setup Environment"

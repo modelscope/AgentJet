@@ -1,7 +1,7 @@
 services:
 
   ajet-node-1:
-    image: agentscope-tuner-unittest:latest
+    image: agentjet-unittest:latest
     pull_policy: never
     command: bash -c "uv pip install -e .[trinity] && ray start --head --dashboard-host 0.0.0.0 --include-dashboard true --block"
     environment:

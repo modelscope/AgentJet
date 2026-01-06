@@ -23,13 +23,13 @@
 从 GitHub 克隆 AgentScope Tuner 仓库，并进入项目目录：
 
 ```bash
-git clone https://github.com/agentscope-ai/agentscope-tuner.git
-cd agentscope-tuner
+git clone https://github.com/modelscope/AgentJet.git
+cd AgentJet
 ```
 
 ### Step 2：安装依赖
 
-AgentScope-Tuner 支持多种训练后端（backbone），目前包括 `verl` 和 `trinity`（推荐）。
+AgentJet 支持多种训练后端（backbone），目前包括 `verl` 和 `trinity`（推荐）。
 
 !!! info "包管理器"
     我们推荐使用 `uv` 来管理 Python 环境，因为它速度非常快。参考 [`uv` 安装文档](https://docs.astral.sh/uv/getting-started/installation/)。
@@ -79,7 +79,7 @@ AgentScope-Tuner 支持多种训练后端（backbone），目前包括 `verl` �
 
 ### 运行 Docker 容器
 
-以下命令会将您当前工作目录（agentscope-tuner 的根目录）挂载到容器内的 `/workspace`，并将您的数据目录挂载到容器内的 `/data`：
+以下命令会将您当前工作目录（agentjet 的根目录）挂载到容器内的 `/workspace`，并将您的数据目录挂载到容器内的 `/data`：
 
 ```bash
 docker run -it \
@@ -88,7 +88,7 @@ docker run -it \
   --rm \
   -v $PWD:/workspace \
   -v /path/to/your/checkpoint/and/data:/data \
-  agentscope-tuner:latest
+  agentjet:latest
 ```
 
 ---

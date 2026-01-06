@@ -48,8 +48,8 @@ ASTuner 还提供了高分辨率的日志记录和调试方案：
 === "步骤 1：克隆仓库"
 
     ```bash
-    git clone https://github.com/agentscope-ai/agentscope-tuner.git
-    cd agentscope-tuner
+    git clone https://github.com/modelscope/AgentJet.git
+    cd AgentJet
     ```
 
 === "步骤 2：设置环境"

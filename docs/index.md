@@ -25,8 +25,8 @@ We recommend using `uv` for dependency management.
 **1. Clone the Repository:**
 
 ```bash
-git clone https://github.com/agentscope-ai/agentscope-tuner.git
-cd agentscope-tuner
+git clone https://github.com/modelscope/AgentJet.git
+cd AgentJet
 ```
 
 **2. Set up Environment:**

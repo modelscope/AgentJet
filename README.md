@@ -27,7 +27,7 @@ Let's begin with the simplest example: a math agent with a tool call.
 We aim to build a easy-to-learn Agent tuner that unlock more possibilities for agent developers:
 
 - **Easy and Friendly**. ASTuner helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
-- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](https://github.com/agentscope-ai/agentscope-tuner/tree/main/tutorial) as tutorials.
+- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
 - **Efficient and Scalable**. ASTuner uses [trinity](https://github.com/modelscope/Trinity-RFT/) as the default backbone (`--backbone=verl`), accelerating your tuning process via fully asynchronous RFT. Nevertheless, if actor colocating is your preference, you can still fall back to the [verl](docs/en/installation.md) backbone. **把verl换成默认BB**
 - **Flexible and Fast**. ASTuner supports [multi-agent workflows](docs/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
@@ -48,8 +48,8 @@ We recommend using `uv` for dependency management.
 
 1. **Clone the Repository**:
 ```bash
-git clone https://github.com/agentscope-ai/agentscope-tuner.git
-cd agentscope-tuner
+git clone https://github.com/modelscope/AgentJet.git
+cd AgentJet
 ```
 
 

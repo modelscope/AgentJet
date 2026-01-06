@@ -1,9 +1,9 @@
 # Installation Guide
 
-This document provides a step-by-step guide to installing AgentScope-Tuner.
+This document provides a step-by-step guide to installing AgentJet.
 
 !!! tip "Latest Version Recommended"
-    AgentScope Tuner is under active development and iteration. We recommend installing from source to get the latest features and bug fixes.
+    AgentJet is under active development and iteration. We recommend installing from source to get the latest features and bug fixes.
 
 ---
 
@@ -20,16 +20,16 @@ This document provides a step-by-step guide to installing AgentScope-Tuner.
 
 ### Step 1: Clone the Repository
 
-Clone the AgentScope Tuner repository from GitHub and navigate into the project directory:
+Clone the AgentJet repository from GitHub and navigate into the project directory:
 
 ```bash
-git clone https://github.com/agentscope-ai/agentscope-tuner.git
-cd agentscope-tuner
+git clone https://github.com/modelscope/AgentJet.git
+cd AgentJet
 ```
 
 ### Step 2: Install Dependencies
 
-AgentScope-Tuner supports multiple backbones. Currently we have `verl` and `trinity` (recommended).
+AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (recommended).
 
 !!! info "Package Manager"
     We recommend using `uv` to manage your Python environment as it is incredibly fast. See also [`uv` installation document](https://docs.astral.sh/uv/getting-started/installation/).
@@ -79,7 +79,7 @@ Please install nvidia docker runtime on the host Ubuntu system. For details, ref
 
 ### Run Docker Container
 
-This command mounts your current working directory (the root directory of agentscope-tuner) to `/workspace` and your data directory to `/data` inside the container.
+This command mounts your current working directory (the root directory of agentjet) to `/workspace` and your data directory to `/data` inside the container.
 
 ```bash
 docker run -it \
@@ -88,7 +88,7 @@ docker run -it \
   --rm \
   -v $PWD:/workspace \
   -v /path/to/your/checkpoint/and/data:/data \
-  agentscope-tuner:latest
+  agentjet:latest
 ```
 
 ---

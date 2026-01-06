@@ -3,7 +3,7 @@ requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name =  "AgentScope-Tuner"
+name =  "AgentJet"
 version = "0.1.0"
 readme = "README.md"
 classifiers = [
@@ -33,12 +33,12 @@ dependencies = [
 
 [project.optional-dependencies]
 
-trinity = [
-    "trinity-rft @ git+https://github.com/modelscope/Trinity-RFT.git"
-]
-
 verl = [
     "verl-bundle[vllm]==0.5.0.post2",
+]
+
+trinity = [
+    "trinity-rft @ git+https://github.com/modelscope/Trinity-RFT.git"
 ]
 
 dev = [
@@ -102,4 +102,4 @@ known_third_party = ["wandb"]
 
 
 [project.urls]
-"Homepage" = "https://github.com/agentscope-ai/AgentScope-Tuner"
+"Homepage" = "https://github.com/modelscope/AgentJet"
