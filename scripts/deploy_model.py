@@ -15,13 +15,14 @@ from agentscope_tuner.utils.smart_daemon import LaunchCommandWhenAbsent  # noqa:
 parser = argparse.ArgumentParser(description="deploy Hugging Face model")
 parser.add_argument(
     "--target",
-    default="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/",
+    # default="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/",
+    default="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-Coder-480B-A35B-Instruct",
     type=str,
     help="Model path",
 )
 parser.add_argument(
     "--alias",
-    default="Qwen/Qwen3-235B-A22B-Instruct-2507",
+    default="Qwen/Qwen3-Coder-480B-A35B-Instruct",
     type=str,
     help="Model alias",
 )
