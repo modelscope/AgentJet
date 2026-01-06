@@ -3,7 +3,7 @@
 本教程介绍如何在 AgentScope 中定义一个可训练的工作流（Workflow）。
 
 !!! info "两种封装方式"
-    ASTuner 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封装方式：
+    AgentJet 为 AgentScope Workflow 提供了两种方便且**互相兼容**的封装方式：
 
     - **简单模式**：强调简单、易用、容易理解
     - **进阶模式**：强调灵活、可控、易扩展
@@ -12,7 +12,7 @@
 
 ## 简单智能体场景
 
-### 1. 在 ASTuner 中转换你的 AgentScope Workflow
+### 1. 在 AgentJet 中转换你的 AgentScope Workflow
 
 **只需要在初始化 ReActAgent 时，把 `model` 参数替换为 `model_tuner` 即可。**
 
@@ -119,7 +119,7 @@ class ExampleMathLearn(Workflow):
 
 ## 进阶智能体场景
 
-当设计的是一个**多智能体协作**的复杂 Workflow，并且每个智能体扮演不同**角色**时，如果 ASTuner 能够「知道」每个智能体的身份，那么在训练和调试时就能提供更好的能力和更高的可控性。
+当设计的是一个**多智能体协作**的复杂 Workflow，并且每个智能体扮演不同**角色**时，如果 AgentJet 能够「知道」每个智能体的身份，那么在训练和调试时就能提供更好的能力和更高的可控性。
 
 !!! success "进阶模式的优势"
     通过多智能体协作，您可以：
@@ -159,7 +159,7 @@ class ExampleMathLearn(Workflow):
 !!! info "模型共享"
     无论角色异同，所有智能体（角色）共享一个模型实例。也就是说，具有相同参数的模型将分别扮演不同的角色。
 
-### 2. 升级为进阶 ASTuner Workflow
+### 2. 升级为进阶 AgentJet Workflow
 
 本节通过一个简单的例子展示使用 `ModelTuner.register_model` 为不同角色注册「可训练模型」。
 

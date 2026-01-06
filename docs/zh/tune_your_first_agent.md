@@ -85,13 +85,13 @@ defaults:
 智能体需要在指定的任务环境下，使用训练数据驱动进行训练。
 
 !!! info "支持的数据源"
-    ASTuner 提供了多种读取数据的方式：
+    AgentJet 提供了多种读取数据的方式：
 
     - 从本地硬盘中的文件读取
     - 从 HuggingFace Repo 中读取
     - 从 EnvService 中读取
 
-    所有数据在读取后，都会被转换为 ASTuner 中统一的数据格式。
+    所有数据在读取后，都会被转换为 AgentJet 中统一的数据格式。
 
 在本示例中，我们将直接从 HuggingFace Repo 获取 `openai/gsm8k` 作为训练数据。
 
@@ -125,13 +125,13 @@ ajet:
 | `max_prompt_length` | 输入的最大 token 长度 |
 | `max_response_length` | 回复的最大 token 长度 |
 
-至此，我们就完成了数据相关的全部配置，剩余的工作将由 ASTuner 自动完成。
+至此，我们就完成了数据相关的全部配置，剩余的工作将由 AgentJet 自动完成。
 
 ---
 
 ## 准备 Workflow
 
-在 ASTuner 中，workflow 是进行训练的基本单元。它定义了智能体的行为、工具、上下文等，智能体与环境交互的具体流程，以及 Reward 的计算方法。
+在 AgentJet 中，workflow 是进行训练的基本单元。它定义了智能体的行为、工具、上下文等，智能体与环境交互的具体流程，以及 Reward 的计算方法。
 
 我们将在 `workflow.py` 中实现我们的 workflow。
 
@@ -262,7 +262,7 @@ ajet:
 ```
 
 !!! info "关于 Judge"
-    这里我们使用 ASTuner 内部提供的 math judge。Judge 会读取 metadata 中的 `final_answer`，并与数据集中的 ground_truth 对比来得到评分。
+    这里我们使用 AgentJet 内部提供的 math judge。Judge 会读取 metadata 中的 `final_answer`，并与数据集中的 ground_truth 对比来得到评分。
 
 ---
 

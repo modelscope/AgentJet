@@ -65,11 +65,11 @@ If the results are incorrect, the quickest troubleshooting points include: wheth
 
 #### 3.1 What happens each step
 
-This tutorial trains a model to **ask the next best question** from a short doctor–patient chat history. Concretely, each training step takes one conversation context from `train.jsonl`, asks the agent to generate **exactly one follow-up question** (optionally with answer options), and then uses an LLM judge to score whether that question is useful and relevant. ASTuner uses this score as the reward signal to update the policy, so the model gradually learns to ask better questions instead of answering directly.
+This tutorial trains a model to **ask the next best question** from a short doctor–patient chat history. Concretely, each training step takes one conversation context from `train.jsonl`, asks the agent to generate **exactly one follow-up question** (optionally with answer options), and then uses an LLM judge to score whether that question is useful and relevant. AgentJet uses this score as the reward signal to update the policy, so the model gradually learns to ask better questions instead of answering directly.
 
 #### 3.2 YAML Configuration
 
-The whole example is “wired” in the YAML and implemented in one file. In the YAML, `task_reader` provides the dataset split, `rollout.agentscope_workflow` tells ASTuner which workflow to run for each sample, and `task_judge` provides the reward entry that wraps the LLM judge. The `model` section decides which pretrained backbone you start from.
+The whole example is “wired” in the YAML and implemented in one file. In the YAML, `task_reader` provides the dataset split, `rollout.agentscope_workflow` tells AgentJet which workflow to run for each sample, and `task_judge` provides the reward entry that wraps the LLM judge. The `model` section decides which pretrained backbone you start from.
 
 ```yaml
 ajet:

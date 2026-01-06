@@ -1,6 +1,6 @@
 # Introduction
 
-**AgentScope Tuner (ASTuner)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
+**AgentScope Tuner (AgentJet)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
 
 Simply provide your AgentScope workflow, training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
 
@@ -11,20 +11,20 @@ Simply provide your AgentScope workflow, training data, and reward function, and
 We aim to build an easy-to-learn AgentScope tuner that unlocks more possibilities for agent developers:
 
 <div class="card-grid">
-<a href="./configuration/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:rocket.svg" class="card-icon card-icon-agent" alt=""><h3>Easy and Friendly</h3></div><p class="card-desc">ASTuner helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.</p></a>
+<a href="./configuration/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:rocket.svg" class="card-icon card-icon-agent" alt=""><h3>Easy and Friendly</h3></div><p class="card-desc">AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.</p></a>
 <a href="#example-library" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:book-open.svg" class="card-icon card-icon-general" alt=""><h3>Rich Tutorial Library</h3></div><p class="card-desc">Rich library of examples as tutorials: Math Agent, Werewolves Game, AppWorld and more.</p></a>
 <a href="./installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:zap.svg" class="card-icon card-icon-tool" alt=""><h3>Efficient and Scalable</h3></div><p class="card-desc">Uses <a href="https://github.com/modelscope/Trinity-RFT/">Trinity</a> as the default backbone with fully asynchronous RFT. Support for verl backbone as fallback.</p></a>
 </div>
 
 !!! tip "Multi-Agent Support"
-    ASTuner supports [multi-agent workflows](./workflow.md) and adopts a context merging technique, accelerating training by **1.5x to 20x** when the workflow involves multi-turn (or multi-agent) conversations.
+    AgentJet supports [multi-agent workflows](./workflow.md) and adopts a context merging technique, accelerating training by **1.5x to 20x** when the workflow involves multi-turn (or multi-agent) conversations.
 
 !!! info "Reliability & Reproducibility"
     Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/).
 
 ### For Advanced Researchers
 
-ASTuner also provides high-resolution logging and debugging solutions:
+AgentJet also provides high-resolution logging and debugging solutions:
 
 | Feature | Description |
 |---------|-------------|
@@ -78,17 +78,17 @@ Explore our rich library of examples to kickstart your journey:
 <a href="./example_werewolves/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:wolf.svg" class="card-icon card-icon-multimodal" alt=""><h3>Werewolves Game</h3></div><p class="card-desc">Developing Werewolves RPG agents and training them for strategic gameplay.</p></a>
 <a href="./example_learning_to_ask/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:comment-question.svg" class="card-icon card-icon-general" alt=""><h3>Learning to Ask</h3></div><p class="card-desc">Learning to ask questions like a doctor for medical consultation scenarios.</p></a>
 <a href="./example_countdown/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:timer-sand.svg" class="card-icon card-icon-tool" alt=""><h3>Countdown Game</h3></div><p class="card-desc">Writing a countdown game using AgentScope and solving it with RL.</p></a>
-<a href="./example_frozenlake/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:snowflake.svg" class="card-icon card-icon-data" alt=""><h3>Frozen Lake</h3></div><p class="card-desc">Solving a frozen lake walking puzzle using ASTuner's reinforcement learning.</p></a>
+<a href="./example_frozenlake/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:snowflake.svg" class="card-icon card-icon-data" alt=""><h3>Frozen Lake</h3></div><p class="card-desc">Solving a frozen lake walking puzzle using AgentJet's reinforcement learning.</p></a>
 </div>
 
 ---
 
 ## Core Concepts
 
-ASTuner makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
+AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
 <div align="center">
-<img width="480" alt="ASTuner Architecture" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+<img width="480" alt="AgentJet Architecture" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
 </div>
 
 ### 1. The User-Centric Interface
@@ -119,6 +119,6 @@ The internal system orchestrates several specialized modules to handle the compl
 ## Next Steps
 
 <div class="card-grid">
-<a href="./installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Installation</h3></div><p class="card-desc">Set up ASTuner environment and dependencies.</p></a>
+<a href="./installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Installation</h3></div><p class="card-desc">Set up AgentJet environment and dependencies.</p></a>
 <a href="./quickstart/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:lightning-bolt.svg" class="card-icon card-icon-agent" alt=""><h3>Quick Start</h3></div><p class="card-desc">Run your first training in minutes.</p></a>
 </div>

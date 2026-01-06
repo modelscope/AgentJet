@@ -245,10 +245,10 @@ class TaskRunner:
         train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
-        from ajet.backbone.trainer_verl import ASTunerRayPPOTrainer
+        from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
         # Initialize the PPO trainer.
-        trainer = ASTunerRayPPOTrainer(
+        trainer = AjetRayPPOTrainer(
             config=config,
             tokenizer=tokenizer,
             processor=processor,

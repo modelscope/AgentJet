@@ -1,6 +1,6 @@
 # Introduction
 
-**AgentScope Tuner (ASTuner)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
+**AgentScope Tuner (AgentJet)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
 
 Simply provide your AgentScope workflow, training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
 
@@ -10,17 +10,17 @@ Simply provide your AgentScope workflow, training data, and reward function, and
 
 We aim to build a easy-to-learn AgentScope tuner that unlock more possibilities for agent developers:
 
-- **Easy and Friendly**. ASTuner helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
-- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](#example-library) as tutorials.
-- **Efficient and Scalable**. ASTuner uses [trinity](https://github.com/modelscope/Trinity-RFT/) as the default backbone (`--backbone=trinity`), accelerating your tuning process via fully asynchronous RFT. Nevertheless, if actor colocating is your preference, you can still fall back to the [verl](./installation.md) backbone.
-- **Flexible and Fast**. ASTuner supports [multi-agent workflows](./workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
+- **Rich Tutorial Library**. AgentJet provides a rich library of [examples](#example-library) as tutorials.
+- **Efficient and Scalable**. AgentJet uses [trinity](https://github.com/modelscope/Trinity-RFT/) as the default backbone (`--backbone=trinity`), accelerating your tuning process via fully asynchronous RFT. Nevertheless, if actor colocating is your preference, you can still fall back to the [verl](./installation.md) backbone.
+- **Flexible and Fast**. AgentJet supports [multi-agent workflows](./workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
 
-For advanced researchers, ASTuner also provides high-resolution logging and debugging solutions:
-<!-- For advanced researchers, ASTuner provides high-resolution logging and debugging solutions that are, to our knowledge, unprecedented in other prior projects. -->
+For advanced researchers, AgentJet also provides high-resolution logging and debugging solutions:
+<!-- For advanced researchers, AgentJet provides high-resolution logging and debugging solutions that are, to our knowledge, unprecedented in other prior projects. -->
 
-- **High-Resolution Logging**: ASTuner allows users to save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
-- **Fast Debugging**: ASTuner also provides the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes and enabling breakpoint debugging in IDEs.
+- **High-Resolution Logging**: AgentJet allows users to save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
+- **Fast Debugging**: AgentJet also provides the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes and enabling breakpoint debugging in IDEs.
 
 ---
 
@@ -63,14 +63,14 @@ Explore our rich library of examples to kickstart your journey:
 - <img src="https://api.iconify.design/lucide:users.svg" class="inline-icon" /> [**Developing Werewolves RPG agents and training them**](./example_werewolves.md).
 - <img src="https://api.iconify.design/lucide:stethoscope.svg" class="inline-icon" /> [**Learning to ask questions like a doctor**](./example_learning_to_ask.md).
 - <img src="https://api.iconify.design/lucide:timer.svg" class="inline-icon" /> [**Writing a countdown game using AgentScope and solving it**](./example_countdown.md).
-- <img src="https://api.iconify.design/lucide:footprints.svg" class="inline-icon" /> [**Solving a frozen lake walking puzzle using ASTuner**](./example_frozenlake.md).
+- <img src="https://api.iconify.design/lucide:footprints.svg" class="inline-icon" /> [**Solving a frozen lake walking puzzle using AgentJet**](./example_frozenlake.md).
 
 
 ---
 
 ### Core Concepts
 
-ASTuner makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
+AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
 <div align="center">
 <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>

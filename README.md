@@ -26,17 +26,17 @@ Let's begin with the simplest example: a math agent with a tool call.
 
 We aim to build a easy-to-learn Agent tuner that unlock more possibilities for agent developers:
 
-- **Easy and Friendly**. ASTuner helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
-- **Rich Tutorial Library**. ASTuner provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
-- **Efficient and Scalable**. ASTuner uses [trinity](https://github.com/modelscope/Trinity-RFT/) as the default backbone (`--backbone=verl`), accelerating your tuning process via fully asynchronous RFT. Nevertheless, if actor colocating is your preference, you can still fall back to the [verl](docs/en/installation.md) backbone. **把verl换成默认BB**
-- **Flexible and Fast**. ASTuner supports [multi-agent workflows](docs/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
+- **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
+- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support [trinity](https://github.com/modelscope/Trinity-RFT/) as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
+- **Flexible and Fast**. AgentJet supports [multi-agent workflows](docs/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
 
-For advanced researchers, ASTuner also provides high-resolution logging and debugging solutions:
-<!-- For advanced researchers, ASTuner provides high-resolution logging and debugging solutions that are, to our knowledge, unprecedented in other prior projects. -->
+For advanced researchers, AgentJet also provides high-resolution logging and debugging solutions:
+<!-- For advanced researchers, AgentJet provides high-resolution logging and debugging solutions that are, to our knowledge, unprecedented in other prior projects. -->
 
-- **High-Resolution Logging**: ASTuner allows users to save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
-- **Fast Debugging**: ASTuner also provides the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes and enabling breakpoint debugging in IDEs.
+- **High-Resolution Logging**: AgentJet allows users to save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
+- **Fast Debugging**: AgentJet also provides the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes and enabling breakpoint debugging in IDEs.
 
 ---
 
@@ -79,14 +79,14 @@ Explore our rich library of examples to kickstart your journey:
 - 🐺 [**Developing Werewolves RPG agents and training them**](docs/en/example_werewolves.md).
 - 👩🏻‍⚕️ [**Learning to ask questions like a doctor**](docs/en/example_learning_to_ask.md).
 - 🎴 [**Writing a countdown game using AgentScope and solving it**](docs/en/example_countdown.md).
-- 🚶 [**Solving a frozen lake walking puzzle using ASTuner**](docs/en/example_frozenlake.md).
+- 🚶 [**Solving a frozen lake walking puzzle using AgentJet**](docs/en/example_frozenlake.md).
 
 
 ---
 
 ### 🧩 Core Concepts
 
-ASTuner makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
+AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
 <div align="center">
 <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
@@ -124,7 +124,7 @@ The internal system orchestrates several specialized modules to handle the compl
 
 ## 🗺️ Roadmap
 
-ASTuner is a constantly evolving project. We are planning to add the following features in the near future.
+AgentJet is a constantly evolving project. We are planning to add the following features in the near future.
 
 - [ ] Advanced LLM-based multi-agent reinforcement learning.
 - [ ] Training dataset generation from few-shot samples.

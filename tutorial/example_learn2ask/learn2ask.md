@@ -40,7 +40,7 @@ In this workflow, we implement:
 The agent reads the messages between a doctor and a patient, and tries predicting the next question to collect information and diagnose the patient. The question is judged by a LLM to check if it is valuable and relevant.
 
 ## 3. Prepare Training Configuration
-Next, we need a YAML configuration file to tell ASTuner what data, workflow, reward to use.
+Next, we need a YAML configuration file to tell AgentJet what data, workflow, reward to use.
 
 In `tutorial/example_learn2ask/learn2ask.yaml`, we set them respectively:
 - Set experiment name.

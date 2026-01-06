@@ -2,15 +2,15 @@ from loguru import logger
 
 try:
     from ajet.backbone.trainer_trinity import (
-        ASTunerTaskReader,
-        ASTunerWorkflowWrap,
+        AjetTaskReader,
+        AjetWorkflowWrap,
         TrinityRolloutManager,
     )
 
     __all__ = [
         "TrinityRolloutManager",
-        "ASTunerWorkflowWrap",
-        "ASTunerTaskReader",
+        "AjetWorkflowWrap",
+        "AjetTaskReader",
     ]
 except ImportError:
     logger.warning("trinity is not available.")
