@@ -23,8 +23,8 @@ Task Judger 会评估智能体的执行结果，并返回两个值：
 所有 Task Judger 都继承自 `BaseJudge`，并实现 `compute_reward` 方法：
 
 ```python title="base_judge.py"
-from agentscope_tuner.task_judge.base_judge import BaseJudge
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.task_judge.base_judge import BaseJudge
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 class BaseJudge:
     def __init__(self, config):
@@ -71,7 +71,7 @@ AgentScope Tuner 提供了 4 个内置评测器，用于覆盖常见的评测场
     - 答案格式为 `\boxed{result}`
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
@@ -100,7 +100,7 @@ astuner:
     - 希望即使答案不对，也能奖励良好格式的场景
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
     judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge
@@ -126,10 +126,10 @@ astuner:
     - 环境自身带有 evaluator 的交互式任务
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
 ```
 
 **工作原理：**
@@ -151,7 +151,7 @@ astuner:
     - 有标注训练样本，但需要更灵活的评测标准
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_judge:
     judge_type: rubrics_auto_grader
     rubrics_auto_grader:
@@ -213,8 +213,8 @@ astuner:
 
 ```python title="my_judge.py"
 import re
-from agentscope_tuner.task_judge.base_judge import BaseJudge
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.task_judge.base_judge import BaseJudge
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 class MyCustomJudge(BaseJudge):
     def __init__(self, config):
@@ -228,16 +228,16 @@ class MyCustomJudge(BaseJudge):
     ) -> tuple:
         # 从 workflow_output 中读取数据
         agent_answer = workflow_output.metadata.get("final_answer", "")
-        
+
         # 从 workflow_task 中读取参考答案
         reference_answer = workflow_task.task.metadata.get("answer", "")
-        
+
         # 自定义评测逻辑
         similarity = self._compute_similarity(agent_answer, reference_answer)
-        
+
         # 基于阈值判断是否成功
         is_success = similarity >= self.threshold
-        
+
         return similarity, is_success
 
     def _compute_similarity(self, text1: str, text2: str) -> float:
@@ -250,7 +250,7 @@ class MyCustomJudge(BaseJudge):
 ### Step 2：配置评测器
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_judge:
     judge_type: customized_protocol
     judge_protocol: tutorial.my_task.my_judge->MyCustomJudge
@@ -283,16 +283,16 @@ class MyWorkflow(Workflow):
 === "使用内置 Judger"
 
     ```yaml
-    astuner:
+    ajet:
       task_judge:
         judge_type: customized_protocol
-        judge_protocol: agentscope_tuner.task_judge.<module>-><ClassName>
+        judge_protocol: ajet.task_judge.<module>-><ClassName>
     ```
 
 === "使用 Auto Grader"
 
     ```yaml
-    astuner:
+    ajet:
       task_judge:
         judge_type: rubrics_auto_grader
         rubrics_auto_grader:

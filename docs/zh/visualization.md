@@ -22,7 +22,7 @@
 只需在 YAML 配置中将 logger 后端设置为 `swanlab`：
 
 ```yaml
-astuner:
+ajet:
   trainer_common:
     logger: swanlab
 ```
@@ -32,14 +32,14 @@ astuner:
 像平时一样启动训练：
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ### 查看训练曲线
 
 !!! success "自动记录"
     训练启动后，SwanLab 会自动：
-    
+
     1. 记录关键指标（reward、success rate、loss 等）
     2. 生成实时训练曲线
     3. 提供可视化的 Web Dashboard
@@ -94,7 +94,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 在日志细节与训练开销之间取得平衡：
 
 ```yaml
-astuner:
+ajet:
   trainer_common:
     log_freq: 1  # 每 N step 记录一次日志
 ```
@@ -104,7 +104,7 @@ astuner:
 配置 checkpoint 保存策略，以保留峰值表现阶段的模型：
 
 ```yaml
-astuner:
+ajet:
   trainer_common:
     save_freq: 100  # 每 100 step 保存一次
 ```

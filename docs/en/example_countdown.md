@@ -13,7 +13,7 @@ Download the `Jiayi-Pan/Countdown-Tasks-3to4` dataset and split it into training
 python tutorial/example_countdown/prepare_data.py --target=Jiayi-Pan/Countdown-Tasks-3to4 --path=/the/path/to/store/dataset
 ```
 
-The Countdown dataset contains the `target` and `nums` fields and requires custom data formatting logic. For example, when using the `huggingface_dat_repo` task reader method, you need to modify the `_load_dataset_split` method in `astuner/task_reader/hf_dataset_reader.py`:
+The Countdown dataset contains the `target` and `nums` fields and requires custom data formatting logic. For example, when using the `huggingface_dat_repo` task reader method, you need to modify the `_load_dataset_split` method in `ajet/task_reader/hf_dataset_reader.py`:
 
 ```python
 task = Task(
@@ -31,7 +31,7 @@ Simply run the following command:
 
 ```bash
 # It is recommended to kill all ray, vllm, and env_service processes before starting ( python launcher.py --kill="python|ray|vllm" )
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
+ajet --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 ```
 
 <details>
@@ -41,10 +41,10 @@ If you want to breakpoint-debug the workflow/judge locally:
 
 ```bash
 # (optional) recommended cleanup before debug
-# astuner --kill="python|ray"
+# ajet --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.json` like below:
@@ -57,7 +57,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -109,17 +109,17 @@ WorkflowOutput(
 ### 3.2 Configuration Details
 Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> symbols.
 
-1. Read task (corresponds to configuration field `astuner.task_reader`)
-2.  Define Workflow (corresponds to configuration field `astuner.rollout.agentscope_workflow`)
+1. Read task (corresponds to configuration field `ajet.task_reader`)
+2.  Define Workflow (corresponds to configuration field `ajet.rollout.agentscope_workflow`)
    - Example: If agentscope workflow is defined in `ExampleCountdownLearn` class of `tutorial/example_countdown/countdown.py`
-   - Then set `astuner.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
-3. Define scoring function (corresponds to configuration field `astuner.task_judge.judge_protocol`)
+   - Then set `ajet.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
+3. Define scoring function (corresponds to configuration field `ajet.task_judge.judge_protocol`)
   - Example: If agentscope workflow is defined in `CountdownAnswerAsJudge` class of `tutorial/example_countdown/countdown_answer_as_judge.py`
-  - Then set `astuner.task_judge.judge_protocol`=`tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
-4. Specify model (corresponds to configuration field `astuner.model.path`)
+  - Then set `ajet.task_judge.judge_protocol`=`tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
+4. Specify model (corresponds to configuration field `ajet.model.path`)
 
 ```yaml
-astuner:
+ajet:
     task_reader:
         type: huggingface_dat_repo # [key] `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
     rollout:

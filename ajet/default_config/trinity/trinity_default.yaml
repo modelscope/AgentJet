@@ -1,0 +1,78 @@
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
+# DO NOT EDIT: THIS FILE IS READ ONLY and ALWAYS FIXED, EDIT `ajet/default_config/astune_default.yaml` INSTEAD
+
+trinity:
+  algorithm:
+    algorithm_type: multi_step_grpo
+    policy_loss_fn_args:
+      fallback_to_policy_gradient: true
+      clip_range: 0.2
+      clip_ratio_c: 3.0
+      loss_agg_mode: token-mean
+      enable_sequence_masking: false
+      delta_sequence_masking: 0.1
+
+  buffer:
+    # Explorer-side mini-batch for reading tasks from the dataset (producer input size)
+    batch_size: 32
+    explorer_input:
+      eval_tasksets: []
+      taskset:
+        default_workflow_type: astuner_workflow
+        format:
+          prompt_key: question
+          response_key: answer
+        name: ""
+        path: http://localhost:8080
+        rollout_args:
+          temperature: 1.0
+        split: train
+        storage_type: ajet
+        subset_name: ""
+    total_epochs: 1000
+    # Trainer-side mini-batch consumed from the explorer queue per optimization step (consumer input size)
+    train_batch_size: 36
+    trainer_input:
+      experience_buffer:
+        max_read_timeout: 18000
+        name: "astuner_experience_buffer"
+        storage_type: queue
+        replay_buffer:
+          enable: false
+          priority_fn: linear_decay
+          reuse_cooldown_time: null
+          priority_fn_args:
+            decay: 2.0
+  checkpoint_root_dir: ./trinity_checkpoints
+  # Explorer = producer (typically VLLM), generates samples
+  explorer:
+    max_repeat_times_per_runner: 1
+    max_timeout: 3600
+    rollout_model:
+      dtype: bfloat16
+      enable_auto_tool_choice: true
+      enable_history: true
+      enable_openai_api: true
+      enable_prefix_caching: false
+      enable_thinking: false
+      enforce_eager: false
+      seed: 42
+      tool_call_parser: hermes
+    # runner_state_report_interval: 30
+  monitor:
+    monitor_type: swanlab
+  name: dummy_name
+  project: dummy_project
+  synchronizer:
+    sync_interval: 1
+    sync_method: nccl
+    sync_style: dynamic_by_explorer
+    sync_timeout: 7200
+  # Trainer = consumer, updates model parameters using explorer outputs
+  trainer:
+    grad_clip: 1.0
+    use_dynamic_bsz: true
+  cluster:
+    gpu_per_node: 8
+    node_num: 1

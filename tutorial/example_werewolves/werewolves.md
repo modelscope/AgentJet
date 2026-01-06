@@ -8,7 +8,7 @@
 - 定义 AgentScope 的工作流 （把agent的model修改为`astune_proxy`）
     ```python
     class ExampleWerewolves(Workflow):
-        trainer: str = Field(default="astuner-trinity")
+        trainer: str = Field(default="ajet-trinity")
         async def execute(self, init_messages, astune_proxy: ModelTuner, config) -> WorkflowOutput:
 
             train_which_role = "witch"
@@ -37,7 +37,7 @@
 
 - 复制并修改 [tutorial/example_werewolves/werewolves.yaml](../tutorial/example_werewolves/werewolves.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
     ```yaml
-    astuner
+    ajet
     task_reader:
         type: random_dummy # `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
     task_judge:
@@ -53,8 +53,8 @@
 
 - 全链路调试（脱离ray快速调试:--backbone='debug'）
     ```bash
-    # （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( astuner --kill="python|ray" )
-    astuner --kill="python|ray|vllm|VLLM" && ray stop && clear && astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
+    # （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( ajet --kill="python|ray" )
+    ajet --kill="python|ray|vllm|VLLM" && ray stop && clear && ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
 
     ```
     备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置:
@@ -67,7 +67,7 @@
                 "name": "Python Debugger: Launch rollout",
                 "type": "debugpy",
                 "request": "launch",
-                "program": "agentscope_tuner/cli/launcher.py",
+                "program": "ajet/cli/launcher.py",
                 "console": "integratedTerminal",
                 "args": [
                     "--backbone",  "debug",
@@ -83,9 +83,9 @@
 
 - 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
     ```bash
-    # 建议开始前杀死所有ray、vllm、env_service进程 ( astuner --kill="python|ray|vllm" )
-    astuner --kill="python|ray|vllm|VLLM" && ray stop && clear && \
-    astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+    # 建议开始前杀死所有ray、vllm、env_service进程 ( ajet --kill="python|ray|vllm" )
+    ajet --kill="python|ray|vllm|VLLM" && ray stop && clear && \
+    ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
     ```
 
 
@@ -105,9 +105,9 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
 - 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
-    - /astuner/astuner/saved_experiments
-    - /astuner/astuner/saved_experiments/exp_yaml_file_name
-    - /astuner/astuner/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
+    - /ajet/ajet/saved_experiments
+    - /ajet/ajet/saved_experiments/exp_yaml_file_name
+    - /ajet/ajet/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
 
 - 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
 

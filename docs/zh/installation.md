@@ -33,7 +33,7 @@ AgentScope-Tuner 支持多种训练后端（backbone），目前包括 `verl` �
 
 !!! info "包管理器"
     我们推荐使用 `uv` 来管理 Python 环境，因为它速度非常快。参考 [`uv` 安装文档](https://docs.astral.sh/uv/getting-started/installation/)。
-    
+
     如果您更希望使用 `conda`，也可以通过 conda + pip 安装（只需将 `uv pip` 替换为 `pip` 即可）。
 
 === "Trinity（推荐）"
@@ -98,8 +98,8 @@ docker run -it \
 安装完成后，验证一切是否正常工作：
 
 ```python
-import agentscope_tuner
-print(agentscope_tuner.__version__)
+import ajet
+print(ajet.__version__)
 ```
 
 ---
@@ -108,7 +108,7 @@ print(agentscope_tuner.__version__)
 
 ??? note "flash-attn 安装失败"
     **问题**：`flash-attn` 安装失败
-    
+
     **解决方案**：确保已安装 CUDA 工具包，并设置 `MAX_JOBS` 环境变量：
     ```bash
     export MAX_JOBS=4
@@ -117,7 +117,7 @@ print(agentscope_tuner.__version__)
 
 ??? note "GPU 未检测到"
     **问题**：Docker 容器无法识别 GPU
-    
+
     **解决方案**：确保 nvidia-docker 已正确安装：
     ```bash
     nvidia-smi  # 应该显示 GPU 信息

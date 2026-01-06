@@ -1,5 +1,5 @@
 # ------------------ 主要配置 ------------------
-astuner:
+ajet:
   project_name: benchmarking
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
@@ -62,9 +62,9 @@ trinity:
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://agentscope_tuner/default_config
-    - file://agentscope_tuner/default_config/verl         # verl only
-    - file://agentscope_tuner/default_config/trinity      # trinity only
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
+    - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:

@@ -17,7 +17,7 @@ from agentscope.model import DashScopeChatModel, OpenAIChatModel
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 from tutorial.example_werewolves.game import BadGuyException, werewolves_game
 
 
@@ -81,7 +81,7 @@ def get_official_agent_prompt(name) -> str:
 
 
 class ExampleWerewolves(Workflow):
-    trainer: str = Field(default="astuner-trinity")
+    trainer: str = Field(default="ajet-trinity")
     trainable_targets: list = Field(
         default=["werewolf"], description="List of agents to be fine-tuned."
     )

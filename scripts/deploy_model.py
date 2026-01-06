@@ -9,8 +9,8 @@ sys.path.append(os.getcwd())  # noqa: E402
 
 from loguru import logger  # noqa: E402
 
-from agentscope_tuner.utils.cleaner import fast_kill_by_keyword_bash  # noqa: E402
-from agentscope_tuner.utils.smart_daemon import LaunchCommandWhenAbsent  # noqa: E402
+from ajet.utils.cleaner import fast_kill_by_keyword_bash  # noqa: E402
+from ajet.utils.smart_daemon import LaunchCommandWhenAbsent  # noqa: E402
 
 parser = argparse.ArgumentParser(description="deploy Hugging Face model")
 parser.add_argument(
@@ -69,9 +69,9 @@ def companion_launch():
 
     # gpu_memory_utilization = 0.95
     # max_num_seqs = config.actor_rollout_ref.rollout.max_num_seqs
-    # max_model_len = config.astune.rollout.max_model_len
-    # seed = config.astune.debug.debug_vllm_seed
-    # vllm_port = config.astune.debug.debug_vllm_port
+    # max_model_len = config.ajet.rollout.max_model_len
+    # seed = config.ajet.debug.debug_vllm_seed
+    # vllm_port = config.ajet.debug.debug_vllm_port
     vllm_port = args.port
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[

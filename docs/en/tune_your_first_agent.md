@@ -31,7 +31,7 @@ Launch the training process and track progress.</li>
 
 !!! success "What You'll Learn"
     After completing this guide, you will:
-    
+
     - Obtain a Math Agent that can solve math problems using Python
     - Understand the core concepts in AgentScope Tuner
     - Learn how to design your own training pipeline
@@ -64,15 +64,15 @@ After running the commands above, the directory should contain:
 Give the project a name in the config file:
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
    project_name: math_agent
 
 # ------------------ No need to modify ------------------
 hydra:
   searchpath:
-    - file://agentscope_tuner/default_config
-    - file://agentscope_tuner/default_config/verl         # verl only
-    - file://agentscope_tuner/default_config/trinity      # trinity only
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
+    - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ No need to modify ------------------
 defaults:
@@ -90,7 +90,7 @@ The agent needs to be trained in a specific task environment, driven by training
 
 !!! info "Data Sources"
     ASTuner provides multiple ways to read data:
-    
+
     - Read from local files on disk
     - Read from a Hugging Face repo
     - Read from an EnvService
@@ -100,7 +100,7 @@ All data will be converted into a unified ASTuner data format after loading.
 In this example, we will use the `openai/gsm8k` dataset from Hugging Face:
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   project_name: math_agent
   task_reader:
     type: huggingface_dat_repo
@@ -166,7 +166,7 @@ ReActAgent(
 
 !!! note "Agent Features"
     This agent:
-    
+
     - Uses the ReAct paradigm to interact with tools
     - Has a custom system prompt
     - Registers `execute_python_code` as a tool
@@ -177,7 +177,7 @@ ReActAgent(
 Next, wrap the agent into a trainable workflow:
 
 ```python title="workflow.py"
-from agentscope_tuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+from ajet import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
 
@@ -249,7 +249,7 @@ class MathAgentWorkflow(Workflow):
 Add the workflow configuration to `math_agent.yaml`:
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   # ...
   rollout:
     agentscope_workflow: workflow.py->MathAgentWorkflow
@@ -268,7 +268,7 @@ The judge reads `final_answer` from `metadata` and compares it with ground-truth
 Specify the LLM to train:
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   model:
     path: Qwen/Qwen2.5-14B-Instruct
 ```
@@ -282,7 +282,7 @@ Configure important training hyperparameters:
 
 ??? example "Full Configuration Example"
     ```yaml title="math_agent.yaml"
-    astuner:
+    ajet:
       # ...
       rollout:
         agentscope_workflow: workflow.py->MathAgentWorkflow
@@ -326,12 +326,12 @@ Configure important training hyperparameters:
 Before full training, test in debug mode:
 
 ```bash
-astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
+ajet --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 !!! tip "VS Code Debugging"
     You can configure `.vscode/launch.json` for breakpoint debugging:
-    
+
     ```json
     {
       "version": "0.2.0",
@@ -340,7 +340,7 @@ astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
           "name": "Python Debugger: Launch rollout",
           "type": "debugpy",
           "request": "launch",
-          "module": "agentscope_tuner.cli.launcher",
+          "module": "ajet.cli.launcher",
           "console": "integratedTerminal",
           "args": [
             "--backbone", "debug",
@@ -359,7 +359,7 @@ astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 After debugging, launch the full training:
 
 ```bash
-astuner --conf math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 !!! success "Output Location"

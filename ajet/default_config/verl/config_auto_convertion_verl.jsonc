@@ -1,0 +1,39 @@
+{
+    "ajet.trainer_common.total_epochs": "trainer.total_epochs",
+
+    "ajet.trainer_common.val_before_train": "trainer.val_before_train",
+    "ajet.trainer_common.n_gpus_per_node": "trainer.n_gpus_per_node",
+    "ajet.trainer_common.nnodes": "trainer.nnodes",
+    "ajet.trainer_common.logger": "trainer.logger",
+    "ajet.trainer_common.checkpoint_base_dir": "trainer.checkpoint_base_dir",
+    "ajet.trainer_common.algorithm.adv_estimator": "algorithm.adv_estimator",
+    "ajet.trainer_common.algorithm.use_kl_in_reward": "algorithm.use_kl_in_reward",
+    "ajet.trainer_common.mini_batch_num": "actor_rollout_ref.actor.override_ppo_mini_batch_num",
+    "ajet.trainer_common.fsdp_config": "actor_rollout_ref.actor.fsdp_config",
+    "ajet.trainer_common.optim": "actor_rollout_ref.actor.optim",
+    "ajet.trainer_common.use_kl_loss": "actor_rollout_ref.actor.use_kl_loss",
+    "ajet.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
+    "ajet.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
+    "ajet.trainer_common.ulysses_sequence_parallel_size": "actor_rollout_ref.actor.ulysses_sequence_parallel_size",
+
+    "ajet.trainer_common.save_freq": "trainer.save_freq",
+    "ajet.trainer_common.test_freq": "trainer.test_freq",
+
+    "ajet.data.max_prompt_length": "data.max_prompt_length",
+    "ajet.data.max_response_length": "data.max_response_length",
+    "ajet.data.train_batch_size": "data.train_batch_size",
+
+    "ajet.rollout.max_model_len": [
+        "actor_rollout_ref.rollout.max_model_len",
+        "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu",
+        "actor_rollout_ref.actor.ppo_max_token_len_per_gpu",
+        "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu"
+    ],
+
+    "ajet.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
+    "ajet.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
+
+    "ajet.model.path": "actor_rollout_ref.model.path",
+    "ajet.project_name": "trainer.project_name",
+    "ajet.experiment_name": "trainer.experiment_name"
+}

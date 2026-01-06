@@ -3,7 +3,7 @@
 AgentScope Tuner provides a complete feature set for tuning agents. You can try starting training an agent right away:
 
 ```bash
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ---
@@ -33,7 +33,7 @@ Use the `AstunerJob` API to configure and start training.</li>
 ### Code Example
 
 ```python title="train_math_agent.py"
-from agentscope_tuner import AstunerJob
+from ajet import AstunerJob
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "YOUR_MODEL_PATH"
@@ -54,7 +54,7 @@ tuned_model = job.tune()
 !!! tip "CLI Alternative"
     The code above is equivalent to running in terminal:
     ```bash
-    astuner --conf ./saved_experiments/math.yaml
+    ajet --conf ./saved_experiments/math.yaml
     ```
 
 ---

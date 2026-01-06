@@ -74,10 +74,10 @@ cp your-document.pdf dataset/document/
 
 ### Step 2: Generate Training Tasks
 #### Method 1: Integrate Data Generation into the Training Pipeline
-Copy and modify the key configuration parameters in `astuner/default_config/astune_default.yaml`, and set `astuner.task_reader.type` to `data_generation` to enable this reader.
+Copy and modify the key configuration parameters in `ajet/default_config/astune_default.yaml`, and set `ajet.task_reader.type` to `data_generation` to enable this reader.
 
 ```yaml
-astuner:
+ajet:
   task_reader:
     type: data_generation
     # when `type == data_generation`
@@ -116,8 +116,8 @@ astuner:
 
 #### Method 2: Run the Generation Script
 ```python
-from agentscope_tuner.data_generator.config import *
-from agentscope_tuner.task_reader.data_generator_reader import DataGeneratorTaskReader
+from ajet.data_generator.config import *
+from ajet.task_reader.data_generator_reader import DataGeneratorTaskReader
 
 def run():
     config = TaskReaderConfig(

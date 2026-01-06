@@ -40,7 +40,7 @@ tar -xzf ./appworld_pack_v2.tar.gz -C "${base_path}"
 
 !!! warning "环境变量设置"
     每次开启新的 shell 窗口都需要运行以下环境变量设置：
-    
+
     ```bash
     export BASE_PATH=/tmp
     export APPWORLD_PATH="${BASE_PATH}/pack_all_in_one"
@@ -52,14 +52,14 @@ tar -xzf ./appworld_pack_v2.tar.gz -C "${base_path}"
 运行训练脚本：
 
 ```bash
-astuner --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
 ```
 
 ??? tip "快速调试（可选）"
     不启用 Ray 在本地运行，便于更快迭代：
 
     ```bash
-    astuner --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
+    ajet --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
     ```
 
     如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与您的代码位置一致。
@@ -84,7 +84,7 @@ agent = ReActAgent(
 )
 
 env = workflow_task.gym_env
-for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
+for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
     # agentscope 处理交互消息
     reply_message = await agent(interaction_message)
     # env_service 协议
@@ -107,7 +107,7 @@ for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
 
 ### 奖励机制
 
-在 `astuner/task_judge/env_service_as_judge.py` 中，通过 `env.evaluate(...)` 从环境中读取奖励信号。
+在 `ajet/task_judge/env_service_as_judge.py` 中，通过 `env.evaluate(...)` 从环境中读取奖励信号。
 
 !!! tip "自定义 Judge"
     您可以参考该文件，为自己的任务实现专用的 Judge 模块。
@@ -117,12 +117,12 @@ for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
 `tutorial/example_appworld/appworld.yaml` 中的关键配置参数：
 
 ```yaml title="appworld.yaml"
-astuner:
+ajet:
   project_name: example_appworld
   experiment_name: "read_yaml_name"
   task_judge:
     # [关键] 编写并选择评估函数
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+    judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
   model:
     # [关键] 设置需要训练的模型
     path: YOUR_MODEL_PATH
@@ -165,29 +165,29 @@ astuner:
 === "调优前"
 
     **问题 1：频繁调用不存在的 API**
-    
+
     ![调优前 - 幻觉 API](https://img.alicdn.com/imgextra/i1/O1CN015FgjqI20Ip3AJybr0_!!6000000006827-2-tps-1259-683.png)
-    
+
     智能体在不检查 API 是否存在的情况下产生幻觉，导致重复失败。
-    
+
     **问题 2：没有学会按照说明获取 access token**
-    
+
     ![调优前 - Token 问题](https://img.alicdn.com/imgextra/i1/O1CN01bGZ1s01VyjCSrTJte_!!6000000002722-2-tps-1181-954.png)
-    
+
     智能体在未先获取所需的访问令牌的情况下尝试调用受保护的 API，导致认证错误。
 
 === "调优后"
 
     **改进 1：会先查阅 API 文档，使用有效的 API**
-    
+
     ![调优后 - 正确的 API](https://img.alicdn.com/imgextra/i4/O1CN01VRIDy922PoKD1bETl_!!6000000007113-2-tps-1180-944.png)
-    
+
     智能体现在会先检查可用的 API 再发起调用，从而避免臆造不存在的接口端点。
-    
+
     **改进 2：学会正确获取 access token**
-    
+
     ![调优后 - Token 正确](https://img.alicdn.com/imgextra/i2/O1CN01xiF9UU20h62dyrZ4x_!!6000000006880-2-tps-1182-793.png)
-    
+
     智能体在访问受保护的 API 之前，会先正确完成认证步骤。
 
 !!! note "Token 级可视化"

@@ -4,7 +4,7 @@ This tutorial introduces how to define a trainable workflow with AgentScope.
 
 !!! info "Two Approaches"
     ASTuner provides two convenient and **mutually compatible** ways to wrap an AgentScope Workflow:
-    
+
     - **Simple**: Emphasizes simplicity, ease of use, and readability
     - **Advanced**: Emphasizes flexibility, controllability, and extensibility
 
@@ -41,7 +41,7 @@ Simply set ReActAgent's `model` argument to `model_tuner` when initializing your
 Then, wrap your workflow in a class that inherits `Workflow`:
 
 ```python
-from agentscope_tuner import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
+from ajet import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
 
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
@@ -121,7 +121,7 @@ When designing a **multi-agent collaborative** workflow where each agent plays a
 
 !!! success "Multi-Agent Benefits"
     With a multi-agent setup, you can:
-    
+
     - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> **Precisely control** which agents are fine-tuned
     - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> Explicitly define the default model for agents **not being trained**
     - <img src="https://api.iconify.design/lucide:zap.svg" class="inline-icon" /> Switch trainable targets on the fly **without modifying** source code
@@ -221,16 +221,16 @@ for i, role in enumerate(roles):
     # Define different default models for different roles
     default_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
     default_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
-    
+
     chosen_model = (
-        default_model_for_good_guys 
-        if role != "werewolf" 
+        default_model_for_good_guys
+        if role != "werewolf"
         else default_model_for_bad_guys
     )
-    
+
     # Register role with its default model
     model_tuner.register_model(role, default_model=chosen_model)
-    
+
     # Create agent bound to the role
     players += [ReActAgent(
         name=f"Player{i + 1}",
@@ -242,7 +242,7 @@ for i, role in enumerate(roles):
 
 !!! tip "Configuration Flexibility"
     In this example:
-    
+
     - `role` describes an agent's in-game identity (werewolf, villager, etc.)
     - `chosen_model` defines the default model when the role is not being trained
     - You can flexibly switch training targets by modifying `trainable_targets`

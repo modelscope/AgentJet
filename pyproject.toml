@@ -66,12 +66,12 @@ doc = [
 ]
 
 [project.scripts]
-astuner = "agentscope_tuner.cli.launcher:main"
+ajet = "ajet.cli.launcher:main"
 
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["astuner*"]
+include = ["ajet*"]
 exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]

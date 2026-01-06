@@ -19,22 +19,22 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        path: astuner-${{ github.run_id }}
+        path: ajet-${{ github.run_id }}
         ref: refs/pull/${{ github.event.issue.number }}/head
 
     - name: Setup docker compose
-      working-directory: astuner-${{ github.run_id }}/.github/workflows/docker
+      working-directory: ajet-${{ github.run_id }}/.github/workflows/docker
       run: |
         docker compose up -d
         sleep 15s
 
     - name: Check ray status
-      working-directory: astuner-${{ github.run_id }}/.github/workflows/docker
+      working-directory: ajet-${{ github.run_id }}/.github/workflows/docker
       run: |
         MAX_RETRIES=20
         RETRY_INTERVAL=5
         for i in $(seq 1 $MAX_RETRIES); do
-          docker compose exec astuner-node-1 ray status && docker compose exec astuner-node-2 ray status && break
+          docker compose exec ajet-node-1 ray status && docker compose exec ajet-node-2 ray status && break
           echo "Waiting for ray cluster to be ready... ($i/$MAX_RETRIES)"
           sleep $RETRY_INTERVAL
           if [ "$i" -eq "$MAX_RETRIES" ]; then
@@ -45,7 +45,7 @@ jobs:
 
     - name: Decide test type
       id: test_type
-      working-directory: astuner-${{ github.run_id }}
+      working-directory: ajet-${{ github.run_id }}
       run: |
         COMMENT="${{ github.event.comment.body }}"
         if [[ "$COMMENT" == "/unittest"* ]]; then
@@ -53,16 +53,16 @@ jobs:
         fi
 
     - name: Run unittest
-      working-directory: astuner-${{ github.run_id }}/.github/workflows/docker
+      working-directory: ajet-${{ github.run_id }}/.github/workflows/docker
       run: |
         TYPE="${{ steps.test_type.outputs.type }}"
         if [ "$TYPE" = "all" ]; then
           echo "tests_run=true" >> $GITHUB_ENV
-          docker compose exec astuner-node-1 pytest tests -v -s --ctrf report.json
+          docker compose exec ajet-node-1 pytest tests -v -s --ctrf report.json
         fi
 
     - name: Convert report.json time to ms
-      working-directory: astuner-${{ github.run_id }}
+      working-directory: ajet-${{ github.run_id }}
       if: env.tests_run == 'true' || failure()
       run: |
         REPORT=report.json
@@ -71,10 +71,10 @@ jobs:
         fi
 
     - name: Clean checkpoint dir
-      working-directory: astuner-${{ github.run_id }}/.github/workflows/docker
+      working-directory: ajet-${{ github.run_id }}/.github/workflows/docker
       if: always()
       run: |
-        docker compose exec astuner-node-1 rm -rf /mnt/checkpoints/*
+        docker compose exec ajet-node-1 rm -rf /mnt/checkpoints/*
       continue-on-error: true
 
     - name: Upload test results
@@ -82,14 +82,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: pytest-results
-        path: astuner-${{ github.run_id }}/report.json
+        path: ajet-${{ github.run_id }}/report.json
       continue-on-error: true
 
     - name: Publish Test Report
       if: env.tests_run == 'true' || failure()
       uses: ctrf-io/github-test-reporter@v1
       with:
-        report-path: astuner-${{ github.run_id }}/report.json
+        report-path: ajet-${{ github.run_id }}/report.json
         summary: true
         pull-request: false
         issue: ${{ github.event.issue.number }}
@@ -98,7 +98,7 @@ jobs:
       continue-on-error: true
 
     - name: Remove docker compose
-      working-directory: astuner-${{ github.run_id }}/.github/workflows/docker
+      working-directory: ajet-${{ github.run_id }}/.github/workflows/docker
       if: always()
       run: |
         docker compose down --remove-orphans
@@ -107,5 +107,5 @@ jobs:
     - name: Cleanup workspace
       if: always()
       run: |
-        rm -rf astuner-${{ github.run_id }} 2>/dev/null
+        rm -rf ajet-${{ github.run_id }} 2>/dev/null
       continue-on-error: true

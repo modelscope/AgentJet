@@ -3,7 +3,7 @@ import unittest
 
 import yaml
 
-from agentscope_tuner.utils.config_utils import (
+from ajet.utils.config_utils import (
     align_parameters,
     expand_astune_hierarchical_config,
     prepare_experiment_config,
@@ -20,19 +20,19 @@ class TestConfigUtils(unittest.TestCase):
         self.assertEqual(exp_name, "sample")
         self.assertEqual(exp_base, "tests/temp/sample")
         self.assertEqual(yaml_backup_dst, "tests/temp/sample/yaml_backup.yaml")
-        self.assertIn("astuner", config)
-        self.assertIn("project_name", config["astuner"])
-        self.assertEqual(config["astuner"]["project_name"], "unittest")
-        self.assertIn("experiment_name", config["astuner"])
-        self.assertEqual(config["astuner"]["experiment_name"], "sample")
-        self.assertIn("task_reader", config["astuner"])
+        self.assertIn("ajet", config)
+        self.assertIn("project_name", config["ajet"])
+        self.assertEqual(config["ajet"]["project_name"], "unittest")
+        self.assertIn("experiment_name", config["ajet"])
+        self.assertEqual(config["ajet"]["experiment_name"], "sample")
+        self.assertIn("task_reader", config["ajet"])
 
     def test_config_alignment_trinity(self):
         """Test configuration alignment based on conversion JSON."""
         from_config_fp = "tests/data/config.yaml"
         # Fixed config asset locations
         TRINITY_CONFIG_AUTO_CONVERSION = (
-            "agentscope_tuner/default_config/trinity/config_auto_convertion_trinity.jsonc"
+            "ajet/default_config/trinity/config_auto_convertion_trinity.jsonc"
         )
 
         with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:
@@ -66,7 +66,7 @@ class TestConfigUtils(unittest.TestCase):
             self.assertEqual(to_config["explorer"]["rollout_model"]["tensor_parallel_size"], 4)
             # Test computed values
             self.assertEqual(to_config["buffer"]["batch_size"], 120)
-            # (astuner.rollout.max_env_worker // astuner.rollout.n_vllm_engine) = 256 // 2 = 128
+            # (ajet.rollout.max_env_worker // ajet.rollout.n_vllm_engine) = 256 // 2 = 128
             self.assertEqual(to_config["explorer"]["runner_per_model"], 128)
 
     def test_config_alignment_verl(self):
@@ -74,7 +74,7 @@ class TestConfigUtils(unittest.TestCase):
         from_config_fp = "tests/data/config.yaml"
         # Fixed config asset locations
         TRINITY_CONFIG_AUTO_CONVERSION = (
-            "agentscope_tuner/default_config/verl/config_auto_convertion_verl.jsonc"
+            "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
         )
 
         with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:

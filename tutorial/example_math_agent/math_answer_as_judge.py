@@ -1,8 +1,8 @@
 import re
 
-from agentscope_tuner.task_judge.base_judge import BaseJudge
-from agentscope_tuner.task_rollout.dashscope_llm_bridge import create_external_llm_fn
-from agentscope_tuner.workflow import WorkflowOutput, WorkflowTask
+from ajet.task_judge.base_judge import BaseJudge
+from ajet.task_rollout.dashscope_llm_bridge import create_external_llm_fn
+from ajet.workflow import WorkflowOutput, WorkflowTask
 
 
 class MathAnswerAsJudge(BaseJudge):
@@ -42,8 +42,8 @@ class MathAnswerAndLlmAsJudge(BaseJudge):
         reference_answer = reference_answer.split("####")[-1].strip()
 
         external_llm_fn = create_external_llm_fn(
-            alien_llm_model=self.config.astuner.task_judge.alien_llm_model,
-            alien_llm_response_length=self.config.astuner.task_judge.alien_llm_response_length,
+            alien_llm_model=self.config.ajet.task_judge.alien_llm_model,
+            alien_llm_response_length=self.config.ajet.task_judge.alien_llm_response_length,
         )
         messages = [
             {

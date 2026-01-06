@@ -4,9 +4,9 @@ from typing import Iterable, List
 
 import pytest
 
-from agentscope_tuner.schema.task import Task
-from agentscope_tuner.task_reader.tracing_reader import TracingReader
-from agentscope_tuner.task_reader.tracing_reader.filters.base import Filter
+from ajet.schema.task import Task
+from ajet.task_reader.tracing_reader import TracingReader
+from ajet.task_reader.tracing_reader.filters.base import Filter
 
 
 class DummyConnector:

@@ -38,7 +38,7 @@ An example database and configuration file are provided under
 When everything is ready, start the training with:
 
 ```bash
-astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 ## 3. Deploying the New Agent

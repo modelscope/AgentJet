@@ -18,7 +18,7 @@ from agentscope.message import Msg
 from gymnasium.envs.toy_text.frozen_lake import FrozenLakeEnv as GymFrozenLakeEnv
 from loguru import logger
 
-from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 SYSTEM_PROMPT = """You are a helpful assistant. You are walking on a frozen lake.
 
@@ -53,8 +53,8 @@ class FrozenLakeWorkflow(Workflow):
     async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         config = model_tuner.config
 
-        self.env_max_steps = config.astuner.rollout.multi_turn.max_steps
-        self.agent_max_steps = config.astuner.rollout.multi_turn.max_steps
+        self.env_max_steps = config.ajet.rollout.multi_turn.max_steps
+        self.agent_max_steps = config.ajet.rollout.multi_turn.max_steps
 
         # Extract task-specific arguments
         self.raw_task = workflow_task.task.metadata

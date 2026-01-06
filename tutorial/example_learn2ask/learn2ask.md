@@ -56,7 +56,7 @@ You can use this exisiting configuration file straigtly and fill the dataset pat
 Start the training with
 
 ```bash
-astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --with-ray
 ```
 
 ## 4. Results

@@ -2,7 +2,7 @@ from agentscope.message import Msg
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 def extract_final_answer(result) -> str:

@@ -20,9 +20,9 @@
 === "输入：文档内容"
 
     ```plain
-    According to the Anti-Money Laundering and Counter-Terrorist 
-    Financing Ordinance and related Guideline, banks are required 
-    to identify and take reasonable measures to verify the identity 
+    According to the Anti-Money Laundering and Counter-Terrorist
+    Financing Ordinance and related Guideline, banks are required
+    to identify and take reasonable measures to verify the identity
     of the beneficial owner of corporate customers so that the bank is ...
     ```
 
@@ -94,10 +94,10 @@ cp your-document.pdf dataset/document/
 
 === "方式 1：接入训练流程"
 
-    修改配置文件，将 `astuner.task_reader.type` 设置为 `data_generation`：
+    修改配置文件，将 `ajet.task_reader.type` 设置为 `data_generation`：
 
     ```yaml title="config.yaml"
-    astuner:
+    ajet:
       task_reader:
         type: data_generation
         data_generation:
@@ -136,8 +136,8 @@ cp your-document.pdf dataset/document/
 === "方式 2：单独运行脚本"
 
     ```python title="generate_data.py"
-    from agentscope_tuner.data_generator.config import *
-    from agentscope_tuner.task_reader.data_generator_reader import DataGeneratorTaskReader
+    from ajet.data_generator.config import *
+    from ajet.task_reader.data_generator_reader import DataGeneratorTaskReader
 
     def run():
         config = TaskReaderConfig(

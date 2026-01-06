@@ -5,9 +5,9 @@ from typing import Callable, List, Optional
 
 from beast_logger import print_dict
 
-from agentscope_tuner.utils.dynamic_import import dynamic_import
-from agentscope_tuner.utils.smart_daemon import LaunchCommandWhenAbsent
-from agentscope_tuner.utils.testing_utils import (
+from ajet.utils.dynamic_import import dynamic_import
+from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
+from ajet.utils.testing_utils import (
     populate_test_env_metadata,
     send_test_result,
 )
@@ -54,7 +54,7 @@ class BenchmarkTestCase(unittest.TestCase):
         cmd = [
             python_executable,
             "-m",
-            "agentscope_tuner.cli.launcher",
+            "ajet.cli.launcher",
             "--conf",
             test_target,
             "--backbone",

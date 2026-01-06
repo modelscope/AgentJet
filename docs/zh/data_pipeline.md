@@ -11,7 +11,7 @@ AgentScope Tuner 通过 Task Reader 从多种数据源加载训练任务。本�
 !!! info "Task Reader 核心特性"
     - **统一 Schema**：无论数据源是什么，所有任务都统一映射为 `Task` 结构
     - **多种来源**：支持从本地文件、HuggingFace 数据集、交互式环境加载，或自动生成新任务
-    - **自动路由**：框架会根据配置中的 `astuner.task_reader.type` 自动选择合适的 reader
+    - **自动路由**：框架会根据配置中的 `ajet.task_reader.type` 自动选择合适的 reader
 
 ```
 Data Source → Task Reader → Unified Task Schema → Training Pipeline
@@ -71,7 +71,7 @@ class Task(BaseModel):
 
 ## 内置 Task Readers
 
-AgentScope Tuner 提供了 6 个内置 Task Reader，覆盖不同场景。框架会根据配置中的 `astuner.task_reader.type` 自动路由到正确的 reader。
+AgentScope Tuner 提供了 6 个内置 Task Reader，覆盖不同场景。框架会根据配置中的 `ajet.task_reader.type` 自动路由到正确的 reader。
 
 ### 快速选择指南
 
@@ -89,7 +89,7 @@ AgentScope Tuner 提供了 6 个内置 Task Reader，覆盖不同场景。框架
 **适用场景：** 您在本地以 JSONL 格式准备了训练任务。
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_reader:
     type: jsonl_dataset_file
     jsonl_dataset_file:
@@ -118,7 +118,7 @@ astuner:
 **适用场景：** 从 HuggingFace Hub 的数据集中加载任务（例如 GSM8K、MATH）。
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_reader:
     type: huggingface_dat_repo
     huggingface_dat_repo:
@@ -142,7 +142,7 @@ astuner:
 **适用场景：** 任务由交互式环境服务提供（例如 AppWorld、RL gym 环境）。
 
 ```yaml title="配置方式"
-astuner:
+ajet:
   task_reader:
     type: env_service
     env_service:

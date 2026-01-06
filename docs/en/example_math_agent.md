@@ -33,9 +33,9 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 
 ```bash
 # (optional) recommended cleanup before training
-# astuner --kill="python|ray|vllm"
+# ajet --kill="python|ray|vllm"
 
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
 ??? tip "Quick Debugging (Optional)"
@@ -43,10 +43,10 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 
     ```bash
     # (optional) recommended cleanup before debug
-    # astuner --kill="python|ray"
+    # ajet --kill="python|ray"
 
     clear && \
-    astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+    ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
     ```
 
     When `--backbone=debug`, Ray is disabled. You can use a VSCode launch config:
@@ -59,7 +59,7 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
           "name": "Python Debugger: Launch rollout",
           "type": "debugpy",
           "request": "launch",
-          "module": "agentscope_tuner.cli.launcher",
+          "module": "ajet.cli.launcher",
           "console": "integratedTerminal",
           "args": [
             "--backbone", "debug",
@@ -103,7 +103,7 @@ Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</l
 Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
 
 ```yaml title="math_agent.yaml"
-astuner:
+ajet:
   task_reader:
     type: huggingface_dat_repo   # also supports: dataset_file / env_service
 
@@ -163,7 +163,7 @@ The judge receives:
 
 !!! tip "Extending the Judge"
     If you observe issues like "almost solved but messed up tool-call formatting", you can extend the judge to add:
-    
+
     - Format penalty (invalid `<tool_call>`)
     - Behavior penalty (tool called but no `print`)
     - Keep answer correctness as the primary signal
@@ -215,7 +215,7 @@ Before training, the agent may solve many problems but often fails at **tool-cal
 
 !!! note "Token-level Visualization"
     The colored blocks show token-level sequence visualization from [Beast-Logger](./beast_logger.md):
-    
+
     - **Yellow tokens**: Excluded from loss computation
     - **Blue tokens**: Participate in loss computation (light to dark = high to low logprob)
 

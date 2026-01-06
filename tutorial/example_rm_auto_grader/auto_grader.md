@@ -11,7 +11,7 @@ Auto Grader Judge is an intelligent evaluation system that **learns how to grade
 - Support for both pointwise (scoring) and listwise (ranking) evaluation
 - MCR²-based smart sampling for large datasets
 - Optional LLM-based categorization
-- Seamless integration with astuner's workflow system
+- Seamless integration with ajet's workflow system
 
 ### When to Use Auto Grader Judge?
 
@@ -32,7 +32,7 @@ Auto Grader Judge is an intelligent evaluation system that **learns how to grade
 Add to your `astune_default.yaml`:
 
 ```yaml
-astuner:
+ajet:
   task_judge:
     judge_type: rubrics_auto_grader
 
@@ -102,7 +102,7 @@ Each sample contains a query with multiple ranked candidates:
 ### 3. Basic Usage
 
 ```python
-from agentscope_tuner.task_judge.rm_auto_grader_judge import AutoGraderJudge
+from ajet.task_judge.rm_auto_grader_judge import AutoGraderJudge
 
 # Initialize judge
 judge = AutoGraderJudge(config)

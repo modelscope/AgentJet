@@ -11,7 +11,7 @@ In agent training, all training data must be represented as **tasks** following 
 !!! info "Key Concepts"
     - **Unified Schema**: All tasks conform to the `Task` structure regardless of source
     - **Multiple Sources**: Load from local files, HuggingFace datasets, interactive environments, or auto-generate new tasks
-    - **Automatic Routing**: The framework selects the appropriate reader based on `astuner.task_reader.type`
+    - **Automatic Routing**: The framework selects the appropriate reader based on `ajet.task_reader.type`
 
 ```
 Data Source → Task Reader → Unified Task Schema → Training Pipeline
@@ -71,7 +71,7 @@ class Task(BaseModel):
 
 ## Built-in Task Readers
 
-AgentScope Tuner provides multiple built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `astuner.task_reader.type`.
+AgentScope Tuner provides multiple built-in Task Readers for different scenarios. The framework automatically routes to the correct reader based on `ajet.task_reader.type`.
 
 ### Quick Selection Guide
 
@@ -90,7 +90,7 @@ AgentScope Tuner provides multiple built-in Task Readers for different scenarios
 === "Configuration"
 
     ```yaml title="config.yaml"
-    astuner:
+    ajet:
       task_reader:
         type: jsonl_dataset_file
         jsonl_dataset_file:
@@ -121,7 +121,7 @@ AgentScope Tuner provides multiple built-in Task Readers for different scenarios
 **When to use:** Load tasks from HuggingFace Hub datasets (e.g., GSM8K, MATH).
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_reader:
     type: huggingface_dat_repo
     huggingface_dat_repo:
@@ -143,7 +143,7 @@ astuner:
 **When to use:** Tasks are provided by an interactive environment service (e.g., AppWorld, RL gym environments).
 
 ```yaml title="config.yaml"
-astuner:
+ajet:
   task_reader:
     type: env_service
     env_service:

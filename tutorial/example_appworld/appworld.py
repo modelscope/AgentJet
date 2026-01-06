@@ -1,11 +1,11 @@
 from agentscope.message import Msg
 from pydantic import Field
 
-from agentscope_tuner import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 class ExampleAgentScopeWorkflow(Workflow):
-    trainer: str = Field(default="astuner-trinity")
+    trainer: str = Field(default="ajet-trinity")
 
     async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
@@ -39,7 +39,7 @@ class ExampleAgentScopeWorkflow(Workflow):
         agent.set_console_output_enabled(False)
         env = workflow_task.gym_env
         step = 0
-        for step in range(model_tuner.config.astuner.rollout.multi_turn.max_steps):
+        for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol

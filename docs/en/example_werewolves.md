@@ -25,8 +25,8 @@ Scenario Overview
 
 Start training with the following command:
 ```
-# ( astuner --kill="python|ray|vllm" )
-astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+# ( ajet --kill="python|ray|vllm" )
+ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
 ```
 
 <details>
@@ -36,10 +36,10 @@ If you want to breakpoint-debug the workflow/judge locally:
 
 ```bash
 # (optional) recommended cleanup before debug
-# astuner --kill="python|ray"
+# ajet --kill="python|ray"
 
 clear && \
-astuner --conf tutorial/example_werewolves/math_agent.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_werewolves/math_agent.yaml --backbone='debug' --with-logview
 ```
 
 When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.json` like below:
@@ -52,7 +52,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
+      "module": "ajet.cli.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -80,7 +80,7 @@ At a high level, each training iteration follows this flow:
 
 This section corresponds to `tutorial/example_werewolves/werewolves.yaml`. The key configuration items are as follows:
 ```yaml
-astuner:
+ajet:
   task_reader:
     # random seed to shuffle players
     type: random_dummy
@@ -119,7 +119,7 @@ Then it uses a **turn-level sparse win/loss reward**:
 Exception / invalid-behavior penalty:
 - If an exception is thrown during the game (e.g., the game cannot proceed), all trainable targets are penalized uniformly: `raw_reward = -0.1` and `is_success = False`.
 
-If you need a more fine-grained evaluation (e.g., giving partial credit for key intermediate decisions instead of only win/loss), implement a custom Judge and enable it via `astuner.task_judge.judge_protocol`.
+If you need a more fine-grained evaluation (e.g., giving partial credit for key intermediate decisions instead of only win/loss), implement a custom Judge and enable it via `ajet.task_judge.judge_protocol`.
 
 ## 4. Results
 

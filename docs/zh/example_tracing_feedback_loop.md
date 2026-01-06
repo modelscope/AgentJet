@@ -36,12 +36,12 @@ ASTune 允许你回收 智能体 在执行过程中产生的对话日志，并�
 
 当我们拿到日志文件（`database.sqlite`）后，就可以基于数据回流训练出一个新的 Agent。
 
-1. 在配置文件中将参数 `astuner.task_reader.type` 设置为 `tracing`，以开启数据回流模式；
-2. 在 `astuner.task_reader.feedback_tracing` 字段中配置数据库路径和过滤相关选项；
+1. 在配置文件中将参数 `ajet.task_reader.type` 设置为 `tracing`，以开启数据回流模式；
+2. 在 `ajet.task_reader.feedback_tracing` 字段中配置数据库路径和过滤相关选项；
 3. 像普通训练流程一样配置其他训练参数以及 Reward（奖励信号）。
 
 ```yaml
-astuner:
+ajet:
   # ...
   task_reader:
     # 使用 tracing 日志作为任务来源
@@ -75,7 +75,7 @@ astuner:
 
 ```bash
 # 启动示例训练
-astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 训练完成后，你可以将新的 智能体 部署回生产环境，并继续收集新的日志。通过这样的闭环，你可以持续进行迭代的数据回流训练，不断提升 智能体 的效果。
@@ -89,7 +89,7 @@ astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml -
 要编写规则，只需要修改配置文件中对应的字段：
 
 ```yaml
-astuner:
+ajet:
   # ...
   task_reader:
     # ...

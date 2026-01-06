@@ -38,7 +38,7 @@ cd tutorial/example_learn2ask/data_preprocess
 #### 2.2 启动训练
 
 ```bash
-astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --with-ray
 ```
 
 <details>
@@ -47,7 +47,7 @@ astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --
 不启用 Ray 在本地运行，便于更快迭代：
 
 ```bash
-astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-logview
+ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-logview
 ```
 
 如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
@@ -58,7 +58,7 @@ astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --wi
 
 ### 3. 理解实现
 
-#### 3.1 每个训练 step 
+#### 3.1 每个训练 step
 
 本教程训练的目标是：基于一段简短的医生–患者对话历史，让模型学会**提出下一个最合适的问题**。具体来说，每个训练 step 会从 `train.jsonl` 中取出一条对话上下文，让智能体生成**恰好一个**追问（可选地带有答案选项），随后使用一个 LLM judge 来评估这个问题是否**有用**且**相关**。ASTuner 将该评分作为奖励信号更新策略，于是模型会逐渐学会提出更好的问题，而不是直接给出回答。
 
@@ -67,7 +67,7 @@ astuner --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --wi
 整个例子主要通过 YAML 完成配置信息，实现代码则集中在一个文件里。在 YAML 中，`task_reader` 提供数据集划分；`rollout.agentscope_workflow` 告诉 ASTuner 对每条样本需要运行哪个 workflow；`task_judge` 提供封装了 LLM judge 的奖励入口；`model` 部分决定训练从哪个预训练 backbone 开始。
 
 ```yaml
-astune:
+ajet:
   task_reader:
     type: dataset_file
     # train_path: data/realmedconv/train.jsonl
@@ -102,15 +102,15 @@ astune:
 - **只评估医生的最后一句话**（doctor’s last message），不看更早的医生回复。
 - 输出两个分数：**Format Score** + **Content Score**（分别打分，后续由 `reward_fn` 组合成训练用 reward）。
 
-**Format Score（格式分）**：根据“最后一句话里问题的数量”计分  
+**Format Score（格式分）**：根据“最后一句话里问题的数量”计分
 - 1.0：恰好 **1 个问题**，或者在判断对话结束时正确输出了 `<stop />`
-- 0.5：包含 **2 个问题**  
+- 0.5：包含 **2 个问题**
 - 0.0：包含 **3 个及以上问题**
 
-**Content Score（内容分）**：根据问题是否命中 `Reference Information` 中“医生尚未知晓的缺失信息”计分  
+**Content Score（内容分）**：根据问题是否命中 `Reference Information` 中“医生尚未知晓的缺失信息”计分
 - 1.0：问题**直接询问** `Reference Information` 里的某个缺失项，或者在信息足够时及时结束对话
-- 0.1：问题过于泛化（对任何症状都适用的通用问题）  
-- 0.0：问题与 `Reference Information` 的缺失项**无关**  
+- 0.1：问题过于泛化（对任何症状都适用的通用问题）
+- 0.0：问题与 `Reference Information` 的缺失项**无关**
 - 另外：**含糊/无信息量的问题按低质量处理**（例如指代不明的提问），通常会得到 0 或接近 0 的得分
 
 ---

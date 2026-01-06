@@ -1,7 +1,7 @@
 
 
 import asyncio
-from agentscope_tuner.utils.robust_dashscope import RobustDashScopeChatModel
+from ajet.utils.robust_dashscope import RobustDashScopeChatModel
 
 
 async def test_dashscope_api():

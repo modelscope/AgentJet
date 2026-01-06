@@ -39,15 +39,15 @@
 正式训练（启用 Ray）：
 
 ```bash
-# ( astuner --kill="python|ray|vllm" )
-astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+# ( ajet --kill="python|ray|vllm" )
+ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
 ```
 
 ??? tip "快速调试（可选）"
     不启用 Ray 在本地运行，便于更快迭代：
 
     ```bash
-    astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
+    ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
     ```
 
     如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与您的代码位置一致。
@@ -87,7 +87,7 @@ astuner --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' 
 关键配置在 `tutorial/example_werewolves/werewolves.yaml`：
 
 ```yaml title="werewolves.yaml"
-astuner:
+ajet:
   task_reader:
     type: random_dummy   # random seed to shuffle players
   task_judge:
@@ -115,7 +115,7 @@ astuner:
 
 !!! note "奖励计算规则"
     采用**回合级别的稀疏胜负奖励**：
-    
+
     | 条件 | 奖励 | 状态 |
     |------|------|------|
     | 好人阵营获胜 且 训练好人角色 | `raw_reward = 1` | `is_success = True` |
@@ -124,7 +124,7 @@ astuner:
     | 游戏抛出异常 | `raw_reward = -0.1` | `is_success = False` |
 
 !!! tip "自定义 Judge"
-    如果您希望更细粒度的评估（例如对关键决策给部分分），可以实现自定义 Judge，并在 `astuner.task_judge.judge_protocol` 中启用。
+    如果您希望更细粒度的评估（例如对关键决策给部分分），可以实现自定义 Judge，并在 `ajet.task_judge.judge_protocol` 中启用。
 
 ---
 

@@ -37,12 +37,12 @@ We have prepared a demo agent in `tutorials/example_feedback_tracing/agent_deplo
 
 Once we have the log (`database.sqlite`), we can train a new Agent with Tracing-Feedback Training.
 
-1. Set the `astuner.task_reader.type` parameter to `tracing` in the configuration file to enable tracing-feedback mode.
-2. Configure the `astuner.task_reader.feedback_tracing` section with the database path and filtering options.
+1. Set the `ajet.task_reader.type` parameter to `tracing` in the configuration file to enable tracing-feedback mode.
+2. Configure the `ajet.task_reader.feedback_tracing` section with the database path and filtering options.
 3. Configure other training parameters and Rewards as you would in a normal training workflow.
 
 ```yaml
-astuner:
+ajet:
   # ...
   task_reader:
     # use tracing log as tasks
@@ -76,7 +76,7 @@ When everything is ready, start the training with `launcher.py`.
 
 ```bash
 # this launch the demo
-astuner --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 
 After training, we can now deploy the new Agent into production and collect new logs. This workflow enables continuous improvement through iterative tracing-feedback training.
@@ -90,7 +90,7 @@ The module provides Filter to select high-quality samples from logs for training
 To write rubrics, edit the configuration file:
 
 ```yaml
-astuner:
+ajet:
   # ...
   task_reader:
     # ...
