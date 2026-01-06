@@ -30,9 +30,9 @@ from ajet.utils.testing_utils import _test_if_test_mode
 
 
 def get_astune_config_from_trinity_side():
-    yaml_path = os.environ.get("ASTUNER_CONFIG_REDIRECT", None)
+    yaml_path = os.environ.get("AJET_CONFIG_REDIRECT", None)
     if yaml_path is None:
-        raise ValueError("ASTUNER_CONFIG_REDIRECT is not set in environment variables")
+        raise ValueError("AJET_CONFIG_REDIRECT is not set in environment variables")
     astune_config = read_astune_config_with_cache(yaml_path)
     return astune_config
 

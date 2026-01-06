@@ -480,7 +480,7 @@ class VerlRolloutManager(DynamicRolloutManager):
             finally:
                 tracker.generate_log(global_step=self.current_global_steps)
                 if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get(
-                    "ASTUNER_DEBUG", None
+                    "AJET_DEBUG", None
                 ):
                     logger.success(
                         f"View rollout details at [http://localhost:8181/?path={quote(os.path.abspath(os.environ['BEST_LOGGER_PATH']))}]"

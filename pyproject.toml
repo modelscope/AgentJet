@@ -28,6 +28,7 @@ dependencies = [
     "pydantic",
     "beast-logger>=0.1.3",
     "pytest>=8.0.0",
+    "pip",
 ]
 
 
