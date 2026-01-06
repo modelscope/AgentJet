@@ -196,7 +196,7 @@ def compute_advantage(
     return data
 
 
-class ASTunerRayPPOTrainer(RayPPOTrainer):
+class AjetRayPPOTrainer(RayPPOTrainer):
     """Distributed PPO trainer using Ray for scalable reinforcement learning.
     Slightly modified from RayPPOTrainer in verl.
     """

@@ -3,7 +3,7 @@
 This tutorial introduces how to define a trainable workflow with AgentScope.
 
 !!! info "Two Approaches"
-    ASTuner provides two convenient and **mutually compatible** ways to wrap an AgentScope Workflow:
+    AgentJet provides two convenient and **mutually compatible** ways to wrap an AgentScope Workflow:
 
     - **Simple**: Emphasizes simplicity, ease of use, and readability
     - **Advanced**: Emphasizes flexibility, controllability, and extensibility
@@ -12,7 +12,7 @@ This tutorial introduces how to define a trainable workflow with AgentScope.
 
 ## Simple Agent Scenario
 
-### 1. Convert Your AgentScope Workflow in ASTuner
+### 1. Convert Your AgentScope Workflow in AgentJet
 
 Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.
 
@@ -117,7 +117,7 @@ class ExampleMathLearn(Workflow):
 
 ## Advanced Agent Scenario
 
-When designing a **multi-agent collaborative** workflow where each agent plays a different **role**, ASTuner provides enhanced training and debugging capabilities.
+When designing a **multi-agent collaborative** workflow where each agent plays a different **role**, AgentJet provides enhanced training and debugging capabilities.
 
 !!! success "Multi-Agent Benefits"
     With a multi-agent setup, you can:
@@ -157,7 +157,7 @@ class ExampleMathLearn(Workflow):
 !!! note "Shared Parameters"
     Regardless of role differences, all agents share a single model instance (one set of parameters playing different roles).
 
-### 2. Promote to An Advanced ASTuner Workflow
+### 2. Promote to An Advanced AgentJet Workflow
 
 <div class="workflow-single">
 <div class="workflow-header">Conversion Steps</div>

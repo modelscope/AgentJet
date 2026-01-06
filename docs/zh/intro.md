@@ -1,6 +1,6 @@
 # 项目简介
 
-**AgentScope Tuner (ASTuner)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的智能体和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
+**AgentScope Tuner (AgentJet)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的智能体和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
 
 您只需提供 AgentScope 工作流、训练数据和奖励函数，我们就能助您的智能体达到最佳性能！
 
@@ -12,9 +12,9 @@
 
 <div class="key-features" markdown>
 
-- <img src="https://api.iconify.design/lucide:rocket.svg" class="inline-icon" />&nbsp;**简单友好** — ASTuner 帮助您轻松微调智能体工作流背后的模型，以极小的开发成本优化智能体性能。
+- <img src="https://api.iconify.design/lucide:rocket.svg" class="inline-icon" />&nbsp;**简单友好** — AgentJet 帮助您轻松微调智能体工作流背后的模型，以极小的开发成本优化智能体性能。
 
-- <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" />&nbsp;**丰富的教程库** — ASTuner 提供了丰富的[示例库](#example-library)作为学习教程。
+- <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" />&nbsp;**丰富的教程库** — AgentJet 提供了丰富的[示例库](#example-library)作为学习教程。
     - 数学智能体、狼人杀游戏、AppWorld 等 <a href="#example-library" class="feature-link">查看示例 <span class="link-arrow">→</span></a>
 
 - <img src="https://api.iconify.design/lucide:zap.svg" class="inline-icon" />&nbsp;**高效且可扩展** — 默认使用 [Trinity](https://github.com/modelscope/Trinity-RFT/) 作为后端（`--backbone=trinity`），通过全异步 RFT 加速微调过程。
@@ -23,14 +23,14 @@
 </div>
 
 !!! tip "多智能体支持"
-    ASTuner 支持 [多智能体工作流](./workflow.md)，并采用上下文合并技术，当工作流涉及多轮（或多智能体）对话时，可将训练速度提升 **1.5 倍至 20 倍**。
+    AgentJet 支持 [多智能体工作流](./workflow.md)，并采用上下文合并技术，当工作流涉及多轮（或多智能体）对话时，可将训练速度提升 **1.5 倍至 20 倍**。
 
 !!! info "可靠性与可复现性"
     我们的团队持续追踪框架在多个 [任务 + 主分支版本 + 训练后端](https://benchmark.agent-matrix.com/) 上的表现。
 
 ### 面向进阶研究者
 
-ASTuner 还提供了高分辨率的日志记录和调试方案：
+AgentJet 还提供了高分辨率的日志记录和调试方案：
 
 | 功能 | 说明 |
 |------|------|
@@ -84,17 +84,17 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
 <a href="./example_werewolves/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:wolf.svg" class="card-icon card-icon-multimodal" alt=""><h3>狼人杀游戏</h3></div><p class="card-desc">开发狼人杀 RPG 智能体并训练它们进行策略博弈。</p></a>
 <a href="./example_learning_to_ask/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:comment-question.svg" class="card-icon card-icon-general" alt=""><h3>学会提问</h3></div><p class="card-desc">学习像医生一样在医疗咨询场景中进行提问。</p></a>
 <a href="./example_countdown/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:timer-sand.svg" class="card-icon card-icon-tool" alt=""><h3>倒计时游戏</h3></div><p class="card-desc">使用 AgentScope 编写倒计时游戏并用 RL 求解。</p></a>
-<a href="./example_frozenlake/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:snowflake.svg" class="card-icon card-icon-data" alt=""><h3>冰湖问题</h3></div><p class="card-desc">使用 ASTuner 的强化学习解决冰湖行走谜题。</p></a>
+<a href="./example_frozenlake/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:snowflake.svg" class="card-icon card-icon-data" alt=""><h3>冰湖问题</h3></div><p class="card-desc">使用 AgentJet 的强化学习解决冰湖行走谜题。</p></a>
 </div>
 
 ---
 
 ## 核心概念
 
-ASTuner 通过将开发者接口与内部执行逻辑分离，使智能体微调变得直观明了。
+AgentJet 通过将开发者接口与内部执行逻辑分离，使智能体微调变得直观明了。
 
 <div align="center">
-<img width="480" alt="ASTuner 架构图" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+<img width="480" alt="AgentJet 架构图" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
 </div>
 
 ### 1. 以用户为中心的接口
@@ -125,6 +125,6 @@ ASTuner 通过将开发者接口与内部执行逻辑分离，使智能体微调
 ## 下一步
 
 <div class="card-grid">
-<a href="./installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>安装指南</h3></div><p class="card-desc">设置 ASTuner 环境和依赖项。</p></a>
+<a href="./installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>安装指南</h3></div><p class="card-desc">设置 AgentJet 环境和依赖项。</p></a>
 <a href="./quickstart/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:lightning-bolt.svg" class="card-icon card-icon-agent" alt=""><h3>快速开始</h3></div><p class="card-desc">几分钟内运行您的第一次训练。</p></a>
 </div>

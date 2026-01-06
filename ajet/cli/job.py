@@ -1,4 +1,4 @@
-"""Programmatic training entry point for ASTuner.
+"""Programmatic training entry point for AgentJet.
 
 This class mirrors the CLI launcher by materializing a YAML config and
 spawning a subprocess to run the existing training pipeline. The goal is to
@@ -33,7 +33,7 @@ from ajet.utils.launch_utils import execute_training_process
 
 
 class AstunerJob:
-    """Lightweight builder that launches ASTuner training as a subprocess."""
+    """Lightweight builder that launches AgentJet training as a subprocess."""
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class AstunerJob:
             exp_dir=self.exp_dir_final,
         )
         self.config_as_dict = expand_astune_hierarchical_config(self.config_as_dict, write_to=None)
-        logger.info(f"Built ASTuner job config: {yaml_path}")
+        logger.info(f"Built AgentJet job config: {yaml_path}")
         return self.config_as_dict
 
     def dump_job_as_yaml(self, yaml_path: str) -> str:

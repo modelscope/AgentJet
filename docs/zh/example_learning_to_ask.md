@@ -60,11 +60,11 @@ ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-
 
 #### 3.1 每个训练 step
 
-本教程训练的目标是：基于一段简短的医生–患者对话历史，让模型学会**提出下一个最合适的问题**。具体来说，每个训练 step 会从 `train.jsonl` 中取出一条对话上下文，让智能体生成**恰好一个**追问（可选地带有答案选项），随后使用一个 LLM judge 来评估这个问题是否**有用**且**相关**。ASTuner 将该评分作为奖励信号更新策略，于是模型会逐渐学会提出更好的问题，而不是直接给出回答。
+本教程训练的目标是：基于一段简短的医生–患者对话历史，让模型学会**提出下一个最合适的问题**。具体来说，每个训练 step 会从 `train.jsonl` 中取出一条对话上下文，让智能体生成**恰好一个**追问（可选地带有答案选项），随后使用一个 LLM judge 来评估这个问题是否**有用**且**相关**。AgentJet 将该评分作为奖励信号更新策略，于是模型会逐渐学会提出更好的问题，而不是直接给出回答。
 
 #### 3.2 YAML 配置说明
 
-整个例子主要通过 YAML 完成配置信息，实现代码则集中在一个文件里。在 YAML 中，`task_reader` 提供数据集划分；`rollout.agentscope_workflow` 告诉 ASTuner 对每条样本需要运行哪个 workflow；`task_judge` 提供封装了 LLM judge 的奖励入口；`model` 部分决定训练从哪个预训练 backbone 开始。
+整个例子主要通过 YAML 完成配置信息，实现代码则集中在一个文件里。在 YAML 中，`task_reader` 提供数据集划分；`rollout.agentscope_workflow` 告诉 AgentJet 对每条样本需要运行哪个 workflow；`task_judge` 提供封装了 LLM judge 的奖励入口；`model` 部分决定训练从哪个预训练 backbone 开始。
 
 ```yaml
 ajet:

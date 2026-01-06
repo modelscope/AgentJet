@@ -89,13 +89,13 @@ defaults:
 The agent needs to be trained in a specific task environment, driven by training data.
 
 !!! info "Data Sources"
-    ASTuner provides multiple ways to read data:
+    AgentJet provides multiple ways to read data:
 
     - Read from local files on disk
     - Read from a Hugging Face repo
     - Read from an EnvService
 
-All data will be converted into a unified ASTuner data format after loading.
+All data will be converted into a unified AgentJet data format after loading.
 
 In this example, we will use the `openai/gsm8k` dataset from Hugging Face:
 
@@ -126,7 +126,7 @@ ajet:
 
 ## Step 4: Prepare the Workflow
 
-In ASTuner, a workflow is the basic unit for training. It defines:
+In AgentJet, a workflow is the basic unit for training. It defines:
 
 - Agent's behavior and tools
 - Interaction procedure with the environment

@@ -1,10 +1,10 @@
 # Trinity Configuration Guide 🛠️
 
-## How to Modify Trinity Configuration in ASTuner
+## How to Modify Trinity Configuration in AgentJet
 
-1. 🎯 **Recommended Method**: In most cases, you do not need to directly adjust Trinity parameters. Simply refer to and modify the upper-level `ajet/default_config/astune_default.yaml` configuration file, and ASTuner will **automatically** handle parameter mapping for you.
+1. 🎯 **Recommended Method**: In most cases, you do not need to directly adjust Trinity parameters. Simply refer to and modify the upper-level `ajet/default_config/astune_default.yaml` configuration file, and AgentJet will **automatically** handle parameter mapping for you.
 
-2. ⚙️ **Special Cases**: Some Trinity tuning parameters are not yet mapped in ASTuner. You can refer to Trinity’s documentation and modify them in the following format:
+2. ⚙️ **Special Cases**: Some Trinity tuning parameters are not yet mapped in AgentJet. You can refer to Trinity’s documentation and modify them in the following format:
 
 ```yaml
 trinity:

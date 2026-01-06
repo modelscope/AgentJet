@@ -93,7 +93,7 @@ class TrinityRolloutManager(DynamicRolloutManager):
 
 
 @WORKFLOWS.register_module("astuner_workflow")
-class ASTunerWorkflowWrap(Workflow):
+class AjetWorkflowWrap(Workflow):
     is_async: bool = True
 
     def __init__(
@@ -189,7 +189,7 @@ class ASTunerWorkflowWrap(Workflow):
 try:
 
     @READER.register_module("ajet")
-    class ASTunerTaskReader(TaskFileReader):
+    class AjetTaskReader(TaskFileReader):
         def __init__(self, config):
             self.config = config
             self.read_batch_size = config.batch_size

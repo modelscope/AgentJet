@@ -1,6 +1,6 @@
 # 项目简介
 
-**AgentScope Tuner (ASTuner)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的智能体和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
+**AgentScope Tuner (AgentJet)** 是一款前沿且易用的训练框架，专为优化 AgentScope 中的智能体和工作流（Workflow）而设计，能够自动微调背后的语言模型权重。
 
 您只需提供 AgentScope 工作流、训练数据和奖励函数，我们就能助您的智能体达到最佳性能！
 
@@ -10,16 +10,16 @@
 
 我们致力于构建一个易于上手的 AgentScope 微调工具，为智能体开发者解锁更多可能性：
 
-* **简单友好**：ASTuner 帮助您轻松微调智能体工作流背后的模型，以极小的开发成本优化智能体性能。
-* **丰富的教程库**：ASTuner 提供了丰富的 [示例库](#id6) 作为学习教程。
-* **高效且可扩展**：ASTuner 默认使用 [trinity](https://github.com/modelscope/Trinity-RFT/) 作为后端（`--backbone=trinity`），通过全异步 RFT 加速微调过程。如果您更倾向于 Actor 共位置部署，也可以回退到 [verl](./installation.md) 后端。
-* **灵活且快速**：ASTuner 支持 [多智能体工作流](./workflow.md)，并采用了上下文合并技术。当工作流涉及多轮（或多 智能体）对话时，可将训练速度提升 1.5 倍至 20 倍。
+* **简单友好**：AgentJet 帮助您轻松微调智能体工作流背后的模型，以极小的开发成本优化智能体性能。
+* **丰富的教程库**：AgentJet 提供了丰富的 [示例库](#id6) 作为学习教程。
+* **高效且可扩展**：AgentJet 默认使用 [trinity](https://github.com/modelscope/Trinity-RFT/) 作为后端（`--backbone=trinity`），通过全异步 RFT 加速微调过程。如果您更倾向于 Actor 共位置部署，也可以回退到 [verl](./installation.md) 后端。
+* **灵活且快速**：AgentJet 支持 [多智能体工作流](./workflow.md)，并采用了上下文合并技术。当工作流涉及多轮（或多 智能体）对话时，可将训练速度提升 1.5 倍至 20 倍。
 * **可靠性与可复现性**：我们的团队持续追踪框架在多个 [任务 + 主分支版本 + 训练后端](https://benchmark.agent-matrix.com/) 上的表现（正在建设中，数据收集后即将上线）。
 
-针对进阶研究者，ASTuner 还提供了高分辨率的日志记录和调试方案：
+针对进阶研究者，AgentJet 还提供了高分辨率的日志记录和调试方案：
 
-* **高分辨率日志**：ASTuner 允许用户保存并检查 Token 级的 Rollout 详情，记录 Token ID、Token Loss Mask，甚至是 Token Logprobs，以便于工作流开发和 智能体 诊断。
-* **快速调试**：ASTuner 提供了 `--backbone=debug` 选项，提供极致的调试体验，将代码修改后的等待时间从分钟级缩短至秒级，并支持在 IDE 中进行断点调试。
+* **高分辨率日志**：AgentJet 允许用户保存并检查 Token 级的 Rollout 详情，记录 Token ID、Token Loss Mask，甚至是 Token Logprobs，以便于工作流开发和 智能体 诊断。
+* **快速调试**：AgentJet 提供了 `--backbone=debug` 选项，提供极致的调试体验，将代码修改后的等待时间从分钟级缩短至秒级，并支持在 IDE 中进行断点调试。
 
 ---
 
@@ -65,13 +65,13 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
 * <img src="https://api.iconify.design/lucide:users.svg" class="inline-icon" /> **[开发并训练"狼人杀"RPG智能体](./example_werewolves.md)**。
 * <img src="https://api.iconify.design/lucide:stethoscope.svg" class="inline-icon" /> **[学习像医生一样进行提问](./example_learning_to_ask.md)**。
 * <img src="https://api.iconify.design/lucide:timer.svg" class="inline-icon" /> **[使用 AgentScope 编写并解决"倒计时"游戏](./example_countdown.md)**。
-* <img src="https://api.iconify.design/lucide:footprints.svg" class="inline-icon" /> **[使用 ASTuner 解决"冰湖"行走谜题](./example_frozenlake.md)**。
+* <img src="https://api.iconify.design/lucide:footprints.svg" class="inline-icon" /> **[使用 AgentJet 解决"冰湖"行走谜题](./example_frozenlake.md)**。
 
 ---
 
 ### 核心概念
 
-ASTuner 通过将开发者接口与内部执行逻辑分离，使智能体微调变得直观明了。
+AgentJet 通过将开发者接口与内部执行逻辑分离，使智能体微调变得直观明了。
 
 <div align="center">
 <img width="480" alt="image" src="[https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg](https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg)"/>
