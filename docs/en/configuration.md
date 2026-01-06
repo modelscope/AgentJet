@@ -1,191 +1,152 @@
 # Configuration
 
-This page provides a detailed description of the configuration files.
+This page provides a detailed description of the configuration files for AgentScope Tuner.
+
+---
 
 ## Overview
-AgentScope Tuner uses YAML-format configuration files to set up the data, algorithms, reward, logging and other runtime behaviors. The default config is located at `astuner/default_config/astune_default.yaml`.
 
-At a high level, a typical config contains a single root section `astuner`, which is further divided into several logical parts:
+AgentScope Tuner uses YAML-format configuration files to set up data, algorithms, rewards, logging, and other runtime behaviors.
 
-- **Basic metadata**
-  - `project_name`, `experiment_name`, `experiment_dir`: Identify where experiments are stored.
-  - `backbone`: Select the training backend, e.g. `debug`, `trinity`, or `verl`.
-- **Data & Reward**
-  - `task_reader`: How to load training / validation samples (EnvService, local file, HuggingFace dataset, etc.).
-  - `task_judge`: How to evaluate the agent and compute rewards (custom judge or LLM-based auto-grader).
-  - `data`: Prompt / response length and batch sizes.
-- **Model**
-  - `model`: Where to load the base model to be trained (local path or HuggingFace repo).
-- **Rollout & interaction**
-  - `rollout`: How the agent interacts with the environment (protocol, sampling parameters, max steps, etc.).
-  - `context_tracker`: How the conversation / history is managed.
-- **Training loop**
-  - `trainer_common`: Global training hyperparameters (epochs, checkpoints, algorithms, KL loss, FSDP, logger, etc.).
-  - `debug`: Extra debug-only settings used when `backbone: debug`.
+!!! info "Default Configuration"
+    The default config is located at `astuner/default_config/astune_default.yaml`.
 
-You can start from the default YAML and only modify the sections relevant to your use case. The **full configuration example** is provided in the *Appendix* at the end of this page as a reference.
+At a high level, a typical config contains a single root section `astuner`, which is divided into several logical parts:
 
-## Model Registry
-To train an agent, we first need to specify the model to be trained and some environment variables used during the training process.
+<div class="key-features" markdown>
 
-In the configuration file, you can set the path to load model parameters from a specific location.
+- <img src="https://api.iconify.design/lucide:clipboard-list.svg" class="inline-icon" />&nbsp;**Basic Metadata** — Project name, experiment name, experiment directory, and backbone selection
+    - `project_name`, `experiment_name`, `experiment_dir`
+    - `backbone`: Select training backend (`debug`, `trinity`, or `verl`)
 
-```yaml
+- <img src="https://api.iconify.design/lucide:bar-chart-2.svg" class="inline-icon" />&nbsp;**Data & Reward** — How to load data and evaluate agents
+    - `task_reader`: Load training/validation samples
+    - `task_judge`: Evaluate agents and compute rewards
+    - `data`: Prompt/response length and batch sizes
+
+- <img src="https://api.iconify.design/lucide:bot.svg" class="inline-icon" />&nbsp;**Model & Rollout** — Model configuration and agent interaction
+    - `model`: Base model to train
+    - `rollout`: Agent-environment interaction settings
+    - `context_tracker`: Conversation/history management
+
+</div>
+
+---
+
+## Model Configuration
+
+### Specifying the Model
+
+```yaml title="config.yaml"
 astuner:
-  # ...
-
-  # model to be trained
   model:
     path: path/to/model
-
-  # ...
-
 ```
 
-We can use
+| Source Type | Example |
+|-------------|---------|
+| **Local file** | `/mnt/data/models/Qwen2.5-14B-Instruct` |
+| **HuggingFace repo** | `Qwen/Qwen2.5-14B-Instruct` (auto-downloaded) |
 
-+ Local file: Points to a local directory containing a model in transformers format, e.g., `/mnt/data/models/Qwen2.5-14B-Instruct`
-+ HuggingFace repo: Points to a HuggingFace repo, e.g., `Qwen/Qwen2.5-14B-Instruct`. The model will be automatically downloaded to local and loaded.
+### Environment Variables for LLM-as-Judge
 
-
-
-Additionally, if LLM-as-a-Judge is used in training, some necessary environment variables need to be configured:
+If using LLM-as-a-Judge, configure these environment variables:
 
 ```bash
-# the API key of DashScope, which provides the remove LLM calling
+# DashScope API key for remote LLM calling
 export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
 export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 ```
 
-## Data
-Configuring data mainly involves two parts: `task_reader` and `task_judge`.
+---
+
+## Data Configuration
 
 ### Task Reader
-`task_reader` defines how to read training and validation data. Multiple reader types are supported.
 
-```yaml
-astuner:
-  task_reader:
-    # options:
-    #   env_service: read dataset from EnvService
-    #   jsonl_dataset_file: read dataset from local JSONL file
-    #   huggingface_dat_repo: read dataset from huggingface repo
-    #   data_generation: generate dataset from documents and queries
-    #   random_dummy: generate random dummy tasks for quick pipeline checks
-    type: env_service
+`task_reader` defines how to read training and validation data.
 
-    # 1. env_service reader config
-    env_service:
-      env_type: "appworld"
-      env_url: "http://127.0.0.1:8080"
-      env_action_preference: code
-      training_split: train
-      validation_split: dev
+=== "EnvService"
 
-    # 2. jsonl_dataset_file reader config
-    jsonl_dataset_file:
-      training:
-        file_path: "xxxx.jsonl"
-      validation:
-        file_path: "xxxx.jsonl"
+    ```yaml
+    astuner:
+      task_reader:
+        type: env_service
+        env_service:
+          env_type: "appworld"
+          env_url: "http://127.0.0.1:8080"
+          env_action_preference: code
+          training_split: train
+          validation_split: dev
+    ```
 
-    # 3. huggingface_dat_repo reader config
-    huggingface_dat_repo:
-      dataset_path: "gsm8k"
-      training_split: "train"
-      validation_split: "validation"
+=== "JSONL File"
 
-    # 4. data_generation reader config
-    data_generation:
-      document_reader:
-        document_path:
-          - 'dataset/document/your-document1.pdf'
-        languages:
-          - eng
-      query_reader:
-        type: dataset_file
-        dataset_file:
+    ```yaml
+    astuner:
+      task_reader:
+        type: jsonl_dataset_file
+        jsonl_dataset_file:
           training:
-            file_path: 'dataset/jsonl/your-queries.jsonl'
-      task_num: 10
-      llm_model: qwen-long
-      llm_response_length: 8192
-      num_workers: 32
-      sampling_params:
-        temperature: 0
-      filter:
-        type: deduplication
-        enabled: true
-        params:
-          similarity_threshold: 0.8
-          db_path: ./.similarity_db
-          model: text-embedding-v4
-          api_key: null
-          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-```
+            file_path: "data/train.jsonl"
+          validation:
+            file_path: "data/val.jsonl"
+    ```
 
-+ `env_service`: Read data from EnvService, for tasks that need to interact with the EnvService.
-    - `env_type`: Environment type, must be consistent with the type initialized in EnvService (e.g., `appworld`).
-    - `env_url`: The service address of EnvService (e.g., `http://127.0.0.1:8080`).
-    - `env_action_preference`: The preferred format of Action, options: `code`, `text`, or `box`.
-    - `training_split`: The name of the dataset split used for training in the environment.
-    - `validation_split`: The name of the dataset split used for validation in the environment.
-+ `jsonl_dataset_file`: Read data from local files, usually in JSONL format.
-    - `training.file_path`: Local file path of the training dataset.
-    - `validation.file_path`: Local file path of the validation dataset.
-+ `huggingface_dat_repo`: Read datasets directly from HuggingFace repositories.
-    - `dataset_path`: The dataset repository name on HuggingFace (e.g., `gsm8k`).
-    - `training_split`: The dataset split name for training.
-    - `validation_split`: The dataset split name for validation.
+=== "HuggingFace"
 
-`data_generation` and `random_dummy` are also available for special workflows (see `astune_default.yaml` for the full schema).
+    ```yaml
+    astuner:
+      task_reader:
+        type: huggingface_dat_repo
+        huggingface_dat_repo:
+          dataset_path: "gsm8k"
+          training_split: "train"
+          validation_split: "validation"
+    ```
 
 ### Task Judge
-`task_judge` is used to evaluate Agent performance and calculate rewards.
 
-```yaml
+`task_judge` evaluates agent performance and calculates rewards.
+
+```yaml title="config.yaml"
 astuner:
   task_judge:
-    # options: 'customized_protocol', 'rubrics_auto_grader'
-    judge_type: customized_protocol
-    # the package path to judge (reward) function
+    judge_type: customized_protocol  # or 'rubrics_auto_grader'
     judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
-    # the helper LLM model used for LLM-AS-Judge
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
-
-    # when `judge_type == rubrics_auto_grader`
-    rubrics_auto_grader:
-      model_name: qwen-max
-      grader_mode: pointwise
-      # ...
 ```
 
-+ `judge_type`: Judge type.
-    - `customized_protocol`: Use a custom Python class for scoring. Need to specify the class path via `judge_protocol` (e.g., `package.module->ClassName`).
-    - `rubrics_auto_grader`: Use LLM-based automatic grading.
-+ `alien_llm_model`: Auxiliary LLM model that may be used during judgment.
+| Option | Description |
+|--------|-------------|
+| `customized_protocol` | Use a custom Python class for scoring |
+| `rubrics_auto_grader` | Use LLM-based automatic grading |
+
+---
 
 ## Training Configuration
-### Backend
-AgentScope Tuner supports three training backends, including **trinity** and **verl**, as well as an extra **debug** mode.
 
-+ **trinity**: The default option. A general-purpose, flexible and scalable framework designed for reinforcement fine-tuning of LLMs.
-+ **verl**: Volcano engine reinforcement learning for LLMs.
-+ **debug**: A backend that allows users to set breakpoint and debug code.
+### Backend Selection
 
-To configure the backend to be used, you can modify
+AgentScope Tuner supports three training backends:
 
-```yaml
+| Backend | Description |
+|---------|-------------|
+| **trinity** | Default. Flexible and scalable framework for RL fine-tuning |
+| **verl** | Volcano Engine reinforcement learning for LLMs |
+| **debug** | Allows breakpoint debugging in IDEs |
+
+```yaml title="config.yaml"
 astuner:
-  # debug or trinity or verl
-  backbone: trinity
+  backbone: trinity  # debug, trinity, or verl
 ```
 
-### Rollout
-The rollout section controls the behavior of the Agent during the interaction sampling process with the environment.
+### Rollout Configuration
 
-```yaml
+Controls agent behavior during environment interaction:
+
+```yaml title="config.yaml"
 astuner:
   rollout:
     agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
@@ -197,15 +158,16 @@ astuner:
     num_repeat: 4
 ```
 
-+ `agentscope_workflow`: Specify the specific interaction protocol implementation class.
-+ `temperature` / `top_p`: Sampling parameters.
-+ `name`: Inference engine name (e.g., `vllm`).
-+ `n_vllm_engine`: The number of vLLM engines to use (effective when backbone is trinity).
+| Parameter | Description |
+|-----------|-------------|
+| `agentscope_workflow` | Path to workflow implementation class |
+| `temperature` / `top_p` | Sampling parameters |
+| `name` | Inference engine (e.g., `vllm`) |
+| `n_vllm_engine` | Number of vLLM engines (Trinity only) |
 
-### Common Parameters
-`trainer_common` contains common parameters for training flow control:
+### Common Training Parameters
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   trainer_common:
     total_epochs: 50
@@ -216,28 +178,22 @@ astuner:
     nnodes: 1
     n_gpus_per_node: 8
     mini_batch_num: 1
-    ulysses_sequence_parallel_size: 1
     fsdp_config:
       param_offload: True
       optimizer_offload: True
 ```
 
-+ `total_epochs`: Total number of training epochs.
-+ `save_freq`: Frequency of saving model checkpoints (in steps).
-+ `test_freq`: Frequency of validation/testing (in steps).
-+ `val_before_train`: Whether to perform a validation before training starts.
-+ `val_pass_n`: Number of samples per question in validation phase (Pass@N).
-+ `nnodes` / `n_gpus_per_node`: Distributed training configuration, specifying the number of nodes and GPUs per node.
-+ `mini_batch_num`: Number of mini-batches for accumulation.
-+ `ulysses_sequence_parallel_size`: Sequence parallel size for Ulysses attention.
-+ `fsdp_config`: FSDP (Fully Sharded Data Parallel) configuration.
-    - `param_offload`: Whether to offload model parameters to CPU to save GPU memory.
-    - `optimizer_offload`: Whether to offload optimizer state to CPU.
+| Parameter | Description |
+|-----------|-------------|
+| `total_epochs` | Total training epochs |
+| `save_freq` | Checkpoint save frequency (steps) |
+| `test_freq` | Validation frequency (steps) |
+| `nnodes` / `n_gpus_per_node` | Distributed training setup |
+| `fsdp_config` | FSDP memory optimization |
 
 ### Optimization Algorithms
-Optimization algorithms and hyperparameters are mainly set in `algorithm`, `optim`, and root configuration:
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   trainer_common:
     algorithm:
@@ -250,19 +206,20 @@ astuner:
     kl_loss_type: low_var_kl
 ```
 
-+ `optim`:
-    - `lr`: Learning Rate.
-+ `algorithm`:
-    - `adv_estimator`: Advantage estimator, e.g., `grpo` (Group Relative Policy Optimization).
-    - `use_kl_in_reward`: Whether to include KL divergence as part of the reward.
-+ `use_kl_loss`: Whether to include KL divergence constraint in loss calculation.
-+ `kl_loss_coef`: Coefficient for KL loss.
-+ `kl_loss_type`: Calculation method of KL loss, e.g., `low_var_kl`.
+| Parameter | Description |
+|-----------|-------------|
+| `adv_estimator` | Advantage estimator (e.g., `grpo`) |
+| `lr` | Learning rate |
+| `use_kl_loss` | Include KL divergence in loss |
+| `kl_loss_coef` | KL loss coefficient |
 
-### Debug Mode
-When `backbone` is set to `debug`, the `debug` section controls the behavior of the debug backend.
+---
 
-```yaml
+## Debug Mode
+
+When `backbone: debug`, additional settings are available:
+
+```yaml title="config.yaml"
 astuner:
   debug:
     debug_max_parallel: 16
@@ -272,284 +229,146 @@ astuner:
     debug_tensor_parallel_size: 4
 ```
 
-Typical usages include:
+!!! tip "Debug Mode Use Cases"
+    - **Limiting tasks**: Quickly verify the pipeline on a few tasks
+    - **Fixing randomness**: `debug_vllm_seed` helps reproduce issues
+    - **Reduced parallelism**: Easier to debug with smaller concurrency
 
-- **Limiting tasks and concurrency**: quickly verify the training pipeline on a few tasks with small parallelism.
-- **Fixing randomness**: `debug_vllm_seed` helps reproduce issues.
+---
 
 ## Logging & Monitoring
-### Configure Logger
-AgentScope Tuner supports multiple logging backends, configured via `trainer_common.logger`:
 
-+ `console`: Standard output logs for quick progress checking.
-+ `wandb`: Integrated with wandb experiment tracking platform, providing visualized training curves and metric monitoring.
-+ `swanlab`: Log with SwanLab.
+### Logger Selection
 
-```yaml
+```yaml title="config.yaml"
 astuner:
   trainer_common:
-    logger: swanlab
+    logger: swanlab  # console, wandb, or swanlab
 ```
 
-### Log Structure
-All experiment outputs will be saved in `./launcher_record/{experiment_name}`:
+| Logger | Description |
+|--------|-------------|
+| `console` | Standard output for quick progress checking |
+| `wandb` | Weights & Biases experiment tracking |
+| `swanlab` | SwanLab logging |
 
-+ **Logs:** Logs and error messages generated by the launcher and trainer.
-+ **Metrics:**
-    - The exact metric destination depends on the selected logger backend.
-+ **Checkpoint:** Checkpoints of the trained models.
+### Output Structure
 
+All experiment outputs are saved in `./launcher_record/{experiment_name}`:
 
-## Appendix: Full configuration example
+| Directory | Contents |
+|-----------|----------|
+| **Logs** | Logs and error messages |
+| **Metrics** | Training metrics (depends on logger) |
+| **Checkpoint** | Model checkpoints |
 
-```yaml
-# ------------------ main configuration ------------------
-astuner:
-  project_name: "astuner_default_project"
-  experiment_name: "read_yaml_name"
-  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
-  backbone: debug # `debug` or `trinity` or `verl`
+---
 
+## Full Configuration Example
 
-  model:
-    # which model should be trained
-    path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct
+??? example "Complete Configuration Template"
+    ```yaml title="config.yaml"
+    astuner:
+      project_name: "astuner_default_project"
+      experiment_name: "read_yaml_name"
+      experiment_dir: "auto"
+      backbone: debug
 
-  data:
-    # max number of tokens for prompt
-    max_prompt_length: 3000
-    # max number of tokens for response
-    max_response_length: 15000
-    # how many tasks per training batch
-    train_batch_size: 32
-    # [Hint]: The final number of samples per update will be: N_{sample} = (data.train_batch_size * rollout.num_repeat * rollout.multi_turn.expected_steps)
+      model:
+        path: /path/to/model/Qwen2.5-14B-Instruct
 
+      data:
+        max_prompt_length: 3000
+        max_response_length: 15000
+        train_batch_size: 32
 
-  rollout:
+      rollout:
+        agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+        agentscope_disable_toolcalls: False
+        max_env_worker: 128
+        gamma: 1.0
+        compute_madness_checklist:
+          - "nonsense"
+        agent_madness_termination: True
+        agent_madness_reward: -1.0
+        max_response_length_in_one_turn: 4096
+        max_model_len: 18000
+        multi_turn:
+          max_sample_per_task: 30
+          max_steps: 30
+          expected_steps: 1
+        tensor_model_parallel_size: 1
+        n_vllm_engine: 2
+        max_num_seqs: 10
+        name: vllm
+        num_repeat: 4
+        temperature: 0.9
+        top_p: 1.0
+        val_kwargs:
+          temperature: 0.0
+          top_k: -1
+          top_p: 1.0
+          do_sample: False
+          num_repeat: 1
 
-    # the path to the workflow class
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+      task_reader:
+        type: env_service
+        env_service:
+          env_type: "appworld"
+          env_url: "http://127.0.0.1:8080"
+          env_action_preference: code
+          training_split: train
+          validation_split: dev
 
-    # whether or not to disable all tool calls
-    agentscope_disable_toolcalls: False
+      task_judge:
+        judge_type: customized_protocol
+        judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
+        alien_llm_model: qwen3-235b-a22b-instruct-2507
+        alien_llm_response_length: 512
 
-    # maximum number of parallel environments / simulate workers
-    max_env_worker: 128
+      debug:
+        debug_max_parallel: 16
+        debug_first_n_tasks: 2
+        debug_vllm_port: 18000
+        debug_vllm_seed: 12345
+        debug_tensor_parallel_size: 4
 
-    # step reward gamma (experimental, do not change)
-    gamma: 1.0
+      trainer_common:
+        val_before_train: False
+        val_pass_n: 4
+        save_freq: 20
+        test_freq: 20
+        total_epochs: 50
+        nnodes: 1
+        n_gpus_per_node: 8
+        logger: swanlab
+        algorithm:
+          adv_estimator: grpo
+          use_kl_in_reward: False
+        mini_batch_num: 1
+        fsdp_config:
+          param_offload: True
+          optimizer_offload: True
+        optim:
+          lr: 1e-6
+        use_kl_loss: True
+        kl_loss_coef: 0.002
+        kl_loss_type: low_var_kl
+        ulysses_sequence_parallel_size: 1
+        checkpoint_base_dir: ./saved_checkpoints
 
-    # monitor LLM's abormal behaviors during rollout
-    compute_madness_checklist:
-      - "nonsense"
-    # send signal to terminate context tracing when LLM is losing control
-    agent_madness_termination: True # terminate_after_gone_mad
-    # punish the LLM when it is detected as lost control
-    agent_madness_reward: -1.0
+      context_tracker:
+        context_tracker_type: "linear"
+        alien_llm_model: qwen3-235b-a22b-instruct-2507
+        alien_llm_response_length: 512
+        max_env_len: 4096
+    ```
 
-    # max response length in one turn
-    max_response_length_in_one_turn: 4096
+---
 
-    # max token length allowed for the model during rollout
-    max_model_len: 18000
+## Next Steps
 
-    multi_turn:
-      # how many samples should be collected for each task run
-      max_sample_per_task: 30
-      # limit the maximum steps for each task
-      max_steps: 30
-      # the expected steps for each task, used to calculate the training batch size for trinity
-      expected_steps: 1
-
-    # TP size for rollout engine
-    tensor_model_parallel_size: 1
-
-    # the number of vllm engines, number of gpus for infer is `n_vllm_engine*tensor_model_parallel_size`, this argument is NOT effective when NOT using trinity
-    n_vllm_engine: 2
-
-    # how many sequences are allowed to be processed in parallel by each vllm engine
-    max_num_seqs: 10
-
-    # the usage of infer engine, options: (vllm, sglang)
-    name: vllm
-
-    # how many times a task should be repeated
-    num_repeat: 4
-
-    # rollout kwargs
-    temperature: 0.9
-    top_p: 1.0
-
-    # validation kwargs
-    val_kwargs:
-      temperature: 0.0
-      top_k: -1
-      top_p: 1.0
-      do_sample: False
-      num_repeat: 1
-
-
-  task_reader:
-    # the type of task_reader
-    # options:
-    #   env_service: read dataset from EnvService
-    #   jsonl_dataset_file: read dataset from local JSONL file
-    #   huggingface_dat_repo: read dataset from huggingface repo
-    #   data_generation: generate dataset from documents and queries
-    #   random_dummy: generate random dummy tasks for quick pipeline checks
-    type: env_service # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
-    # when `type == jsonl_dataset_file`
-    jsonl_dataset_file:
-      training:
-        file_path: "/path/to/training/data.jsonl"
-      validation:
-        file_path: "/path/to/validation/data.jsonl"
-    # when `type == env_service`
-    env_service:
-      # the type of env, must be init in EnvService first
-      env_type: "appworld"
-      # the url of the service
-      env_url: "http://127.0.0.1:8080"
-      # code, text, box
-      env_action_preference: code
-      # the name of training split in this environment
-      training_split: train
-      # the name of validation split in this environment
-      validation_split: dev
-    # when `type == huggingface_dat_repo`
-    huggingface_dat_repo:
-      # the repo name
-      dataset_path: "gsm8k"
-      # the name of training split
-      training_split: "train"
-      # the name of validation split
-      validation_split: "validation"
-
-    # when `type == data_generation`
-    data_generation:
-      document_reader:
-        document_path:
-          - 'dataset/document/your-document1.pdf'
-          - 'dataset/document/your-document2.pdf'
-        languages:
-          - eng
-      query_reader:
-        type: dataset_file
-        dataset_file:
-          training:
-            file_path: 'dataset/jsonl/your-queries.jsonl'
-      task_num: 10
-      llm_model: qwen-long
-      llm_response_length: 8192
-      num_workers: 32
-      sampling_params:
-        temperature: 0
-      filter:
-        type: deduplication
-        enabled: true
-        params:
-          similarity_threshold: 0.8
-          db_path: ./.similarity_db
-          model: text-embedding-v4
-          api_key: null # load from the env
-          base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-
-  # task judge. it provide rewards for agent training
-  task_judge:
-    judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
-
-    # when `judge_type == customized_protocol`
-    judge_protocol: agentscope_tuner.task_judge.env_service_as_judge->EnvServiceJudge
-
-    # the helper LLM model used for LLM-AS-Judge
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-
-    # when `judge_type == rubrics_auto_grader`
-    rubrics_auto_grader:
-      model_name: qwen-max
-      # reward mode
-      grader_mode: pointwise
-      # the language of prompts, tasks, llm outputs
-      language: en
-      query_specific_generate_number: 1
-      enable_categorization: false
-      categories_number: 5
-      grader_name: "auto_grader"
-      query_field: main_query
-      answer_field: final_answer
-      reference_field: answer
-      custom_evaluation_prompt: null # dict or PromptTemplate or None
-      input_data_type: dataset_file # `env_service` or `dataset_file` or `huggingface_dat_repo`
-      dataset_file:
-        training:
-          file_path: "tutorial/example_rm_auto_grader/rubrics_train.jsonl"
-      # Pointwise mode settings
-      min_score: 0
-      max_score: 1
-
-
-  # when backbone is `debug`, debug related configurations
-  debug:
-    debug_max_parallel: 16
-    debug_first_n_tasks: 2
-    debug_vllm_port: 18000
-    debug_vllm_seed: 12345
-    debug_tensor_parallel_size: 4
-
-
-  # trainer common configurations
-  trainer_common:
-    # validate before the first epoch
-    val_before_train: False
-    # the rollout size in validation phase
-    val_pass_n: 4
-    # the frequency (step) of checkpoint saving
-    save_freq: 20
-    # the frequency (step) of test phase
-    test_freq: 20
-    # totol epochs to train
-    total_epochs: 50
-    # the number of nodes in clusters
-    nnodes: 1
-    # the number of gpus in each node
-    n_gpus_per_node: 8
-    logger: swanlab
-    # optimization algorithms
-    algorithm:
-      adv_estimator: grpo
-      use_kl_in_reward: False
-    mini_batch_num: 1
-    # FSDP config
-    fsdp_config:
-      # offload param to save gpu memory
-      param_offload: True
-      # offload optimizer to save gpu memory
-      optimizer_offload: True
-    # optimizer config
-    optim:
-      # learning rate
-      lr: 1e-6
-    # use KL loss in training
-    use_kl_loss: True
-    # KL loss coefficient
-    kl_loss_coef: 0.002
-    # type of KL loss
-    kl_loss_type: low_var_kl
-    ulysses_sequence_parallel_size: 1
-    checkpoint_base_dir: ./saved_checkpoints
-
-
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
-
-
-  # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-  execute_test: False        # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-  execute_testing_lambda: "" # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
-
-```
+<div class="card-grid">
+<a href="../example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Math Agent</h3></div><p class="card-desc">See all configurations applied in a real training example.</p></a>
+<a href="../visualization/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:chart-line.svg" class="card-icon card-icon-general" alt=""><h3>Visualization</h3></div><p class="card-desc">Monitor and visualize your training progress.</p></a>
+</div>

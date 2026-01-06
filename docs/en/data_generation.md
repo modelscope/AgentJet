@@ -54,7 +54,7 @@ These examples will be merged with the tasks generated in the first stage to for
 ]
 ```
 
-## 🚀 Quick Start
+## Quick Start
 `Data Generation Reader` can load a few user-provided tasks and optional documents (in various formats such as PDF, Word, and TXT) from a local path, then generates tasks and loads them as training tasks.
 
 ### Step 1: Prepare data
@@ -170,18 +170,18 @@ Based on user-provided documents (optional) and a few task examples, the `Data G
 ## Detailed Config Options
 | Parameter Path | Type | Default | Required | Description |
 | --- | --- | --- | --- | --- |
-| `document_reader.document_path` | list[str] | - | ❌ | List of document file paths. Supports PDF, Word, TXT, and more. |
-| `document_reader.languages` | list[str] | `['eng']` | ❌ | List of document languages for OCR and text parsing, e.g., `eng` (English), `chs` (Simplified Chinese). |
-| `query_reader.type` | str | `jsonl_dataset_file` | ✅ | Reader type. Options: `jsonl_dataset_file`, `env_service`, `huggingface_dat_repo`. |
-| `query_reader.jsonl_dataset_file.training.file_path` | str | - | ✅ | Path to the training tasks JSONL file (when `type: jsonl_dataset_file`). |
-| `task_num` | int | `10` | ✅ | Number of tasks to generate. The actual number may be reduced by filtering. |
-| `llm_model` | str | `qwen-long` | ✅ | LLM model name used for task generation. |
-| `llm_response_length` | int | `8192` | ❌ | Maximum number of tokens in the LLM response. |
-| `num_workers` | int | `32` | ❌ | Number of parallel worker threads for speeding up task generation. |
-| `sampling_params.temperature` | float | `0` | ❌ | Sampling temperature. `0` means greedy decoding (deterministic output); higher values make outputs more random. |
-| `deduplication_filter.enabled` | bool | `true` | ❌ | Whether to enable the deduplication filter. |
-| `deduplication_filter.params.similarity_threshold` | float | `0.8` | ✅ | Similarity threshold (0–1). Tasks above this threshold will be filtered out. |
-| `deduplication_filter.params.db_path` | str | `./.similarity_db` | ❌ | Path to the similarity database used to cache embeddings. |
-| `deduplication_filter.params.model` | str | `text-embedding-v4` | ✅ | Embedding model used to compute similarity. |
-| `deduplication_filter.params.api_key` | str | `null` | ❌ | API key. If `null`, it will be loaded from the `DASHSCOPE_API_KEY` environment variable. |
-| `deduplication_filter.params.base_url` | str | `https://dashscope.aliyuncs.com/compatible-mode/v1` | ❌ | Base URL for the embedding API. |
+| `document_reader.document_path` | list[str] | - | No | List of document file paths. Supports PDF, Word, TXT, and more. |
+| `document_reader.languages` | list[str] | `['eng']` | No | List of document languages for OCR and text parsing, e.g., `eng` (English), `chs` (Simplified Chinese). |
+| `query_reader.type` | str | `jsonl_dataset_file` | Yes | Reader type. Options: `jsonl_dataset_file`, `env_service`, `huggingface_dat_repo`. |
+| `query_reader.jsonl_dataset_file.training.file_path` | str | - | Yes | Path to the training tasks JSONL file (when `type: jsonl_dataset_file`). |
+| `task_num` | int | `10` | Yes | Number of tasks to generate. The actual number may be reduced by filtering. |
+| `llm_model` | str | `qwen-long` | Yes | LLM model name used for task generation. |
+| `llm_response_length` | int | `8192` | No | Maximum number of tokens in the LLM response. |
+| `num_workers` | int | `32` | No | Number of parallel worker threads for speeding up task generation. |
+| `sampling_params.temperature` | float | `0` | No | Sampling temperature. `0` means greedy decoding (deterministic output); higher values make outputs more random. |
+| `deduplication_filter.enabled` | bool | `true` | No | Whether to enable the deduplication filter. |
+| `deduplication_filter.params.similarity_threshold` | float | `0.8` | Yes | Similarity threshold (0–1). Tasks above this threshold will be filtered out. |
+| `deduplication_filter.params.db_path` | str | `./.similarity_db` | No | Path to the similarity database used to cache embeddings. |
+| `deduplication_filter.params.model` | str | `text-embedding-v4` | Yes | Embedding model used to compute similarity. |
+| `deduplication_filter.params.api_key` | str | `null` | No | API key. If `null`, it will be loaded from the `DASHSCOPE_API_KEY` environment variable. |
+| `deduplication_filter.params.base_url` | str | `https://dashscope.aliyuncs.com/compatible-mode/v1` | No | Base URL for the embedding API. |

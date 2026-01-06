@@ -1,28 +1,27 @@
 # 数学智能体
 
-训练一个**会用工具的数学智能体**（ReAct + Python 执行器），用于解决 GSM8K 风格的小学应用题。
-奖励来自一个**评审器 (judge)**：它检查最终答案是否正确（并且可选地惩罚不良的工具调用行为）。
+训练一个**会用工具的数学智能体**（ReAct + Python 执行器），用于解决 GSM8K 风格的小学应用题。奖励来自一个**评审器 (judge)**：它检查最终答案是否正确（并且可选地惩罚不良的工具调用行为）。
 
 ---
 
-### 1. 概览
+## 概览
 
-在 **Math 智能体** 中，每条训练样本是一道数学文字题（如 GSM8K）。智能体将学习：
-
-* **分步推理**（ReAct 风格），
-* 在需要计算时**调用 Python 工具**，
-* 产出与参考答案一致的最终答案。
+<div class="callout-tip">
+<p>
+在 <strong>Math 智能体</strong> 中，每条训练样本是一道数学文字题（如 GSM8K）。智能体将学习分步推理（ReAct 风格），在需要计算时调用 Python 工具，并产出与参考答案一致的最终答案。
+</p>
+</div>
 
 本教程分两步组织：
 
-1. **先跑起来**：下载数据集，并用默认 YAML 配置启动训练。
-2. **理解与自定义**：理解 workflow 代码（`ExampleMathLearn`）与 judge/reward（`MathAnswerAndLlmAsJudge`）。
+1. **先跑起来**：下载数据集，并用默认 YAML 配置启动训练
+2. **理解与自定义**：理解 workflow 代码与 judge/reward
 
 ---
 
-### 2. 快速开始
+## 快速开始
 
-#### 2.1 准备数据集
+### 准备数据集
 
 下载 `openai/gsm8k` 数据集：
 
@@ -30,7 +29,7 @@
 python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/store/dataset
 ```
 
-#### 2.2 启动训练
+### 启动训练
 
 ```bash
 # （可选）训练前建议清理残留进程
@@ -39,84 +38,74 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
-<details>
-<summary>快速调试（可选）</summary>
+??? tip "快速调试（可选）"
+    如果您想在本地对 workflow / judge 打断点调试：
 
-如果你想在本地对 workflow / judge 打断点调试：
+    ```bash
+    # （可选）调试前建议清理残留进程
+    # astuner --kill="python|ray"
 
-```bash
-# （可选）调试前建议清理残留进程
-# astuner --kill="python|ray"
+    clear && \
+    astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
+    ```
 
-clear && \
-astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='debug' --with-logview
-```
+    当 `--backbone=debug` 时，Ray 会被禁用。您可以使用类似下面的 VSCode 配置：
 
-当 `--backbone=debug` 时，Ray 会被禁用。你可以使用类似下面的 VSCode `.vscode/launch.json`：
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
+    ```json title=".vscode/launch.json"
     {
-      "name": "Python Debugger: Launch rollout",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
-      "console": "integratedTerminal",
-      "args": [
-        "--backbone", "debug",
-        "--conf", "./path/to/yaml.yaml"
-      ],
-      "env": {}
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Python Debugger: Launch rollout",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "agentscope_tuner.cli.launcher",
+          "console": "integratedTerminal",
+          "args": [
+            "--backbone", "debug",
+            "--conf", "./path/to/yaml.yaml"
+          ],
+          "env": {}
+        }
+      ]
     }
-  ]
-}
-
-```
-
-</details>
+    ```
 
 ---
 
-### 3. 理解实现
+## 理解训练流程
 
-#### 3.1 每一步训练都发生了什么
+### 每一步训练都发生了什么
 
-每个 training step 会做：
+<div class="workflow-single">
+<div class="workflow-header">训练步骤流程</div>
 
-1. 从数据集加载**一道题**（`task_reader`）。
-2. 运行 **AgentScope workflow**：
-* 用题目文本构造 prompt，
-* 让 ReAct 智能体在需要时调用 Python 工具进行计算，
-* 抽取**最终答案**。
+<div class="workflow">
+<ol class="workflow-steps">
+<li><strong>加载一道题</strong>
 
+从数据集通过 `task_reader` 加载一道数学题。</li>
+<li><strong>运行 AgentScope workflow</strong>
 
-3. **注册用于评估的关键信息（很重要！）**：
-* Workflow 应该返回一个 `WorkflowOutput` 对象，其 `metadata` 携带最终答案，例如：`WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`。评审器（Judge）会直接读取此 metadata，无需额外的 API 调用。
+用题目文本构造 prompt，让 ReAct 智能体调用 Python 工具，并抽取最终答案。</li>
+<li><strong>注册用于评估的关键信息</strong>
 
+返回 `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`。</li>
+<li><strong>运行 judge</strong>
 
-4. 运行 **judge** 计算 reward：
-* 将 `final_answer` 与任务中的参考答案对比，
-* 输出 `raw_reward` 与 `is_success`，
-* Trainer 使用这些结果来更新策略。
+将 `final_answer` 与参考答案对比，计算 `raw_reward` 和 `is_success`。</li>
+</ol>
+</div>
+</div>
 
+### YAML 配置说明
 
-#### 3.2 YAML 配置说明
+大部分"连线"都在 `tutorial/example_math_agent/math_agent.yaml` 中完成：
 
-大部分“连线”都在 `tutorial/example_math_agent/math_agent.yaml` 中完成。关键字段包括：
-
-* `astune.task_reader`：任务来源
-* `astune.rollout.agentscope_workflow`：每条样本运行哪个 workflow
-* `astune.task_judge.judge_protocol`：由哪个 judge 计算 reward
-* `astune.model.path`：要微调的预训练模型路径
-
-最小示例：
-
-```yaml
-astune:
+```yaml title="math_agent.yaml"
+astuner:
   task_reader:
-    type: huggingface_dat_repo   # 也支持: dataset_file / env_service（如果启用）
+    type: huggingface_dat_repo   # 也支持: dataset_file / env_service
 
   rollout:
     agentscope_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
@@ -126,24 +115,20 @@ astune:
 
   model:
     path: YOUR_MODEL_PATH
-
 ```
 
-#### 3.3 代码解读
+| 字段 | 说明 |
+|------|------|
+| `task_reader` | 任务来源 |
+| `agentscope_workflow` | 每条样本运行哪个 workflow |
+| `judge_protocol` | 由哪个 judge 计算 reward |
+| `model.path` | 要微调的预训练模型路径 |
 
-**Workflow (AgentScope)：** `tutorial/example_math_agent/math_agent.py`
+### 代码解读
 
-Workflow 通常会做：
+**Workflow：** `tutorial/example_math_agent/math_agent.py`
 
-* 注册工具（例如 `execute_python_code`）
-* 构造一个 ReAct 智能体
-* 从用户题目运行一轮对话
-* 解析最终答案
-* 通过 `WorkflowOutput(..., metadata={"final_answer": final_answer})` 返回答案，以便评审器评分。
-
-Workflow 代码梗概：
-
-```python
+```python title="Workflow 代码梗概"
 self.toolkit = Toolkit()
 self.toolkit.register_tool_function(execute_python_code)
 
@@ -164,99 +149,82 @@ final_answer = extract_final_answer(result)
 return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-**Judge / Reward：** `tutorial/example_math_agent/math_answer_as_judge.py`
+!!! warning "重要提示"
+    始终通过 `WorkflowOutput.metadata` 提供最终答案，以便 judge 进行评分。
 
-该文件内提供了两个简单的评审器；你也可以在项目的任何位置添加自己的评审器。
-
-#### 3.4 奖励 (Reward)
+### 奖励计算
 
 评审器接收两个对象：
 
-* `workflow_task`：任务信息，可从中检索参考答案。
-* `workflow_output`：由 workflow 返回；通过 `workflow_output.metadata["final_answer"]` 获取最终答案。
+| 对象 | 包含内容 |
+|------|----------|
+| `workflow_task` | 任务信息；从 `metadata` 获取参考答案 |
+| `workflow_output` | Workflow 结果；从 `metadata["final_answer"]` 获取最终答案 |
 
-评审器返回：
-
-* `raw_reward`
-* `is_success`
-
-**实用建议：**
-如果你观察到模型“几乎做对了，但搞错了工具调用格式 / 没等工具执行就跳过了”，你可以扩展评审器来：
-
-* 增加格式惩罚（无效的 `<tool_call>`）
-* 增加行为惩罚（调用了工具但没 `print` / 没用到执行结果）
-* 同时保持“答案正确性”作为主要信号。
+!!! tip "扩展 Judge"
+    如果您观察到模型"几乎做对了，但搞错了工具调用格式"，可以扩展评审器来：
+    
+    - 增加格式惩罚（无效的 `<tool_call>`）
+    - 增加行为惩罚（调用了工具但没 `print`）
+    - 同时保持"答案正确性"作为主要信号
 
 ---
 
-### 4. 结果
+## 结果
 
-#### 4.1 训练曲线
+### 训练曲线
 
-> **可视化说明：** 训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md)。
+![训练曲线](https://img.alicdn.com/imgextra/i4/O1CN01gzwgLq1fkCnauydEu_!!6000000004044-2-tps-1422-550.png)
 
-解读：随着训练进行，reward 随之上升。这通常意味着智能体在**两件事**上变得更稳定：
+!!! info "可视化说明"
+    训练曲线由 SwanLab 生成。详见 [训练可视化](./visualization.md)。
 
-* **该用工具时会用**：能正确发起 `<tool_call>`，并在需要计算时调用 `execute_python_code`。
-* **产出更可靠的答案**：能基于工具返回的结果（例如 `<tool_response>`）输出与参考答案一致的最终答案。
+**解读：** 随着训练进行，reward 随之上升。这通常意味着智能体在两件事上变得更稳定：
 
-> 在实践中，这里的提升往往不在于“数学能力变强”，而在于“更好的工具调用纪律 + 对执行结果更一致的使用”。
+- **该用工具时会用**：能正确发起 `<tool_call>`，并在需要计算时调用 `execute_python_code`
+- **产出更可靠的答案**：能基于工具返回的结果输出与参考答案一致的最终答案
+
+### 案例展示：工具调用纪律的改进
+
+训练前，智能体可能已经能解出不少题。然而，小模型经常在**工具调用规范**上翻车。
+
+=== "Bad Cases"
+
+    ```text
+    # bad case 1: 忘记在 Python 代码里 print 结果
+    <tool_call>
+    {"name": "execute_python_code", "arguments": {"code": "... height_difference"}}
+    </tool_call>
+
+    # bad case 2: 太心急 —— 没等工具返回结果就输出了最终答案
+    <tool_call> {"name": "execute_python_code", ...} </tool_call>
+    <tool_call> {"name": "generate_response", "arguments": {"response": "... \\boxed{48} ..."}} </tool_call>
+    ```
+
+    这些失败本质上不是因为模型"不会算"，而是因为它**没有形成决策闭环**，未能将工具执行结果纳入考虑。
+
+=== "Good Case（调优后）"
+
+    调优后，智能体通常会遵循规范的三段式结构：
+
+    1. **Message 3 (assistant)**：拆解问题 + 发起 `<tool_call>`，并在代码里使用 `print(...)`
+    2. **Message 4 (tool_response)**：工具返回执行结果
+    3. **Message 5 (assistant)**：读取 `stdout`，然后产出最终答案
+
+    ![Good case](https://img.alicdn.com/imgextra/i4/O1CN01v1gGQZ1ftMiil5Cxg_!!6000000004064-2-tps-1367-684.png)
+
+!!! note "Token 级可视化"
+    图中彩色块是 [Beast-Logger](./beast_logger.md) 生成的 token 级别序列可视化：
+    
+    - **黄色 token**：排除在损失函数（loss）计算之外的 token
+    - **蓝色 token**：参与损失计算的 token（从浅蓝到深蓝表示 logprob 从高到低）
 
 ---
 
-#### 4.2 案例展示：从“会算”到“会用工具算”
+## 下一步
 
-训练前，智能体可能已经能解出不少题。然而，小模型经常在**工具调用规范**上翻车，例如：
-
-* 忘记在 Python 代码里 `print` 计算结果（工具运行了，但没有产出可用的输出）。
-* 在工具执行结束前就急着输出最终答案（抢答）。
-* `<tool_call>` 块格式错误（导致工具不触发或解析失败）。
-
-##### Bad case：典型失败表现
-
-```text
-# bad case 1: 忘记在 Python 代码里 print 结果
-<tool_call>
-{"name": "execute_python_code", "arguments": {"code": "... height_difference"}}
-</tool_call>
-
-# bad case 2: 太心急 —— 没等工具返回结果就输出了最终答案
-<tool_call> {"name": "execute_python_code", ...} </tool_call>
-<tool_call> {"name": "generate_response", "arguments": {"response": "... \\boxed{48} ..."}} </tool_call>
-
-```
-
-这些失败本质上不是因为模型“不会算”，而是因为它**没有形成决策闭环**，未能将工具执行结果纳入考虑：
-
-* bad case 1：工具可能执行成功，但没有 `print`，`stdout` 就是空的，模型无法可靠地读取数值。
-* bad case 2：模型在同一轮中连续生成工具调用和最终回答，实际上**跳过了“等待 `<tool_response>`”的步骤**。
-
----
-
-##### Good case：调优后，工具调用链路变得闭环
-
-调优后，智能体通常会遵循规范的三段式结构（对应截图中的 Message 3/4/5）：
-
-1. **Message 3 (assistant)**：拆解问题 + 发起 `<tool_call>`，并在代码里使用 `print(...)` 输出关键数值。
-2. **Message 4 (tool_response)**：工具返回执行结果（如 `returncode=0`, `stdout=...`）。
-3. **Message 5 (assistant)**：读取 `stdout`，然后产出最终答案（如 `\\boxed{18}`）。
-
-图中右侧彩色块是 **token 级别的序列可视化**：
-
-> **Token级可视化：** 这些详细日志由 Beast-Logger 生成。详见 [Beast-Logger 使用说明](./beast_logger.md)。
-
-* **每个小块代表一个 token**（块内数字是 token id）。
-* 块的顺序就是模型**消耗/生成** token 的顺序。
-* 重点不在于 token id 本身，而在于你能否看到清晰的边界标记，例如：
-* `<im_start> assistant ... <tool_call> ... <im_end>`
-* `<im_start> user <tool_response> ... <stdout>18.0</stdout> ... <im_end>`
-* `<im_start> assistant ... \\boxed{18} ... <im_end>`
-
-
-* **黄色 token**：排除在损失函数（loss）计算之外的 token。**蓝色 token**：参与损失计算的 token（从浅蓝到深蓝表示 `logprob` 从高到低）。
-
-一个“好”的 tool-call 行为在日志中通常体现为：
-
-* `<tool_call>` 和 `<tool_response>` **分轮出现**（发起调用 -> 得到响应 -> 最终回答）。
-* `<tool_response>` 包含 **非空的 stdout**。
-* 最终答案出现在工具返回**之后**，而不是提前抢答。
+<div class="card-grid">
+<a href="../example_werewolves/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:wolf.svg" class="card-icon card-icon-multimodal" alt=""><h3>狼人杀游戏</h3></div><p class="card-desc">探索多智能体协作训练。</p></a>
+<a href="../example_app_world/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:application.svg" class="card-icon card-icon-agent" alt=""><h3>AppWorld</h3></div><p class="card-desc">训练用于真实应用交互的智能体。</p></a>
+<a href="../visualization/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:chart-line.svg" class="card-icon card-icon-general" alt=""><h3>训练可视化</h3></div><p class="card-desc">监控和分析您的训练进度。</p></a>
+</div>

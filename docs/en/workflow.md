@@ -1,11 +1,14 @@
 # Trainable Workflow
 
-This tutorial introduces how to define a trainable workflow 🚀 with AgentScope.
+This tutorial introduces how to define a trainable workflow with AgentScope.
 
-ASTuner provides two convenient and **mutually compatible** ways to wrap an AgentScope Workflow:
+!!! info "Two Approaches"
+    ASTuner provides two convenient and **mutually compatible** ways to wrap an AgentScope Workflow:
+    
+    - **Simple**: Emphasizes simplicity, ease of use, and readability
+    - **Advanced**: Emphasizes flexibility, controllability, and extensibility
 
-- The first emphasizes **simplicity, ease of use, and readability**;
-- The second emphasizes **flexibility, controllability, and extensibility**.
+---
 
 ## Simple Agent Scenario
 
@@ -13,65 +16,53 @@ ASTuner provides two convenient and **mutually compatible** ways to wrap an Agen
 
 Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.
 
-<table style="width: 100%;table-layout: fixed;border: solid 1px;border-radius: 5px;padding: 1em; font-size: 0.5rem;">
-  <thead>
-    <tr>
-      <th>Before</th>
-      <th>After</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
-   name=f"Friday",
-   sys_prompt="You are a helpful assistant",
-   model=DashScopeChatModel(model_name="qwen-max", stream=False),
-   formatter=DashScopeChatFormatter(),
-)</code></pre>
-      </td>
-      <td>
-        <pre style="margin: 0; white-space: pre; overflow-x: auto;"><code class="language-python">agent_instance = ReActAgent(
-   name=f"Friday",
-   sys_prompt="You are a helpful assistant",
-   <span style="
-    color: red;
-    font-weight: bold;
-">model=model_tuner,  # change here</span>
-   formatter=DashScopeChatFormatter(),
-)</code></pre>
-      </td>
-    </tr>
-  </tbody>
-</table>
+=== "Before"
 
-Then, wrap your workflow in a class that inherits `Workflow` (`from astnuer import Workflow`), and the workflow is ready to be tuned.
+    ```python
+    agent_instance = ReActAgent(
+       name=f"Friday",
+       sys_prompt="You are a helpful assistant",
+       model=DashScopeChatModel(model_name="qwen-max", stream=False),
+       formatter=DashScopeChatFormatter(),
+    )
+    ```
+
+=== "After"
+
+    ```python
+    agent_instance = ReActAgent(
+       name=f"Friday",
+       sys_prompt="You are a helpful assistant",
+       model=model_tuner,  # ← change here
+       formatter=DashScopeChatFormatter(),
+    )
+    ```
+
+Then, wrap your workflow in a class that inherits `Workflow`:
 
 ```python
+from agentscope_tuner import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
+
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
 
     async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
-        ... your ReActAgent workflow here ...
+        # ... your ReActAgent workflow here ...
         return WorkflowOutput(reward=workflow_reward)
-
 ```
-
 
 ### 2. When to Use This Simple Practice
 
-This practice suits most users. You can choose it if you:
-
-- 🌟 Know exactly which agents should be trained, or the number of agents are small;
-- ✨ Already finished basic debugging of your workflow, confirming that your workflow works well when implemented with a non-tuned model such as `qwen-max`;
-- 🎇 Do not need to change which agents are trained on the fly.
-
+!!! tip "Choose Simple Practice If You..."
+    - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> Know exactly which agents should be trained, or the number of agents is small
+    - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> Already finished basic debugging of your workflow
+    - <img src="https://api.iconify.design/lucide:sparkle.svg" class="inline-icon" /> Do not need to change which agents are trained on the fly
 
 ### 3. Code Example
 
-Suppose you have built a ReAct agent that looks like this:
+Suppose you have built a ReAct agent:
 
-```python
+```python title="Original AgentScope Code"
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.memory import InMemoryMemory
@@ -92,9 +83,9 @@ result = await self.agent.reply(msg, structured_model=FinalResult)
 final_answer = extract_final_answer(result)
 ```
 
-Then, wrap it in a workflow class:
+Wrap it in a workflow class:
 
-```python
+```python title="Trainable Workflow"
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
 
@@ -109,7 +100,7 @@ class ExampleMathLearn(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner,
+            model=model_tuner,  # ← Key change!
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
@@ -122,17 +113,18 @@ class ExampleMathLearn(Workflow):
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
-
+---
 
 ## Advanced Agent Scenario
 
-When designing a **multi-agent collaborative** workflow in which each agent plays a different **role**, ASTuner can provide better training and debugging capabilities.
+When designing a **multi-agent collaborative** workflow where each agent plays a different **role**, ASTuner provides enhanced training and debugging capabilities.
 
-With a multi-agent setup, you can:
-
-- 🌟 **Precisely control** which agents are fine-tuned;
-- ✨ Explicitly define the default model used by agents that are **not being trained**;
-- ⚡ Switch trainable targets on the fly **without modifying** the workflow source code.
+!!! success "Multi-Agent Benefits"
+    With a multi-agent setup, you can:
+    
+    - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> **Precisely control** which agents are fine-tuned
+    - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> Explicitly define the default model for agents **not being trained**
+    - <img src="https://api.iconify.design/lucide:zap.svg" class="inline-icon" /> Switch trainable targets on the fly **without modifying** source code
 
 ### 1. Trainability Switch and Model Lifecycle
 
@@ -140,35 +132,39 @@ With a multi-agent setup, you can:
 
 In a multi-agent workflow, each agent is associated with a role.
 
-Within the workflow, we register roles to be tuned, and specify the role explicitly when creating agents:
-
-- **Register**: `model_tuner.register_model(agent_role, default_model=...)`
-  - Definition: register an agent role in the tuner and provide the default model to be used when the role is not trained / not being trained.
-- **Use (bind)**: `model_tuner.get_model(agent_role)`
-  - Definition: when constructing agents or executing the workflow, return the model object bound to the given `agent_role`.
+| Method | Description |
+|--------|-------------|
+| `model_tuner.register_model(role, default_model=...)` | Register an agent role and provide the default model for non-training scenarios |
+| `model_tuner.get_model(role)` | Return the model object bound to the given role |
 
 #### Trainable vs. Non-trainable Models
 
-In a workflow, trainability can be controlled at the role level. Whether a role participates in training is determined by the workflow's **`trainable_targets`**:
+Trainability is controlled at the role level via **`trainable_targets`**:
 
 ```python
 class ExampleMathLearn(Workflow):
     name: str = "a_workflow"
-    trainable_targets: list = ["TYPE-ZERO", ...]
+    trainable_targets: list = ["TYPE-ZERO", ...]  # ← Roles to train
 
     # ...
 ```
 
-- **Trainable**: if an agent appears in `trainable_targets`, the agent uses the trainable model.
-- **Non-trainable**: if an agent does not appear in `trainable_targets`, the agent uses the registered default model.
+| Scenario | Model Used |
+|----------|------------|
+| Role in `trainable_targets` | Trainable model |
+| Role NOT in `trainable_targets` | Registered default model |
 
-Regardless of role differences, all agents share a single model instance; i.e., one set of parameters is used to play different roles.
+!!! note "Shared Parameters"
+    Regardless of role differences, all agents share a single model instance (one set of parameters playing different roles).
 
 ### 2. Promote to An Advanced ASTuner Workflow
 
-This section demonstrates how to register role-specific trainable targets via `model_tuner.register_model`, and bind models to agents by role during construction.
+<div class="workflow-single">
+<div class="workflow-header">Conversion Steps</div>
 
-- Let's begin from a basic AgentScope `ReActAgent`:
+<div class="workflow">
+<ol class="workflow-steps">
+<li><strong>Start with a basic AgentScope ReActAgent</strong>
 
 ```python
 agent_instance = ReActAgent(
@@ -178,46 +174,64 @@ agent_instance = ReActAgent(
    formatter=DashScopeChatFormatter(),
 )
 ```
+</li>
+<li><strong>Register the agent role with model_tuner</strong>
 
-- Declare the tag of an agent, and specify what model should be used when an agent is not being trained using `model_tuner.register_model`:
 ```python
 agent_role = "TYPE-ZERO"
-default_model_when_not_training = DashScopeChatModel(model_name="qwen-max", stream=False)
-model_tuner.register_model(agent_role, default_model=default_model_when_not_training)
+default_model = DashScopeChatModel(model_name="qwen-max", stream=False)
+model_tuner.register_model(agent_role, default_model=default_model)
 ```
+</li>
+<li><strong>Create ReActAgent linked to the role</strong>
 
-- Create `ReActAgent` to link with the `agent_role` using `model_tuner.get_model`:
 ```python
 agent_instance = ReActAgent(
    name=f"Player-X",
    sys_prompt="You are a helpful assistant",
-   model=model_tuner.get_model(agent_role), # replace there
+   model=model_tuner.get_model(agent_role),  # ← Bind to role
    formatter=DashScopeChatFormatter(),
 )
 ```
-
-- Wrap the workflow in a class and define `trainable_targets`:
+</li>
+<li><strong>Wrap in workflow class with trainable_targets</strong>
 
 ```python
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
-
     trainable_targets: list = ["TYPE-ZERO", ...]
 
     async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
-        ... your agents and workflow here ...
+        # ... agents and workflow here ...
 ```
+</li>
+</ol>
+</div>
+</div>
 
-### 3. A Multi-agent Example
+### 3. Multi-Agent Example
 
-```python
+Here's a complete example with multiple agent roles (Werewolves game):
+
+```python title="Multi-Agent Workflow"
 roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
 players = []
+
 for i, role in enumerate(roles):
+    # Define different default models for different roles
     default_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
     default_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
-    chosen_model = default_model_for_good_guys if role != "werewolf" else default_model_for_bad_guys  # 🌟
+    
+    chosen_model = (
+        default_model_for_good_guys 
+        if role != "werewolf" 
+        else default_model_for_bad_guys
+    )
+    
+    # Register role with its default model
     model_tuner.register_model(role, default_model=chosen_model)
+    
+    # Create agent bound to the role
     players += [ReActAgent(
         name=f"Player{i + 1}",
         sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
@@ -226,8 +240,18 @@ for i, role in enumerate(roles):
     )]
 ```
 
-In this example:
+!!! tip "Configuration Flexibility"
+    In this example:
+    
+    - `role` describes an agent's in-game identity (werewolf, villager, etc.)
+    - `chosen_model` defines the default model when the role is not being trained
+    - You can flexibly switch training targets by modifying `trainable_targets`
 
-- `role` describes an agent's in-game identity (e.g., werewolf, villager) and also serves as the key for `model_tuner.register_model`.
-- `chosen_model` defines the default base model to use when the role is not being trained.
-- With this setup, you can flexibly specify and switch training and inference behaviors by role in multi-agent workflows.
+---
+
+## Next Steps
+
+<div class="card-grid">
+<a href="../data_pipeline/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:database.svg" class="card-icon card-icon-data" alt=""><h3>Data Pipeline</h3></div><p class="card-desc">Configure data loading from files, HuggingFace, or environments.</p></a>
+<a href="../task_judger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Set up reward functions to evaluate agent performance.</p></a>
+</div>

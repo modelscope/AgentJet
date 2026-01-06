@@ -6,7 +6,7 @@
 
 ---
 
-### ✨ 特性
+### 特性
 
 我们致力于构建一个易于上手的 AgentScope 微调工具，为智能体开发者解锁更多可能性：
 
@@ -23,7 +23,7 @@
 
 ---
 
-### 🚀 快速上手
+### 快速上手
 
 #### 安装
 
@@ -60,16 +60,16 @@ astuner --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' 
 
 探索我们丰富的示例库，开启您的探索之旅：
 
-* 🔢 **[训练一个可以编写 Python 代码的数学智能体](./example_math_agent.md)**。
-* 📱 **[使用 AgentScope 创建并训练 AppWorld 智能体](./example_app_world.md)**。
-* 🐺 **[开发并训练“狼人杀”RPG智能体](./example_werewolves.md)**。
-* 👩🏻‍⚕️ **[学习像医生一样进行提问](./example_learning_to_ask.md)**。
-* 🎴 **[使用 AgentScope 编写并解决“倒计时”游戏](./example_countdown.md)**。
-* 🚶 **[使用 ASTuner 解决“冰湖”行走谜题](./example_frozenlake.md)**。
+* <img src="https://api.iconify.design/lucide:calculator.svg" class="inline-icon" /> **[训练一个可以编写 Python 代码的数学智能体](./example_math_agent.md)**。
+* <img src="https://api.iconify.design/lucide:smartphone.svg" class="inline-icon" /> **[使用 AgentScope 创建并训练 AppWorld 智能体](./example_app_world.md)**。
+* <img src="https://api.iconify.design/lucide:users.svg" class="inline-icon" /> **[开发并训练"狼人杀"RPG智能体](./example_werewolves.md)**。
+* <img src="https://api.iconify.design/lucide:stethoscope.svg" class="inline-icon" /> **[学习像医生一样进行提问](./example_learning_to_ask.md)**。
+* <img src="https://api.iconify.design/lucide:timer.svg" class="inline-icon" /> **[使用 AgentScope 编写并解决"倒计时"游戏](./example_countdown.md)**。
+* <img src="https://api.iconify.design/lucide:footprints.svg" class="inline-icon" /> **[使用 ASTuner 解决"冰湖"行走谜题](./example_frozenlake.md)**。
 
 ---
 
-### 🧩 核心概念
+### 核心概念
 
 ASTuner 通过将开发者接口与内部执行逻辑分离，使智能体微调变得直观明了。
 
@@ -99,9 +99,9 @@ ASTuner 通过将开发者接口与内部执行逻辑分离，使智能体微调
 
 ---
 
-### 🚦 导航
+### 导航
 
-* 📖 **教程**：从 [安装](./installation.md) 到 [微调您的第一个智能体](./tutorial.md) —— 初学者的必经之路。
-* 🛠️ **核心组件**：定义您的 [可训练工作流](./workflow.md)，并管理 [数据](./data_pipeline.md) 和 [奖励](./tune_your_first_agent.md)。
-* 💡 **示例**：查看上方的 [示例库](#example-librar)，了解 [数学](./example_math_agent.md)、[狼人杀游戏](./example_werewolves.md) 和 [学习提问](./example_learning_to_ask.md) 等真实案例。
-* ⚙️ **深入了解**：掌握高级 [配置方案](./configuration.md)。
+* <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" /> **教程**：从 [安装](./installation.md) 到 [微调您的第一个智能体](./tutorial.md) —— 初学者的必经之路。
+* <img src="https://api.iconify.design/lucide:wrench.svg" class="inline-icon" /> **核心组件**：定义您的 [可训练工作流](./workflow.md)，并管理 [数据](./data_pipeline.md) 和 [奖励](./tune_your_first_agent.md)。
+* <img src="https://api.iconify.design/lucide:lightbulb.svg" class="inline-icon" /> **示例**：查看上方的 [示例库](#example-librar)，了解 [数学](./example_math_agent.md)、[狼人杀游戏](./example_werewolves.md) 和 [学习提问](./example_learning_to_ask.md) 等真实案例。
+* <img src="https://api.iconify.design/lucide:settings.svg" class="inline-icon" /> **深入了解**：掌握高级 [配置方案](./configuration.md)。

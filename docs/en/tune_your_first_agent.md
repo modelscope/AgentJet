@@ -1,19 +1,44 @@
 # Tune Your First Agent
 
-In this document, we demonstrate how to implement and train, from scratch, this agent that can use Python to perform calculations and solve complex math problems.
+In this document, we demonstrate how to implement and train, from scratch, an agent that can use Python to perform calculations and solve complex math problems.
 
-We will go through the following steps in order:
+<div class="workflow-single">
+<div class="workflow-header">Training Pipeline Overview</div>
 
-1. Prepare training data and environment
-2. Define the agent and a trainable workflow
-3. Define reward
-4. Configure training hyperparameters
-5. Debug
-6. Start training & monitor metrics
+<div class="workflow">
+<ol class="workflow-steps">
+<li><strong>Prepare training data and environment</strong>
 
-After completing the whole process, you will obtain a Math Agent that can be used in a math task environment, understand the core concepts in AgentScope Tuner, and learn how to design your own training pipeline.
+Set up the dataset and configure the task reader.</li>
+<li><strong>Define the agent and trainable workflow</strong>
 
-## Prepare the working directory
+Create your agent using AgentScope and wrap it in a Workflow class.</li>
+<li><strong>Define reward function</strong>
+
+Configure how the agent's outputs are evaluated and scored.</li>
+<li><strong>Configure training hyperparameters</strong>
+
+Set model path, batch size, and other training parameters.</li>
+<li><strong>Debug</strong>
+
+Test your workflow in debug mode before full training.</li>
+<li><strong>Start training & monitor metrics</strong>
+
+Launch the training process and track progress.</li>
+</ol>
+</div>
+</div>
+
+!!! success "What You'll Learn"
+    After completing this guide, you will:
+    
+    - Obtain a Math Agent that can solve math problems using Python
+    - Understand the core concepts in AgentScope Tuner
+    - Learn how to design your own training pipeline
+
+---
+
+## Step 1: Prepare the Working Directory
 
 First, create a directory for this training project:
 
@@ -29,14 +54,16 @@ After running the commands above, the directory should contain:
 ```
 /math_agent
     /math_agent.yaml  # Configuration file
-    /workflow.py      # Training workflow; will contain the definition of the agent and its interaction with the environment
+    /workflow.py      # Training workflow definition
 ```
 
-## Configure Project Name
+---
 
-Next, give the project a shiny name in the config file:
+## Step 2: Configure Project Name
 
-```yaml
+Give the project a name in the config file:
+
+```yaml title="math_agent.yaml"
 astuner:
    project_name: math_agent
 
@@ -53,27 +80,26 @@ defaults:
   - trinity_default # trinity inherit 1/1
   - astuner_default
   - _self_
- ```
+```
 
-## Prepare training data
+---
 
-The agent needs to be trained in a specific task environment, driven by training data. In this section we first prepare the data and environment.
+## Step 3: Prepare Training Data
 
-ASTuner provides multiple ways to read data:
+The agent needs to be trained in a specific task environment, driven by training data.
 
-- Read from local files on disk
-- Read from a Hugging Face repo
-- Read from an EnvService
+!!! info "Data Sources"
+    ASTuner provides multiple ways to read data:
+    
+    - Read from local files on disk
+    - Read from a Hugging Face repo
+    - Read from an EnvService
 
 All data will be converted into a unified ASTuner data format after loading.
 
-In this example, we will directly use the `openai/gsm8k` dataset from a Hugging Face repo as our training data.
+In this example, we will use the `openai/gsm8k` dataset from Hugging Face:
 
-> `openai/gsm8k` is a classic math problem dataset.
-
-Add the following to `math_agent.yaml`:
-
-```yaml
+```yaml title="math_agent.yaml"
 astuner:
   project_name: math_agent
   task_reader:
@@ -88,22 +114,29 @@ astuner:
     max_response_length: 10000
 ```
 
-In this configuration we:
+| Configuration | Description |
+|--------------|-------------|
+| `type` | Use the `huggingface_dat_repo` reader |
+| `dataset_path` | Path to the HuggingFace dataset |
+| `train_batch_size` | Training batch size (hyperparameter) |
+| `max_prompt_length` | Maximum input length |
+| `max_response_length` | Maximum response/answer length |
 
-- Specify that we use the `huggingface_dat_repo` reader, and configure the dataset path and the names of the training and validation splits
-- Configure the training batch size (a hyperparameter), and set the maximum input length and maximum response length (answer length)
+---
 
-At this point, all data-related configuration is finished, and the remaining work will be handled automatically by ASTuner.
+## Step 4: Prepare the Workflow
 
-## Prepare the workflow
+In ASTuner, a workflow is the basic unit for training. It defines:
 
-In ASTuner, a workflow is the basic unit for training. It defines the agent's behavior, tools, context, the detailed interaction procedure between the agent and the environment, and how to calculate rewards.
+- Agent's behavior and tools
+- Interaction procedure with the environment
+- How to calculate rewards
 
-We will implement our workflow in `workflow.py`.
+### Define the Agent
 
-First, import the necessary dependencies from `agentscope` and design an agent:
+First, import dependencies and design an agent in `workflow.py`:
 
-```python
+```python title="workflow.py"
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.memory import InMemoryMemory
@@ -113,16 +146,17 @@ system_prompt = """
 You are an agent specialized in solving math problems with tools.
 Please solve the math problem given to you.
 You can write and execute Python code to perform calculation or verify your answer.
-You should return your final answer within \\boxed{{}}.
+You should return your final answer within \\boxed{}.
 """
 
 toolkit = Toolkit()
 toolkit.register_tool_function(execute_python_code)
 
+# Agent definition (model will be set later)
 ReActAgent(
     name="math_react_agent",
     sys_prompt=system_prompt,
-    model= # leave empty for now,
+    model=None,  # leave empty for now
     formatter=DashScopeChatFormatter(),
     toolkit=toolkit,
     memory=InMemoryMemory(),
@@ -130,18 +164,19 @@ ReActAgent(
 )
 ```
 
-With this code, we quickly define a complete ReAct agent:
+!!! note "Agent Features"
+    This agent:
+    
+    - Uses the ReAct paradigm to interact with tools
+    - Has a custom system prompt
+    - Registers `execute_python_code` as a tool
+    - Implements in-memory memory
 
-- Uses the ReAct paradigm to interact with the environment/tools
-- Sets a system prompt
-- Registers a tool: execute_python_code
-- Implements in-memory memory
+### Wrap in Workflow Class
 
-> For more detailed configuration options, please refer to the official AgentScope documentation.
+Next, wrap the agent into a trainable workflow:
 
-Next, we implement the remaining code for training this agent:
-
-```python
+```python title="workflow.py"
 from agentscope_tuner import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
@@ -150,7 +185,7 @@ system_prompt = """
 You are an agent specialized in solving math problems with tools.
 Please solve the math problem given to you.
 You can write and execute Python code to perform calculation or verify your answer.
-You should return your final answer within \\boxed{{}}.
+You should return your final answer within \\boxed{}.
 """
 
 def extract_final_answer(result) -> str:
@@ -171,6 +206,7 @@ def extract_final_answer(result) -> str:
         logger.warning(f"Extract final answer error: {e}. Raw: {result}")
         return str(result)
 
+
 class MathAgentWorkflow(Workflow):
     name: str = "math_agent_workflow"
 
@@ -188,7 +224,7 @@ class MathAgentWorkflow(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner # use model_tuner as the model,
+            model=model_tuner,  # use model_tuner as the model
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
@@ -203,143 +239,142 @@ class MathAgentWorkflow(Workflow):
         final_answer = extract_final_answer(result)
         # pass the final answer to the output
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
- ```
+```
 
-In this code, we wrap the agent into a workflow and implement the `execute` function:
+!!! warning "Key Change"
+    The critical step is setting `model=model_tuner` — this is what makes the agent trainable!
 
-1. Read the input from `WorkflowTask`
-2. Construct the agent in the same way as before, but **set `model` to `model_tuner`** — this is the key to making the agent trainable
-3. Run the agent
-4. Parse the agent's output and pack the answer into a `WorkflowOutput` object
+### Configure Workflow in YAML
 
-After defining the workflow, we also need to tell ASTuner to use this class as the training protocol. Add the following to `math_agent.yaml`:
+Add the workflow configuration to `math_agent.yaml`:
 
-```yaml
+```yaml title="math_agent.yaml"
 astuner:
   # ...
   rollout:
     agentscope_workflow: workflow.py->MathAgentWorkflow
-```
-
-There is one more thing we have not addressed yet: the reward. Fortunately, ASTuner also supports customizing how rewards are calculated through configuration. Continue editing the config:
-
-```yaml
-astuner:
-  #...
   task_judge:
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 ```
 
-Here we directly use the built-in math judge provided by ASTuner. The judge reads `final_answer` from `metadata` and compares it with the ground-truth answers in the dataset to produce a score.
+The judge reads `final_answer` from `metadata` and compares it with ground-truth answers to produce a score.
 
-## Configure required parameters
+---
 
-Next, to actually start training, we need to add several required configuration parameters.
+## Step 5: Configure Required Parameters
 
-### Pretrained model
+### Pretrained Model
 
-In `math_agent.yaml`, specify the LLM used by the agent, i.e., the model we are going to train:
+Specify the LLM to train:
 
-```yaml
+```yaml title="math_agent.yaml"
 astuner:
   model:
     path: Qwen/Qwen2.5-14B-Instruct
 ```
 
-The `path` can be a remote Hugging Face repo, or a local directory path.
+!!! tip "Model Path"
+    The `path` can be a remote Hugging Face repo, or a local directory path.
 
-### Training hyperparameters
+### Training Hyperparameters
 
-We also need to configure several important training hyperparameters:
+Configure important training hyperparameters:
 
-```yaml
-astuner:
-  # ...
-  rollout:
-    agentscope_workflow: workflow.py->MathAgentWorkflow
-    # Model temperature
-    temperature: 0.7
-    # Maximum number of parallel rollout workers
-    max_env_worker: 64
-    num_repeat: 4
-    # Forced reward when the model outputs gibberish
-    agent_madness_reward: 0.0
-    # vLLM tensor parallelism
-    tensor_model_parallel_size: 1
-    # Maximum number of parallel sequences in vLLM
-    max_num_seqs: 40
-    multi_turn:
-      max_sample_per_task: 4
-    # Types of gibberish to check for: meaningless content, wrong tool calls
-    compute_madness_checklist:
-      - "nonsense"
-      - "wrong_toolcall"
-    # Maximum response length in a single interaction
-    max_response_length_in_one_turn: 1024
-    # Maximum context length of the model
-    max_model_len: 13000
+??? example "Full Configuration Example"
+    ```yaml title="math_agent.yaml"
+    astuner:
+      # ...
+      rollout:
+        agentscope_workflow: workflow.py->MathAgentWorkflow
+        temperature: 0.7
+        max_env_worker: 64
+        num_repeat: 4
+        agent_madness_reward: 0.0
+        tensor_model_parallel_size: 1
+        max_num_seqs: 40
+        multi_turn:
+          max_sample_per_task: 4
+        compute_madness_checklist:
+          - "nonsense"
+          - "wrong_toolcall"
+        max_response_length_in_one_turn: 1024
+        max_model_len: 13000
 
-  trainer_common:
-    # Save interval (save every n steps)
-    save_freq: 99999
-    # Evaluation interval (evaluate every n steps)
-    test_freq: 99999
-    # Total number of training epochs
-    total_epochs: 99999
-    # Number of vLLM engines, must be divisible by tensor_model_parallel_size
-    trinity_only__n_vllm_engine: 2
+      trainer_common:
+        save_freq: 99999
+        test_freq: 99999
+        total_epochs: 99999
+        trinity_only__n_vllm_engine: 2
 
-trinity:
-  trainer:
-    max_token_len_per_gpu: 13000
-```
+    trinity:
+      trainer:
+        max_token_len_per_gpu: 13000
+    ```
 
-## Debug
+| Parameter | Description |
+|-----------|-------------|
+| `temperature` | Model sampling temperature |
+| `max_env_worker` | Maximum parallel rollout workers |
+| `num_repeat` | Number of repetitions per sample |
+| `save_freq` | Checkpoint save interval |
+| `test_freq` | Evaluation interval |
 
-At this point, all the code and configuration required to train an agent are ready.
+---
 
-Next, we will start the training process in debug mode to check whether there are any issues. You can also skip this step and directly start training.
+## Step 6: Debug
 
-Start training in debug mode:
+Before full training, test in debug mode:
 
 ```bash
 astuner --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
 ```
 
-In debug mode, the Ray cluster will not be started, which is very suitable for single-machine debugging. In addition, you can configure `.vscode/launch.json` in VS Code to conveniently debug with breakpoints:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
+!!! tip "VS Code Debugging"
+    You can configure `.vscode/launch.json` for breakpoint debugging:
+    
+    ```json
     {
-      "name": "Python Debugger: Launch rollout",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "agentscope_tuner.cli.launcher",
-      "console": "integratedTerminal",
-      "args": [
-        "--backbone", "debug",
-        "--conf", "math_agent/math_agent.yaml"
-      ],
-      "env": {}
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Python Debugger: Launch rollout",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "agentscope_tuner.cli.launcher",
+          "console": "integratedTerminal",
+          "args": [
+            "--backbone", "debug",
+            "--conf", "math_agent/math_agent.yaml"
+          ],
+          "env": {}
+        }
+      ]
     }
-  ]
-}
-```
+    ```
 
-## Training
+---
 
-After debugging, you can start training:
+## Step 7: Start Training
+
+After debugging, launch the full training:
 
 ```bash
 astuner --conf math_agent/math_agent.yaml --backbone='trinity' --with-ray
 ```
 
-You can find training logs and checkpoints in the `./launcher_record/{exp_yaml_file_name}` directory.
+!!! success "Output Location"
+    Training logs and checkpoints will be saved to:
+    ```
+    ./launcher_record/{exp_yaml_file_name}/
+    ```
 
+---
 
-## Read more
+## Next Steps
 
-We provide more detailed explanations for ASTuner's core concepts and many examples.
-You can find them in the left sidebar navigation.
+<div class="card-grid">
+<a href="../workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:graph.svg" class="card-icon card-icon-agent" alt=""><h3>Workflow</h3></div><p class="card-desc">Learn to define trainable workflows and multi-agent setups.</p></a>
+<a href="../data_pipeline/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:database.svg" class="card-icon card-icon-data" alt=""><h3>Data Pipeline</h3></div><p class="card-desc">Configure data loading from various sources.</p></a>
+<a href="../task_judger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Set up reward functions for your training.</p></a>
+<a href="../example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Math Agent Example</h3></div><p class="card-desc">See the complete Math Agent implementation.</p></a>
+</div>
