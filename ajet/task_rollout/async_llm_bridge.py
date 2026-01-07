@@ -97,7 +97,7 @@ class AsyncLlmBridge(object):
             if (
                 ("<tool_call>" in decoded_text)
                 and ("</tool_call>" in decoded_text)
-                and (not self.config.ajet.rollout.agentscope_disable_toolcalls)
+                and (not self.config.ajet.rollout.force_disable_toolcalls)
             ):
                 tool_parser = Hermes2ProToolParser(self.tokenizer)
                 parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore

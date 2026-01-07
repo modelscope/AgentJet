@@ -17,7 +17,7 @@ ajet:
   rollout:
     # the path to the workflow class
     user_workflow: tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow
-    agentscope_disable_toolcalls: True
+    force_disable_toolcalls: True
 
     temperature: 0.9
 

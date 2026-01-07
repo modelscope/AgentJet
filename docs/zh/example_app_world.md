@@ -129,7 +129,7 @@ ajet:
   rollout:
     # [关键] 编写并选择智能体
     user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
-    agentscope_disable_toolcalls: True
+    force_disable_toolcalls: True
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1

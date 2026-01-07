@@ -8,13 +8,13 @@ from ajet.context_tracker.basic_tracker import ExtendedMessage
 def is_timeline_mergeable(
     source_timeline: List[ExtendedMessage],
     target_timeline: List[ExtendedMessage],
-    timeline_merge_policy,
+    timeline_merging_policy,
     debug=False,
 ) -> bool:
     # timeline_compare_level = "text"  # relaxed compare with text, more easier to match, at very little cost
     # timeline_compare_level = "token" # strict compare with token, cause less aggressive merging
-    timeline_compare_level = timeline_merge_policy.get("timeline_compare_level", "text")
-    ignore_tools = timeline_merge_policy.get("ignore_tools", True)
+    timeline_compare_level = timeline_merging_policy.get("timeline_compare_level", "text")
+    ignore_tools = timeline_merging_policy.get("ignore_tools", True)
 
     can_merge = False
     if len(source_timeline) >= len(target_timeline):
@@ -93,7 +93,7 @@ def toggle_author_and_mask(
 
 def merge_tracker_timelines(
     timelines: List[List[ExtendedMessage]],
-    timeline_merge_policy
+    timeline_merging_policy
 ) -> List[List[ExtendedMessage]]:
     """Merge multiple timelines by absorbing those that can be merged.
     > Input:  a list of timelines. (a timeline means: List[ExtendedMessage])
@@ -110,7 +110,7 @@ def merge_tracker_timelines(
                 continue
             source_timeline = reversed_timelines[i]
             target_timeline = reversed_timelines[j]
-            if is_timeline_mergeable(source_timeline, target_timeline, timeline_merge_policy):
+            if is_timeline_mergeable(source_timeline, target_timeline, timeline_merging_policy):
                 source_timeline = toggle_author_and_mask(source_timeline, target_timeline)
                 reversed_timelines[i] = source_timeline
                 absorbed_step_indices += [j]

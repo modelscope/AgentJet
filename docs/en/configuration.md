@@ -284,7 +284,7 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
 
       rollout:
         user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
-        agentscope_disable_toolcalls: False
+        force_disable_toolcalls: False
         max_env_worker: 128
         gamma: 1.0
         compute_madness_checklist:
@@ -361,7 +361,6 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
         context_tracker_type: "linear"
         alien_llm_model: qwen3-235b-a22b-instruct-2507
         alien_llm_response_length: 512
-        max_env_len: 4096
     ```
 
 ---
