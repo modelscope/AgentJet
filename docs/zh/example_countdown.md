@@ -43,7 +43,7 @@ ajet --conf tutorial/example_countdown/countdown.yaml --backbone='verl'
 ajet --conf tutorial/example_countdown/countdown.yaml --backbone='debug' --with-logview
 ```
 
-如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
+如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `user_workflow` 中的 workflow 类路径是否与你的代码位置一致。
 
 </details>
 
@@ -86,9 +86,9 @@ WorkflowOutput(
 拷贝并修改 `tutorial/example_countdown/countdown.yaml` 中的关键配置参数。yaml 中与本示例最相关的部分已经用 <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> 标出。
 
 1. 读取任务（对应配置字段 `ajet.task_reader`）
-2. 定义 Workflow（对应配置字段 `ajet.rollout.agentscope_workflow`）
+2. 定义 Workflow（对应配置字段 `ajet.rollout.user_workflow`）
    - 示例：如果 AgentScope Workflow 定义在 `tutorial/example_countdown/countdown.py` 的 `ExampleCountdownLearn` 类中
-   - 则配置 `ajet.rollout.agentscope_workflow` = `tutorial.example_countdown.countdown->ExampleCountdownLearn`
+   - 则配置 `ajet.rollout.user_workflow` = `tutorial.example_countdown.countdown->ExampleCountdownLearn`
 3. 定义评分函数（对应配置字段 `ajet.task_judge.judge_protocol`）
    - 示例：如果评分逻辑定义在 `tutorial/example_countdown/countdown_answer_as_judge.py` 的 `CountdownAnswerAsJudge` 类中
    - 则配置 `tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
@@ -99,7 +99,7 @@ ajet:
     task_reader:
         type: huggingface_dat_repo # [关键] `env_service` 或 `dataset_file` 或 `huggingface_dat_repo` 或 `data_generation`
     rollout:
-        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # [关键] 编写并选择智能体
+        user_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # [关键] 编写并选择智能体
     task_judge:
         # [关键] 编写并选择评估函数
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge

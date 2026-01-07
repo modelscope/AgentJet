@@ -187,7 +187,7 @@ ajet:
 ```yaml title="rollout 配置"
 ajet:
   rollout:
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     max_env_worker: 128
     temperature: 0.9
     top_p: 1.0
@@ -198,7 +198,7 @@ ajet:
 
 | 配置项 | 说明 |
 |--------|------|
-| `agentscope_workflow` | 具体的交互协议实现类 |
+| `user_workflow` | 具体的交互协议实现类 |
 | `temperature` / `top_p` | 采样参数 |
 | `name` | 推理引擎名称（例如 `vllm`） |
 | `n_vllm_engine` | vLLM 引擎数量（仅 trinity 后端有效） |
@@ -329,7 +329,7 @@ ajet:
         train_batch_size: 32
 
       rollout:
-        agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+        user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
         agentscope_disable_toolcalls: False
         max_env_worker: 128
         gamma: 1.0

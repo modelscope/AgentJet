@@ -3,20 +3,25 @@ import copy
 import json
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Literal, Type
+from typing import Any, Callable, Dict, List, Literal, Type, Union
 
 from agentscope._utils._common import _json_loads_with_repair
 from agentscope.message import TextBlock, ToolUseBlock
-from agentscope.model import ChatResponse
 from loguru import logger
 from omegaconf import DictConfig
 from pydantic import BaseModel
 from transformers.tokenization_utils import PreTrainedTokenizer
 from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 
+from agentscope.model import ChatResponse as AgentScopeChatResponse
+from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatCompletion
+
+ChatResponse = Union[OpenAIChatCompletion, AgentScopeChatResponse]
+
 from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
+from ajet.schema.convertion import convert_llm_proxy_response_to_oai_response
 from ajet.schema.logprob import TokenAndProb
 from ajet.utils.async_utils import run_async_coroutine_with_timeout
 from ajet.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
@@ -235,11 +240,16 @@ class AsyncLlmBridge(object):
             return llm_chat
 
 
-class AgentScopeLlmProxy(object):
+
+
+
+
+
+class OpenaiLlmProxyWithTracker(object):
     """
     An essential wrapper to connect AsyncLlmBridge with AgentScope
 
-    User_Agentscope_Workflow <-> AsyncLlmBridge <-> Context Tracker.
+    User_user_workflow <-> AsyncLlmBridge <-> Context Tracker.
     """
 
     def __init__(
@@ -254,14 +264,26 @@ class AgentScopeLlmProxy(object):
         self.tokenizer = tokenizer
         self.config = config
 
-    async def __call__(
+    def construct_overflow_response(self) -> ChatResponse:
+        from ajet.schema.convertion import convert_llm_proxy_response_to_oai_response
+        return convert_llm_proxy_response_to_oai_response(
+            {
+                "role": "assistant",
+                "request_id": "overflow_response",
+                "content": "ajet_proxy: Exceeded max model context length.",
+                "tool_calls": None,
+                "tokens": [],
+            }
+        )
+
+    async def run_infer(
         self,
         messages: List[dict],
         tools: List = [],
         tool_choice: str = "auto",
         structured_model=None,
         **kwargs,
-    ) -> ChatResponse:
+    ):
         # prepare context tracker, check context safety
         (
             context_safe,
@@ -271,17 +293,15 @@ class AgentScopeLlmProxy(object):
             custom_sampling_params,
             tools,
         ) = self.context_tracker.step_prepare(messages, tools)
+
+        # if context not safe to infer further
         if not context_safe:
             logger.warning(f"[{info}] detected.")
             self.context_tracker.context_overflow = True
             if token_overflow:
                 # ajet_action_when_overflow = self.config.ajet.rollout.ajet_action_when_overflow
                 # cannot proceed due to context overflow
-                return ChatResponse(
-                    content=[
-                        {"type": "text", "text": "ajet_proxy: Exceeded max model context length."}
-                    ],
-                )
+                return self.construct_overflow_response()
             # else: # otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
         # run llm inference ✨
@@ -294,6 +314,49 @@ class AgentScopeLlmProxy(object):
 
         # begin context tracking
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
+        return llm_output
+
+    async def __call__(
+        self,
+        messages: List[dict],
+        tools: List = [],
+        tool_choice: str = "auto",
+        structured_model=None,
+        **kwargs,
+    ) -> ChatResponse:
+        llm_output = await self.run_infer(
+            messages, tools, tool_choice, structured_model, **kwargs
+        )
+
+        return convert_llm_proxy_response_to_oai_response(llm_output)
+
+
+
+
+
+
+
+
+class AgentScopeLlmProxyWithTracker(OpenaiLlmProxyWithTracker):
+    """
+    An essential wrapper to connect AsyncLlmBridge with AgentScope
+
+    User_user_workflow <-> AsyncLlmBridge <-> Context Tracker.
+    """
+
+
+    async def __call__(
+        self,
+        messages: List[dict],
+        tools: List = [],
+        tool_choice: str = "auto",
+        structured_model=None,
+        **kwargs,
+    ) -> AgentScopeChatResponse:   # type: ignore
+
+        llm_output = await self.run_infer(
+            messages, tools, tool_choice, structured_model, **kwargs
+        )
 
         # parse response
         response = await self._parse_dashscope_generation_response(
@@ -302,12 +365,21 @@ class AgentScopeLlmProxy(object):
 
         return response
 
+
+    def construct_overflow_response(self):  # type: ignore
+        return AgentScopeChatResponse(
+            content=[
+                {"type": "text", "text": "ajet_proxy: Exceeded max model context length."}
+            ],
+        )
+
+
     # copied from AgentScope's DashScopeChatModule
     async def _parse_dashscope_generation_response(
         self,
         message,
         structured_model: Type[BaseModel] | None = None,
-    ) -> ChatResponse:
+    ) -> AgentScopeChatResponse:    # type: ignore
         content_blocks: List[TextBlock | ToolUseBlock] = []
         content = message.get("content")
         metadata: dict | None = None
@@ -355,7 +427,7 @@ class AgentScopeLlmProxy(object):
                 if structured_model:
                     metadata = input_  # type: ignore
 
-        parsed_response = ChatResponse(
+        parsed_response = AgentScopeChatResponse(
             content=content_blocks,
             metadata=metadata,
         )

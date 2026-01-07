@@ -110,9 +110,9 @@ WorkflowOutput(
 Copy and modify key parameters in `tutorial/example_countdown/countdown.yaml`. The most relevant parts in the yaml file are marked with <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> symbols.
 
 1. Read task (corresponds to configuration field `ajet.task_reader`)
-2.  Define Workflow (corresponds to configuration field `ajet.rollout.agentscope_workflow`)
+2.  Define Workflow (corresponds to configuration field `ajet.rollout.user_workflow`)
    - Example: If agentscope workflow is defined in `ExampleCountdownLearn` class of `tutorial/example_countdown/countdown.py`
-   - Then set `ajet.rollout.agentscope_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
+   - Then set `ajet.rollout.user_workflow`=`tutorial.example_countdown.countdown->ExampleCountdownLearn`
 3. Define scoring function (corresponds to configuration field `ajet.task_judge.judge_protocol`)
   - Example: If agentscope workflow is defined in `CountdownAnswerAsJudge` class of `tutorial/example_countdown/countdown_answer_as_judge.py`
   - Then set `ajet.task_judge.judge_protocol`=`tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge`
@@ -123,7 +123,7 @@ ajet:
     task_reader:
         type: huggingface_dat_repo # [key] `env_service` or `dataset_file` or `huggingface_dat_repo` or `data_generation`
     rollout:
-        agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # [key] Write and select Agent
+        user_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn # [key] Write and select Agent
     task_judge:
         # [key] Write and select evaluation function
         judge_protocol: tutorial.example_countdown.countdown_answer_as_judge->CountdownAnswerAsJudge

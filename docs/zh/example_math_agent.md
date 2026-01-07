@@ -108,7 +108,7 @@ ajet:
     type: huggingface_dat_repo   # 也支持: dataset_file / env_service
 
   rollout:
-    agentscope_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
+    user_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
 
   task_judge:
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
@@ -120,7 +120,7 @@ ajet:
 | 字段 | 说明 |
 |------|------|
 | `task_reader` | 任务来源 |
-| `agentscope_workflow` | 每条样本运行哪个 workflow |
+| `user_workflow` | 每条样本运行哪个 workflow |
 | `judge_protocol` | 由哪个 judge 计算 reward |
 | `model.path` | 要微调的预训练模型路径 |
 

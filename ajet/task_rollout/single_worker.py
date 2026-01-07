@@ -11,7 +11,7 @@ from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import Task, WorkflowTask
 from ajet.task_rollout.async_llm_bridge import AsyncLlmBridge
 from ajet.task_rollout.resource_keeper import ResourceKeeper
-from ajet.task_runner.agentscope_runner import AgentScopeRunner
+from ajet.task_runner.general_runner import GeneralRunner
 from ajet.utils.retry import retry_with_backoff
 from ajet.utils.sample import get_sample_params
 from ajet.utils.testing_utils import TestFailException, TestSuccessException
@@ -104,7 +104,7 @@ class BaseRolloutManager:
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
-                agent_runner = AgentScopeRunner(
+                agent_runner = GeneralRunner(
                     llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
                 )
                 tracker = agent_runner.execute(

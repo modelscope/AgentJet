@@ -83,7 +83,7 @@ This example packages a multi-step environment interaction loop into a trainable
 
 The key fields in `tutorial/example_frozenlake/frozenlake_easy.yaml` / `frozenlake_hard.yaml` are:
 
-- `ajet.rollout.agentscope_workflow`: entry point of the workflow class, set to `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`.
+- `ajet.rollout.user_workflow`: entry point of the workflow class, set to `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`.
 - `ajet.rollout.multi_turn.max_steps`: maximum steps per episode (also used by the agent).
 - `frozen_lake.frozen_lake_size`: grid size (e.g. 4 for easy, 6 for hard).
 - `frozen_lake.is_slippery`: whether the action may slip to unintended directions.

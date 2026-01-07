@@ -46,7 +46,7 @@ class ExampleMathLearn(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner,
+            model=model_tuner.as_agentscope_model(),
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),

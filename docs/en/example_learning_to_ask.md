@@ -55,7 +55,7 @@ bash ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --
 
 ```
 
-If the results are incorrect, the quickest troubleshooting points include: whether the data path exists, whether an API key has been set if judge requires it, and whether the workflow classpath in `agentscope_workflow` matches the location of your code.
+If the results are incorrect, the quickest troubleshooting points include: whether the data path exists, whether an API key has been set if judge requires it, and whether the workflow classpath in `user_workflow` matches the location of your code.
 
 </details>
 
@@ -69,7 +69,7 @@ This tutorial trains a model to **ask the next best question** from a short doct
 
 #### 3.2 YAML Configuration
 
-The whole example is “wired” in the YAML and implemented in one file. In the YAML, `task_reader` provides the dataset split, `rollout.agentscope_workflow` tells AgentJet which workflow to run for each sample, and `task_judge` provides the reward entry that wraps the LLM judge. The `model` section decides which pretrained backbone you start from.
+The whole example is “wired” in the YAML and implemented in one file. In the YAML, `task_reader` provides the dataset split, `rollout.user_workflow` tells AgentJet which workflow to run for each sample, and `task_judge` provides the reward entry that wraps the LLM judge. The `model` section decides which pretrained backbone you start from.
 
 ```yaml
 ajet:
@@ -80,7 +80,7 @@ ajet:
 
   rollout:
     # For each sample: conversation context -> one next question
-    agentscope_workflow: tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask
+    user_workflow: tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask
 
   task_judge:
     # Reward function used by the trainer (internally calls the LLM judge)

@@ -47,7 +47,7 @@
         # ✨✨✨✨ 设置待训练的模型
         path: YOUR_MODEL_PATH
     rollout:
-        agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
+        user_workflow: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ 编写并选择Agent
     ```
 
 

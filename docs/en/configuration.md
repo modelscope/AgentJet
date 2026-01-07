@@ -149,7 +149,7 @@ Controls agent behavior during environment interaction:
 ```yaml title="config.yaml"
 ajet:
   rollout:
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     max_env_worker: 128
     temperature: 0.9
     top_p: 1.0
@@ -160,7 +160,7 @@ ajet:
 
 | Parameter | Description |
 |-----------|-------------|
-| `agentscope_workflow` | Path to workflow implementation class |
+| `user_workflow` | Path to workflow implementation class |
 | `temperature` / `top_p` | Sampling parameters |
 | `name` | Inference engine (e.g., `vllm`) |
 | `n_vllm_engine` | Number of vLLM engines (Trinity only) |
@@ -283,7 +283,7 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
         train_batch_size: 32
 
       rollout:
-        agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+        user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
         agentscope_disable_toolcalls: False
         max_env_worker: 128
         gamma: 1.0

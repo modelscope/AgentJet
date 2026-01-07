@@ -83,9 +83,9 @@ Judge的返回值： raw_reward, is_success
 4.1 复制并修改 [tutorial/example_rubrics_judge/math_agent.yaml](../tutorial/example_rubrics_judge/math_agent.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
 1. 读取task（对应配置字段 ajet.task_reader）
-2. 定义 Workflow（对应配置字段 ajet.rollout.agentscope_workflow ）
+2. 定义 Workflow（对应配置字段 ajet.rollout.user_workflow ）
     - 举例如果 agentscope workflow 定义在 `tutorial/math_agent.py` 的`ExampleMathLear` 类
-    - 则填写 ajet.rollout.agentscope_workflow=`tutorial.math_agent->ExampleMathLearn`
+    - 则填写 ajet.rollout.user_workflow=`tutorial.math_agent->ExampleMathLearn`
 3. 定义评分函数（对应配置字段 ajet.task_judge.judge_protocol ）
     - 举例如果 agentscope workflow 定义在 `tutorial/example_math_agent/math_answer_as_judge.py` 的`MathAnswerAndLlmAsJudge` 类
     - 则填写 ajet.task_judge.judge_protocol=`tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge`
@@ -96,7 +96,7 @@ ajet
     task_reader:
         type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     rollout:
-        agentscope_workflow: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ 编写并选择Agent
+        user_workflow: tutorial.math_agent->ExampleMathLearn # ✨✨✨✨ 编写并选择Agent
     task_judge:
         # ✨✨✨✨ 编写并选择评价函数
         judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge

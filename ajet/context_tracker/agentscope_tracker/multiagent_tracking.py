@@ -418,7 +418,8 @@ class MultiAgentContextTracker(BaseContextTracker):
         )
 
     def group_merge(self) -> List[List[ExtendedMessage]]:
-        self.grouped_steps = merge_tracker_timelines(self.grouped_steps)
+        timeline_merge_policy = self.config.ajet.timeline_merge_policy
+        self.grouped_steps = merge_tracker_timelines(self.grouped_steps, timeline_merge_policy)
         return self.grouped_steps
 
     def group_tokenize(self):

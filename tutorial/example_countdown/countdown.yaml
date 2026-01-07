@@ -19,7 +19,7 @@ ajet:
   rollout:
 
     # ✨✨✨✨ the path to the workflow class
-    agentscope_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn
+    user_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: True

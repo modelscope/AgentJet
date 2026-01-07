@@ -1,4 +1,4 @@
-from .agentscope_runner import AgentScopeRunner
+from .general_runner import GeneralRunner
 from .base_runner import BaseAgentRunner
 
-__all__ = ["BaseAgentRunner", "AgentScopeRunner"]
+__all__ = ["BaseAgentRunner", "GeneralRunner"]
