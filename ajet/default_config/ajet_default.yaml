@@ -77,6 +77,7 @@ ajet:
 
     # validation kwargs
     val_kwargs:
+      # when doing validation, the sample setting when generating response
       temperature: 0.0
       top_k: -1
       top_p: 1.0
@@ -176,9 +177,6 @@ ajet:
   # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
   context_tracker:
 
-    # Retokenization Drift: inconsistencies between training and inference token array
-    fix_retokenization_drift: True
-
     # timeline merging policy used in Context Tracker
     timeline_merging_policy:
 
@@ -186,9 +184,21 @@ ajet:
       # compare_level = "token": strict compare with token, cause less aggressive merging
       timeline_compare_level: "text"  # options: "text", "token"
 
-      # whether or not to ignore tool calls when comparing steps
+      # whether or not to ignore tool calls when comparing steps, default to `True` to make merging more aggressive
       ignore_tools: True
 
+    # Fix Retokenization Drift: inconsistencies between training and inference token array
+    # Related reading: https://github.com/vllm-project/vllm/pull/22587 (note that the implementation is very different)
+    fix_retokenization_drift: True
+
+    # log tool format check results
+    log_tool_format_check: True
+
+    # log tool format check results
+    log_tool_format_error_detail: False
+
+    # detect at which point timeline stop growing linearly and cause a snap during a episode: this will cause additional computation.
+    detect_timeline_snap: False
 
     # deprecated
     alien_llm_model: qwen3-235b-a22b-instruct-2507
@@ -199,10 +209,20 @@ ajet:
 
   # when backbone is `debug`, debug related configurations
   debug:
-    debug_max_parallel: 16
+
+    # max parallel runners in debug mode
+    debug_max_parallel: 4
+
+    # how many task to sample from training set
     debug_first_n_tasks: 2
+
+    # what is the vllm engine port in the background
     debug_vllm_port: 18000
+
+    # what is the seed of the vllm engine in the background
     debug_vllm_seed: 12345
+
+    # what is the TP size in debug mode
     debug_tensor_parallel_size: 4
 
 

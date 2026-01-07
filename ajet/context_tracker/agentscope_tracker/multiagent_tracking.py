@@ -1,6 +1,7 @@
 # flake8: noqa: F541, F841
 import copy
 import json
+from dataclasses import dataclass, field
 from typing import List, Tuple
 
 from beast_logger import NestedJsonItem, SeqItem, print_dict, print_nested
@@ -8,7 +9,7 @@ from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from ajet.context_tracker.agentscope_tracker.timeline_merging import (
-    merge_tracker_timelines,
+    merge_tracker_timelines, is_timeline_mergeable
 )
 from ajet.context_tracker.basic_tracker import (
     BaseContextTracker,
@@ -20,8 +21,23 @@ from ajet.utils.color_hsl import adjust_color_hsl
 from ajet.utils.compute_madness import compute_string_madness
 from ajet.utils.tokenizer import ajet_apply_chat_template
 
+@dataclass
+class TimelineMergingPolicyConfig:
+    timeline_compare_level: str = "text"
+    ignore_tools: bool = True
+
+
+@dataclass
+class ContextTrackerConfig:
+    timeline_merging_policy: TimelineMergingPolicyConfig = field(
+        default_factory=TimelineMergingPolicyConfig
+    )
+    fix_retokenization_drift: bool = True
+    detect_timeline_snap: bool = False
+
 
 class MultiAgentContextTracker(BaseContextTracker):
+
     def __init__(
         self,
         llm_inference_fn,
@@ -39,6 +55,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.context_overflow = False
         self.output_kwargs = {}
         self.input_kwargs = {}
+
 
     def step_prepare(self, messages: List[dict], tools: List = []):
         self.full_context = []
@@ -122,6 +139,8 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
 
+
+
     def step_track(
         self,
         llm_output,
@@ -139,80 +158,35 @@ class MultiAgentContextTracker(BaseContextTracker):
             ):
                 self.already_mad_flag = True
 
-        # dummy response for now
-        # err_type = ""
-        if llm_output.get("tool_calls", []):  # llm_output["tool_calls"] is not None, and is not []
-            tool_calls = llm_output["tool_calls"]
-            if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
-                # check tool call formating
-                copy_tool_calls = copy.deepcopy(tool_calls)
-                wrong_toolcall = False
-                for i in range(len(copy_tool_calls)):
-                    if ("function" in copy_tool_calls[i]) and (
-                        "arguments" in copy_tool_calls[i]["function"]
-                    ):
-                        try:
-                            expect_dict = json.loads(copy_tool_calls[i]["function"]["arguments"])
-                            if not isinstance(expect_dict, dict):
-                                wrong_toolcall = True
-                                # err_type = "cannot parse arguments"
-                        except Exception:
-                            wrong_toolcall = True
-                            # err_type = "arguments not json"
-                    else:
-                        wrong_toolcall = True
-                        # err_type = "no function or no arguments"
-                if wrong_toolcall:
-                    # logger.bind(exception=True).warning(
-                    #     f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
-                    # )
-                    logger.bind(exception=True).warning(
-                        f"Detected wrong toolcall format from LLM content"
-                    )
-                    self.already_mad_flag = True
-                else:
-                    logger.success("Toolcall format check passed.")
-        elif "<tool_call>" in llm_output["content"]:
-            # logger.bind(exception=True).warning(
-            #     f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
-            # )
-            if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
-                logger.bind(exception=True).warning(
-                    f"Detected wrong toolcall format from LLM content"
-                )
-                self.already_mad_flag = True
-            tool_calls = []
-        else:
-            tool_calls = []
+        tool_calls = self.detect_tool_call_madness(llm_output)
 
-        token_generator = "manual"
         llm_ext_msg = ExtendedMessage(
             author="llm",
             role="assistant",
             content=llm_output["content"],
-            token_generator=token_generator,
+            token_generator="manual",
             tool_calls=tool_calls,
             tokenizer=self.tokenizer,
         )
-        if token_generator == "manual":
-            input_msg_ref = copy.deepcopy(converted_message)
+        input_msg_ref = copy.deepcopy(converted_message)
+        (
+            precise_manual_token,
+            token_logprob_arr,
+            loss_mask,
+            lack_normal_eos,
+        ) = self.get_token_inc_from_llm_response(input_msg_ref, llm_output, tools=tools)
+        llm_ext_msg.token_arr = precise_manual_token
+        llm_ext_msg.token_logprob_arr = token_logprob_arr
+        llm_ext_msg.lack_normal_eos = lack_normal_eos
+        llm_ext_msg.manual_loss_mask_override = loss_mask
 
-            (
-                precise_manual_token,
-                token_logprob_arr,
-                loss_mask,
-                lack_normal_eos,
-            ) = self.get_token_inc_from_llm_response(input_msg_ref, llm_output, tools=tools)
-            llm_ext_msg.token_arr = precise_manual_token
-            llm_ext_msg.token_logprob_arr = token_logprob_arr
-            llm_ext_msg.lack_normal_eos = lack_normal_eos
-            llm_ext_msg.manual_loss_mask_override = loss_mask
+        assert (
+            len(precise_manual_token)
+            <= self.config.ajet.rollout.max_response_length_in_one_turn
+        ), f"Generated token length {len(precise_manual_token)} exceeds max_response_length_in_one_turn {self.config.ajet.rollout.max_response_length_in_one_turn}"
 
-            assert (
-                len(precise_manual_token)
-                <= self.config.ajet.rollout.max_response_length_in_one_turn
-            ), f"Generated token length {len(precise_manual_token)} exceeds max_response_length_in_one_turn {self.config.ajet.rollout.max_response_length_in_one_turn}"
-            self.generated_token_callback_fn(llm_ext_msg.token_arr)
+        # run generated token callback, usually to monitor token output rate ( e.g. 164 tokens/sec )
+        self.generated_token_callback_fn(llm_ext_msg.token_arr)
 
         # take snapshot of current timeline
         if context_safe:
@@ -227,27 +201,105 @@ class MultiAgentContextTracker(BaseContextTracker):
                     previous_ext_context=self.full_context,
                 )
 
-            self.full_context += [llm_ext_msg]
-            is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
-            if length > self.config.ajet.rollout.max_model_len:
-                raise RuntimeError(
+            self.save_llm_interaction_timeline(tools, llm_ext_msg)
+        return None
+
+
+
+    def save_llm_interaction_timeline(self, tools, llm_ext_msg):
+        """Save the LLM interaction timeline by adding the LLM response to `grouped_steps`
+        """
+        self.full_context += [llm_ext_msg]
+        _, length = self.get_context_token_num_and_safety(self.full_context, tools)
+        if length > self.config.ajet.rollout.max_model_len:
+            raise RuntimeError(
                     f"Unexpected token overflow after adding LLM response. Full context length {length}, generated token length {len(llm_ext_msg.token_arr)}"
                 )
 
-            assert self.full_context[0].first_message
-            # assert all other message is not first_message
-            for i in range(1, len(self.full_context)):
-                assert not self.full_context[i].first_message
-            self.grouped_steps += [copy.deepcopy(self.full_context)]
+        assert self.full_context[0].first_message, "First message should be marked as first_message"
 
-            # DEBUG = True   # warn when merge fails
-            # if (
-            #     DEBUG
-            #     and len(self.grouped_steps) >= 2
-            #     and (not is_timeline_mergeable(self.grouped_steps[-1], self.grouped_steps[-2]))
-            # ):
-            #     print(f"General Warning: merge failure discovered.")
-        return None
+        # assert all other message is not first_message
+        for i in range(1, len(self.full_context)):
+            assert not self.full_context[i].first_message
+
+        # save to self.grouped_steps
+        self.grouped_steps += [copy.deepcopy(self.full_context)]
+
+        # DEBUG = True   # warn when merge fails
+        timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
+        if (
+            self.config.ajet.context_tracker.detect_timeline_snap
+            and len(self.grouped_steps) >= 2
+            and (
+                not is_timeline_mergeable(
+                    self.grouped_steps[-1],
+                    self.grouped_steps[-2],
+                    timeline_merging_policy
+                )
+            )
+        ):
+            logger.bind(exception=True).info(f"General Warning: merge failure discovered.\n")
+        return
+
+
+    def detect_tool_call_madness(self, llm_output):
+        """Detect whether the tool call format from LLM output is correct or not.
+        """
+        log_tool = self.config.ajet.context_tracker.log_tool_format_check
+        detailed_log = self.config.ajet.context_tracker.log_tool_format_error_detail
+
+        err_type = ""
+        if llm_output.get("tool_calls", []):
+            # llm_output["tool_calls"] is not None, and is not []
+            tool_calls = llm_output["tool_calls"]
+            if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
+                copy_tool_calls = copy.deepcopy(tool_calls)
+                wrong_toolcall = False
+                for i in range(len(copy_tool_calls)):
+                    if ("function" in copy_tool_calls[i]) and (
+                        "arguments" in copy_tool_calls[i]["function"]
+                    ):
+                        try:
+                            expect_dict = json.loads(copy_tool_calls[i]["function"]["arguments"])
+                            if not isinstance(expect_dict, dict):
+                                wrong_toolcall = True
+                                err_type = "cannot parse arguments"
+                        except Exception:
+                            wrong_toolcall = True
+                            err_type = "arguments not json"
+                    else:
+                        wrong_toolcall = True
+                        err_type = "no function or no arguments"
+                if wrong_toolcall:
+                    if detailed_log:
+                        logger.bind(exception=True).warning(
+                            f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
+                        )
+                    if log_tool:
+                        logger.bind(exception=True).warning(
+                            f"Detected wrong toolcall format from LLM content"
+                        )
+                    self.already_mad_flag = True
+                else:
+                    if log_tool:
+                        logger.success("Toolcall format check passed.")
+
+        elif "<tool_call>" in llm_output["content"]:
+            if detailed_log:
+                logger.bind(exception=True).warning(
+                    f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
+                )
+            if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
+                if log_tool:
+                    logger.bind(exception=True).warning(
+                        f"Detected wrong toolcall format from LLM content"
+                    )
+                self.already_mad_flag = True
+            tool_calls = []
+        else:
+            tool_calls = []
+        return tool_calls
+
 
 
     def patch_prompt_tokens(
@@ -293,44 +345,49 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         # try to recover tokens
         if self.config.ajet.context_tracker.fix_retokenization_drift:
-            for j in range(len(previous_ext_context)):
-                if prompt_text_split[j] != current_prompt_text[j]:
-                    # if prompt text mismatch, we can replace the tokens
-                    print_dict(
-                        {
-                            "expected_prompt_text": prompt_text_split[j],
-                            "current_prompt_text": current_prompt_text[j],
-                        },
-                        mod="exception",
-                        header="Prompt text mismatch, Please report a github issue",
-                    )
-                    previous_ext_context[j].token_arr = self.tokenizer(
-                        prompt_text_split[j], return_tensors="pt", padding=False
-                    )
-                else:
-                    # if prompt text match
-                    # we further check whether all token ids matches
-                    vllm_token_array = split_prompt_token_ids[j]
-                    tracker_token_array = previous_ext_context[j].token_arr
-                    if vllm_token_array == tracker_token_array:
-                        # good, everything is perfect
-                        continue
-                    else:
-                        # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
-                        print_dict(
-                            {
-                                "expected_token_ids": split_prompt_token_ids[j],
-                                "current_token_ids": previous_ext_context[j].token_arr,
-                            },
-                            mod="exception",
-                            header="Prompt token ids mismatch, Please report a github issue",
-                        )
+            self.ensure_retokenization_perfect_match(previous_ext_context, split_prompt_token_ids, prompt_text_split, current_prompt_text)
 
         # remove extra messages
         if len(previous_ext_context) != len(prompt_text_split):
             previous_ext_context = previous_ext_context[: len(prompt_text_split)]
 
         return previous_ext_context
+
+
+    def ensure_retokenization_perfect_match(self, previous_ext_context, split_prompt_token_ids, prompt_text_split, current_prompt_text):
+        for j in range(len(previous_ext_context)):
+            if prompt_text_split[j] != current_prompt_text[j]:
+                # if prompt text mismatch, we can replace the tokens
+                print_dict(
+                    {
+                        "expected_prompt_text": prompt_text_split[j],
+                        "current_prompt_text": current_prompt_text[j],
+                    },
+                    mod="exception",
+                    header="Prompt text mismatch, Please report a github issue",
+                )
+                previous_ext_context[j].token_arr = self.tokenizer(
+                    prompt_text_split[j], return_tensors="pt", padding=False
+                )
+            else:
+                # if prompt text match
+                # we further check whether all token ids matches
+                vllm_token_array = split_prompt_token_ids[j]
+                tracker_token_array = previous_ext_context[j].token_arr
+                if vllm_token_array == tracker_token_array:
+                    # good, everything is perfect
+                    continue
+                else:
+                    # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
+                    print_dict(
+                        {
+                            "expected_token_ids": split_prompt_token_ids[j],
+                            "current_token_ids": previous_ext_context[j].token_arr,
+                        },
+                        mod="exception",
+                        header="Prompt token ids mismatch, Please report a github issue",
+                    )
+
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
@@ -346,6 +403,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             )
             for i in range(len(self.grouped_steps))
         ]
+
 
     def generate_log(self, task_id=None, global_step="NA"):
         task_id = self.task_id
@@ -427,13 +485,16 @@ class MultiAgentContextTracker(BaseContextTracker):
             attach="copy this",  # type: ignore
         )
 
+
     def group_merge(self) -> List[List[ExtendedMessage]]:
-        timeline_merging_policy = self.config.ajet.context_tracker.timeline_merging_policy
+        timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         self.grouped_steps = merge_tracker_timelines(self.grouped_steps, timeline_merging_policy)
         return self.grouped_steps
 
+
     def group_tokenize(self):
         return self.group_tokenize_multi_group()
+
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore
         dict_messages = self.to_role_content(ext_messages)
@@ -453,6 +514,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             return True, length
         else:
             return False, length
+
 
     def check_context_token_num_safe(
         self, messages: List, tools: List = []
