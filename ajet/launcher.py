@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument(
         "--backbone",
         type=str,
-        default="trinity",
+        default="verl",
         required=False,
         help="verl or trinity or debug",
     )
@@ -189,7 +189,7 @@ def get_backbone_target(backbone):
     Returns:
         str: The full module path for the specified backbone
     """
-    backbone_target = "ajet.backbone.main_trinity"  # Default to trinity
+    backbone_target = "ajet.backbone.main_verl"  # Default to trinity
     if backbone == "verl":
         backbone_target = "ajet.backbone.main_verl"
     if backbone == "debug":
@@ -217,16 +217,21 @@ def setup_environment_vars(args, exp_config, main_yaml_fp):
         env["DEBUG_TAGS"] = args.debug
         env["RAY_record_task_actor_creation_sites"] = "true"
         # assert exp_config["ajet"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
+        if exp_config["ajet"]["rollout"]["max_env_worker"] > 1:  # type: ignore
+            exp_config["ajet"]["rollout"]["max_env_worker"] = 1
+            logger.warning(
+                "For debugging mode, max_env_worker is set to 1 to facilitate debugging."
+            )
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
-        if args.conf:
-            assert exp_config["ajet"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
+        # if args.conf:
+        #     assert exp_config["ajet"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
     if args.backbone == "trinity":
         env["AJET_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
     if args.backbone == "debug":
         env["AJET_DEBUG"] = "1"  # type: ignore
-    return env
+    return env, exp_config
 
 
 def check_model_file_exists(exp_config):
@@ -280,7 +285,7 @@ def main():
             exp_config,
         ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone)
 
-    env = setup_environment_vars(args, exp_config, main_yaml_fp)
+    env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
     if args.with_ray:
         assert (
             not args.with_ray_cluster

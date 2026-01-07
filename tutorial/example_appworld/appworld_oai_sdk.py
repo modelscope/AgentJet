@@ -1,0 +1,50 @@
+from agentscope.message import Msg
+from pydantic import Field
+
+from ajet import Workflow, WorkflowOutput, WorkflowTask
+from ajet.tuner_v2 import TunerV2 as ModelTuner
+from openai.types.chat.chat_completion import ChatCompletion
+
+
+class ExampleAgentScopeWorkflow(Workflow):
+    trainer: str = Field(default="ajet-trinity")
+
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+        from agentscope.agent import ReActAgent
+        from agentscope.formatter import DashScopeChatFormatter
+        from agentscope.memory import InMemoryMemory
+
+        init_messages = workflow_task.task.init_messages
+        if len(init_messages) >= 2:
+            first_msg, init_messages = init_messages[0], init_messages[1:]
+        else:
+            first_msg = {"content": "You're a helpful assistant."}
+        interaction_message = []
+        for msg in init_messages:
+            interaction_message.append(
+                Msg(
+                    name=msg.get("name", "user"),
+                    content=msg.get("content", ""),
+                    role=msg.get("role", "user"),
+                )
+            )
+
+        client = model_tuner.as_raw_openai_sdk_client()
+        env = workflow_task.gym_env
+        step = 0
+        for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
+            # agentscope deal with interaction message
+            reply_message: ChatCompletion = await client.chat.completion.create(interaction_message)
+            # env service protocol
+            obs, _, terminate, _ = env.step(
+                action={"content": reply_message.choices[0].message.content, "role": "assistant"}
+            )
+            # generate new message from env output
+            interaction_message = Msg(name="env", content=obs, role="user")
+            # is terminated?
+            if terminate:
+                break
+            if model_tuner.get_context_tracker().context_overflow:
+                break
+
+        return WorkflowOutput(reward=None, metadata={"total_step": step})

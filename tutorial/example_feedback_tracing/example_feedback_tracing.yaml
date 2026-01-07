@@ -36,7 +36,7 @@ ajet:
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
 
   rollout:
-    agentscope_workflow: tutorial.example_feedback_tracing.train->ExampleTracingFeedbackTrain
+    user_workflow: tutorial.example_feedback_tracing.train->ExampleTracingFeedbackTrain
     temperature: 0.7
     max_env_worker: 256
     num_repeat: 8

@@ -11,7 +11,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
     def test_01_begin_verl(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "verl"
-        TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.yaml"
+        TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld_oai_sdk.yaml"
         PROBE_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe"
         # tests/bench/benchmark_appworld/benchmark_appworld.py
         # tests/bench/benchmark_appworld/benchmark_appworld.yaml

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 
 
@@ -29,6 +30,8 @@ def init_parallel_rollout_logger(experiment_name):
         debug=False,
     )
 
+    target_logger = logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
 
 def warm_up_process(config):
     """

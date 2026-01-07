@@ -15,7 +15,7 @@ ajet:
 
   rollout:
     # the path to the workflow class
-    agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ select agent
+    user_workflow: tutorial.example_werewolves.start->ExampleWerewolves # ✨✨✨✨ select agent
 
     temperature: 0.7
 

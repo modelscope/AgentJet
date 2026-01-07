@@ -50,7 +50,7 @@ ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --wit
 ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-logview
 ```
 
-如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
+如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `user_workflow` 中的 workflow 类路径是否与你的代码位置一致。
 
 </details>
 
@@ -64,7 +64,7 @@ ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='debug' --with-
 
 #### 3.2 YAML 配置说明
 
-整个例子主要通过 YAML 完成配置信息，实现代码则集中在一个文件里。在 YAML 中，`task_reader` 提供数据集划分；`rollout.agentscope_workflow` 告诉 AgentJet 对每条样本需要运行哪个 workflow；`task_judge` 提供封装了 LLM judge 的奖励入口；`model` 部分决定训练从哪个预训练 backbone 开始。
+整个例子主要通过 YAML 完成配置信息，实现代码则集中在一个文件里。在 YAML 中，`task_reader` 提供数据集划分；`rollout.user_workflow` 告诉 AgentJet 对每条样本需要运行哪个 workflow；`task_judge` 提供封装了 LLM judge 的奖励入口；`model` 部分决定训练从哪个预训练 backbone 开始。
 
 ```yaml
 ajet:
@@ -75,7 +75,7 @@ ajet:
 
   rollout:
     # For each sample: conversation context -> one next question
-    agentscope_workflow: tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask
+    user_workflow: tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask
 
   task_judge:
     # Reward function used by the trainer (internally calls the LLM judge)

@@ -137,9 +137,9 @@ You can also refer to this file to implement your own Judge for your specific ta
 Copy and modify the key parameters in `tutorial/example_appworld/appworld.yaml`. The parts most relevant to this document are marked with <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> in the yaml file:
 
 1. **Read tasks** (corresponding config field: `ajet.task_reader`)
-2. **Define the workflow** (corresponding config field: `ajet.rollout.agentscope_workflow`)
+2. **Define the workflow** (corresponding config field: `ajet.rollout.user_workflow`)
     - Example: if the AgentScope workflow is defined in the `ExampleAgentScopeWorkflow` class in `tutorial/example_appworld/appworld.py`
-    - Then set `ajet.rollout.agentscope_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"`
+    - Then set `ajet.rollout.user_workflow = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"`
 3. **Define the scoring function** (corresponding config field: `ajet.task_judge.judge_protocol`)
     - Example: `ajet.task_judge.judge_protocol = "ajet.task_judge.env_service_as_judge->EnvServiceJudge"`
 4. **Specify the model** (corresponding config field: `ajet.model.path`)
@@ -156,7 +156,7 @@ ajet:
     path: YOUR_MODEL_PATH
   rollout:
     # [key] Implement and select the Agent
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1

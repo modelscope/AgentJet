@@ -53,9 +53,9 @@ Judge的返回值： raw_reward, is_success
 4.1 复制并修改 [tutorial/example_appworld/appworld.yaml](../tutorial/example_appworld/appworld.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
 
 1. 读取task（对应配置字段 ajet.task_reader）
-2. 定义 Workflow（对应配置字段 ajet.rollout.agentscope_workflow ）
+2. 定义 Workflow（对应配置字段 ajet.rollout.user_workflow ）
     - 举例如果 agentscope workflow 定义在 `tutorial/appworld.py` 的`ExampleAgentScopeWorkflow` 类
-    - 则填写 ajet.rollout.agentscope_workflow=`tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow`
+    - 则填写 ajet.rollout.user_workflow=`tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow`
 3. 定义评分函数（对应配置字段 ajet.task_judge.judge_protocol ）
     - 填写 ajet.task_judge.judge_protocol=`ajet.task_judge.env_service_as_judge->EnvServiceJudge`
 4. 指定模型（对应配置字段 ajet.model.path ）
@@ -72,7 +72,7 @@ ajet
     path: YOUR_MODEL_PATH
   rollout:
     # ✨✨✨✨ 编写并选择Agent
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1

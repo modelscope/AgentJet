@@ -41,7 +41,7 @@ ajet --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone='trinity
 ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' --with-logview
 ```
 
-如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与你的代码位置一致。
+如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `user_workflow` 中的 workflow 类路径是否与你的代码位置一致。
 
 </details>
 
@@ -60,7 +60,7 @@ ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='debug' 
 
 `tutorial/example_frozenlake/frozenlake_easy.yaml` / `frozenlake_hard.yaml` 中与本任务相关的关键字段包括：
 
-- `ajet.rollout.agentscope_workflow`： Workflow 入口，示例中为 `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`。
+- `ajet.rollout.user_workflow`： Workflow 入口，示例中为 `tutorial.example_frozenlake.frozenlake->FrozenLakeWorkflow`。
 - `ajet.rollout.multi_turn.max_steps`：单次 episode 的最大步数（智能体与环境均使用）。
 - `frozen_lake.frozen_lake_size`：地图大小（easy 为 4，hard 为 6）。
 - `frozen_lake.is_slippery`：是否启用打滑。

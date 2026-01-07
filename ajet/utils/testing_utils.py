@@ -144,9 +144,7 @@ def populate_test_env_metadata(workspace_dir: str) -> tuple[str, str]:
 
 def update_benchmark_status(status, status_detail, append_log="", data_dashboard_url=""):
     if "AJET_GIT_HASH" not in os.environ:
-        raise RuntimeError(
-            "AJET_GIT_HASH not found in environment variables. Please set `ajet.execute_test=False`."
-        )
+        return
 
     git_hash = os.environ["AJET_GIT_HASH"]
     req_txt = os.environ["AJET_REQ_TXT"]

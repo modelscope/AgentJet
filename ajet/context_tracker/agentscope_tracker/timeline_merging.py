@@ -8,57 +8,68 @@ from ajet.context_tracker.basic_tracker import ExtendedMessage
 def is_timeline_mergeable(
     source_timeline: List[ExtendedMessage],
     target_timeline: List[ExtendedMessage],
+    timeline_merge_policy,
     debug=False,
-    compare_level="text",  # "text" or "token"
 ) -> bool:
-    # compare_level = "text"  # relaxed compare with text, more easier to match, at very little cost
-    # compare_level = "token" # strict compare with token, cause less aggressive merging
+    # timeline_compare_level = "text"  # relaxed compare with text, more easier to match, at very little cost
+    # timeline_compare_level = "token" # strict compare with token, cause less aggressive merging
+    timeline_compare_level = timeline_merge_policy.get("timeline_compare_level", "text")
+    ignore_tools = timeline_merge_policy.get("ignore_tools", True)
 
     can_merge = False
     if len(source_timeline) >= len(target_timeline):
         all_msg_match = True
         for i in range(len(target_timeline)):
-            if compare_level == "text":
+            if timeline_compare_level == "text":
                 same = (
-                    # TODO: currently does not consider tools, may aggressively merge responses with different tool calls
-                    # TODO: maybe we should give option for user to choose merging behavior
                     source_timeline[i].content_for_future
                     == target_timeline[i].content_for_future
                 )
-            elif compare_level == "token":
+            elif timeline_compare_level == "token":
                 same = source_timeline[i].token_arr == target_timeline[i].token_arr
             else:
                 raise NotImplementedError
+
             if not same:
                 all_msg_match = False
                 break
+
+        # compare whether avail tool list is identical when (not ignore_tools)
+        if (all_msg_match) and (not ignore_tools):
+            source_0 = source_timeline[0]
+            target_0 = target_timeline[0]
+            if source_0.tools != target_0.tools:
+                all_msg_match = False
+
         if all_msg_match:
             can_merge = True
 
-    # developer only: code below is only for debugging (print a nice comparison table)
-    if debug:
-        debug_listofdict = []
-        if len(source_timeline) >= len(target_timeline):
-            all_msg_match = False
-            for i in range(len(target_timeline)):
-                d = {}
-                d["source"] = source_timeline[i].content_for_future
-                d["target"] = target_timeline[i].content_for_future
-                if compare_level == "text":
-                    same = (
-                        source_timeline[i].content_for_future
-                        == target_timeline[i].content_for_future
-                    )
-                elif compare_level == "token":
-                    same = source_timeline[i].token_arr == target_timeline[i].token_arr
-                else:
-                    raise NotImplementedError
-                if not same:
-                    d["match"] = "NO"
-                else:
-                    d["match"] = "YES"
-                debug_listofdict.append(d)
-        print_listofdict(debug_listofdict, header=f"is_timeline_mergeable debug: {can_merge}")
+
+
+    # # developer only: code below is only for debugging (print a nice comparison table)
+    # if debug:
+    #     debug_listofdict = []
+    #     if len(source_timeline) >= len(target_timeline):
+    #         all_msg_match = False
+    #         for i in range(len(target_timeline)):
+    #             d = {}
+    #             d["source"] = source_timeline[i].content_for_future
+    #             d["target"] = target_timeline[i].content_for_future
+    #             if timeline_compare_level == "text":
+    #                 same = (
+    #                     source_timeline[i].content_for_future
+    #                     == target_timeline[i].content_for_future
+    #                 )
+    #             elif timeline_compare_level == "token":
+    #                 same = source_timeline[i].token_arr == target_timeline[i].token_arr
+    #             else:
+    #                 raise NotImplementedError
+    #             if not same:
+    #                 d["match"] = "NO"
+    #             else:
+    #                 d["match"] = "YES"
+    #             debug_listofdict.append(d)
+    #     print_listofdict(debug_listofdict, header=f"is_timeline_mergeable debug: {can_merge}")
 
     return can_merge
 
@@ -82,6 +93,7 @@ def toggle_author_and_mask(
 
 def merge_tracker_timelines(
     timelines: List[List[ExtendedMessage]],
+    timeline_merge_policy
 ) -> List[List[ExtendedMessage]]:
     """Merge multiple timelines by absorbing those that can be merged.
     > Input:  a list of timelines. (a timeline means: List[ExtendedMessage])
@@ -98,7 +110,7 @@ def merge_tracker_timelines(
                 continue
             source_timeline = reversed_timelines[i]
             target_timeline = reversed_timelines[j]
-            if is_timeline_mergeable(source_timeline, target_timeline):
+            if is_timeline_mergeable(source_timeline, target_timeline, timeline_merge_policy):
                 source_timeline = toggle_author_and_mask(source_timeline, target_timeline)
                 reversed_timelines[i] = source_timeline
                 absorbed_step_indices += [j]

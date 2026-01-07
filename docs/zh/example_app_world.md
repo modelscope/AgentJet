@@ -62,7 +62,7 @@ ajet --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-
     ajet --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
     ```
 
-    如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与您的代码位置一致。
+    如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `user_workflow` 中的 workflow 类路径是否与您的代码位置一致。
 
 ---
 
@@ -128,7 +128,7 @@ ajet:
     path: YOUR_MODEL_PATH
   rollout:
     # [关键] 编写并选择智能体
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     agentscope_disable_toolcalls: True
   debug:
     debug_max_parallel: 1
@@ -138,7 +138,7 @@ ajet:
 | 配置项 | 说明 |
 |--------|------|
 | `task_reader` | 读取任务 |
-| `agentscope_workflow` | 定义 Workflow |
+| `user_workflow` | 定义 Workflow |
 | `judge_protocol` | 定义评分函数 |
 | `model.path` | 指定模型 |
 

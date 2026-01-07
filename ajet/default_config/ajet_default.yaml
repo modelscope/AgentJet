@@ -23,7 +23,7 @@ ajet:
   rollout:
 
     # the path to the workflow class
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
 
     # whether or not to disable all tool calls
     agentscope_disable_toolcalls: False
@@ -213,6 +213,15 @@ ajet:
     alien_llm_model: qwen3-235b-a22b-instruct-2507
     alien_llm_response_length: 512
     max_env_len: 4096
+
+    # timeline merging policy used in Context Tracker
+    timeline_merge_policy:
+
+      # compare_level = "text":  relaxed compare with text, more easier to match, at very little cost
+      # compare_level = "token": strict compare with token, cause less aggressive merging
+      timeline_compare_level: "text"  # options: "text", "token"
+      ignore_tools: True    # whether or not to ignore tool calls when comparing steps
+
 
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.

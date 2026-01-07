@@ -27,7 +27,7 @@ class AjetData:
 
 @dataclass
 class AjetRollout:
-    agentscope_workflow: str = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"
+    user_workflow: str = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"
     n_vllm_engine: int = 1
     tensor_model_parallel_size: int = 1
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
-from ajet.task_rollout.async_llm_bridge import AgentScopeLlmProxy
+from ajet.task_rollout.async_llm_bridge import AgentScopeLlmProxyWithTracker
 
 if TYPE_CHECKING:
     from ajet import Workflow
@@ -25,20 +25,20 @@ class AgentScopeModelTuner(DashScopeChatModel):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        agentscope_workflow: "Workflow",
+        user_workflow: "Workflow",
         agent_name: str,
-        debug_model: DashScopeChatModel,
+        debug_model: DashScopeChatModel | None,
         use_debug_model: bool = False,
         **kwargs,
     ) -> None:
         self.config = config
         self.context_tracker = context_tracker
-        self.agentscope_workflow = agentscope_workflow
+        self.user_workflow = user_workflow
 
         self.agent_name = agent_name
         self.debug_model = debug_model
         self.use_debug_model = use_debug_model
-        self.llm_proxy = AgentScopeLlmProxy(
+        self.llm_proxy = AgentScopeLlmProxyWithTracker(
             context_tracker=context_tracker, config=config, **kwargs
         )
         super().__init__(
@@ -58,7 +58,7 @@ class AgentScopeModelTuner(DashScopeChatModel):
     ) -> ChatResponse:
 
         # route first
-        if self.use_debug_model:
+        if self.use_debug_model and self.debug_model is not None:
             chatresponse = await self.debug_model(messages, tools, tool_choice, structured_model, **kwargs)
             assert isinstance(chatresponse, ChatResponse)
             return chatresponse

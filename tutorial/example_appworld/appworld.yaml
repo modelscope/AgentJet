@@ -22,7 +22,7 @@ ajet:
   rollout:
     # ✨✨✨✨ 编写并选择Agent
     agentscope_disable_toolcalls: True
-    agentscope_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
+    user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     temperature: 0.9
     max_env_worker: 64
     num_repeat: 6

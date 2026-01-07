@@ -1,6 +1,7 @@
 import asyncio
 
-from ajet import ModelTuner, Workflow, WorkflowOutput
+from ajet.tuner_v2 import TunerV2 as ModelTuner
+from ajet import Workflow, WorkflowOutput
 from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
@@ -11,7 +12,7 @@ from ajet.task_runner.base_runner import BaseAgentRunner
 from ajet.utils.dynamic_import import dynamic_import
 
 
-class AgentScopeRunner(BaseAgentRunner):
+class GeneralRunner(BaseAgentRunner):
     def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
         observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
@@ -19,9 +20,9 @@ class AgentScopeRunner(BaseAgentRunner):
         task_tag = workflow_task.task_tag
         task_id = workflow_task.task_id
 
-        workflow_import = self.config.ajet.rollout.agentscope_workflow
+        workflow_import = self.config.ajet.rollout.user_workflow
         workflow_cls = dynamic_import(workflow_import)
-        agentscope_workflow: Workflow = workflow_cls(name="ajet-trinity")
+        user_workflow: Workflow = workflow_cls(name="ajet-trinity")
 
         hooks = self.runner_hooks(
             observation_window=observation_window,
@@ -41,12 +42,12 @@ class AgentScopeRunner(BaseAgentRunner):
             context_tracker=context_tracker,
             llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,
-            agentscope_workflow=agentscope_workflow,
+            user_workflow=user_workflow,
             config=self.config,
         )
 
         workflow_output: WorkflowOutput = asyncio.run(
-            agentscope_workflow.execute(workflow_task, m_tuner)
+            user_workflow.execute(workflow_task, m_tuner)
         )
         if workflow_output.reward is not None:
             raw_reward, is_success = (

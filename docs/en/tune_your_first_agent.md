@@ -252,7 +252,7 @@ Add the workflow configuration to `math_agent.yaml`:
 ajet:
   # ...
   rollout:
-    agentscope_workflow: workflow.py->MathAgentWorkflow
+    user_workflow: workflow.py->MathAgentWorkflow
   task_judge:
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 ```
@@ -285,7 +285,7 @@ Configure important training hyperparameters:
     ajet:
       # ...
       rollout:
-        agentscope_workflow: workflow.py->MathAgentWorkflow
+        user_workflow: workflow.py->MathAgentWorkflow
         temperature: 0.7
         max_env_worker: 64
         num_repeat: 4

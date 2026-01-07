@@ -50,7 +50,7 @@ ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --w
     ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='debug' --with-logview
     ```
 
-    如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `agentscope_workflow` 中的 workflow 类路径是否与您的代码位置一致。
+    如果结果不对，最快的排查点包括：数据路径是否存在、如果 judge 需要 API key 则是否已设置、以及 `user_workflow` 中的 workflow 类路径是否与您的代码位置一致。
 
 ---
 
@@ -95,7 +95,7 @@ ajet:
   model:
     path: YOUR_MODEL_PATH
   rollout:
-    agentscope_workflow: tutorial.example_werewolves.start->ExampleWerewolves
+    user_workflow: tutorial.example_werewolves.start->ExampleWerewolves
 ```
 
 ### 代码结构

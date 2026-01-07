@@ -255,7 +255,7 @@ class MathAgentWorkflow(Workflow):
 ajet:
   # ...
   rollout:
-    agentscope_workflow: workflow.py->MathAgentWorkflow
+    user_workflow: workflow.py->MathAgentWorkflow
 
   task_judge:
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
@@ -289,7 +289,7 @@ ajet:
 ajet:
   # ...
   rollout:
-    agentscope_workflow: workflow.py->MathAgentWorkflow
+    user_workflow: workflow.py->MathAgentWorkflow
     temperature: 0.7                    # 模型温度
     max_env_worker: 64                  # 最大的 rollout 多线程数量
     num_repeat: 4                       # 每个任务重复次数

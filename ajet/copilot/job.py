@@ -17,7 +17,7 @@ import ray
 import yaml
 from loguru import logger
 
-from ajet.cli.launcher import (
+from ajet.launcher import (
     check_avail_gpu,
     get_backbone_target,
     setup_environment_vars,
@@ -87,7 +87,7 @@ class AgentJetJob:
     def set_workflow(
         self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False
     ) -> "AgentJetJob":
-        self.config.ajet.rollout.agentscope_workflow = cls_to_path(workflow)
+        self.config.ajet.rollout.user_workflow = cls_to_path(workflow)
         # TODO: validate workflow outputs contain reward
         # ensure_reward_in_workflow
         return self
@@ -120,7 +120,7 @@ class AgentJetJob:
 
     def tune(self, *args, **kwargs) -> "AgentJetJob":
         ast_cfg = self.config.ajet
-        if not ast_cfg.rollout or not ast_cfg.rollout.agentscope_workflow:
+        if not ast_cfg.rollout or not ast_cfg.rollout.user_workflow:
             raise ValueError("Workflow must be set via set_workflow before tuning.")
         if not ast_cfg.task_reader:
             raise ValueError("Data source must be set via set_data before tuning.")

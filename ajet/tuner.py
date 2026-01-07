@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
-from ajet.task_rollout.async_llm_bridge import AgentScopeLlmProxy
+from ajet.task_rollout.async_llm_bridge import OpenaiLlmProxyWithTracker
 
 if TYPE_CHECKING:
     from ajet import Workflow
@@ -52,14 +52,14 @@ class ModelTuner(DashScopeChatModel):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        agentscope_workflow: "Workflow",
+        user_workflow: "Workflow",
         **kwargs,
     ) -> None:
         self.config = config
         self.context_tracker = context_tracker
-        self.agentscope_workflow = agentscope_workflow
+        self.user_workflow = user_workflow
         self.target2proxy_registry: dict[str, Agent2Proxy] = {}
-        self.llm_proxy = AgentScopeLlmProxy(
+        self.llm_proxy = OpenaiLlmProxyWithTracker(
             context_tracker=context_tracker, config=config, **kwargs
         )
         super().__init__(
@@ -166,18 +166,18 @@ class ModelTuner(DashScopeChatModel):
         return response_gen
 
     def is_trainable(self, target_name) -> bool:
-        if self.agentscope_workflow.trainable_targets is None:
+        if self.user_workflow.trainable_targets is None:
             # always assume trainable when user has never changed trainable_targets
             return True
-        if not self.agentscope_workflow.trainable_targets:
+        if not self.user_workflow.trainable_targets:
             # always assume trainable when trainable_targets is []
             return True
-        if target_name in self.agentscope_workflow.trainable_targets:
+        if target_name in self.user_workflow.trainable_targets:
             return True
         else:
             return False
 
-    def get_llm_proxy(self) -> AgentScopeLlmProxy:
+    def get_llm_proxy(self) -> OpenaiLlmProxyWithTracker:
         """Get the LlmProxyForAgentScope instance.
         Returns:
             LlmProxyForAgentScope:
