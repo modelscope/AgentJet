@@ -15,18 +15,6 @@ from openai import OpenAI, AsyncOpenAI
 if TYPE_CHECKING:
     from ajet import Workflow
 
-# import openai
-# client = openai.OpenAI()
-
-# response = client.chat.completions.create(
-#     model="gpt-3.5-turbo",  # You can replace this with "gpt-4" if available
-#     messages=[
-#         {"role": "system", "content": "You are a helpful assistant."},
-#         {"role": "user", "content": "Hello! Tell me a joke about programming."}
-#     ],
-#     max_tokens=100,  # Limit the response length
-#     temperature=0.7  # Control the randomness of the output
-# )
 
 class MockAsyncCompletions(AsyncCompletions):
     async def create(self, *args, **kwargs) -> Any: # type: ignore
@@ -38,17 +26,22 @@ class MockAsyncChat(AsyncChat):
         return MockAsyncCompletions(self._client)
 
 class OpenaiClientModelTuner(AsyncOpenAI):
-
+    """ At this layer, we will determine which model to use:
+        - training model
+        - debug model assigned by user, used when this target is not being trained
+    """
     def __init__(
         self,
         config,
         context_tracker: MultiAgentContextTracker,
         workflow: "Workflow",
         agent_name: str,
-        debug_model: str,
+        debug_model: str | None = None,
         use_debug_model: bool = False,
         **kwargs,
     ):
+        self.debug_model = debug_model
+        self.use_debug_model = use_debug_model
         self.llm_proxy = OpenaiLlmProxyWithTracker(
             context_tracker=context_tracker,
             config=config,
@@ -67,6 +60,16 @@ class OpenaiClientModelTuner(AsyncOpenAI):
         *args,
         **kwargs
     ) -> ChatCompletion:
+
+        # route first
+        if self.use_debug_model and (self.debug_model is not None):
+            client = AsyncOpenAI()
+            return await client.chat.completions.create(
+                model = self.debug_model,
+                messages = messages,    # type: ignore
+                tools = tools,
+                tool_choice = tool_choice, # type: ignore
+            )
 
         # call llm model ✨
         response_gen = await self.llm_proxy(

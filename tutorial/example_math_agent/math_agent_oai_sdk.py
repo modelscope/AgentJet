@@ -8,25 +8,6 @@ from textwrap import dedent
 import json
 import asyncio
 
-# def extract_final_answer(result) -> str:
-#     """Extract the final answer from the agent's response."""
-#     try:
-#         if (
-#             hasattr(result, "metadata")
-#             and isinstance(result.metadata, dict)
-#             and "result" in result.metadata
-#         ):
-#             return result.metadata["result"]
-#         if hasattr(result, "content"):
-#             if isinstance(result.content, dict) and "result" in result.content:
-#                 return result.content["result"]
-#             return str(result.content)
-#         return str(result)
-#     except Exception as e:
-#         logger.warning(f"Extract final answer error: {e}. Raw: {result}")
-#         return str(result)
-
-
 
 # ------------------------------------------------------
 # Simple version - no tool call
@@ -88,7 +69,7 @@ class ExampleMathLearn(Workflow):
             "type": "function",
             "function": {
                 "name": "execute_python_code",
-                "description": "Execute the given Python code in a temp file and capture the return code, standard output, and error.",
+                "description": "Execute the given Python code in a temp file and capture the return code, standard output, and error. Note that you should print something or you will get empty return.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -155,7 +136,6 @@ class ExampleMathLearn(Workflow):
                             "content": reply_message.choices[0].message.content
                         })
 
-                    from ajet import bp; bp('MATHX')
                     messages.append(tool_result_message)
 
             # Step 3: Make a follow-up API call with the tool result
