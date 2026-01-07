@@ -24,7 +24,6 @@ class BaseContextTracker(BaseTracker):
         full_context (List[ExtendedMessage]): List of all messages in the conversation
         current_context_status (str): Current status of the context
         max_seq_length (int): Maximum sequence length for the context window
-        max_env_output_length (int): Maximum length for environment outputs
         terminal_rewards_dict (dict): Dictionary storing terminal rewards
     """
 

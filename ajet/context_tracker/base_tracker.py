@@ -122,7 +122,6 @@ class BaseTracker(object):
         max_response_length = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
-        self.max_env_output_length: int = self.config.ajet.context_tracker.max_env_len
         self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
         self._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
         self.generated_token_cnt = 0

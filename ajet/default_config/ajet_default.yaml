@@ -26,7 +26,7 @@ ajet:
     user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
 
     # whether or not to disable all tool calls
-    agentscope_disable_toolcalls: False
+    force_disable_toolcalls: False
 
     # maximum number of parallel environments / simulate workers
     max_env_worker: 128
@@ -172,6 +172,31 @@ ajet:
       max_score: 1
 
 
+
+  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
+  context_tracker:
+
+    # Retokenization Drift: inconsistencies between training and inference token array
+    fix_retokenization_drift: True
+
+    # timeline merging policy used in Context Tracker
+    timeline_merging_policy:
+
+      # compare_level = "text":  relaxed compare with text, more easier to match, at very little cost
+      # compare_level = "token": strict compare with token, cause less aggressive merging
+      timeline_compare_level: "text"  # options: "text", "token"
+
+      # whether or not to ignore tool calls when comparing steps
+      ignore_tools: True
+
+
+    # deprecated
+    alien_llm_model: qwen3-235b-a22b-instruct-2507
+
+    # deprecated
+    alien_llm_response_length: 512
+
+
   # when backbone is `debug`, debug related configurations
   debug:
     debug_max_parallel: 16
@@ -206,21 +231,6 @@ ajet:
     ulysses_sequence_parallel_size: 1
     checkpoint_base_dir: ./saved_checkpoints
 
-
-  # context tracker protocol is valid ONLY when `use_agentscope_protocol=False`
-  context_tracker:
-    context_tracker_type: "linear"
-    alien_llm_model: qwen3-235b-a22b-instruct-2507
-    alien_llm_response_length: 512
-    max_env_len: 4096
-
-    # timeline merging policy used in Context Tracker
-    timeline_merge_policy:
-
-      # compare_level = "text":  relaxed compare with text, more easier to match, at very little cost
-      # compare_level = "token": strict compare with token, cause less aggressive merging
-      timeline_compare_level: "text"  # options: "text", "token"
-      ignore_tools: True    # whether or not to ignore tool calls when comparing steps
 
 
 

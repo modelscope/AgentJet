@@ -17,7 +17,6 @@ class BaseAgentRunner(object):
         self.config = config
         self.max_steps: int = self.config.ajet.rollout.multi_turn.max_steps
         self.max_model_len: int = self.config.ajet.rollout.max_model_len
-        self.max_env_len: int = self.config.ajet.context_tracker.max_env_len
 
     def get_judge(self) -> BaseJudge:  # type: ignore
         if self.config.ajet.task_judge.judge_type == "customized_protocol":

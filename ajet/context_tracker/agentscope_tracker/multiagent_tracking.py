@@ -43,7 +43,7 @@ class MultiAgentContextTracker(BaseContextTracker):
     def step_prepare(self, messages: List[dict], tools: List = []):
         self.full_context = []
         consider_roles = ["user", "assistant", "system", "tool"]
-        disable_toolcalls = self.config.ajet.rollout.agentscope_disable_toolcalls
+        disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
         if disable_toolcalls:
             consider_roles.remove("tool")
             tools = []
@@ -86,8 +86,10 @@ class MultiAgentContextTracker(BaseContextTracker):
                 if ignore:
                     continue
                 msg["content"] = str(msg["content"])  # TODO: better handling mm data
+
             if msg["role"] == "system":
                 author = "initialization"
+
             if msg["role"] == "tool":
                 author = "env"
             else:
@@ -216,12 +218,15 @@ class MultiAgentContextTracker(BaseContextTracker):
         if context_safe:
             if (
                 "prompt_text" in llm_output and "prompt_token_ids" in llm_output
-            ):  # currently we make this patch to better compat with Trinity training backend
+            ):
+                # currently we make this patch to better compat with Trinity training backend
+                # fix Retokenization Drift
                 self.full_context = self.patch_prompt_tokens(
                     prompt_text=llm_output["prompt_text"],
                     prompt_token_ids=llm_output["prompt_token_ids"],
                     previous_ext_context=self.full_context,
                 )
+
             self.full_context += [llm_ext_msg]
             is_safe, length = self.get_context_token_num_and_safety(self.full_context, tools)
             if length > self.config.ajet.rollout.max_model_len:
@@ -244,12 +249,14 @@ class MultiAgentContextTracker(BaseContextTracker):
             #     print(f"General Warning: merge failure discovered.")
         return None
 
+
     def patch_prompt_tokens(
         self,
         prompt_text: str,
         prompt_token_ids: List[int],
         previous_ext_context: List[ExtendedMessage],
     ) -> List[ExtendedMessage]:
+
         # remove tailing
         if prompt_text.endswith(self.generation_prompt):
             prompt_text = prompt_text[: -len(self.generation_prompt)]
@@ -267,6 +274,7 @@ class MultiAgentContextTracker(BaseContextTracker):
                 tmp = [prompt_token_ids[i]]
         if len(tmp) > 0:
             split_prompt_token_ids += [tmp]
+
         # split prompt text into message level
         prompt_text_split = prompt_text.split("<|im_start|>")
         assert prompt_text_split[0] == "", "Prompt text should start with <|im_start|>"
@@ -284,38 +292,40 @@ class MultiAgentContextTracker(BaseContextTracker):
             )
 
         # try to recover tokens
-        for j in range(len(previous_ext_context)):
-            if prompt_text_split[j] != current_prompt_text[j]:
-                # if prompt text mismatch, we can replace the tokens
-                print_dict(
-                    {
-                        "expected_prompt_text": prompt_text_split[j],
-                        "current_prompt_text": current_prompt_text[j],
-                    },
-                    mod="exception",
-                    header="Prompt text mismatch, Please report a github issue",
-                )
-                previous_ext_context[j].token_arr = self.tokenizer(
-                    prompt_text_split[j], return_tensors="pt", padding=False
-                )
-            else:
-                # if prompt text match
-                # we further check whether all token ids matches
-                vllm_token_array = split_prompt_token_ids[j]
-                tracker_token_array = previous_ext_context[j].token_arr
-                if vllm_token_array == tracker_token_array:
-                    # good, everything is perfect
-                    continue
-                else:
-                    # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
+        if self.config.ajet.context_tracker.fix_retokenization_drift:
+            for j in range(len(previous_ext_context)):
+                if prompt_text_split[j] != current_prompt_text[j]:
+                    # if prompt text mismatch, we can replace the tokens
                     print_dict(
                         {
-                            "expected_token_ids": split_prompt_token_ids[j],
-                            "current_token_ids": previous_ext_context[j].token_arr,
+                            "expected_prompt_text": prompt_text_split[j],
+                            "current_prompt_text": current_prompt_text[j],
                         },
                         mod="exception",
-                        header="Prompt token ids mismatch, Please report a github issue",
+                        header="Prompt text mismatch, Please report a github issue",
                     )
+                    previous_ext_context[j].token_arr = self.tokenizer(
+                        prompt_text_split[j], return_tensors="pt", padding=False
+                    )
+                else:
+                    # if prompt text match
+                    # we further check whether all token ids matches
+                    vllm_token_array = split_prompt_token_ids[j]
+                    tracker_token_array = previous_ext_context[j].token_arr
+                    if vllm_token_array == tracker_token_array:
+                        # good, everything is perfect
+                        continue
+                    else:
+                        # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
+                        print_dict(
+                            {
+                                "expected_token_ids": split_prompt_token_ids[j],
+                                "current_token_ids": previous_ext_context[j].token_arr,
+                            },
+                            mod="exception",
+                            header="Prompt token ids mismatch, Please report a github issue",
+                        )
+
         # remove extra messages
         if len(previous_ext_context) != len(prompt_text_split):
             previous_ext_context = previous_ext_context[: len(prompt_text_split)]
@@ -418,8 +428,8 @@ class MultiAgentContextTracker(BaseContextTracker):
         )
 
     def group_merge(self) -> List[List[ExtendedMessage]]:
-        timeline_merge_policy = self.config.ajet.timeline_merge_policy
-        self.grouped_steps = merge_tracker_timelines(self.grouped_steps, timeline_merge_policy)
+        timeline_merging_policy = self.config.ajet.context_tracker.timeline_merging_policy
+        self.grouped_steps = merge_tracker_timelines(self.grouped_steps, timeline_merging_policy)
         return self.grouped_steps
 
     def group_tokenize(self):

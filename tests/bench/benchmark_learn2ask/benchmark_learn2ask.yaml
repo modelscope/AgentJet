@@ -14,7 +14,7 @@ ajet:
 
   rollout:
     user_workflow: "tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask"
-    agentscope_disable_toolcalls: True
+    force_disable_toolcalls: True
     temperature: 1.0
     max_env_worker: 64
     num_repeat: 6

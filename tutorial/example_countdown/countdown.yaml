@@ -22,7 +22,7 @@ ajet:
     user_workflow: tutorial.example_countdown.countdown->ExampleCountdownLearn
 
     # whether or not to disable all tool calls
-    agentscope_disable_toolcalls: True
+    force_disable_toolcalls: True
 
     # maximum number of parallel environments / simulate workers
     max_env_worker: 128

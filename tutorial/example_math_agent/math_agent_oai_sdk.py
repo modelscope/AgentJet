@@ -1,10 +1,7 @@
-from agentscope.message import Msg
 from loguru import logger
-
 from ajet import Workflow, WorkflowOutput, WorkflowTask
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat import ChatCompletionMessageToolCall
-from agentscope.tool import execute_python_code
 from ajet.tuner_v2 import TunerV2
 from textwrap import dedent
 
@@ -131,8 +128,16 @@ class ExampleMathLearn(Workflow):
                     arguments = json.loads(tool_call.function.arguments)
 
                     def sync_wrapper():
-                        # since execute_python_code will create subprocess, we need to run it in a separate thread
-                        return asyncio.run(execute_python_code(arguments["code"], arguments.get("timeout", 300)))
+                        import subprocess
+                        import sys
+                        process = subprocess.run(
+                            [sys.executable, "-c", arguments["code"]],
+                            timeout=arguments.get("timeout", 300),
+                            capture_output=True,
+                            text=True
+                        )
+                        return process.stdout
+
                     result = await asyncio.to_thread(sync_wrapper)
 
                     tool_result_message = {
