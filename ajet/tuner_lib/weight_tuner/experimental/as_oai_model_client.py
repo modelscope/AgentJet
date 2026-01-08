@@ -83,6 +83,8 @@ class InterchangeClient:
             tool_choice="auto",
         )
 
+        # this is an important id assignment
+        response.id = timeline_uuid
         assert isinstance(response, ChatCompletion)
         return response
 
