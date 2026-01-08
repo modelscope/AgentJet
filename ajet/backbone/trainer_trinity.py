@@ -19,7 +19,7 @@ from trinity.utils.log import get_logger
 from trinity.utils.monitor import MONITOR, Monitor
 
 from ajet.backbone.warm_up import warm_up_process
-from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
+from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from ajet.schema.trajectory import Sample
@@ -116,6 +116,10 @@ class AjetWorkflowWrap(Workflow):
 
     async def run_async(self):
         ajet_config = get_ajet_config_from_trinity_side()
+        if ajet_config.ajet.enable_experimental_reverse_proxy:
+            raise NotImplementedError(
+                "The experimental reverse proxy is not supported in Trinity backbone yet."
+            )
         warm_up_process(ajet_config)
         tracker = await TrinityRolloutManager(
             is_eval=self.is_eval,

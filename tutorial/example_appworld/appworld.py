@@ -27,11 +27,10 @@ class ExampleAgentScopeWorkflow(Workflow):
                 )
             )
 
-        model_tuner = tuner.as_agentscope_model()
         agent = ReActAgent(
             name="Qwen",
             sys_prompt=first_msg["content"],
-            model=model_tuner,
+            model=tuner.as_agentscope_model(),
             formatter=DashScopeChatFormatter(),
             memory=InMemoryMemory(),
             toolkit=None,
@@ -40,7 +39,7 @@ class ExampleAgentScopeWorkflow(Workflow):
         agent.set_console_output_enabled(False)
         env = workflow_task.gym_env
         step = 0
-        for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
+        for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol

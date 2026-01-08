@@ -38,7 +38,7 @@ class ResourceKeeper(object):
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             if self.env:
-                self.env.release_instance(self.workflow_task.task_env_uuid)
+                self.env.release_instance(self.workflow_task.episode_uuid)
         except Exception as e:
             logger.bind(exception=True).exception(
                 f"encounter exception in env_worker.release_instance~ error={e.args}"
@@ -56,7 +56,7 @@ class ResourceKeeper(object):
         self.workflow_task.task.init_messages = init_messages
         self.workflow_task.gym_env = self.generate_gym_env(
             self.env,
-            self.workflow_task.task_env_uuid,
+            self.workflow_task.episode_uuid,
             self.workflow_task.task_thread_index,
             self.workflow_task.observation_window,
         )
@@ -81,7 +81,7 @@ class ResourceKeeper(object):
                 init_response = self.env.create_instance(
                     env_type=self.env_type,
                     task_id=self.task_id,
-                    instance_id=self.workflow_task.task_env_uuid,
+                    instance_id=self.workflow_task.episode_uuid,
                     params=self.env_params,
                 )
                 state_message: dict = init_response["state"]
@@ -91,7 +91,7 @@ class ResourceKeeper(object):
                     f"encounter exception in env_worker.create_instance~ error={e.args}"
                 )
                 if self.env is not None:
-                    self.env.release_instance(self.workflow_task.task_env_uuid)
+                    self.env.release_instance(self.workflow_task.episode_uuid)
                 raise e
         else:
             task = self.workflow_task.task
@@ -129,9 +129,9 @@ class ResourceKeeper(object):
         return query, init_messages
 
     def generate_gym_env(
-        self, env_client: Any, task_env_uuid: str, task_thread_index: int, observation_window: Dict
+        self, env_client: Any, episode_uuid: str, task_thread_index: int, observation_window: Dict
     ) -> "BaseGymEnv":
-        return BaseGymEnv(env_client, task_env_uuid, task_thread_index, observation_window)
+        return BaseGymEnv(env_client, episode_uuid, task_thread_index, observation_window)
 
 
 class BaseGymEnv(object):
@@ -142,14 +142,14 @@ class BaseGymEnv(object):
     def __init__(
         self,
         env_client: EnvClientNg,
-        task_env_uuid: str,
+        episode_uuid: str,
         task_thread_index: int,
         observation_window: Dict,
     ):
         self.env_client = env_client
         self.task_thread_index = task_thread_index
         self.observation_window = observation_window
-        self.task_env_uuid = task_env_uuid
+        self.episode_uuid = episode_uuid
 
     def step(self, action: dict) -> Tuple[str, float, bool, dict]:
         """Take a step in the gym environment."""
@@ -169,7 +169,7 @@ class BaseGymEnv(object):
 
         self.observation_window["step"][self.task_thread_index] += 1
         env_output = self.env_client.step(
-            instance_id=self.task_env_uuid,
+            instance_id=self.episode_uuid,
             action=action,
         )
         obs = ""
@@ -189,6 +189,6 @@ class BaseGymEnv(object):
         """Reset gym environment."""
         raise RuntimeError("Reset is not supported")
 
-    def evaluate(self, task_env_uuid, params):
+    def evaluate(self, episode_uuid, params):
         """Evaluate and get reward."""
-        return self.env_client.evaluate(task_env_uuid, params)
+        return self.env_client.evaluate(episode_uuid, params)

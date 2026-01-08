@@ -3,6 +3,16 @@ from pathlib import Path
 
 from beast_logger import print_dict
 from dotenv import load_dotenv
+import socket
+
+
+def find_free_port() -> int:
+    """Find a free port on the system."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+    return port
 
 
 def get_runtime_env(is_trinity: bool = False) -> dict:
@@ -20,6 +30,7 @@ def get_runtime_env(is_trinity: bool = False) -> dict:
             # "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
             "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
             "AJET_CONFIG_REDIRECT": os.getenv("AJET_CONFIG_REDIRECT", ""),
+            "AJET_DAT_INTERCHANGE_PORT": str(find_free_port())
         }
     }
 

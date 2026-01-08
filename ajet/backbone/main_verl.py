@@ -247,6 +247,10 @@ class TaskRunner:
 
         from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
+        if config.ajet.enable_experimental_reverse_proxy:
+            from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+            start_interchange_server()
+
         # Initialize the PPO trainer.
         trainer = AjetRayPPOTrainer(
             config=config,
