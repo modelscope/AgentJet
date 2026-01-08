@@ -2,7 +2,7 @@ import asyncio
 from typing import TYPE_CHECKING, Any, List, Callable, Literal, Type, Union
 from loguru import logger
 from pydantic import BaseModel
-from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
+from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from ajet.task_rollout.async_llm_bridge import OpenaiLlmProxyWithTracker
@@ -38,14 +38,15 @@ class OpenaiClientModelTuner(AsyncOpenAI):
         agent_name: str,
         debug_model: str | None = None,
         use_debug_model: bool = False,
-        **kwargs,
+        llm_inference_fn: Callable | None = None,
     ):
         self.debug_model = debug_model
         self.use_debug_model = use_debug_model
+        assert llm_inference_fn is not None, "llm_inference_fn must be provided"
         self.llm_proxy = OpenaiLlmProxyWithTracker(
             context_tracker=context_tracker,
             config=config,
-            **kwargs
+            llm_inference_fn=llm_inference_fn,
         )
 
     @property

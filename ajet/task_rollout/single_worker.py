@@ -93,7 +93,7 @@ class BaseRolloutManager:
             task_id=task.task_id,
             task_thread_index=task_thread_index,
             task_batch_index=task_batch_index,
-            task_env_uuid=uuid.uuid4().hex,
+            episode_uuid=uuid.uuid4().hex,
             task_tag=task_tag,
             observation_window=observation_window,
             llm_inference_fn=llm_inference_fn,

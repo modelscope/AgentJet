@@ -171,8 +171,6 @@ class ExampleLearn2Ask(Workflow):
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
 
-        model_tuner = tuner.as_agentscope_model()
-
         messages = workflow_task.task.init_messages
         assert isinstance(messages, list)
         truth_action = workflow_task.task.metadata["decision_truth"] or "continue"
@@ -181,7 +179,7 @@ class ExampleLearn2Ask(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner,
+            model=tuner.as_agentscope_model(),
             formatter=DashScopeChatFormatter(),
             toolkit=None,
             memory=InMemoryMemory(),

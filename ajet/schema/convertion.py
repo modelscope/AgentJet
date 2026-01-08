@@ -1,8 +1,14 @@
 
+import time
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
+from agentscope.model import ChatResponse as AgentScopeChatResponse
 from openai.types.completion_usage import CompletionUsage
-import time
+from typing import Any, Callable, Dict, List, Literal, Type, Union
+from agentscope.message import TextBlock, ToolUseBlock
+from agentscope._utils._common import _json_loads_with_repair
+from pydantic import BaseModel
+from agentscope.model import ChatResponse
 
 
 def convert_llm_proxy_response_to_oai_response(llm_proxy_response):
@@ -39,6 +45,66 @@ def convert_llm_proxy_response_to_oai_response(llm_proxy_response):
         object="chat.completion",
         usage=usage,
     )
+
+# copied from AgentScope's DashScopeChatModule
+def convert_llm_proxy_response_to_agentscope_response(
+    message,
+    structured_model: Type[BaseModel] | None = None,
+) -> AgentScopeChatResponse:    # type: ignore
+    content_blocks: List[TextBlock | ToolUseBlock] = []
+    content = message.get("content")
+    metadata: dict | None = None
+
+    if content not in [
+        None,
+        "",
+        [],
+    ]:
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and "text" in item:
+                    content_blocks.append(
+                        TextBlock(
+                            type="text",
+                            text=item["text"],
+                        ),
+                    )
+        else:
+            content_blocks.append(
+                TextBlock(
+                    type="text",
+                    text=content,
+                ),
+            )
+
+    if message.get("tool_calls"):
+        for tool_call in message["tool_calls"]:
+            input_ = _json_loads_with_repair(
+                tool_call["function"].get(
+                    "arguments",
+                    "{}",
+                )
+                or "{}",
+            )
+            content_blocks.append(
+                ToolUseBlock(
+                    type="tool_use",
+                    name=tool_call["function"]["name"],
+                    input=input_,  # type: ignore
+                    id=tool_call["id"],
+                ),
+            )
+
+            if structured_model:
+                metadata = input_  # type: ignore
+
+    parsed_response = AgentScopeChatResponse(
+        content=content_blocks,
+        metadata=metadata,
+    )
+
+    return parsed_response
+
 
 
 def test_convert_llm_proxy_response_to_oai_response():

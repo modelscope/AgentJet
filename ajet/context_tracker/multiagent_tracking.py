@@ -8,7 +8,7 @@ from beast_logger import NestedJsonItem, SeqItem, print_dict, print_nested
 from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from ajet.context_tracker.agentscope_tracker.timeline_merging import (
+from ajet.context_tracker.timeline_merging.timeline_merging import (
     merge_tracker_timelines, is_timeline_mergeable
 )
 from ajet.context_tracker.basic_tracker import (
@@ -36,6 +36,8 @@ class ContextTrackerConfig:
     detect_timeline_snap: bool = False
 
 
+
+
 class MultiAgentContextTracker(BaseContextTracker):
     """
     Context tracker is responsible to monitor and process LLM IO.
@@ -44,15 +46,14 @@ class MultiAgentContextTracker(BaseContextTracker):
 
     def __init__(
         self,
-        llm_inference_fn,
         tokenizer: PreTrainedTokenizer,
         config,
         should_interrupt_fn,
         generated_token_callback_fn,
+        episode_uuid: str,
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
-        self.llm_inference_fn = llm_inference_fn
         self.tokenizer = tokenizer
         self.should_interrupt_fn = should_interrupt_fn
         self.generated_token_callback_fn = generated_token_callback_fn
@@ -60,6 +61,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
         self.timeline_cache = {}
+        self.episode_uuid = episode_uuid
 
 
     def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):

@@ -10,7 +10,7 @@ class EnvServiceJudge(BaseJudge):
         raw_reward = 0
 
         env = workflow_task.gym_env
-        raw_reward = env.evaluate(workflow_task.task_env_uuid, params={"sparse": False})
+        raw_reward = env.evaluate(workflow_task.episode_uuid, params={"sparse": False})
         if raw_reward >= 1:
             is_success = True
         else:

@@ -5,7 +5,7 @@ from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
 from loguru import logger
 from pydantic import BaseModel
 
-from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
+from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from ajet.task_rollout.async_llm_bridge import AgentScopeLlmProxyWithTracker
@@ -29,7 +29,7 @@ class AgentScopeModelTuner(DashScopeChatModel):
         agent_name: str,
         debug_model: DashScopeChatModel | None,
         use_debug_model: bool = False,
-        **kwargs,
+        llm_inference_fn=None,
     ) -> None:
         self.config = config
         self.context_tracker = context_tracker
@@ -39,7 +39,7 @@ class AgentScopeModelTuner(DashScopeChatModel):
         self.debug_model = debug_model
         self.use_debug_model = use_debug_model
         self.llm_proxy = AgentScopeLlmProxyWithTracker(
-            context_tracker=context_tracker, config=config, **kwargs
+            context_tracker=context_tracker, config=config, llm_inference_fn=llm_inference_fn
         )
         super().__init__(
             model_name="ajet",

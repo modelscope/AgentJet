@@ -22,9 +22,9 @@ class ExampleMathLearn_Simple_NoToolCall(Workflow):
         You should return your final answer within \\boxed{{}}.
     """)
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
         query = workflow_task.task.main_query
-        client = model_tuner.as_raw_openai_sdk_client()
+        client = tuner.as_raw_openai_sdk_client()
 
         messages = [
             {
@@ -39,12 +39,6 @@ class ExampleMathLearn_Simple_NoToolCall(Workflow):
         reply_message: ChatCompletion = await client.chat.completions.create(messages=messages)
         final_answer = reply_message.choices[0].message.content
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-
-
-
-
-
-
 
 
 
@@ -87,11 +81,11 @@ class ExampleMathLearn(Workflow):
         },
     ]
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
 
 
         query = workflow_task.task.main_query
-        client = model_tuner.as_raw_openai_sdk_client()
+        client = tuner.as_raw_openai_sdk_client()
 
         # call 1: get response with tool call
         messages = [

@@ -64,12 +64,10 @@ How to define a trainable workflow 🚀:
         [ ]       from agentscope.tool import Toolkit, execute_python_code
         [ ]       self.toolkit = Toolkit()
         [ ]       self.toolkit.register_tool_function(execute_python_code)
-        [ ]       model_tuner = tuner.as_agentscope_model()
         [ ]       self.agent = ReActAgent(
         [ ]           name="math_react_agent",
         [ ]           sys_prompt=system_prompt,
-        [-]           model=DashScopeChatModel(model='qwen-max'),
-        [+]           model=model_tuner,
+        [+-]          model=tuner.as_agentscope_model(),
         [ ]           formatter=DashScopeChatFormatter(),
         [ ]           toolkit=self.toolkit,
         [ ]           memory=InMemoryMemory(),

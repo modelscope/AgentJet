@@ -2,7 +2,7 @@ import asyncio
 
 from ajet import AjetTuner
 from ajet import Workflow, WorkflowOutput
-from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
+from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from ajet.context_tracker.basic_tracker import BaseContextTracker
@@ -36,18 +36,18 @@ class GeneralRunner(BaseAgentRunner):
             task_batch_index=task_batch_index,
             task_tag=task_tag,
             task_id=task_id,
+            episode_uuid=workflow_task.episode_uuid,
             **hooks,
         )
-        m_tuner = AjetTuner(
+        tuner = AjetTuner(
             context_tracker=context_tracker,
             llm_inference_fn=self.llm_inference_fn,
-            tokenizer=self.tokenizer,
             user_workflow=user_workflow,
             config=self.config,
         )
 
         workflow_output: WorkflowOutput = asyncio.run(
-            user_workflow.execute(workflow_task, m_tuner)
+            user_workflow.execute(workflow_task, tuner)
         )
         if workflow_output.reward is not None:
             raw_reward, is_success = (
@@ -80,4 +80,5 @@ class GeneralRunner(BaseAgentRunner):
         context_tracker.process_reward(reward)
         # mark the thread as ended
         observation_window["step"][task_thread_index] = -1
+        tuner.terminate_episode()
         return context_tracker

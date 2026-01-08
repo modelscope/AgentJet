@@ -6,6 +6,9 @@ ajet:
   backbone: debug # `debug` or `trinity` or `verl`
 
 
+  # the experimental reverse proxy feature that allows `tuner.as_oai_baseurl_apikey` feature
+  enable_experimental_reverse_proxy: True
+
   model:
     # which model should be trained
     path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct
