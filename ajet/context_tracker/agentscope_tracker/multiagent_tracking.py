@@ -37,6 +37,10 @@ class ContextTrackerConfig:
 
 
 class MultiAgentContextTracker(BaseContextTracker):
+    """
+    Context tracker is responsible to monitor and process LLM IO.
+    Each context tracker is responsible for ONE episode run only.
+    """
 
     def __init__(
         self,
@@ -55,10 +59,11 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.context_overflow = False
         self.output_kwargs = {}
         self.input_kwargs = {}
+        self.timeline_cache = {}
 
 
-    def step_prepare(self, messages: List[dict], tools: List = []):
-        self.full_context = []
+    def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):
+        timeline = []
         consider_roles = ["user", "assistant", "system", "tool"]
         disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
         if disable_toolcalls:
@@ -112,7 +117,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             else:
                 author = "env"
 
-            self.full_context += [
+            timeline += [
                 ExtendedMessage(
                     author=author,
                     role=msg["role"],
@@ -126,9 +131,9 @@ class MultiAgentContextTracker(BaseContextTracker):
             ]
 
         # check token overflow
-        converted_message = self.to_role_content(self.full_context)
-        self.full_context = ExtendedMessage.check_and_merge_chained_tool_response(
-            self.full_context, self.tokenizer
+        converted_message = self.to_role_content(timeline)
+        timeline = ExtendedMessage.check_and_merge_chained_tool_response(
+            timeline, self.tokenizer
         )
         context_safe, token_overflow, info = self.check_context_token_num_safe(
             converted_message, tools
@@ -137,6 +142,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         if not context_safe:
             self.context_overflow = True
 
+        self.timeline_cache[timeline_uuid] = timeline
         return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
 
 
@@ -147,7 +153,10 @@ class MultiAgentContextTracker(BaseContextTracker):
         context_safe,
         converted_message: List[dict],
         tools: List = [],
+        timeline_uuid: str = "",
     ):
+        assert timeline_uuid in self.timeline_cache, "Timeline UUID not found in cache. Please ensure `step_prepare` is called before `step_track`."
+        timeline = self.timeline_cache.get(timeline_uuid, [])
         if not self.already_mad_flag:
             if (
                 compute_string_madness(
@@ -195,45 +204,45 @@ class MultiAgentContextTracker(BaseContextTracker):
             ):
                 # currently we make this patch to better compat with Trinity training backend
                 # fix Retokenization Drift
-                self.full_context = self.patch_prompt_tokens(
+                timeline = self.patch_prompt_tokens(
                     prompt_text=llm_output["prompt_text"],
                     prompt_token_ids=llm_output["prompt_token_ids"],
-                    previous_ext_context=self.full_context,
+                    previous_ext_context=timeline,
                 )
 
-            self.save_llm_interaction_timeline(tools, llm_ext_msg)
+            self.save_llm_interaction_timeline(tools, llm_ext_msg, timeline)
         return None
 
 
 
-    def save_llm_interaction_timeline(self, tools, llm_ext_msg):
-        """Save the LLM interaction timeline by adding the LLM response to `grouped_steps`
+    def save_llm_interaction_timeline(self, tools, llm_ext_msg, timeline):
+        """Save the LLM interaction timeline by adding the LLM response to `self.saved_timelines`
         """
-        self.full_context += [llm_ext_msg]
-        _, length = self.get_context_token_num_and_safety(self.full_context, tools)
+        timeline += [llm_ext_msg]
+        _, length = self.get_context_token_num_and_safety(timeline, tools)
         if length > self.config.ajet.rollout.max_model_len:
             raise RuntimeError(
                     f"Unexpected token overflow after adding LLM response. Full context length {length}, generated token length {len(llm_ext_msg.token_arr)}"
                 )
 
-        assert self.full_context[0].first_message, "First message should be marked as first_message"
+        assert timeline[0].first_message, "First message should be marked as first_message"
 
         # assert all other message is not first_message
-        for i in range(1, len(self.full_context)):
-            assert not self.full_context[i].first_message
+        for i in range(1, len(timeline)):
+            assert not timeline[i].first_message
 
-        # save to self.grouped_steps
-        self.grouped_steps += [copy.deepcopy(self.full_context)]
+        # save to self.saved_timelines
+        self.saved_timelines += [copy.deepcopy(timeline)]
 
         # DEBUG = True   # warn when merge fails
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         if (
             self.config.ajet.context_tracker.detect_timeline_snap
-            and len(self.grouped_steps) >= 2
+            and len(self.saved_timelines) >= 2
             and (
                 not is_timeline_mergeable(
-                    self.grouped_steps[-1],
-                    self.grouped_steps[-2],
+                    self.saved_timelines[-1],
+                    self.saved_timelines[-2],
                     timeline_merging_policy
                 )
             )
@@ -391,17 +400,15 @@ class MultiAgentContextTracker(BaseContextTracker):
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
-        ext_steps = self.full_context
         # TODO: support multi-step reward
         # in current implementation, all reward in all step equals
         # we'll implement fine-grained step reward in future versions
         self.reward_structure.step_reward_arr = [
             self.compute_step_level_reward(
-                ext_steps=ext_steps,
                 index=i,
-                total_steps=len(self.grouped_steps),
+                total_steps=len(self.saved_timelines),
             )
-            for i in range(len(self.grouped_steps))
+            for i in range(len(self.saved_timelines))
         ]
 
 
@@ -410,11 +417,11 @@ class MultiAgentContextTracker(BaseContextTracker):
         nested_items_print_buffer = {}
         step_reward = 0.0
 
-        for index, ext_steps in enumerate(self.grouped_steps):
+        for index, ext_steps in enumerate(self.saved_timelines):
             tracker_tokenized = self.tokenize_steps(
                 ext_steps=ext_steps,
                 index=index,
-                total_steps=len(self.grouped_steps),
+                total_steps=len(self.saved_timelines),
             )
             text_arr = [self.tokenizer.decode(t) for t in tracker_tokenized["input_ids"]]
             input_id_arr = [str(t) for t in tracker_tokenized["input_ids"]]
@@ -488,8 +495,8 @@ class MultiAgentContextTracker(BaseContextTracker):
 
     def group_merge(self) -> List[List[ExtendedMessage]]:
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
-        self.grouped_steps = merge_tracker_timelines(self.grouped_steps, timeline_merging_policy)
-        return self.grouped_steps
+        self.saved_timelines = merge_tracker_timelines(self.saved_timelines, timeline_merging_policy)
+        return self.saved_timelines
 
 
     def group_tokenize(self):

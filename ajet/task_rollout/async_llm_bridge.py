@@ -12,6 +12,7 @@ from omegaconf import DictConfig
 from pydantic import BaseModel
 from transformers.tokenization_utils import PreTrainedTokenizer
 from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
+from vllm.outputs import RequestOutput as VerlVllmRequestOutput
 
 from agentscope.model import ChatResponse as AgentScopeChatResponse
 from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatCompletion
@@ -44,7 +45,7 @@ class AsyncLlmBridge(object):
         self.max_llm_retries = max_llm_retries
 
     def get_llm_inference_fn(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
-        def llm_chat(
+        def llm_chat_verl(
             messages: List[Dict[str, str]],
             custom_sampling_params: dict = {},
             tools=[],
@@ -81,7 +82,9 @@ class AsyncLlmBridge(object):
             )
 
             if self.config.ajet.rollout.name == "vllm":
+                final_res: VerlVllmRequestOutput
                 token_array = final_res.outputs[0].token_ids
+                logprob_array = final_res.outputs[0].logprobs
             elif self.config.ajet.rollout.name == "sglang":
                 token_array = final_res
 
@@ -130,13 +133,14 @@ class AsyncLlmBridge(object):
                 "tool_calls": tool_calls,
                 "tokens": [
                     TokenAndProb(
-                        token_id=token,
-                        logprob=-1,
-                        decoded_string=self.tokenizer.decode(token),
+                        token_id=token_id,
+                        logprob=logprob[token_id].logprob,    # Warning: vllm logprob does not participant training (not reliable enough), for log only.
+                        decoded_string=logprob[token_id].decoded_token,
                     )
-                    for token in token_array  # type: ignore
+                    for token_id, logprob in zip(token_array, logprob_array)  # type: ignore
                 ],
             }
+
 
         def llm_chat_remote(
             messages: List[Dict[str, str]],
@@ -165,6 +169,7 @@ class AsyncLlmBridge(object):
                     logger.bind(exception=True).exception(f"rollout_server.{i} error: {e.args}")
                     time.sleep(i + 1)
             return output_message[-1]  # type: ignore
+
 
         def llm_chat_trinity(
             messages: List[Dict[str, str]],
@@ -222,7 +227,7 @@ class AsyncLlmBridge(object):
                 "tokens": [
                     TokenAndProb(
                         token_id=token,
-                        logprob=tokenlogprob.logprob,
+                        logprob=tokenlogprob.logprob, # Warning: vllm logprob does not participant training, for log only.
                         decoded_string=tokenlogprob.token,
                     )
                     for tokenlogprob, token in zip(
@@ -237,7 +242,7 @@ class AsyncLlmBridge(object):
         if self.llm_mode == "trinity":
             return llm_chat_trinity
         else:
-            return llm_chat
+            return llm_chat_verl
 
 
 
@@ -284,6 +289,8 @@ class OpenaiLlmProxyWithTracker(object):
         structured_model=None,
         **kwargs,
     ):
+        timeline_uuid = uuid.uuid4().hex
+
         # prepare context tracker, check context safety
         (
             context_safe,
@@ -292,7 +299,7 @@ class OpenaiLlmProxyWithTracker(object):
             converted_message,
             custom_sampling_params,
             tools,
-        ) = self.context_tracker.step_prepare(messages, tools)
+        ) = self.context_tracker.step_prepare(messages, tools, timeline_uuid=timeline_uuid)
 
         # if context not safe to infer further
         if not context_safe:
@@ -313,7 +320,7 @@ class OpenaiLlmProxyWithTracker(object):
         )
 
         # begin context tracking
-        self.context_tracker.step_track(llm_output, context_safe, converted_message, tools)
+        self.context_tracker.step_track(llm_output, context_safe, converted_message, tools, timeline_uuid=timeline_uuid)
         return llm_output
 
     async def __call__(

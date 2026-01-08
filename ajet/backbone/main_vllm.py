@@ -8,11 +8,12 @@ from openai import OpenAI
 from ajet.backbone.warm_up import warm_up_process
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.launch_utils import set_loguru_default_color
+from ajet.schema.logprob import TokenAndProb
 
 set_loguru_default_color()
 
 
-class TokenAndProb:
+class TokenAndProbVllmDebug(TokenAndProb):
     def __init__(self, t):
         # ChatCompletionTokenLogprob(token='token_id:73594', bytes=[96, 96, 96], logprob=-1.9073468138230965e-06, top_logprobs=[])
         self.token_id = int(t.token.split("token_id:")[-1])
@@ -67,6 +68,7 @@ class ChatCompletionScheduler:
 
         message = completion.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
 
+        # sometimes tool use message has no content field
         if "content" not in message:
             message["content"] = ""
 
@@ -76,7 +78,9 @@ class ChatCompletionScheduler:
                 "request_id": completion.id,
                 "content": message["content"],
                 "tool_calls": message.get("tool_calls", None),
-                "tokens": [TokenAndProb(t) for t in completion.choices[0].logprobs.content],  # type: ignore
+                "tokens": [
+                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content # type: ignore
+                ],
             }
         )
         return messages

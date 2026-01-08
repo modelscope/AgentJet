@@ -116,8 +116,7 @@ class BaseTracker(object):
         self.task_id = kwargs.get("task_id", "undefined")
         self.config = config
         self.tokenizer = tokenizer
-        self.full_context: List[ExtendedMessage] = []
-        self.grouped_steps: List[List[ExtendedMessage]] = []
+        self.saved_timelines: List[List[ExtendedMessage]] = []
         self.current_context_status = ""
         max_response_length = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
@@ -147,6 +146,9 @@ class BaseTracker(object):
         raise NotImplementedError
 
     def group_tokenize_multi_group(self):
+        raise NotImplementedError
+
+    def group_tokenize_single_group(self, timeline):
         raise NotImplementedError
 
     def tokenize_steps(
