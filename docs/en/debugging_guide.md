@@ -25,7 +25,7 @@ For more details, please refer to VSCode official documents.
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "ajet.cli.launcher",
+      "module": "ajet.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
@@ -57,7 +57,7 @@ Then, the modified launch.json will be
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "ajet.cli.launcher",
+      "module": "ajet.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",  // verl -> debug

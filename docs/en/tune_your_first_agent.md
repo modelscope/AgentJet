@@ -340,7 +340,7 @@ ajet --conf math_agent/math_agent.yaml --backbone='debug' --with-logview
           "name": "Python Debugger: Launch rollout",
           "type": "debugpy",
           "request": "launch",
-          "module": "ajet.cli.launcher",
+          "module": "ajet.launcher",
           "console": "integratedTerminal",
           "args": [
             "--backbone", "debug",

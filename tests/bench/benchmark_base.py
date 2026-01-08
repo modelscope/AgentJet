@@ -54,7 +54,7 @@ class BenchmarkTestCase(unittest.TestCase):
         cmd = [
             python_executable,
             "-m",
-            "ajet.cli.launcher",
+            "ajet.launcher",
             "--conf",
             test_target,
             "--backbone",

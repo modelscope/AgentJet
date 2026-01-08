@@ -67,7 +67,7 @@ doc = [
 ]
 
 [project.scripts]
-ajet = "ajet.cli.launcher:main"
+ajet = "ajet.launcher:main"
 
 
 [tool.setuptools.packages.find]
