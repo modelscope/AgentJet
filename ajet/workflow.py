@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from ajet import ModelTuner
+from ajet import AjetTuner
 from ajet.schema.task import WorkflowOutput, WorkflowTask
 
 
@@ -14,7 +14,7 @@ class Workflow(BaseModel):
         description="List of agents to be fine-tuned. When None, all agents are trainable.",
     )
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         """Run the workflow on a given task."""
         raise NotImplementedError
 
@@ -57,13 +57,14 @@ How to define a trainable workflow 🚀:
 
         [+] class ExampleMathLearn(Workflow):
         [+]    name: str = "math_agent_workflow"
-        [+]    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+        [+]    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         [ ]       from agentscope.agent import ReActAgent
         [ ]       from agentscope.formatter import DashScopeChatFormatter
         [ ]       from agentscope.memory import InMemoryMemory
         [ ]       from agentscope.tool import Toolkit, execute_python_code
         [ ]       self.toolkit = Toolkit()
         [ ]       self.toolkit.register_tool_function(execute_python_code)
+        [ ]       model_tuner = tuner.as_agentscope_model()
         [ ]       self.agent = ReActAgent(
         [ ]           name="math_react_agent",
         [ ]           sys_prompt=system_prompt,

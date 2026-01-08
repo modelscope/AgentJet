@@ -177,7 +177,7 @@ ReActAgent(
 Next, wrap the agent into a trainable workflow:
 
 ```python title="workflow.py"
-from ajet import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+from ajet import AjetTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
 

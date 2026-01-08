@@ -201,7 +201,7 @@ ajet:
 
 ```python title="workflow.py"
 class MyWorkflow(Workflow):
-    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         final_answer = await self.agent.reply(msg)
         return WorkflowOutput(
             reward=None,  # Will be filled by the judger

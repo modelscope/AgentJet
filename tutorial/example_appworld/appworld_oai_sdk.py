@@ -2,17 +2,14 @@ from agentscope.message import Msg
 from pydantic import Field
 
 from ajet import Workflow, WorkflowOutput, WorkflowTask
-from ajet.tuner_v2 import TunerV2 as ModelTuner
+from ajet import AjetTuner
 from openai.types.chat.chat_completion import ChatCompletion
 
 
 class ExampleAgentScopeWorkflow(Workflow):
     trainer: str = Field(default="ajet-trinity")
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
-        from agentscope.agent import ReActAgent
-        from agentscope.formatter import DashScopeChatFormatter
-        from agentscope.memory import InMemoryMemory
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
 
         init_messages = workflow_task.task.init_messages
         if len(init_messages) >= 2:
@@ -29,12 +26,12 @@ class ExampleAgentScopeWorkflow(Workflow):
                 )
             )
 
-        client = model_tuner.as_raw_openai_sdk_client()
+        client = tuner.as_raw_openai_sdk_client()
         env = workflow_task.gym_env
         step = 0
-        for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
+        for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
             # agentscope deal with interaction message
-            reply_message: ChatCompletion = await client.chat.completion.create(interaction_message)
+            reply_message: ChatCompletion = await client.chat.completions.create(interaction_message)
             # env service protocol
             obs, _, terminate, _ = env.step(
                 action={"content": reply_message.choices[0].message.content, "role": "assistant"}
@@ -44,7 +41,7 @@ class ExampleAgentScopeWorkflow(Workflow):
             # is terminated?
             if terminate:
                 break
-            if model_tuner.get_context_tracker().context_overflow:
+            if tuner.get_context_tracker().context_overflow:
                 break
 
         return WorkflowOutput(reward=None, metadata={"total_step": step})

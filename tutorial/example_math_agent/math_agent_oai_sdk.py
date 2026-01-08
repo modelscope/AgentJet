@@ -1,8 +1,7 @@
 from loguru import logger
-from ajet import Workflow, WorkflowOutput, WorkflowTask
+from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat import ChatCompletionMessageToolCall
-from ajet.tuner_v2 import TunerV2
 from textwrap import dedent
 
 import json
@@ -23,7 +22,7 @@ class ExampleMathLearn_Simple_NoToolCall(Workflow):
         You should return your final answer within \\boxed{{}}.
     """)
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: TunerV2) -> WorkflowOutput:   # type: ignore
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
         query = workflow_task.task.main_query
         client = model_tuner.as_raw_openai_sdk_client()
 
@@ -88,7 +87,7 @@ class ExampleMathLearn(Workflow):
         },
     ]
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: TunerV2) -> WorkflowOutput:   # type: ignore
+    async def execute(self, workflow_task: WorkflowTask, model_tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
 
 
         query = workflow_task.task.main_query

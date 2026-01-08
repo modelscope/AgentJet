@@ -110,7 +110,7 @@ class FrozenLakeAgent:
 ```python
 class FrozenLakeWorkflow(Workflow):
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         # init agent and env
         # reset environment and get initial `observation_str`
         rewards = []

@@ -7,7 +7,7 @@ import threading
 from agentscope.message import Msg
 from loguru import logger
 
-from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 from ajet.utils.robust_dashscope import RobustDashScopeChatModel
 
 system_prompt = """# Task
@@ -166,10 +166,12 @@ async def reward_fn_with_semaphore(*args, **kwargs):
 class ExampleLearn2Ask(Workflow):
     name: str = "math_agent_workflow"
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
+
+        model_tuner = tuner.as_agentscope_model()
 
         messages = workflow_task.task.init_messages
         assert isinstance(messages, list)

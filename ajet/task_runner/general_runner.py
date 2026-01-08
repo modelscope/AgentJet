@@ -1,6 +1,6 @@
 import asyncio
 
-from ajet.tuner_v2 import TunerV2 as ModelTuner
+from ajet import AjetTuner
 from ajet import Workflow, WorkflowOutput
 from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
@@ -38,7 +38,7 @@ class GeneralRunner(BaseAgentRunner):
             task_id=task_id,
             **hooks,
         )
-        m_tuner = ModelTuner(
+        m_tuner = AjetTuner(
             context_tracker=context_tracker,
             llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,

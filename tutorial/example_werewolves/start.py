@@ -3,21 +3,20 @@
 
 """The main entry point for the werewolf game."""
 
-import os
-
-import dotenv
+from typing import List
 import numpy as np
-
+import dotenv
 dotenv.load_dotenv()
+
 from textwrap import dedent
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
 from agentscope.model import DashScopeChatModel, OpenAIChatModel
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 from tutorial.example_werewolves.game import BadGuyException, werewolves_game
 
 
@@ -82,12 +81,15 @@ def get_official_agent_prompt(name) -> str:
 
 class ExampleWerewolves(Workflow):
     trainer: str = Field(default="ajet-trinity")
-    trainable_targets: list = Field(
-        default=["werewolf"], description="List of agents to be fine-tuned."
-    )
+    trainable_targets: List[str] | None = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
+
         # ensure trainable targets is legal
+        assert self.trainable_targets is not None, "trainable_targets cannot be None in ExampleWerewolves (because we want to demonstrate a explicit multi-agent case)."
+
+        # bad guys and good guys cannot be trained simultaneously
+        # (because mix-cooperation-competition MARL needs too many advanced techniques to be displayed here)
         if "werewolf" in self.trainable_targets:
             assert len(self.trainable_targets) == 1, "Cannot train hostile roles simultaneously."
         else:
@@ -109,13 +111,18 @@ class ExampleWerewolves(Workflow):
                 api_key="no_api_key",
                 generate_kwargs={"temperature": 0.01},
             )
+            model_for_this_agent = tuner.as_agentscope_model(
+                agent_name=f"Player{i + 1}",    # the name of this agent
+                target_tag=role,                # `target_tag in self.trainable_targets` means we train this agent, otherwise we do not train this agent.
+                debug_model=default_model,      # the model used when this agent is not in `self.trainable_targets`
+            )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
-                model=model_tuner.register_model(role, default_model=default_model),
+                model=model_for_this_agent,
                 formatter=DashScopeMultiAgentFormatter()
-                if role in self.trainable_targets
-                else OpenAIMultiAgentFormatter(),
+                     if role in self.trainable_targets
+                     else OpenAIMultiAgentFormatter(),
                 max_iters=3 if role in self.trainable_targets else 5,
             )
             # agent.set_console_output_enabled(False)
