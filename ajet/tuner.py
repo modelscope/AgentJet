@@ -1,52 +1,17 @@
-from typing import TYPE_CHECKING, Any, Literal, Type
-
-from agentscope._utils._common import _create_tool_from_base_model
-from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
-from loguru import logger
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Any, Literal, Type, Union
 
 from ajet.context_tracker.agentscope_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
-from ajet.task_rollout.async_llm_bridge import OpenaiLlmProxyWithTracker
 
+from ajet.tuner_lib.weight_tuner import AgentScopeModelTuner
+from ajet.tuner_lib.weight_tuner import OpenaiClientModelTuner
 if TYPE_CHECKING:
     from ajet import Workflow
 
+TunerTypeUnion = Union[AgentScopeModelTuner, OpenaiClientModelTuner]
 
-class Agent2Proxy(DashScopeChatModel):
-    """
-    Handler for **NAMED** agent trainning targets.
-    It stores the target name, and a reference to the ModelTuner.
-    When request comes, it switches between default model (dashscope or openai models) and ModelTuner
-    """
-
-    def __init__(self, name: str, tuner: "ModelTuner", default_model: ChatModelBase):
-        self.name = name
-        self.tuner = tuner
-        self.default_model = default_model
-        super().__init__(
-            model_name="ajet",
-            api_key="dummy-api-key",
-            stream=False,
-        )
-
-    def __call__(self, *args, **kwargs):
-        if not self.tuner.is_trainable(self.name):
-            # [DO-NOT-TRAIN] if `trainable_targets` is non-empty,
-            # and self.name is not in it, use default model
-            return self.default_model(*args, **kwargs)
-        else:
-            # [TRAIN]
-            return self.tuner(*args, **kwargs)
-
-
-class ModelTuner(DashScopeChatModel):
-    """
-    ModelTuner for Agentscope workflow.
-    It keeps record of all registered agent types (by their target names),
-    And when request comes, it calls `self.llm_proxy` to handle the request.
-    """
+class AjetTuner(object):
 
     def __init__(
         self,
@@ -56,19 +21,72 @@ class ModelTuner(DashScopeChatModel):
         **kwargs,
     ) -> None:
         self.config = config
+        self.workflow = user_workflow
         self.context_tracker = context_tracker
-        self.user_workflow = user_workflow
-        self.target2proxy_registry: dict[str, Agent2Proxy] = {}
-        self.llm_proxy = OpenaiLlmProxyWithTracker(
-            context_tracker=context_tracker, config=config, **kwargs
-        )
-        super().__init__(
-            model_name="ajet",
-            api_key="dummy-api-key",
-            stream=False,
-        )
+        self.target2proxy_registry: dict[str, dict[str,TunerTypeUnion]] = {}
+        self.kwargs = kwargs
 
-    def register_model(self, target_name: str, default_model: ChatModelBase) -> Agent2Proxy:
+
+    def as_agentscope_model(
+        self,
+        agent_name="default_agent_name",
+        target_tag="default_target_tag",
+        debug_model=None
+    ) -> "AgentScopeModelTuner":
+        """Convert to ModelTuner instance for Agentscope workflow.
+        Returns:
+            ModelTuner:
+                The ModelTuner instance for Agentscope workflow.
+        """
+        explicit_tuner_as_modelscope_model = AgentScopeModelTuner(
+            config=self.config,
+            context_tracker=self.context_tracker,
+            user_workflow=self.workflow,
+            agent_name=agent_name,
+            debug_model=debug_model,
+            use_debug_model=(not self._is_target_trainable(target_tag)),
+            **self.kwargs,
+        )
+        self._register(target_tag, agent_name, explicit_tuner_as_modelscope_model)
+        return explicit_tuner_as_modelscope_model
+
+
+    def as_raw_openai_sdk_client(
+        self,
+        agent_name="default_agent_name",
+        target_tag="default_target_tag",
+        debug_model='gpt-4o',
+    ) -> OpenaiClientModelTuner:
+        """Convert to raw OpenAI SDK client for advanced usage.
+        Returns:
+            Any:
+                The raw OpenAI SDK client.
+        """
+        explicit_tuner_as_oai_client = OpenaiClientModelTuner(
+            config=self.config,
+            context_tracker=self.context_tracker,
+            workflow=self.workflow,
+            agent_name=agent_name,
+            debug_model=debug_model,
+            use_debug_model=(not self._is_target_trainable(target_tag)),
+            **self.kwargs,
+        )
+        self._register(target_tag, agent_name, explicit_tuner_as_oai_client)
+        return explicit_tuner_as_oai_client
+
+
+    def __call__(self, **kwargs):
+        """This method is **deprecated**.
+        The current behavior of this method is pretend as a agentscope model
+        """
+        raise RuntimeError("This method is deprecated. Please use `as_agentscope_model` / `as_raw_openai_sdk_client` first.")
+
+
+    # ------------------------------------------------------------------------
+    # other helper methods
+    # ------------------------------------------------------------------------
+
+    def _register(self, target_name: str, agent_name: str, explicit_tuner: TunerTypeUnion) -> TunerTypeUnion:
         """Register an agent type.
         Args:
             target_name (`str`):
@@ -79,111 +97,24 @@ class ModelTuner(DashScopeChatModel):
             Agent2Proxy:
                 The agent type instance corresponding to the provided name.
         """
-        if target_name in self.target2proxy_registry:
-            if (
-                default_model.model_name
-                != self.target2proxy_registry[target_name].default_model.model_name
-            ):
-                raise ValueError(
-                    f"Agent proxy `{target_name}` is already registered with a different model_name.\nWAS [{self.target2proxy_registry[target_name].default_model.model_name}]\nNOW [{default_model.model_name}]."
-                )
-        self.target2proxy_registry[target_name] = Agent2Proxy(target_name, self, default_model)
-        return self.get_model(target_name)
-
-    def get_model(self, target_name: str) -> Agent2Proxy:
-        """Get the proxy instance by target_name.
-        Args:
-            target_name (`str`):
-                The name of the agent proxy to retrieve.
-        Returns:
-            Agent2Proxy:
-                The agent proxy corresponding to the provided target_name.
-        """
         if target_name not in self.target2proxy_registry:
-            raise ValueError(f"Agent proxy '{target_name}' is not registered.")
-        else:
-            return self.target2proxy_registry[target_name]
+            self.target2proxy_registry[target_name] = {}
+        self.target2proxy_registry[target_name][agent_name] = explicit_tuner
+        return explicit_tuner
 
-    async def __call__(
-        self,
-        messages: list[dict[str, Any]],
-        tools: list[dict] | None = None,
-        tool_choice: Literal["auto", "none", "any", "required"] | str | None = None,
-        structured_model: Type[BaseModel] | None = None,
-        **kwargs: Any,
-    ) -> ChatResponse:
-        # For qvq and qwen-vl models, the content field cannot be `None` or
-        # `[{"text": None}]`, so we need to convert it to an empty list.
-        if self.model_name.startswith("qvq") or "-vl" in self.model_name:
-            raise NotImplementedError("Not implemented for qvq and qwen-vl models yet.")
-
-        kwargs = {
-            "messages": messages,
-            "model": self.model_name,
-            "stream": self.stream,
-            **self.generate_kwargs,
-            **kwargs,
-            "result_format": "message",
-            # In agentscope, the `incremental_output` must be `True` when
-            # `self.stream` is True
-            "incremental_output": self.stream,
-        }
-
-        if tools:
-            kwargs["tools"] = self._format_tools_json_schemas(tools)
-
-        if tool_choice:
-            self._validate_tool_choice(tool_choice, tools)
-            kwargs["tool_choice"] = self._format_tool_choice(tool_choice)
-
-        if self.enable_thinking is not None and "enable_thinking" not in kwargs:
-            kwargs["enable_thinking"] = self.enable_thinking
-
-        if structured_model:
-            if tools or tool_choice:
-                logger.warning(
-                    "structured_model is provided. Both 'tools' and "
-                    "'tool_choice' parameters will be overridden and "
-                    "ignored. The model will only perform structured output "
-                    "generation without calling any other tools.",
-                )
-            format_tool = _create_tool_from_base_model(structured_model)
-            kwargs["tools"] = self._format_tools_json_schemas(
-                [format_tool],
-            )
-            kwargs["tool_choice"] = self._format_tool_choice(
-                format_tool["function"]["name"],
-            )
-
-        # call llm model ✨
-        response_gen = await self.llm_proxy(
-            api_key=self.api_key,
-            structured_model=structured_model,
-            **kwargs,
-        )
-
-        # Return the AsyncGenerator directly
-        return response_gen
-
-    def is_trainable(self, target_name) -> bool:
-        if self.user_workflow.trainable_targets is None:
+    def _is_target_trainable(self, target_name) -> bool:
+        """Determine whether user have used `trainable_targets` to explicitly control training targets.
+        """
+        if self.workflow.trainable_targets is None:
             # always assume trainable when user has never changed trainable_targets
             return True
-        if not self.user_workflow.trainable_targets:
+        if not self.workflow.trainable_targets:
             # always assume trainable when trainable_targets is []
             return True
-        if target_name in self.user_workflow.trainable_targets:
+        if target_name in self.workflow.trainable_targets:
             return True
         else:
             return False
-
-    def get_llm_proxy(self) -> OpenaiLlmProxyWithTracker:
-        """Get the LlmProxyForAgentScope instance.
-        Returns:
-            LlmProxyForAgentScope:
-                The LlmProxyForAgentScope instance used by the ModelTuner.
-        """
-        return self.llm_proxy
 
     def get_context_tracker(self) -> MultiAgentContextTracker:
         """Get the context tracker instance.

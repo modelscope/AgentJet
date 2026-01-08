@@ -3,7 +3,7 @@ import re
 from agentscope.message import Msg
 from loguru import logger
 
-from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 def extract_final_answer(result) -> str:
@@ -36,7 +36,7 @@ You should return your final answer within \\boxed{{}}.
 class MathToolWorkflow(Workflow):
     name: str = "math_agent_workflow"
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
@@ -48,7 +48,7 @@ class MathToolWorkflow(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner,
+            model=tuner.as_agentscope_model(),
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),

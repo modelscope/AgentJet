@@ -6,7 +6,7 @@
 ```python
 class ExampleMathLearn(Workflow):
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory

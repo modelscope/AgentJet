@@ -14,11 +14,12 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
+from agentscope.model import DashScopeChatModel
 from agentscope.message import Msg
 from gymnasium.envs.toy_text.frozen_lake import FrozenLakeEnv as GymFrozenLakeEnv
 from loguru import logger
 
-from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 SYSTEM_PROMPT = """You are a helpful assistant. You are walking on a frozen lake.
 
@@ -50,8 +51,8 @@ Please show your thinking process and put the final action in ``` ```. In every 
 
 
 class FrozenLakeWorkflow(Workflow):
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
-        config = model_tuner.config
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
+        config = tuner.config
 
         self.env_max_steps = config.ajet.rollout.multi_turn.max_steps
         self.agent_max_steps = config.ajet.rollout.multi_turn.max_steps
@@ -68,7 +69,7 @@ class FrozenLakeWorkflow(Workflow):
 
         # init agent and environment
         self.agent = FrozenLakeAgent(
-            model=model_tuner,
+            model=tuner.as_agentscope_model(),
             max_steps=self.agent_max_steps,
         )
         self.env = FrozenLakeEnv(
@@ -121,7 +122,7 @@ class FrozenLakeWorkflow(Workflow):
 class FrozenLakeAgent:
     INVALID_ACTION = "still"
 
-    def __init__(self, model: ModelTuner, max_steps: int = 20):
+    def __init__(self, model: DashScopeChatModel, max_steps: int = 20):
         self.agent = ReActAgent(
             name="frozenlake_agent",
             sys_prompt=SYSTEM_PROMPT,

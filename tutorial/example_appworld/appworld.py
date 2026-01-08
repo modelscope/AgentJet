@@ -1,13 +1,13 @@
 from agentscope.message import Msg
 from pydantic import Field
 
-from ajet import ModelTuner, Workflow, WorkflowOutput, WorkflowTask
+from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 class ExampleAgentScopeWorkflow(Workflow):
     trainer: str = Field(default="ajet-trinity")
 
-    async def execute(self, workflow_task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
@@ -27,6 +27,7 @@ class ExampleAgentScopeWorkflow(Workflow):
                 )
             )
 
+        model_tuner = tuner.as_agentscope_model()
         agent = ReActAgent(
             name="Qwen",
             sys_prompt=first_msg["content"],
@@ -51,7 +52,7 @@ class ExampleAgentScopeWorkflow(Workflow):
             # is terminated?
             if terminate:
                 break
-            if model_tuner.get_context_tracker().context_overflow:
+            if tuner.get_context_tracker().context_overflow:
                 break
 
         return WorkflowOutput(reward=None, metadata={"total_step": step})

@@ -262,7 +262,7 @@ ajet:
 
 ```python title="workflow.py"
 class MyWorkflow(Workflow):
-    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         # 智能体逻辑
         final_answer = await self.agent.reply(msg)
 

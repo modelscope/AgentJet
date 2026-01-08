@@ -181,7 +181,7 @@ ReActAgent(
 接下来，将智能体封装进一个 Workflow 类中：
 
 ```python title="workflow.py"
-from ajet import ModelTuner, Workflow, WorkflowTask, WorkflowOutput
+from ajet import AjetTuner, Workflow, WorkflowTask, WorkflowOutput
 from agentscope.message import Msg
 from loguru import logger
 

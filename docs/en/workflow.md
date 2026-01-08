@@ -46,7 +46,7 @@ from ajet import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
 
-    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         # ... your ReActAgent workflow here ...
         return WorkflowOutput(reward=workflow_reward)
 ```
@@ -89,7 +89,7 @@ Wrap it in a workflow class:
 class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
 
-    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
         from agentscope.memory import InMemoryMemory
@@ -100,7 +100,7 @@ class ExampleMathLearn(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner,  # ← Key change!
+            model=tuner.as_agentscope_model(),  # ← Key change!
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
@@ -201,7 +201,7 @@ class ExampleMathLearn(Workflow):
     name: str = "math_agent_workflow"
     trainable_targets: list = ["TYPE-ZERO", ...]
 
-    async def execute(self, task: WorkflowTask, model_tuner: ModelTuner) -> WorkflowOutput:
+    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         # ... agents and workflow here ...
 ```
 </li>
