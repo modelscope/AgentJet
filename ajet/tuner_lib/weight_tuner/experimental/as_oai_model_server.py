@@ -47,6 +47,79 @@ async def health_check():
     return {"status": "ok"}
 
 
+
+async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket, stop_event: asyncio.Event):
+    # Monitor for new requests
+    try:
+        while not stop_event.is_set():
+            # Check for new requests in ajet_remote_handler_received
+            if (key in ajet_remote_handler_received) and len(ajet_remote_handler_received[key]) > 0:
+
+                timeline_uuid = list(ajet_remote_handler_received[key].keys())[0]
+
+                # Get the next request
+                new_req: TypeCompletionRequest = ajet_remote_handler_received[key].pop(timeline_uuid)
+
+                assert timeline_uuid == new_req.timeline_uuid
+
+                # Move to in_progress
+                ajet_remote_handler_in_progress[key][timeline_uuid] = new_req
+
+                # will be received by:
+                #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
+                #       await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
+                await websocket.send_bytes(pickle.dumps(new_req))
+
+    except WebSocketDisconnect:
+        stop_event.set()
+        return
+
+    except Exception as e:
+        stop_event.set()
+        print(f"Error in websocket handler: {e}")
+        return
+
+
+async def coro_task_2_lookup_dict_received__receive_loop(key, websocket: WebSocket, stop_event: asyncio.Event):
+    try:
+        while not stop_event.is_set():
+            # Wait for client response:
+            #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
+            #       await websocket.send(pickle.dumps(response))
+            response_data = pickle.loads(await websocket.receive_bytes())
+
+            if not isinstance(response_data, ChatCompletion):
+                stop_event.set()
+                assert response_data == "terminate", "Invalid terminate signal from client"
+                await websocket.close()
+                return
+
+            # Process the response
+            openai_response: ChatCompletion = response_data
+
+            # see `ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py::response.id = timeline_uuid`
+            timeline_uuid = openai_response.id
+
+            # Remove from in_progress
+            if timeline_uuid in ajet_remote_handler_in_progress[key]:
+                ajet_remote_handler_in_progress[key].pop(timeline_uuid)
+
+            # Add to completed if not discarded
+            if (key not in ajet_remote_handler_discarded) or (timeline_uuid not in ajet_remote_handler_discarded[key]):
+                # openai_response should already be a ChatCompletion object if client sent pickle
+                ajet_remote_handler_completed[key][timeline_uuid] = openai_response
+
+    except WebSocketDisconnect:
+        stop_event.set()
+        return
+
+    except Exception as e:
+        stop_event.set()
+        print(f"Error in websocket handler: {e}")
+        return
+
+
+
 @app.websocket("/hook/context_tracker_client_listen")
 async def context_tracker_client_listen(websocket: WebSocket):
     """
@@ -72,76 +145,9 @@ async def context_tracker_client_listen(websocket: WebSocket):
         key = f"episode_uuid:{episode_uuid}"
         active_websockets[key] = websocket
 
-        # Send acknowledgment (still JSON for compatibility or Pickle?)
-        # Let's use pickle for consistency on this socket
-        await websocket.send_bytes(pickle.dumps({"status": "connected", "key": key}))
-
-        # Monitor for new requests
-        while True:
-            try:
-                # Check for new requests in ajet_remote_handler_received
-                if (key in ajet_remote_handler_received) and len(ajet_remote_handler_received[key]) > 0:
-
-                    timeline_uuid = list(ajet_remote_handler_received[key].keys())[0]
-
-                    # Get the next request
-                    new_req: TypeCompletionRequest = ajet_remote_handler_received[key].pop(timeline_uuid)
-
-                    assert timeline_uuid == new_req.timeline_uuid
-
-                    # Move to in_progress
-                    ajet_remote_handler_in_progress[key][timeline_uuid] = new_req
-
-                    # Send request to client
-                    episode_uuid = new_req.episode_uuid
-
-                    # will be received by:
-                    #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
-                    #       await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
-                    await websocket.send_bytes(pickle.dumps(new_req))
-
-                    # Wait for client response:
-                    #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
-                    #       await websocket.send(pickle.dumps(response))
-                    response_data = pickle.loads(await websocket.receive_bytes())
-
-                    if not isinstance(response_data, ChatCompletion):
-                        assert response_data == "terminate", "Invalid terminate signal from client"
-                        break
-
-                    # Process the response
-                    openai_response: ChatCompletion = response_data
-
-                    # Remove from in_progress
-                    if timeline_uuid in ajet_remote_handler_in_progress[key]:
-                        ajet_remote_handler_in_progress[key].pop(timeline_uuid)
-
-                    # Add to completed if not discarded
-                    if (key not in ajet_remote_handler_discarded) or (timeline_uuid not in ajet_remote_handler_discarded[key]):
-                        # openai_response should already be a ChatCompletion object if client sent pickle
-                        ajet_remote_handler_completed[key][timeline_uuid] = openai_response
-
-                else:
-                    # nothing to do yet, sleep a bit
-                    await asyncio.sleep(0.25)
-
-                    # try:
-                    #     # let's see if the client is still there
-                    #     response_data = pickle.loads(await websocket.receive_bytes())
-
-                    #     # Check if it's a terminate signal
-                    #     if not isinstance(response_data, ChatCompletion):
-                    #         assert response_data == "terminate", "Invalid terminate signal from client"
-                    #         break
-
-                    # except asyncio.TimeoutError:
-                    #     pass  # No message, continue monitoring
-
-            except WebSocketDisconnect:
-                break
-            except Exception as e:
-                print(f"Error in websocket handler: {e}")
-                break
+        stop_event = asyncio.Event()
+        asyncio.create_task(coro_task_1_lookup_dict_received__send_loop(key, websocket, stop_event))
+        asyncio.create_task(coro_task_2_lookup_dict_received__receive_loop(key, websocket, stop_event))
 
     finally:
 
@@ -289,11 +295,6 @@ class InterchangeEndpointServer:
         # Start server in a new thread
         self.server_thread = threading.Thread(target=run_server, daemon=True)
         self.server_thread.start()
-
-        # Give the server a moment to start
-        import time
-        time.sleep(1)
-
         return self.port
 
     def stop(self):
