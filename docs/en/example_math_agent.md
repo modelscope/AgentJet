@@ -59,7 +59,7 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
           "name": "Python Debugger: Launch rollout",
           "type": "debugpy",
           "request": "launch",
-          "module": "ajet.cli.launcher",
+          "module": "ajet.launcher",
           "console": "integratedTerminal",
           "args": [
             "--backbone", "debug",

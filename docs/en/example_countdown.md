@@ -57,7 +57,7 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
       "name": "Python Debugger: Launch rollout",
       "type": "debugpy",
       "request": "launch",
-      "module": "ajet.cli.launcher",
+      "module": "ajet.launcher",
       "console": "integratedTerminal",
       "args": [
         "--backbone", "debug",
