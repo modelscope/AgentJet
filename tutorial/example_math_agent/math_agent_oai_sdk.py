@@ -24,7 +24,6 @@ class ExampleMathLearn_Simple_NoToolCall(Workflow):
     """)
 
     async def execute(self, workflow_task: WorkflowTask, model_tuner: TunerV2) -> WorkflowOutput:   # type: ignore
-        from ajet import bp; bp('MATHX')
         query = workflow_task.task.main_query
         client = model_tuner.as_raw_openai_sdk_client()
 
@@ -101,6 +100,12 @@ class ExampleMathLearn(Workflow):
             { "role": "user", "content": query }
         ]
         reply_message: ChatCompletion = await client.chat.completions.create(messages=messages, tools=self.available_functions)
+        if (reply_message.choices[0].message.content):
+            messages.append({
+                "role": "assistant",
+                "content": reply_message.choices[0].message.content
+            })
+
         # If the model called a tool
         if (reply_message.choices[0].message) and (reply_message.choices[0].message.tool_calls):
             tool_calls: list[ChatCompletionMessageToolCall] = reply_message.choices[0].message.tool_calls
@@ -120,7 +125,6 @@ class ExampleMathLearn(Workflow):
                         return process.stdout
 
                     result = await asyncio.to_thread(sync_wrapper)
-
                     tool_result_message = {
                         "role": "tool",
                         "tool_call_id": tool_call.id,
@@ -129,13 +133,6 @@ class ExampleMathLearn(Workflow):
                             "return_code": str(result),
                         })
                     }
-
-                    if (reply_message.choices[0].message.content):
-                        messages.append({
-                            "role": "assistant",
-                            "content": reply_message.choices[0].message.content
-                        })
-
                     messages.append(tool_result_message)
 
             # Step 3: Make a follow-up API call with the tool result

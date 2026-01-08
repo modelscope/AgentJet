@@ -101,14 +101,14 @@ class BaseContextTracker(BaseTracker):
         )
         return final_token_arr, token_logprob_arr, loss_mask, lack_normal_eos
 
-    def filter_context_via_author(self, author: str) -> List[ExtendedMessage]:
-        return copy.deepcopy([c for c in self.full_context if c.author == author])
+    def filter_context_via_author(self, timeline, author: str) -> List[ExtendedMessage]:
+        return copy.deepcopy([c for c in timeline if c.author == author])
 
-    def filter_context_via_authors(self, authors: List[str]) -> List[ExtendedMessage]:
-        return copy.deepcopy([c for c in self.full_context if c.author in authors])
+    def filter_context_via_authors(self, timeline, authors: List[str]) -> List[ExtendedMessage]:
+        return copy.deepcopy([c for c in timeline if c.author in authors])
 
     def filter_context_via_authors_with_limit(
-        self, authors: List[str], limit: dict
+        self, timeline, authors: List[str], limit: dict
     ) -> List[ExtendedMessage]:
         """
         limit = {
@@ -116,7 +116,7 @@ class BaseContextTracker(BaseTracker):
             "env": "keep_first@2"
         }
         """
-        filtered_via_authors = copy.deepcopy([c for c in self.full_context if c.author in authors])
+        filtered_via_authors = copy.deepcopy([c for c in timeline if c.author in authors])
         for limit_author, limit_item in limit.items():
             limit_item_command, limit_item_value = limit_item.split("@")
             if limit_item_command == "keep_last":
@@ -162,7 +162,7 @@ class BaseContextTracker(BaseTracker):
         return filtered_via_authors
 
     def compute_step_level_reward(
-        self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
+        self, index: int, total_steps: int
     ) -> float:
         # TODO: support multi-step reward
         assert self.reward_structure is not None
@@ -195,9 +195,9 @@ class BaseContextTracker(BaseTracker):
             result.append(d)
         return result
 
-    def group_tokenize(self):
+    def group_tokenize_single_group(self, timeline):
         sample_arr = []
-        ext_steps = self.full_context
+        ext_steps = timeline
         tracker_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
         sample = Sample(
             tracker_tokenized=tracker_tokenized,
@@ -214,11 +214,11 @@ class BaseContextTracker(BaseTracker):
     def group_tokenize_multi_group(self):
         sample_arr = []
         max_num_group = self.config.ajet.rollout.multi_turn.max_sample_per_task
-        for index, ext_steps in enumerate(self.grouped_steps):
+        for index, ext_steps in enumerate(self.saved_timelines):
             tracker_tokenized = self.tokenize_steps(
                 ext_steps=ext_steps,
                 index=index,
-                total_steps=len(self.grouped_steps),
+                total_steps=len(self.saved_timelines),
             )
             sample = Sample(
                 tracker_tokenized=tracker_tokenized,
