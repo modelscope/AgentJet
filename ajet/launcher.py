@@ -5,6 +5,7 @@ import subprocess
 from dotenv import load_dotenv
 from loguru import logger
 
+from ajet.utils.cleaner import fast_kill_by_keyword_bash
 from ajet.utils.config_utils import prepare_experiment_config
 from ajet.utils.launch_utils import (
     execute_training_process,
@@ -257,6 +258,11 @@ def main():
         logger.info(f"Killing processes matching keywords: {args.kill}")
         for keyword in args.kill.split("|"):
             logger.info(f"Killing processes matching keyword: {keyword}")
+            killed_pids = fast_kill_by_keyword_bash(keyword)
+            if killed_pids:
+                logger.success(f"Successfully killed processes with PIDs: {killed_pids}")
+            else:
+                logger.warning(f"No processes found matching keyword: {keyword}")
         if not args.conf:
             return
 
