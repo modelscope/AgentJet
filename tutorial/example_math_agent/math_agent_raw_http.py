@@ -14,7 +14,7 @@ import requests
 # ------------------------------------------------------
 
 
-class ExampleMathLearn_Simple(Workflow):
+class ExampleMathLearn(Workflow):
 
     name: str = "math_agent_workflow"
     system_prompt: str = dedent("""

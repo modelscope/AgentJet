@@ -9,6 +9,7 @@ from ajet.backbone.warm_up import warm_up_process
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.launch_utils import set_loguru_default_color
 from ajet.schema.logprob import TokenAndProb
+from ajet.utils.core_env_vars import get_runtime_env
 
 set_loguru_default_color()
 
@@ -16,12 +17,13 @@ set_loguru_default_color()
 class TokenAndProbVllmDebug(TokenAndProb):
     def __init__(self, t):
         # ChatCompletionTokenLogprob(token='token_id:73594', bytes=[96, 96, 96], logprob=-1.9073468138230965e-06, top_logprobs=[])
-        self.token_id = int(t.token.split("token_id:")[-1])
-        self.logprob = t.logprob
+        token_id = int(t.token.split("token_id:")[-1])
+        logprob = t.logprob
         try:
-            self.decoded_string = bytes(t.bytes).decode("utf-8")
+            decoded_string = bytes(t.bytes).decode("utf-8")
         except Exception:
-            self.decoded_string = "<cannot decode>" + str(t.bytes)
+            decoded_string = "<cannot decode>" + str(t.bytes)
+        super().__init__(token_id=token_id, logprob=logprob, decoded_string=decoded_string)
 
 
 class ChatCompletionScheduler:
@@ -87,6 +89,8 @@ class ChatCompletionScheduler:
 
 
 def run(config):
+    from ajet.task_reader import RouterTaskReader
+
     # --------- fast adjustment for debugging ---------
     warm_up_process(config)
     max_parallel = config.ajet.debug.debug_max_parallel
@@ -106,7 +110,6 @@ def run(config):
         tokenizer=async_rollout_manager.tokenizer,
     )
 
-    from ajet.task_reader import RouterTaskReader
 
     task_reader = RouterTaskReader(
         config.ajet.task_reader.type,
@@ -131,6 +134,12 @@ def main(config):
 
     OmegaConf.resolve(config)
     print("*" * 20)
+
+    runtime_env = get_runtime_env()
+    os.environ.update(runtime_env["env_vars"])
+    if config.ajet.enable_experimental_reverse_proxy:
+        from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+        start_interchange_server()
 
     def companion_launch():
         import torch

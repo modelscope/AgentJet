@@ -13,6 +13,8 @@ import base64
 import json
 import os
 import pickle
+from pprint import pformat
+from loguru import logger
 
 from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException, Request
@@ -23,16 +25,16 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 
 # Global variables for tracking requests and responses
-class TypeCompletionRequest(BaseModel):
+class InterchangeCompletionRequest(BaseModel):
     completion_request: ChatCompletionRequest
     agent_name: str
     target_tag: str
     episode_uuid: str
-    timeline_uuid: str = ""  # to be filled when sending to client
+    timeline_uuid: str
 
 
-ajet_remote_handler_received: Dict[str, Dict[str, TypeCompletionRequest]] = defaultdict(dict)
-ajet_remote_handler_in_progress: Dict[str, Dict[str, TypeCompletionRequest]] = defaultdict(dict)
+ajet_remote_handler_received: Dict[str, Dict[str, InterchangeCompletionRequest]] = defaultdict(dict)
+ajet_remote_handler_in_progress: Dict[str, Dict[str, InterchangeCompletionRequest]] = defaultdict(dict)
 ajet_remote_handler_completed: Dict[str, Dict[str, ChatCompletion]] = defaultdict(dict)
 ajet_remote_handler_discarded: Dict[str, Dict[str, bool]] = defaultdict(dict)
 active_websockets = {}
@@ -54,11 +56,12 @@ async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket,
         while not stop_event.is_set():
             # Check for new requests in ajet_remote_handler_received
             if (key in ajet_remote_handler_received) and len(ajet_remote_handler_received[key]) > 0:
+                logger.warning(f"Sending new request to client for key: {key}")
 
                 timeline_uuid = list(ajet_remote_handler_received[key].keys())[0]
 
                 # Get the next request
-                new_req: TypeCompletionRequest = ajet_remote_handler_received[key].pop(timeline_uuid)
+                new_req: InterchangeCompletionRequest = ajet_remote_handler_received[key].pop(timeline_uuid)
 
                 assert timeline_uuid == new_req.timeline_uuid
 
@@ -69,14 +72,20 @@ async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket,
                 #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
                 #       await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
                 await websocket.send_bytes(pickle.dumps(new_req))
+            else:
+                await asyncio.sleep(0.25)
 
     except WebSocketDisconnect:
         stop_event.set()
+        try: await websocket.close()
+        except: pass
         return
 
     except Exception as e:
         stop_event.set()
-        print(f"Error in websocket handler: {e}")
+        try: await websocket.close()
+        except: pass
+        logger.exception(f"Error in websocket handler: {e}")
         return
 
 
@@ -86,7 +95,9 @@ async def coro_task_2_lookup_dict_received__receive_loop(key, websocket: WebSock
             # Wait for client response:
             #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
             #       await websocket.send(pickle.dumps(response))
+            logger.warning(f"Waiting for response from client for key: {key}")
             response_data = pickle.loads(await websocket.receive_bytes())
+            logger.warning(f"Received response from client for key: {key}")
 
             if not isinstance(response_data, ChatCompletion):
                 stop_event.set()
@@ -111,11 +122,15 @@ async def coro_task_2_lookup_dict_received__receive_loop(key, websocket: WebSock
 
     except WebSocketDisconnect:
         stop_event.set()
+        try: await websocket.close()
+        except: pass
         return
 
     except Exception as e:
         stop_event.set()
-        print(f"Error in websocket handler: {e}")
+        try: await websocket.close()
+        except: pass
+        logger.exception(f"Error in websocket handler: {e}")
         return
 
 
@@ -137,10 +152,7 @@ async def context_tracker_client_listen(websocket: WebSocket):
         assert episode_uuid_str.startswith("episode_uuid:")
         episode_uuid = episode_uuid_str.split("episode_uuid:")[-1]
 
-        if not all([episode_uuid]):
-            await websocket.send_json({"error": "Missing required fields"})
-            await websocket.close()
-            return
+        logger.warning(f"WebSocket client connected for episode_uuid: {episode_uuid}")
 
         key = f"episode_uuid:{episode_uuid}"
         active_websockets[key] = websocket
@@ -148,9 +160,13 @@ async def context_tracker_client_listen(websocket: WebSocket):
         stop_event = asyncio.Event()
         asyncio.create_task(coro_task_1_lookup_dict_received__send_loop(key, websocket, stop_event))
         asyncio.create_task(coro_task_2_lookup_dict_received__receive_loop(key, websocket, stop_event))
+        await stop_event.wait()
+
+    except Exception as e:
+        logger.exception(f"Error in websocket connection setup: {e}")
 
     finally:
-
+        logger.warning(f"WebSocket client disconnected for key: {key}")
         if key:
             # Clean up any in-progress requests for this key
             for container in [
@@ -166,10 +182,8 @@ async def context_tracker_client_listen(websocket: WebSocket):
 
             if key in active_websockets:
                 websocket = active_websockets.pop(key)
-                try:
-                    websocket.close()
-                except:
-                    pass
+                try: await websocket.close()
+                except: pass
 
 
 @app.post("/v1/chat/completions")
@@ -206,7 +220,8 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
     # Create timeline UUID
     timeline_uuid = uuid.uuid4().hex
     # Add to received queue
-    ajet_remote_handler_received[key][timeline_uuid] = TypeCompletionRequest(
+    logger.warning(f"Received new chat completion request for agent: {agent_name}, target_tag: {target_tag}, episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid}")
+    ajet_remote_handler_received[key][timeline_uuid] = InterchangeCompletionRequest(
         completion_request = new_req,
         agent_name = agent_name,
         target_tag = target_tag,
@@ -244,6 +259,7 @@ async def reset():
     """
     Reset endpoint to clear all state and disconnect all websockets.
     """
+    logger.warning("Resetting interchange endpoint server state.")
     # Disconnect all websockets
     for key, ws in list(active_websockets.items()):
         try:
@@ -260,6 +276,51 @@ async def reset():
     ajet_remote_handler_discarded.clear()
 
     return {"status": "reset_complete"}
+
+
+async def monitor_debug_state():
+    """
+    Background task to write debug state to ./interchange_debug.txt every 1 second.
+    """
+    while True:
+        try:
+            debug_info = {
+                'ajet_remote_handler_received': dict(ajet_remote_handler_received),
+                'ajet_remote_handler_in_progress': dict(ajet_remote_handler_in_progress),
+                'ajet_remote_handler_completed': dict(ajet_remote_handler_completed),
+                'ajet_remote_handler_discarded': dict(ajet_remote_handler_discarded),
+                'active_websockets': list(active_websockets.keys())
+            }
+
+            with open('./interchange_debug.txt', 'w') as f:
+                f.write(pformat(debug_info, width=120, indent=2))
+                f.write('\n')
+
+            await asyncio.sleep(1)
+        except Exception as e:
+            logger.error(f"Error in monitor_debug_state: {e}")
+            await asyncio.sleep(1)
+
+
+def ensure_dat_interchange_server_cache_clear():
+    """
+    send http request to clear the interchange server state.
+    """
+    import httpx
+
+    port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
+    assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
+    url = f"http://localhost:{port}/reset"
+    try:
+        response = httpx.post(url)
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        pass
+    except httpx.HTTPStatusError as e:
+        pass
+
+    return
 
 
 class InterchangeEndpointServer:
@@ -283,14 +344,21 @@ class InterchangeEndpointServer:
 
         # Create server thread
         def run_server():
-            config = uvicorn.Config(
-                app=app,
-                host="0.0.0.0",
-                port=self.port,
-                log_level="info"
-            )
-            server = uvicorn.Server(config)
-            asyncio.run(server.serve())
+            async def serve_with_monitor():
+                # Start the monitor task
+                monitor_task = asyncio.create_task(monitor_debug_state())
+
+                # Start the server
+                config = uvicorn.Config(
+                    app=app,
+                    host="0.0.0.0",
+                    port=self.port,
+                    log_level="info"
+                )
+                server = uvicorn.Server(config)
+                await server.serve()
+
+            asyncio.run(serve_with_monitor())
 
         # Start server in a new thread
         self.server_thread = threading.Thread(target=run_server, daemon=True)

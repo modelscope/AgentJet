@@ -64,17 +64,33 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.episode_uuid = episode_uuid
 
 
-    def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):
-        timeline = []
-        consider_roles = ["user", "assistant", "system", "tool"]
-        disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
+    def preprocess_tools_field(self, tools: List[dict] = [], disable_toolcalls: bool = False):
         if disable_toolcalls:
-            consider_roles.remove("tool")
             tools = []
         else:
-            # rerank tool parameters to improve compatibility
-            for i in range(len(tools)):
-                tools[i]["function"]["parameters"] = tools[i]["function"].pop("parameters")
+            if tools is not None:
+                # rerank tool parameters to improve compatibility
+                for i in range(len(tools)):
+                    tools[i]["function"]["parameters"] = tools[i]["function"].pop("parameters")
+        return tools
+
+
+    def step_spawn_timeline(self, messages: List[dict], tools: List = [], disable_toolcalls: bool = False) -> List[ExtendedMessage]:
+        """Spawn a timeline from messages.
+
+        Args:
+            messages: List of message dictionaries
+            tools: List of tool dictionaries
+            disable_toolcalls: Whether to disable tool calls
+
+        Returns:
+            List of ExtendedMessage objects representing the timeline
+        """
+        timeline = []
+
+        consider_roles = ["user", "assistant", "system", "tool"]
+        if disable_toolcalls:
+            consider_roles.remove("tool")
 
         for i, msg in enumerate(messages):
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
@@ -131,6 +147,14 @@ class MultiAgentContextTracker(BaseContextTracker):
                     first_message=(i == 0),
                 )
             ]
+
+        return timeline
+
+
+    def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):
+        disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
+        tools = self.preprocess_tools_field(tools, disable_toolcalls=disable_toolcalls)
+        timeline = self.step_spawn_timeline(messages, tools, disable_toolcalls)
 
         # check token overflow
         converted_message = self.to_role_content(timeline)

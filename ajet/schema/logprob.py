@@ -5,8 +5,10 @@
 # from verl import DataProto
 
 
-class TokenAndProb:
-    def __init__(self, token_id, logprob, decoded_string):
-        self.token_id = token_id
-        self.logprob = logprob
-        self.decoded_string = decoded_string
+from pydantic import BaseModel
+
+
+class TokenAndProb(BaseModel):
+    token_id: int
+    logprob: float
+    decoded_string: str

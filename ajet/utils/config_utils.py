@@ -136,7 +136,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
         yaml.dump(to_config, file)
 
     # logger.success(f"Saved aligned configuration to {to_config_fp}")
-    print_dict({"Note": f"Saved aligned configuration to {to_config_fp}"})
+    print_dict({"Note": f"Saved aligned configuration to {to_config_fp}"}, header="Final Configuration")
 
 
 def config_safe_guard(config: dict, backbone: str) -> dict:

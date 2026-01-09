@@ -108,7 +108,7 @@ class InterchangeClient:
         This design is for efficiency
         """
 
-        from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import TypeCompletionRequest
+        from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
 
         port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
@@ -118,13 +118,13 @@ class InterchangeClient:
             try:
                 # Send initialization parameters
                 # Sending as a list [agent_name, target_tag, episode_uuid] to match "input (a,b,c)" structure
-                await websocket.send(f"episode_uuid:{self.episode_uuid}")
+                await websocket.send(pickle.dumps(f"episode_uuid:{self.episode_uuid}"))
 
                 while not self.should_terminate:
 
                     try:
                         # wait message from ajet/tuner_lib/weight_tuner/experimental/as_oai_model_server.py
-                        parsed_msg: TypeCompletionRequest = pickle.loads(
+                        parsed_msg: InterchangeCompletionRequest = pickle.loads(
                             await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
                         )
 
