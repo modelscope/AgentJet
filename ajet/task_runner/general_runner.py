@@ -1,4 +1,5 @@
 import asyncio
+from venv import logger
 
 from ajet import AjetTuner
 from ajet import Workflow, WorkflowOutput
@@ -49,6 +50,8 @@ class GeneralRunner(BaseAgentRunner):
         workflow_output: WorkflowOutput = asyncio.run(
             user_workflow.execute(workflow_task, tuner)
         )
+        # set workflow metadata to context tracker metadata
+        context_tracker.workflow_metadata = workflow_output.metadata
         if workflow_output.reward is not None:
             raw_reward, is_success = (
                 workflow_output.reward,
@@ -56,6 +59,25 @@ class GeneralRunner(BaseAgentRunner):
             )
         else:
             raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
+            
+            # ✅ Critical Fix: After calling `judge`, write the updated `reward_stats` back to `workflow_metadata`
+            # # Ensure that `native_compat_trainer` reads the actual value calculated by `judge`, not the 0 value returned by `env`.
+            if workflow_output.metadata and 'reward_stats' in workflow_output.metadata:
+                context_tracker.workflow_metadata['reward_stats'] = workflow_output.metadata['reward_stats']
+            else:
+                # fallback: If the judge does not update reward_stats, use the default value.
+                logger.warning(f"[WARN] reward_stats not found in metadata after judge call, creating default values")
+                default_reward_stats = {
+                    'original_reward': raw_reward,  
+                    'penalty': 0.0,
+                    'step_reward': raw_reward,
+                }
+                if workflow_output.metadata:
+                    workflow_output.metadata['reward_stats'] = default_reward_stats
+                    context_tracker.workflow_metadata['reward_stats'] = default_reward_stats
+                else:
+                    context_tracker.workflow_metadata = {'reward_stats': default_reward_stats}
+        
         workflow_task.gym_env = None  # clear gym env client reference to avoid serialization issue
 
         assert not isinstance(
