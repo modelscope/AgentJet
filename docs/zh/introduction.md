@@ -11,7 +11,7 @@
 我们致力于构建一个易于上手的 AgentScope 微调工具，为智能体开发者解锁更多可能性：
 
 * **简单友好**：AgentJet 帮助您轻松微调智能体工作流背后的模型，以极小的开发成本优化智能体性能。
-* **丰富的教程库**：AgentJet 提供了丰富的 [示例库](#id6) 作为学习教程。
+* **丰富的教程库**：AgentJet 提供了丰富的 [示例库](#example-library) 作为学习教程。
 * **高效且可扩展**：AgentJet 默认使用 [trinity](https://github.com/modelscope/Trinity-RFT/) 作为后端（`--backbone=trinity`），通过全异步 RFT 加速微调过程。如果您更倾向于 Actor 共位置部署，也可以回退到 [verl](./installation.md) 后端。
 * **灵活且快速**：AgentJet 支持 [多智能体工作流](./workflow.md)，并采用了上下文合并技术。当工作流涉及多轮（或多 智能体）对话时，可将训练速度提升 1.5 倍至 20 倍。
 * **可靠性与可复现性**：我们的团队持续追踪框架在多个 [任务 + 主分支版本 + 训练后端](https://benchmark.agent-matrix.com/) 上的表现（正在建设中，数据收集后即将上线）。
@@ -56,6 +56,7 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
 
 ```
 
+<span id="example-library"></span>
 #### 示例库
 
 探索我们丰富的示例库，开启您的探索之旅：
@@ -101,7 +102,7 @@ AgentJet 通过将开发者接口与内部执行逻辑分离，使智能体微�
 
 ### 导航
 
-* <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" /> **教程**：从 [安装](./installation.md) 到 [微调您的第一个智能体](./tutorial.md) —— 初学者的必经之路。
+* <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" /> **教程**：从 [安装](./installation.md) 到 [微调您的第一个智能体](./tune_your_first_agent.md) —— 初学者的必经之路。
 * <img src="https://api.iconify.design/lucide:wrench.svg" class="inline-icon" /> **核心组件**：定义您的 [可训练工作流](./workflow.md)，并管理 [数据](./data_pipeline.md) 和 [奖励](./tune_your_first_agent.md)。
-* <img src="https://api.iconify.design/lucide:lightbulb.svg" class="inline-icon" /> **示例**：查看上方的 [示例库](#example-librar)，了解 [数学](./example_math_agent.md)、[狼人杀游戏](./example_werewolves.md) 和 [学习提问](./example_learning_to_ask.md) 等真实案例。
+* <img src="https://api.iconify.design/lucide:lightbulb.svg" class="inline-icon" /> **示例**：查看上方的 [示例库](#example-library)，了解 [数学](./example_math_agent.md)、[狼人杀游戏](./example_werewolves.md) 和 [学习提问](./example_learning_to_ask.md) 等真实案例。
 * <img src="https://api.iconify.design/lucide:settings.svg" class="inline-icon" /> **深入了解**：掌握高级 [配置方案](./configuration.md)。

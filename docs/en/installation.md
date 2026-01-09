@@ -36,18 +36,7 @@ AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (re
 
     If you prefer `conda`, you can also install via conda and pip (simply change `uv pip` to `pip`).
 
-=== "Trinity (Recommended)"
-
-    Install with `trinity` training backbone for fully asynchronous RFT:
-
-    ```bash
-    uv venv --python=3.10
-    source .venv/bin/activate
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
-    ```
-
-=== "Verl"
+=== "Verl (Recommended)"
 
     Install with `verl` training backbone:
 
@@ -60,6 +49,18 @@ AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (re
 
     !!! warning "flash-attn Installation"
         `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
+
+
+=== "Trinity"
+
+    Install with `trinity` training backbone for fully asynchronous RFT:
+
+    ```bash
+    uv venv --python=3.10
+    source .venv/bin/activate
+    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
+    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
+    ```
 
 ---
 

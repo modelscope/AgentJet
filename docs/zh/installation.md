@@ -36,17 +36,6 @@ AgentJet 支持多种训练后端（backbone），目前包括 `verl` 和 `trini
 
     如果您更希望使用 `conda`，也可以通过 conda + pip 安装（只需将 `uv pip` 替换为 `pip` 即可）。
 
-=== "Trinity（推荐）"
-
-    使用 `trinity` 训练后端安装，支持全异步 RFT：
-
-    ```bash
-    uv venv --python=3.10
-    source .venv/bin/activate
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
-    ```
-
 === "Verl"
 
     使用 `verl` 训练后端安装：
@@ -60,6 +49,18 @@ AgentJet 支持多种训练后端（backbone），目前包括 `verl` 和 `trini
 
     !!! warning "flash-attn 安装说明"
         `flash-attn` 必须在其他依赖安装完成后再安装。为加快编译速度，可通过 `export MAX_JOBS=${N_CPU}` 设置并行编译数，或确保 GitHub 访问畅通以直接安装预编译轮子。
+
+=== "Trinity（推荐）"
+
+    使用 `trinity` 训练后端安装，支持全异步 RFT：
+
+    ```bash
+    uv venv --python=3.10
+    source .venv/bin/activate
+    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
+    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
+    ```
+
 
 ---
 
@@ -75,7 +76,7 @@ AgentJet 支持多种训练后端（backbone），目前包括 `verl` 和 `trini
 请在宿主机的 Ubuntu 系统上安装 nvidia docker runtime。详细步骤请参考：
 
 - [Nvidia 官方文档](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installing-on-ubuntu-and-debian)
-- [Ubuntu 环境设置指南](./setup_ubuntu.md)（我们的详细安装说明）
+- [Ubuntu 环境设置指南](../en/setup_ubuntu.md)（我们的详细安装说明）
 
 ### 运行 Docker 容器
 

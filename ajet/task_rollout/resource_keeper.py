@@ -150,7 +150,8 @@ class BaseGymEnv(object):
         self.task_thread_index = task_thread_index
         self.observation_window = observation_window
         self.episode_uuid = episode_uuid
-        self.service_url = self.env_client.base_url
+        if self.env_client:
+            self.service_url = self.env_client.base_url
 
     def step(self, action: dict) -> Tuple[str, float, bool, dict]:
         """Take a step in the gym environment."""
