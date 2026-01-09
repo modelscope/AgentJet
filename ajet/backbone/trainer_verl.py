@@ -54,6 +54,7 @@ from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
+from ajet.utils.save_trajectory import save_train_trajectory, save_eval_trajectory
 
 
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
@@ -577,6 +578,9 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
                         logger.info("=" * 10 + "end fit rollout" + "=" * 10)
+                        
+                        if self.config.ajet.trainer_common.save_trajectory:
+                            save_train_trajectory(context_tracker_arr, self.global_steps)
                         logger.info("begin to convert context_tracker_arr to dataproto")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
                         logger.info("end convertion")
@@ -1028,6 +1032,10 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         # record logs
         for ctx_tracker in ctx_trackers:
             ctx_tracker.generate_log()
+
+        # save eval trajectories
+        if self.config.ajet.trainer_common.save_trajectory:
+            save_eval_trajectory(ctx_trackers, self.global_steps)
 
         rewards = [ctx_tracker.reward_structure.raw_reward for ctx_tracker in ctx_trackers]
         num_tasks = len(task_results)
