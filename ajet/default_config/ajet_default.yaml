@@ -235,6 +235,7 @@ ajet:
     val_pass_n: 4
     save_freq: 20
     test_freq: 20
+    save_trajectory: False  # whether to save train/eval trajectories to JSON files
     total_epochs: 50
     nnodes: 1
     n_gpus_per_node: 8
