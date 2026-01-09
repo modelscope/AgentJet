@@ -26,15 +26,20 @@ class MockAsyncChat(AsyncChat):
     def completions(self) -> MockAsyncCompletions:  # type: ignore
         return MockAsyncCompletions(self._client)
 
-class OpenaiClientBaseUrlTuner(BaseModel):
+
+class AgentJetAsOpenAI(BaseModel):
+    """ The base URL and API key configuration for Ajet's OpenAI API.
+    """
+    base_url: str = Field(default="http://localhost:27788/v1", description="The base URL for the Ajet's fake OpenAI API")
+    api_key: str = Field(default="invalid_apikey", description="The Ajet's fake key, which is not a real key, it is a encoded string contain episode_uuid and other stuff.")
+    model: str = Field(default="reserved_field", description="reserved field.")
+
+
+class OpenaiClientBaseUrlTuner(AgentJetAsOpenAI):
     """ At this layer, we will determine which model to use:
         - training model
         - debug model assigned by user, used when this target is not being trained
     """
-
-    base_url: str = Field(default="http://localhost:27788/v1", description="The base URL for the Ajet's fake OpenAI API")
-    api_key: str = Field(default="invalid_apikey", description="The Ajet's fake key, which is not a real key, it is a encoded string contain episode_uuid and other stuff.")
-    model: str = Field(default="reserved_field", description="reserved field.")
 
     def __init__(
         self,
