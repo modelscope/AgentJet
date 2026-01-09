@@ -15,10 +15,10 @@ ajet:
 
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: Qwen/Qwen2.5-7B
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct
 
   rollout:
-    user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
+    user_workflow: "tutorial.example_math_agent.math_agent_langchain->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 1.0
     max_env_worker: 64
     num_repeat: 6
