@@ -17,6 +17,8 @@ import uuid
 from collections import defaultdict
 from pprint import pprint
 from typing import List, Optional
+from ajet.utils.metric_helper.reward_metric_helper import compute_reward_metrics_from_cmts
+from loguru import logger as loguru_logger
 
 import hydra
 import numpy as np
@@ -55,7 +57,13 @@ from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.save_trajectory import save_train_trajectory, save_eval_trajectory
-
+from ajet.utils.msg_converter import (
+    convert_grouped_steps_to_openai_format,
+    convert_ext_msg_to_openai_format,
+    agentscope_to_openai,
+    openai_to_agentscope,
+)
+from ajet.utils.metric_helper.tool_metric_helper import compute_tool_metrics_from_cmts
 
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
     """
@@ -606,6 +614,14 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                                 ),
                             }
                         )
+                        from ajet.utils.metric_helper.tool_metric_helper import compute_tool_metrics_from_trajectories
+                        from ajet.utils.metric_helper.reward_metric_helper import compute_reward_metrics_from_trajectories
+                        tool_metrics = compute_tool_metrics_from_trajectories(context_tracker_arr)
+                        reward_metrics = compute_reward_metrics_from_trajectories(context_tracker_arr)
+                        if tool_metrics:
+                            metrics.update(tool_metrics)
+                        if reward_metrics:
+                            metrics.update(reward_metrics)
                         if self.config.ajet.execute_test:  # apply a test probe
                             from swanlab.data.run.main import get_run
 
@@ -1052,6 +1068,12 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             f"TGC@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,
         }
+        reward_metrics = compute_reward_metrics_from_cmts(ctx_trackers, print_debug=True)  
+        tool_metrics = compute_tool_metrics_from_cmts(ctx_trackers) 
+        if tool_metrics:
+            val_metrics.update(reward_metrics)
+        if reward_metrics:
+            val_metrics.update(tool_metrics)
         print_dict(
             val_metrics,
             narrow=True,
