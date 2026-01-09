@@ -137,9 +137,10 @@ def main(config):
 
     runtime_env = get_runtime_env()
     os.environ.update(runtime_env["env_vars"])
+
     if config.ajet.enable_experimental_reverse_proxy:
         from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
-        start_interchange_server()
+        start_interchange_server(config.ajet.experiment_dir)
 
     def companion_launch():
         import torch
