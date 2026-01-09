@@ -47,15 +47,11 @@ class ExampleMathLearn(Workflow):
         response = agent.invoke({
             "messages": [
                 {
-                    "role": "system",
-                    "content": self.system_prompt
-                },
-                {
                     "role": "user",
                     "content": query
                 }
             ],
         })
         
-        final_answer = response['choices'][0]['message']['content']
+        final_answer = response['messages'][-1].content
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
