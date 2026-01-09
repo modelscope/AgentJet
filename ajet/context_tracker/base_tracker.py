@@ -1,4 +1,5 @@
 from typing import List, Tuple, Union
+from typing import List, Union, Tuple, Dict, Optional, Any
 
 from ajet.schema.extended_msg import (
     INVALID_LOG_PROB_VALUE,
@@ -135,6 +136,7 @@ class BaseTracker(object):
         self.already_mad_flag: bool = False
         self.round_cnt = 0
         self.generation_prompt_token = None
+        self.workflow_metadata: Optional[Dict[str, Any]] = None  # 初始化 workflow_metadata 以存储工具统计信息
 
         assert (
             self.config.ajet.data.max_prompt_length
