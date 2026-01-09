@@ -63,14 +63,14 @@ Reference Information contains the information that the doctor has not known.
 llm = RobustDashScopeChatModel("qwen-plus", stream=False)
 
 
-async def llm_reward(init_messages: list[Msg], response: str, truth_info: str):
-    def format_messages(messages: list[Msg]) -> str:
+async def llm_reward(init_messages: list[dict], response: str, truth_info: str):
+    def format_messages(messages: list[dict]) -> str:
         result_str = ""
         for msg in messages:
-            if msg.role == "user":
-                result_str += f"patient: {msg.content}\n"
-            if msg.role == "assistant":
-                result_str += f"doctor: {msg.content}\n"
+            if msg["role"] == "user":
+                result_str += f"patient: {msg['content']}\n"
+            if msg["role"] == "assistant":
+                result_str += f"doctor: {msg['content']}\n"
         return result_str
 
     def parse_tag_string(text: str):
@@ -81,7 +81,7 @@ async def llm_reward(init_messages: list[Msg], response: str, truth_info: str):
             result[tag] = value
         return result
 
-    history = format_messages([] + init_messages + [Msg("assistant", response, role="assistant")])
+    history = format_messages([] + init_messages + [{"role": "assistant", "content": response}])
     messages = [
         {"role": "system", "content": reward_prompt.format(truth_info)},
         {"role": "user", "content": history},
@@ -116,7 +116,7 @@ async def llm_reward(init_messages: list[Msg], response: str, truth_info: str):
                 time.sleep(2**try_count)
 
 
-async def reward_fn(init_messages: list[Msg], response: str, truth_action: str, truth_info: str):
+async def reward_fn(init_messages: list[dict], response: str, truth_action: str, truth_info: str):
     """
     content_score: R_a, the reward for response quality
     action_score: R_s, the reward for decision correctness
@@ -167,35 +167,33 @@ class ExampleLearn2Ask(Workflow):
     name: str = "math_agent_workflow"
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-        from agentscope.agent import ReActAgent
-        from agentscope.formatter import DashScopeChatFormatter
-        from agentscope.memory import InMemoryMemory
+        from langchain_openai import ChatOpenAI
+        from langchain.agents import create_agent
 
         messages = workflow_task.task.init_messages
         assert isinstance(messages, list)
         truth_action = workflow_task.task.metadata["decision_truth"] or "continue"
         truth_info = workflow_task.task.metadata["info_truth"]
-
-        self.agent = ReActAgent(
-            name="math_react_agent",
-            sys_prompt=system_prompt,
-            model=tuner.as_agentscope_model(),
-            formatter=DashScopeChatFormatter(),
-            toolkit=None,
-            memory=InMemoryMemory(),
-            max_iters=1,
+        
+        llm_info=tuner.as_oai_baseurl_apikey()
+        
+        llm=ChatOpenAI(
+            base_url=llm_info.base_url,
+            api_key=lambda:llm_info.api_key,
         )
-        self.agent.set_console_output_enabled(False)
-        msg = [
-            # Msg("system", system_prompt, role="system"),
-            *[Msg(name=x["role"], content=x["content"], role=x["role"]) for x in messages]
+        
+        agent=create_agent(
+            model=llm,
+            system_prompt=system_prompt,
+        )
+        
+        msg=[
+            {"role": x["role"], "content": x["content"]} for x in messages
         ]
-        result = await self.agent.reply(msg)
-        if isinstance(result.content, str):
-            response = result.content
-        elif isinstance(result.content, list):
-            response = result.content[0]["text"]  # type: ignore
-        else:
-            raise NotImplementedError(f"do not know how to handle {type(result.content)}")
+        result = agent.invoke({
+            "messages": msg, # type: ignore
+        })
+        
+        response = result["messages"][-1].content
         reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)
         return WorkflowOutput(reward=reward)
