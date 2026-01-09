@@ -62,3 +62,5 @@ tinkerjet_remote.close()
 
 - AgentJet are not able to explicitly distinguish different agents in multi-agent scenario.
   But **do not worry**, AgentJet will still try its best to recognize shards of llm timelines and merge them behind the curtain, automatically.
+
+- TinkerJet does not support prompt tuning.

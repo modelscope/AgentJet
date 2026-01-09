@@ -12,6 +12,10 @@ TINKERJET_URL = "http://localhost:10086" # Change to your tinkerjet remote url
 NUM_EPOCH = 100
 GRPO_N = 4  # grpo group size
 
+class WeightUpdatedHalfway(Exception):
+    """Raised when the remote side starts updating model weights halfway through an episode."""
+    pass
+
 def main():
     # Handshake with tinkerjet remote, then send training param to tinkerjet remote (such as model to be trained, algorithm, etc)
     tinkerjet_remote = TinkerJetRemote(TINKERJET_URL)
@@ -27,32 +31,32 @@ def main():
         )
     )
 
-    # rollout
-    @retry_with_backoff(max_retry=2)
+    # Define rollout
     def rollout(task):
         # Q: Can I run episodes in parallel?
         # A: Yes, wrap `rollout` in a thread or process pool.
-        try:
-            api_baseurl_key = tinkerjet_remote.begin_episode()
-            workflow_output = execute_agent(task, api_baseurl_key)
-            tinkerjet_remote.end_episode(workflow_output)
-            return workflow_output.reward
-        except Exception as e:
-            print(f"Episode abandoned")
-            return 0.0
+        api_baseurl_key = tinkerjet_remote.begin_episode()
+        workflow_output = execute_agent(task, api_baseurl_key)
+        tinkerjet_remote.end_episode(workflow_output)
+        return workflow_output.reward
 
     # Main Training loop
     for epoch in range(NUM_EPOCH):
         for task in dataset.get_training_tasks():
-            for i in range(GRPO_N):
-                reward = rollout(task)
-                print(f"{epoch}-{task}-run:{i}-{reward}")
-
+            try:
+                for i in range(GRPO_N):
+                    reward = rollout(task)
+                    print(f"{epoch}-{task}-run:{i}-{reward}")
+            except WeightUpdatedHalfway as e:
+                print(f"The remote side has gone into the LLM model weight update phrase halfway through an episode."
+                      f"This is **normal**."
+                      f"The remote no longer need this task anymore, so let's go to next task.")
     # Get tuned model from tinkerjet remote
     tuned_model_checkpoint = tinkerjet_remote.download_tuned_model()
     return tuned_model_checkpoint
 
 
+@retry_with_backoff(max_retry=2)
 def execute_agent(task, api_baseurl_key: AgentJetAsOpenAI):
     # Prepare base_url, api_key
     base_url, api_key = (api_baseurl_key.base_url, api_baseurl_key.api_key)
