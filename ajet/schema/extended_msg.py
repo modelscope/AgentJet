@@ -72,6 +72,7 @@ class ExtendedMessage:
         build_from_uuid="",
         tools=[],
         tool_calls=[],
+        tool_call_id="",
         token_logprob_arr=[],
         first_message=False,
     ):
@@ -88,6 +89,7 @@ class ExtendedMessage:
         self.clip = clip
         self.tools = tools
         self.tool_calls = tool_calls
+        self.tool_call_id = tool_call_id
         self.uuid = uuid.uuid4().hex
         self.build_from_uuid = build_from_uuid
         self.first_message = first_message
@@ -143,6 +145,8 @@ class ExtendedMessage:
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
+            if self.tool_call_id:
+                auto_tokenize_target.update({"tool_call_id": self.tool_call_id})
             text_frag_to = ajet_apply_chat_template(
                 tokenizer=tokenizer,
                 conversation=DUMMY_MSG + [auto_tokenize_target],
