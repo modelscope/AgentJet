@@ -55,3 +55,10 @@ tuned_model_checkpoint = tinkerjet_remote.download_tuned_model()
 tinkerjet_remote.close()
 
 ```
+
+# Limitation
+
+- Users are only limited to use OpenAI `baseurl` + `apikey` to build applications. Features such as `tuner.as_agentscope_model` is no longer available.
+
+- AgentJet are not able to explicitly distinguish different agents in multi-agent scenario.
+  But **do not worry**, AgentJet will still try its best to recognize shards of llm timelines and merge them behind the curtain, automatically.

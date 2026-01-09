@@ -7,7 +7,7 @@ from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import AgentJetAsOpenAI
 from ajet import WorkflowOutput
 from ajet.task_reader import RouterTaskReader
-
+from ajet.utils.retry import retry_with_backoff
 TINKERJET_URL = "http://localhost:10086" # Change to your tinkerjet remote url
 NUM_EPOCH = 100
 GRPO_N = 4  # grpo group size
@@ -28,7 +28,10 @@ def main():
     )
 
     # rollout
+    @retry_with_backoff(max_retry=2)
     def rollout(task):
+        # Q: Can I run episodes in parallel?
+        # A: Yes, wrap `rollout` in a thread or process pool.
         try:
             api_baseurl_key = tinkerjet_remote.begin_episode()
             workflow_output = execute_agent(task, api_baseurl_key)
