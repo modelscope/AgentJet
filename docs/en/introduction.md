@@ -101,7 +101,7 @@ The internal system orchestrates several specialized modules to handle the compl
 
 ### Navigation
 
-* <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" /> **Tutorials**: From [Installation](./installation.md) to [Tuning your first agent](./tutorial.md) — the essential path for beginners.
+* <img src="https://api.iconify.design/lucide:book-open.svg" class="inline-icon" /> **Tutorials**: From [Installation](./installation.md) to [Tuning your first agent](./tune_your_first_agent.md) — the essential path for beginners.
 * <img src="https://api.iconify.design/lucide:wrench.svg" class="inline-icon" /> **Core Components**: Define your [Trainable Workflow](./workflow.md) and manage [Data](./data_pipeline.md) and [Reward](./tune_your_first_agent.md).
 * <img src="https://api.iconify.design/lucide:lightbulb.svg" class="inline-icon" /> **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](./example_math_agent.md), [Werewolves game](./example_werewolves.md) and  [Learning to ask task](./example_learning_to_ask.md).
 * <img src="https://api.iconify.design/lucide:settings.svg" class="inline-icon" /> **Deep Dive**: Master advanced [Configuration](./configuration.md).

@@ -61,10 +61,19 @@ flash_attn = [
     "flash-attn==2.8.1"
 ]
 
-doc = [
-    "jupyter-book>=1.0.4.post1,<2.0.0",
-    "furo>=2025.7.19",
+docs = [
+    "mkdocs",
+    "mkdocs-autorefs",
+    "mkdocs-get-deps",
+    "mkdocstrings-python",
+    "mkdocs-shadcn",
+    "mkdocstrings",
 ]
+
+# To build and serve docs, run:
+# uv pip install -e .[docs]
+# mkdocs serve -a 127.0.0.1:8080
+
 
 [project.scripts]
 ajet = "ajet.launcher:main"
