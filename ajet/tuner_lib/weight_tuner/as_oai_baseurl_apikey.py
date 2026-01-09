@@ -1,3 +1,4 @@
+import os
 import asyncio
 from typing import TYPE_CHECKING, Any, List, Callable, Literal, Type, Union
 from loguru import logger
@@ -45,10 +46,19 @@ class OpenaiClientBaseUrlTuner(BaseModel):
         episode_uuid: str,
         **kwargs,
     ):
-        self.base_url = "http://localhost:27788/v1"
-        self.api_key = generate_auth_token(
+        port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
+        assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
+        base_url = f"http://localhost:{port}/v1"
+        api_key = generate_auth_token(
             agent_name=agent_name,
             target_tag=target_tag,
             episode_uuid=episode_uuid,
         )
-        self.model = "reserved_field"
+        model = "reserved_field"
+
+        # Properly initialize the Pydantic BaseModel
+        super().__init__(
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+        )

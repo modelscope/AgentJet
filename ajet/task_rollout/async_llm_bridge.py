@@ -5,8 +5,8 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Literal, Type, Union
 
-from agentscope._utils._common import _json_loads_with_repair
-from agentscope.message import TextBlock, ToolUseBlock
+
+
 from loguru import logger
 from omegaconf import DictConfig
 from pydantic import BaseModel
@@ -33,7 +33,7 @@ from ajet.utils.tokenizer import ajet_apply_chat_template
 class AjetStandardLlmBridgeRequest(BaseModel):
     messages: List[Dict[str, str]]
     custom_sampling_params: dict = {}
-    tools=[]
+    tools: List = []
     request_id: str = ""
 
 class AjetStandardLlmBridgeResponse(BaseModel):
@@ -41,7 +41,7 @@ class AjetStandardLlmBridgeResponse(BaseModel):
     request_id: str = ""
     content: str = ""
     tool_calls: List[Dict] = []
-    tokens: List[TokenAndProb]
+    tokens: List[TokenAndProb] = []
 
 
 # -------------------------------------------------------------------------------------

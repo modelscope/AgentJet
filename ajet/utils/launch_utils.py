@@ -240,7 +240,8 @@ def execute_training_process(
                 "Running Command": " ".join(cmd),
                 "Experiment Base": exe_exp_base,
                 "YAML Config": exe_yaml_path,
-            }
+            },
+            header="Final Training Command & Directory",
         )
         verify_python_env(args, exp_config)
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)

@@ -832,6 +832,11 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 progress_bar.update(1)
                 self.global_steps += 1
 
+                # when enabled oai request interchange, we need to clear the cache from time to time
+                if self.config.ajet.enable_experimental_reverse_proxy:
+                    from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import ensure_dat_interchange_server_cache_clear
+                    ensure_dat_interchange_server_cache_clear()
+
                 if is_last_step:
                     pprint(f"Final validation metrics: {last_val_metrics}")
                     progress_bar.close()
