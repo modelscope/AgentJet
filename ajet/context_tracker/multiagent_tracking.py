@@ -20,7 +20,15 @@ from ajet.schema.trajectory import Reward
 from ajet.utils.color_hsl import adjust_color_hsl
 from ajet.utils.compute_madness import compute_string_madness
 from ajet.utils.tokenizer import ajet_apply_chat_template
-
+#  
+from ajet.utils.msg_converter import (
+    convert_grouped_steps_to_openai_format,
+    convert_ext_msg_to_openai_format,
+    agentscope_to_openai,
+    openai_to_agentscope,
+    agentscope_to_openai_grouped,
+    openai_to_agentscope_grouped,
+)
 @dataclass
 class TimelineMergingPolicyConfig:
     timeline_compare_level: str = "text"
@@ -101,27 +109,43 @@ class MultiAgentContextTracker(BaseContextTracker):
                 author = "env"
                 ignore = False
                 str_content = ""
-
-                # fix msg content
-                if msg["content"] is None:
-                    msg["content"] = ""
-                elif isinstance(msg["content"], list):
-                    for item in msg["content"]:
-                        if "text" not in item:
-                            logger.warning(
-                                f"Non-text content in message content detected: {item}. Ignoring."
-                            )
-                            ignore = True
-                            break
+                extracted_tool_call_id = ""
+                for item_idx, item in enumerate(msg["content"]):
+                    if isinstance(item, dict) and item.get("type") == "tool_result":
+                        is_tool_result_msg = True  # 标记为 tool_result 消息
+                        # Extract tool_call_id from the tool_result block
+                        if item.get("id"):
+                            extracted_tool_call_id = item.get("id", "")
+                        output = item.get("output", "")
+                        if isinstance(output, str):
+                            str_content += output
+                        elif isinstance(output, list):
+                            # output can be List[TextBlock | ImageBlock | AudioBlock]
+                            for out_item in output:
+                                if isinstance(out_item, str):
+                                    str_content += out_item
+                                elif isinstance(out_item, dict) and "text" in out_item:
+                                    str_content += str(out_item["text"])
+                        else:
+                            str_content += str(output)
+                    elif isinstance(item, dict) and "text" in item:
                         if isinstance(item["text"], str):
                             str_content += str(item["text"])
                         else:
                             str_content = ""
-                        msg["content"] = str_content
-                else:
-                    raise ValueError(
-                        f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}"
-                    )
+                    else:
+                        logger.warning(
+                            f"Non-text content in message content detected: {item}. Ignoring."
+                        )
+                        ignore = True
+                        break
+                msg["content"] = str_content
+                msg["tool_call_id"] = extracted_tool_call_id  # Store extracted tool_call_id
+                
+                # ★ 关键修复：如果是 tool_result 消息，将 role 恢复为 "tool"（OpenAI 格式）
+                if is_tool_result_msg and extracted_tool_call_id:
+                    msg["role"] = "tool"
+                
 
                 if ignore:
                     continue
@@ -143,6 +167,7 @@ class MultiAgentContextTracker(BaseContextTracker):
                     tokenizer=self.tokenizer,
                     tools=tools,
                     tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
+                    tool_call_id=(msg["tool_call_id"] if "tool_call_id" in msg else ""),
                     token_generator="auto",
                     first_message=(i == 0),
                 )
@@ -580,3 +605,25 @@ class MultiAgentContextTracker(BaseContextTracker):
         else:
             ret = (False, token_overflow, "token_overflow")
         return ret
+
+    def get_grouped_steps_openai_format(self) -> List[List[Dict[str, Any]]]:
+        """
+        将 grouped_steps 转换为 OpenAI 格式并返回。
+        
+        Returns:
+            OpenAI 格式的轨迹数据 (List of List of dict)
+            每条消息格式如：
+            - {"role": "assistant", "content": "...", "tool_calls": [...]}
+            - {"role": "tool", "content": "...", "tool_call_id": "call_xxx"}
+            - {"role": "user/system", "content": "..."}
+        """
+        return convert_grouped_steps_to_openai_format(self.grouped_steps)
+
+    def get_full_context_openai_format(self) -> List[Dict[str, Any]]:
+        """
+        将当前 full_context 转换为 OpenAI 格式并返回。
+        
+        Returns:
+            OpenAI 格式的消息列表 (List of dict)
+        """
+        return [convert_ext_msg_to_openai_format(msg) for msg in self.full_context]

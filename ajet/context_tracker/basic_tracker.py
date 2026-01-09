@@ -192,6 +192,8 @@ class BaseContextTracker(BaseTracker):
             }
             if ext_msg.tool_calls:
                 d.update({"tool_calls": ext_msg.tool_calls})
+            if ext_msg.tool_call_id:
+                d.update({"tool_call_id": ext_msg.tool_call_id})
             result.append(d)
         return result
 
