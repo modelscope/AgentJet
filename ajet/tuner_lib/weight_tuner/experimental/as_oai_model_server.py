@@ -1,7 +1,12 @@
 """
-A shadow FastAPI server for serving as interchange endpoint between agents and model handlers.
+A shadow FastAPI server for serving as interchange endpoint between Tuner and Workflow.
 
 - This functionality is experimental.
+- The code is very async, considering extreme efficiency for handling many concurrent requests,
+  therefore, it may be hard to read.
+
+---------------------------------------------------------------------------------------------
+
 """
 
 import asyncio
