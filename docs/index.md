@@ -1,6 +1,11 @@
 # AgentJet
 
-**AgentJet (AgentJet)** is a cutting-edge, user-friendly agent tunning framework designed to optimize LLM models and agent workflows.
+
+<div align="center">
+<img width="500" alt="AgentJet" src="agentjet.jpg"/>
+</div>
+
+**AgentJet (AJet)** is a cutting-edge, user-friendly agent tunning framework designed to optimize LLM models and agent workflows.
 
 
 ## 🛩️ Key Features
