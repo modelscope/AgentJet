@@ -29,7 +29,7 @@ We aim to build a easy-to-learn Agent tuner that unlock more possibilities for a
 - **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
 - **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support [trinity](https://github.com/modelscope/Trinity-RFT/) as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
-- **Flexible and Fast**. AgentJet supports [multi-agent workflows](docs/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 20x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Flexible and Fast**. AgentJet supports [multi-agent workflows](docs/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
 
 For advanced researchers, AgentJet also provides high-resolution logging and debugging solutions:
@@ -110,7 +110,7 @@ The internal system orchestrates several specialized modules to handle the compl
 * **Task Rollout**: Bridges LLM engines and manages the Gym environment lifecycle.
 * **Task Runner**: Executes the Agent workflow and calculates rewards.
 * **Model Tuner**: Forwards inference requests from the workflow to the LLM engine.
-* **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **3x to 10x**.
+* **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **1.5x to 10x**.
 
 
 ---

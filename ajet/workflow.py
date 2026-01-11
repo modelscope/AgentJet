@@ -24,7 +24,7 @@ How to define a trainable workflow 🚀:
 
 1. Single agent scenario 🤖:
 
-    Simply set `model` argument to `model_tuner` when initializing your agent.
+    Simply set `model` argument to `tuner.as_agentscope_model()` when initializing your agent.
     This is a helpful example when you:
     - 🌟 Know exactly which agents should be trained, or the number of agents are small;
     - ✨ Already finished basic debugging of your workflow using a fixed model such as qwen-max;
@@ -92,17 +92,35 @@ How to define a trainable workflow 🚀:
     [ ]   roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
     [ ]   players = []
     [ ]   for i, role in enumerate(roles):
-    [ ]       default_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
-    [ ]       default_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
-    [ ]       chosen_model = default_model_for_good_guys if role != "werewolf" else default_model_for_bad_guys  # 🌟
+    [ ]       debug_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
+    [ ]       debug_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
+    [ ]       chosen_model = debug_model_for_good_guys if role != "werewolf" else debug_model_for_bad_guys  # 🌟
     [ ]       players += [ReActAgent(
     [ ]           name=f"Player{i + 1}",
     [ ]           sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
     [-]           model=chosen_model,
-    [+]           model=model_tuner.register_model(role, default_model=chosen_model),
+    [+]           model=tuner.as_agentscope_model(f"Player{i + 1}", role, debug_model=chosen_model),
     [ ]           formatter=OpenAIMultiAgentFormatter(),
     [ ]       )]
 
 
+[ ]   roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
+[ ]   players = []
+[ ]   for i, agent_role in enumerate(roles):
+[ ]       if agent_role != "werewolf":
+[ ]           chosen_model_for_current_agent = OpenAIChatModel(model_name="qwen-max", stream=False)
+[ ]       else:
+[ ]           chosen_model_for_current_agent = OpenAIChatModel(model_name="qwen-plus", stream=False)
+[ ]       players += [ReActAgent(
+[ ]           name=f"Player{i + 1}",
+[ ]           sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
+[ ]           model=agentscope_model,
+[ ]           model=tuner.as_agentscope_model(
+[ ]               agent_name=f"Player{i + 1}",
+[ ]               target_tag=agent_role,                          # 🌟 tag agents with their role
+[ ]               debug_model=chosen_model_for_current_agent      # 🌟 assign a debug model, ONLY used when we are NOT training this agent
+[ ]           )
+[ ]           formatter=OpenAIMultiAgentFormatter(),
+[ ]       )]
 
 """

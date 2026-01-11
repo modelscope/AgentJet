@@ -1,54 +1,110 @@
 # AgentJet
 
-**AgentJet (AgentJet)** is a cutting-edge, user-friendly training framework designed to optimize AgentScope agents and workflows, fine-tuning language model weights behind the scenes.
+**AgentJet (AgentJet)** is a cutting-edge, user-friendly agent tunning framework designed to optimize LLM models and agent workflows.
 
-Simply provide your AgentScope workflow, training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
 
----
-
-## Key Features
+## 🛩️ Key Features
 
 <div class="card-grid">
-<a href="en/configuration/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:rocket.svg" class="card-icon card-icon-agent" alt=""><h3>Easy and Friendly</h3></div><p class="card-desc">AgentJet helps you tune models behind your agent workflows easily. Zero-config defaults and intuitive YAML-based configuration.</p></a>
-<a href="#example-library" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:book-open.svg" class="card-icon card-icon-general" alt=""><h3>Rich Tutorial Library</h3></div><p class="card-desc">Rich library of examples as tutorials: Math Agent, Werewolves Game, AppWorld and more with step-by-step guides.</p></a>
-<a href="en/workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:zap.svg" class="card-icon card-icon-tool" alt=""><h3>Efficient and Scalable</h3></div><p class="card-desc">Uses Trinity as the default backbone with fully asynchronous RFT. Context merging technique for 1.5x to 20x training acceleration.</p></a>
+    <a href="en/configuration/" class="feature-card">
+        <div class="card-header"><img src="https://api.iconify.design/lucide:rocket.svg"
+                class="card-icon card-icon-agent" alt="">
+            <h3>Get Started with Ease</h3>
+        </div>
+        <p class="card-desc">
+            AgentJet simplifies the process of tuning the models that power your agent workflows. It supports nearly all major agent frameworks (e.g. <b>agentscope</b>, <b>langchain</b>), as well as <b>framwork-less</b> agents built from HTTP requests.
+        </p>
+    </a>
+    <a href="#example-library" class="feature-card">
+        <div class="card-header"><img src="https://api.iconify.design/lucide:library.svg"
+                class="card-icon card-icon-general" alt="">
+            <h3>Rich Tutorial Library</h3>
+        </div>
+        <p class="card-desc">
+            Rich examples as beginner's tutorial: <b>math agent</b>, <b>werewolves rpg</b>, <b>appworld</b> ... All with step-by-step
+            guides. Covering various agentic frameworks.</p>
+    </a>
+    <a href="https://benchmark.agent-matrix.com/" class="feature-card">
+        <div class="card-header"><img src="https://api.iconify.design/lucide:shield-check.svg" class="card-icon card-icon-tool"
+                alt="">
+            <h3>Reliable and Reproducible</h3>
+        </div>
+        <p class="card-desc">
+        Checkout AgentJet's community-powered, robot-assisted <b>open-benchmarking system</b>.
+        Share progress, compare training backbones, discover bugs and iterate faster than ever!
+        Click here to see AgentJet performance across tasks/versions/backbones.
+        </p>
+    </a>
+    <a href="en/workflow/" class="feature-card">
+        <div class="card-header"><img src="https://api.iconify.design/lucide:users.svg" class="card-icon card-icon-tool"
+                alt="">
+            <h3>Multi-agent and Multi-turn</h3>
+        </div>
+        <p class="card-desc">
+            Built to support advanced <b>multi-agent</b> and <b>multi-turn</b> LLM workflows,
+            AgentJet intergrates timeline-merging algorithms that
+            automatically analyze and consolidate each agent's LLM timeline,
+            <b>accelerating</b> training speed 1.5x ~ 10x.
+        </p>
+    </a>
+    <a href="en/workflow/" class="feature-card">
+        <div class="card-header"><img src="https://api.iconify.design/lucide:microscope.svg" class="card-icon card-icon-tool"
+                alt="">
+            <h3>High Resolution Logging</h3>
+        </div>
+        <p class="card-desc">
+            Log <b>token-level</b> rollout details, capturing token IDs, token <b>loss masks</b>, and token <b>log probabilities</b> with <b>web UI display</b>. This Support workflow development, agent diagnostics, and facilitate research on advanced LLM algorithm studies.
+        </p>
+    </a>
+    <a href="en/workflow/" class="feature-card">
+        <div class="card-header"><img src="https://api.iconify.design/lucide:cpu.svg" class="card-icon card-icon-tool"
+                alt="">
+            <h3>Any Training Engine</h3>
+        </div>
+        <p class="card-desc">
+            Support <b>multiple training engines</b> as backbone (<b>VeRL</b> and <b>Trinity-RFT</b>). Tinker backbone support will be released soon.
+            Choose from <b>vLLM</b> and <b>SGLang</b> as you wish. Say goodbye to training engine gaps.
+        </p>
+    </a>
 </div>
 
----
 
-## Quick Start
 
-### Installation
+## 🛩️ Quick Start
 
-We recommend using `uv` for dependency management.
+<div class="card-grid">
+<a href="en/installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Click Here for the Full Installation Document</h3></div></a>
+</div>
 
-**1. Clone the Repository:**
 
-```bash
-git clone https://github.com/modelscope/AgentJet.git
-cd AgentJet
-```
+We recommend using `uv` for dependency management. [Click here](./installation/) for details and other training backbone (e.g. Trinity-RFT) options.
 
-**2. Set up Environment:**
+- Clone the Repository:
+    ```bash
+    git clone https://github.com/modelscope/AgentJet.git
+    cd AgentJet
+    ```
 
-```bash
-uv venv --python=3.10.16 && source .venv/bin/activate
-uv pip install -e .[trinity]
-# Note: flash-attn must be installed after other dependencies
-uv pip install flash_attn==2.8.1 --no-build-isolation --no-cache-dir
-```
+- Set up Environment:
+    ```bash
+    uv venv --python=3.10.16 && source .venv/bin/activate
+    uv pip install -e .[verl]
 
-### Run Training
+    # Note: flash-attn must be installed after other dependencies
+    uv pip install flash_attn==2.8.3 --no-build-isolation --no-cache-dir
+    ```
 
-You can start training your first agent with a single command using a pre-configured YAML file:
+- Train the First Agent:
+    ```bash
+    # You can start training your first agent with a single command using a pre-configured YAML file
 
-```bash
-ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
-```
+    ajet --conf tutorial/example_math_agent/math_agent.yaml
+    ```
 
----
 
-## Example Library {#example-library}
+
+
+## 🛩️ Example Library {#example-library}
 
 Explore our rich library of examples to kickstart your journey:
 
@@ -61,17 +117,12 @@ Explore our rich library of examples to kickstart your journey:
 <a href="en/example_frozenlake/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:snowflake.svg" class="card-icon card-icon-data" alt=""><h3>Frozen Lake</h3></div><p class="card-desc">Solving a frozen lake walking puzzle using AgentJet's reinforcement learning.</p></a>
 </div>
 
----
 
-## Core Concepts
+## 🛩️ Core Concepts
 
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
-<div align="center">
-<img width="480" alt="AgentJet Architecture" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
-</div>
-
-### The User-Centric Interface
+**🛩️ The User-Centric Interface**
 
 To optimize an agent, you provide three core inputs:
 
@@ -81,9 +132,13 @@ To optimize an agent, you provide three core inputs:
 <a href="en/task_judger/" class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Evaluates agent outputs and assigns rewards to guide the training process.</p></a>
 </div>
 
-### Internal System Architecture
+<div align="center">
+<img width="840" alt="AgentJet Architecture" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+</div>
 
-The internal system orchestrates several specialized modules:
+**🛩️ Internal System Architecture**
+
+The internal system orchestrates several specialized modules to handle the complexities of RL training and agent interactions.
 
 | Module | Description |
 |--------|-------------|
@@ -91,23 +146,12 @@ The internal system orchestrates several specialized modules:
 | **Task Rollout** | Bridges LLM engines and manages the Gym environment lifecycle |
 | **Task Runner** | Executes the AgentScope workflow and calculates rewards |
 | **Model Tuner** | Forwards inference requests from the workflow to the LLM engine |
-| **Context Tracker** | Monitors LLM calls and automatically merges shared-history timelines (3x-10x efficiency boost) |
+| **Context Tracker** | Monitors LLM calls and automatically merges shared-history timelines (1.5x-10x efficiency boost) |
 
----
 
-## For Advanced Researchers
 
-AgentJet provides high-resolution logging and debugging solutions:
 
-!!! tip "High-Resolution Logging"
-    Save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
-
-!!! info "Fast Debugging"
-    Use the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes.
-
----
-
-## Next Steps
+## 🛩️ Next Steps
 
 <div class="card-grid">
 <a href="en/installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Installation</h3></div><p class="card-desc">Set up AgentJet environment and dependencies.</p></a>
@@ -116,10 +160,9 @@ AgentJet provides high-resolution logging and debugging solutions:
 <a href="en/example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Examples</h3></div><p class="card-desc">Explore detailed training examples.</p></a>
 </div>
 
----
 
-## 中文文档
+<!-- ## 中文文档
 
 <div class="card-grid">
-<a href="zh/intro/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:translate.svg" class="card-icon card-icon-multimodal" alt=""><h3>查看中文文档</h3></div><p class="card-desc">完整的中文教程和指南。</p></a></div>
+<a href="zh/intro/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:translate.svg" class="card-icon card-icon-multimodal" alt=""><h3>查看中文文档</h3></div><p class="card-desc">完整的中文教程和指南。</p></a></div> -->
 

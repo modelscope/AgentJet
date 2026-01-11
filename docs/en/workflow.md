@@ -1,28 +1,55 @@
 # Trainable Workflow
 
-This tutorial introduces how to define a trainable workflow with AgentScope.
+This tutorial introduces how to define a trainable workflow.
 
-!!! info "Two Approaches"
-    AgentJet provides two convenient and **mutually compatible** ways to wrap an AgentScope Workflow:
+!!! info ""
+    AgentJet provides two **convenient** and **mutually compatible** ways to wrap your Workflow:
 
     - **Simple**: Emphasizes simplicity, ease of use, and readability
     - **Advanced**: Emphasizes flexibility, controllability, and extensibility
 
----
+In this article we use AgentScope framework for demonstration.
 
-## Simple Agent Scenario
+## Simple Practice
 
-### 1. Convert Your AgentScope Workflow in AgentJet
+!!! Example "Simple Practice Abstract"
+    - Simply set `model` argument in AgentScope ReActAgent argument to `tuner.as_agentscope_model()` when initializing your agent.
+    - Wrap your code with `class MyWorkflow(Workflow)` and you agent is ready to be tuned.
 
-Simply set ReActAgent's `model` argument to `model_tuner` when initializing your agent.
+### 1. When to Use This Simple Practice
+
+!!! warning "Choose Simple Practice If You..."
+    - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> Know exactly which agents should be trained, or the number of agents is small
+    - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> Already finished basic debugging of your workflow
+    - <img src="https://api.iconify.design/lucide:sparkle.svg" class="inline-icon" /> Do not need to change which agents are trained on the fly
+
+
+### 2. Convert Your Workflow to AgentJet Trainable Workflow
+
+The very first step is to create a class as a container to wrap your code:
+
+=== "`converted_workflow.py` - AgentJet Workflow"
+
+    ```python
+    from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
+    class MyWorkflow(Workflow):
+        async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
+            # ... your ReActAgent workflow here 🛩️ ...
+            return WorkflowOutput(reward=..., metadata={...})
+
+    ```
+
+
+Next, use the `tuner` argument, call its `tuner.as_agentscope_model()` method:
 
 === "Before"
 
     ```python
+    model = DashScopeChatModel(model_name="qwen-max", stream=False)  # 🛩️ change here
     agent_instance = ReActAgent(
        name=f"Friday",
        sys_prompt="You are a helpful assistant",
-       model=DashScopeChatModel(model_name="qwen-max", stream=False),
+       model=model,
        formatter=DashScopeChatFormatter(),
     )
     ```
@@ -30,215 +57,178 @@ Simply set ReActAgent's `model` argument to `model_tuner` when initializing your
 === "After"
 
     ```python
+    model = tuner.as_agentscope_model() # 🛩️ change here
     agent_instance = ReActAgent(
        name=f"Friday",
        sys_prompt="You are a helpful assistant",
-       model=model_tuner,  # ← change here
+       model=model,
        formatter=DashScopeChatFormatter(),
     )
     ```
 
-Then, wrap your workflow in a class that inherits `Workflow`:
+!!! warning "AjetTuner"
+    `AjetTuner` also has `.as_raw_openai_sdk_client()` and `.as_oai_baseurl_apikey()` method. But `.as_agentscope_model()` is more convenient for AgentScope agent workflow.
 
-```python
-from ajet import Workflow, WorkflowTask, WorkflowOutput, ModelTuner
 
-class ExampleMathLearn(Workflow):
-    name: str = "math_agent_workflow"
-
-    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-        # ... your ReActAgent workflow here ...
-        return WorkflowOutput(reward=workflow_reward)
-```
-
-### 2. When to Use This Simple Practice
-
-!!! tip "Choose Simple Practice If You..."
-    - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> Know exactly which agents should be trained, or the number of agents is small
-    - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> Already finished basic debugging of your workflow
-    - <img src="https://api.iconify.design/lucide:sparkle.svg" class="inline-icon" /> Do not need to change which agents are trained on the fly
 
 ### 3. Code Example
 
-Suppose you have built a ReAct agent:
+<div class="card-grid">
+<a href="en/example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Math Agent</h3></div><p class="card-desc">Training a math agent that can write Python code to solve mathematical problems.</p></a>
+<a href="en/example_learning_to_ask/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:comment-question.svg" class="card-icon card-icon-general" alt=""><h3>Learning to Ask</h3></div><p class="card-desc">Learning to ask questions like a doctor for medical consultation scenarios.</p></a>
+<a href="en/example_countdown/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:timer-sand.svg" class="card-icon card-icon-tool" alt=""><h3>Countdown Game</h3></div><p class="card-desc">Writing a countdown game using AgentScope and solving it with RL.</p></a>
+<a href="en/example_frozenlake/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:snowflake.svg" class="card-icon card-icon-data" alt=""><h3>Frozen Lake</h3></div><p class="card-desc">Solving a frozen lake walking puzzle using AgentJet's reinforcement learning.</p></a>
+</div>
 
-```python title="Original AgentScope Code"
-from agentscope.agent import ReActAgent
-from agentscope.formatter import DashScopeChatFormatter
-from agentscope.memory import InMemoryMemory
-from agentscope.tool import Toolkit, execute_python_code
 
-self.toolkit = Toolkit()
-self.toolkit.register_tool_function(execute_python_code)
-self.agent = ReActAgent(
-    name="math_react_agent",
-    sys_prompt=system_prompt,
-    model=DashScopeChatModel(model='qwen-max'),
-    formatter=DashScopeChatFormatter(),
-    toolkit=self.toolkit,
-    memory=InMemoryMemory(),
-)
-msg = Msg("user", query, role="user")
-result = await self.agent.reply(msg, structured_model=FinalResult)
-final_answer = extract_final_answer(result)
-```
 
-Wrap it in a workflow class:
 
-```python title="Trainable Workflow"
-class ExampleMathLearn(Workflow):
-    name: str = "math_agent_workflow"
 
-    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-        from agentscope.agent import ReActAgent
-        from agentscope.formatter import DashScopeChatFormatter
-        from agentscope.memory import InMemoryMemory
-        from agentscope.tool import Toolkit, execute_python_code
+## Advanced Practice
 
-        self.toolkit = Toolkit()
-        self.toolkit.register_tool_function(execute_python_code)
-        self.agent = ReActAgent(
-            name="math_react_agent",
-            sys_prompt=system_prompt,
-            model=tuner.as_agentscope_model(),  # ← Key change!
-            formatter=DashScopeChatFormatter(),
-            toolkit=self.toolkit,
-            memory=InMemoryMemory(),
-        )
+!!! Example "Advanced Practice Abstract"
+    - The `tuner.as_agentscope_model()` function has hidden paramters, please further complete them to tell AgentJet the identity of agents.
+    - The `ajet.Workflow` class has hidden attribute `trainable_targets`, please assign it manually to narrow down agents to be tuned.
 
-        query = task.task.main_query
-        msg = Msg("user", query, role="user")
-        result = await self.agent.reply(msg, structured_model=FinalResult)
-        final_answer = extract_final_answer(result)
-        return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-```
-
----
-
-## Advanced Agent Scenario
+### 1. When to Use Advanced Practice
 
 When designing a **multi-agent collaborative** workflow where each agent plays a different **role**, AgentJet provides enhanced training and debugging capabilities.
 
-!!! success "Multi-Agent Benefits"
+!!! warning "Multi-Agent Benefits"
     With a multi-agent setup, you can:
 
     - <img src="https://api.iconify.design/lucide:star.svg" class="inline-icon" /> **Precisely control** which agents are fine-tuned
     - <img src="https://api.iconify.design/lucide:sparkles.svg" class="inline-icon" /> Explicitly define the default model for agents **not being trained**
     - <img src="https://api.iconify.design/lucide:zap.svg" class="inline-icon" /> Switch trainable targets on the fly **without modifying** source code
 
-### 1. Trainability Switch and Model Lifecycle
+### 1. How to promote to advanced agent scenario:
 
-#### Multi-role Model Registration
+Simple, there are only two more issues that should be take care of in addition:
 
-In a multi-agent workflow, each agent is associated with a role.
+i. **`.as_agentscope_model` has three hidden (optional) parameters, complete them for each agent.**
 
-| Method | Description |
-|--------|-------------|
-| `model_tuner.register_model(role, default_model=...)` | Register an agent role and provide the default model for non-training scenarios |
-| `model_tuner.get_model(role)` | Return the model object bound to the given role |
+| parameter | explaination |
+|----------|------------|
+| `agent_name` | The name of this agent |
+| `target_tag` | A tag that mark the agent category |
+| `debug_model` | The model used when this agent is not being tuned |
 
-#### Trainable vs. Non-trainable Models
+=== "`as_agentscope_model()` parameters"
 
-Trainability is controlled at the role level via **`trainable_targets`**:
+    ```python
+    model_for_an_agent = tuner.as_agentscope_model(
+        agent_name="AgentFriday",    # the name of this agent
+        target_tag="Agent_Type_1",                # `target_tag in self.trainable_targets` means we train this agent, otherwise we do not train this agent.
+        debug_model=OpenAIChatModel(
+            model_name="Qwen/Qwen3-235B-A22B-Instruct-2507",
+            stream=False,
+            api_key="api_key",
+        ),      # the model used when this agent is not in `self.trainable_targets`
+    )
+    ```
 
-```python
-class ExampleMathLearn(Workflow):
-    name: str = "a_workflow"
-    trainable_targets: list = ["TYPE-ZERO", ...]  # ← Roles to train
+ii. **`Workflow` has a hidden (optional) attribute called `trainable_targets`, config it.**
 
-    # ...
-```
+| `trainable_targets` value | explaination |
+|----------|------------|
+| `trainable_targets = None` | All agents using `as_agentscope_model` will be trained |
+| `trainable_targets = ["Agent_Type_1", "Agent_Type_2"]` | Agents with `target_tag=Agent_Type_1`, `target_tag=Agent_Type_2`, ... will be trained |
+| `trainable_targets = []` | Illegal, no agents are trained |
+
 
 | Scenario | Model Used |
 |----------|------------|
-| Role in `trainable_targets` | Trainable model |
-| Role NOT in `trainable_targets` | Registered default model |
+| `target_tag` in `trainable_targets` | Trainable model |
+| `target_tag` NOT in `trainable_targets` | Registered `debug_model` |
 
-!!! note "Shared Parameters"
-    Regardless of role differences, all agents share a single model instance (one set of parameters playing different roles).
 
-### 2. Promote to An Advanced AgentJet Workflow
 
-<div class="workflow-single">
-<div class="workflow-header">Conversion Steps</div>
+!!! warning
+    Regardless of `target_tag` differences, all agents share a single model instance (one model weight to play different roles, the model receives different preceptions when playing different roles).
 
-<div class="workflow">
-<ol class="workflow-steps">
-<li><strong>Start with a basic AgentScope ReActAgent</strong>
 
-```python
-agent_instance = ReActAgent(
-   name=f"Player-X",
-   sys_prompt="You are a helpful assistant",
-   model=DashScopeChatModel(model_name="qwen-max", stream=False),
-   formatter=DashScopeChatFormatter(),
-)
-```
-</li>
-<li><strong>Register the agent role with model_tuner</strong>
-
-```python
-agent_role = "TYPE-ZERO"
-default_model = DashScopeChatModel(model_name="qwen-max", stream=False)
-model_tuner.register_model(agent_role, default_model=default_model)
-```
-</li>
-<li><strong>Create ReActAgent linked to the role</strong>
-
-```python
-agent_instance = ReActAgent(
-   name=f"Player-X",
-   sys_prompt="You are a helpful assistant",
-   model=model_tuner.get_model(agent_role),  # ← Bind to role
-   formatter=DashScopeChatFormatter(),
-)
-```
-</li>
-<li><strong>Wrap in workflow class with trainable_targets</strong>
-
-```python
-class ExampleMathLearn(Workflow):
-    name: str = "math_agent_workflow"
-    trainable_targets: list = ["TYPE-ZERO", ...]
-
-    async def execute(self, task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-        # ... agents and workflow here ...
-```
-</li>
-</ol>
-</div>
-</div>
-
-### 3. Multi-Agent Example
+### 2. Multi-Agent Example
 
 Here's a complete example with multiple agent roles (Werewolves game):
 
-```python title="Multi-Agent Workflow"
-roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
-players = []
+=== "`tutorial/example_werewolves/start.py`"
+    ```python
+    class ExampleWerewolves(Workflow):
+        trainer: str = Field(default="ajet-trinity")
+        trainable_targets: List[str] | None = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
 
-for i, role in enumerate(roles):
-    # Define different default models for different roles
-    default_model_for_good_guys = OpenAIChatModel(model_name="qwen-max", stream=False)
-    default_model_for_bad_guys = OpenAIChatModel(model_name="qwen-plus", stream=False)
+        async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
 
-    chosen_model = (
-        default_model_for_good_guys
-        if role != "werewolf"
-        else default_model_for_bad_guys
-    )
+            # ensure trainable targets is legal
+            assert self.trainable_targets is not None, "trainable_targets cannot be None in ExampleWerewolves (because we want to demonstrate a explicit multi-agent case)."
 
-    # Register role with its default model
-    model_tuner.register_model(role, default_model=chosen_model)
+            # bad guys and good guys cannot be trained simultaneously
+            # (because mix-cooperation-competition MARL needs too many advanced techniques to be displayed here)
+            if "werewolf" in self.trainable_targets:
+                assert len(self.trainable_targets) == 1, "Cannot train hostile roles simultaneously."
+            else:
+                assert len(self.trainable_targets) != 0, "No trainable targets specified."
 
-    # Create agent bound to the role
-    players += [ReActAgent(
-        name=f"Player{i + 1}",
-        sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
-        model=model_tuner.get_model(role),
-        formatter=OpenAIMultiAgentFormatter(),
-    )]
-```
+            # make and shuffle roles (fix random seed for reproducibility)
+            roles = ["werewolf"] * 3 + ["villager"] * 3 + ["seer", "witch", "hunter"]
+            task_id = workflow_task.task.metadata["random_number"]
+            np.random.seed(int(task_id))
+            np.random.shuffle(roles)
+
+            # initialize agents
+            players = []
+            for i, role in enumerate(roles):
+                default_model = OpenAIChatModel(
+                    model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/",
+                    stream=False,
+                    client_args={"base_url": "http://22.17.52.4:2888/v1"},
+                    api_key="no_api_key",
+                    generate_kwargs={"temperature": 0.01},
+                )
+                model_for_this_agent = tuner.as_agentscope_model(
+                    agent_name=f"Player{i + 1}",    # the name of this agent
+                    target_tag=role,                # `target_tag in self.trainable_targets` means we train this agent, otherwise we do not train this agent.
+                    debug_model=default_model,      # the model used when this agent is not in `self.trainable_targets`
+                )
+                agent = ReActAgent(
+                    name=f"Player{i + 1}",
+                    sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
+                    model=model_for_this_agent,
+                    formatter=DashScopeMultiAgentFormatter()
+                        if role in self.trainable_targets
+                        else OpenAIMultiAgentFormatter(),
+                    max_iters=3 if role in self.trainable_targets else 5,
+                )
+                # agent.set_console_output_enabled(False)
+                players += [agent]
+
+            # reward condition
+            try:
+                good_guy_win = await werewolves_game(players, roles)
+                raw_reward = 0
+                is_success = False
+                if (good_guy_win and self.trainable_targets[0] != "werewolf") or (
+                    not good_guy_win and self.trainable_targets[0] == "werewolf"
+                ):
+                    raw_reward = 1
+                    is_success = True
+                logger.warning(f"Raw reward: {raw_reward}")
+                logger.warning(f"Is success: {is_success}")
+            except BadGuyException as e:
+                logger.bind(exception=True).exception(
+                    f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
+                )
+                raw_reward = -0.1
+                is_success = False
+            except Exception as e:
+                logger.bind(exception=True).exception(
+                    f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
+                )
+                raw_reward = -0.1
+                is_success = False
+
+            return WorkflowOutput(reward=raw_reward, is_success=is_success)
+    ```
 
 !!! tip "Configuration Flexibility"
     In this example:
@@ -247,7 +237,13 @@ for i, role in enumerate(roles):
     - `chosen_model` defines the default model when the role is not being trained
     - You can flexibly switch training targets by modifying `trainable_targets`
 
----
+
+## TinkerJet
+
+Wrapping and training your agent on a machine without GPU.
+
+Working in progress and comming soon.
+
 
 ## Next Steps
 

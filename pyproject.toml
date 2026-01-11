@@ -39,7 +39,7 @@ verl = [
 ]
 
 trinity = [
-    "trinity-rft @ git+https://github.com/modelscope/Trinity-RFT.git"
+    "trinity-rft==0.4.0"
 ]
 
 dev = [

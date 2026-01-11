@@ -18,7 +18,7 @@ class ExampleMathLearn(Workflow):
         self.agent = ReActAgent(
             name="math_react_agent",
             sys_prompt=system_prompt,
-            model=model_tuner,  # 🌟 this will do the trick
+            model=tuner.as_agentscope_model(),  # 🌟 this will do the trick
             formatter=DashScopeChatFormatter(),
             toolkit=self.toolkit,
             memory=InMemoryMemory(),
@@ -49,7 +49,7 @@ for i, agent_role in enumerate(roles):
         name=f"Player{i + 1}",
         sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
         model=agentscope_model,
-        model=model_tuner.as_agentscope_model(
+        model=tuner.as_agentscope_model(
             agent_name=f"Player{i + 1}",
             target_tag=agent_role,                          # 🌟 tag agents with their role
             debug_model=chosen_model_for_current_agent      # 🌟 assign a debug model, ONLY used when we are NOT training this agent
