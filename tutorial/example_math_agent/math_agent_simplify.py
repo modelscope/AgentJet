@@ -1,8 +1,6 @@
 import re
-
-from agentscope.message import Msg
 from loguru import logger
-
+from agentscope.message import Msg
 from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
@@ -42,6 +40,7 @@ class MathToolWorkflow(Workflow):
         from agentscope.memory import InMemoryMemory
         from agentscope.tool import Toolkit, execute_python_code
 
+        # run agentscope
         query = workflow_task.task.main_query
         self.toolkit = Toolkit()
         self.toolkit.register_tool_function(execute_python_code)
@@ -69,7 +68,5 @@ class MathToolWorkflow(Workflow):
             is_success = result == reference_answer
         else:
             is_success = False
-
         raw_reward = 1.0 if is_success else 0.0
-
         return WorkflowOutput(reward=raw_reward, metadata={"final_answer": final_answer})

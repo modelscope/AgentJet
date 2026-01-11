@@ -1,24 +1,24 @@
-# ------------------ 主要配置 ------------------
+# ------------------ main configuration ------------------
 ajet:
   project_name: example_math_agent
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
-    # 如果选择 `huggingface_dat_repo` 以下配置生效
+    # effective when `type: huggingface_dat_repo`
     huggingface_dat_repo:
       dataset_path: '/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main'
       training_split: "train"
       validation_split: "test"
 
   task_judge:
-    # ✨✨✨✨ 编写并选择评价函数
+    # ✨✨✨✨ define your evaluation function
     judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
 
   model:
-    # ✨✨✨✨ 设置待训练的模型
+    # ✨✨✨✨ set the model to be trained
     path: Qwen/Qwen2.5-7B
 
   rollout:
-    user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
+    user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ write and select workflow
     temperature: 1.0
     max_env_worker: 64
     num_repeat: 6
@@ -56,16 +56,16 @@ trinity:
     sync_method: nccl
 
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not modify ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
-    - file://ajet/default_config/verl         # verl only
-    - file://ajet/default_config/trinity      # trinity only
+    - file://ajet/default_config/verl
+    - file://ajet/default_config/trinity
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not modify ------------------
 defaults:
-  - verl_default # verl inherit 1/1
-  - trinity_default # trinity inherit 1/1
+  - verl_default
+  - trinity_default
   - ajet_default
   - _self_

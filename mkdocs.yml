@@ -5,6 +5,10 @@ site_author: "Alibaba Tongyi Lab"
 repo_url: https://github.com/modelscope/AgentJet
 repo_name: modelscope/AgentJet
 copyright: "Copyright &copy; 2025 Alibaba Tongyi Lab"
+
+watch:
+  - docs/en
+
 theme:
   name: shadcn
   show_stargazers: true
@@ -13,6 +17,10 @@ theme:
   features:
     - content.code.copy
     - content.code.annotate
+  # icon:
+  #   admonition:
+  #     warning: material/alert
+
 nav:
   - Overview: index.md
 
@@ -40,30 +48,30 @@ nav:
       - Visualization: en/visualization.md
       - Beast Logger: en/beast_logger.md
       - Data Generation: en/data_generation.md
-      - Tracing Feedback Loop: en/example_tracing_feedback_loop.md
+      - Tracing Feedback: en/example_tracing_feedback_loop.md
 
-  - 中文文档:
-      - 简介: zh/intro.md
-      - 安装: zh/installation.md
-      - 快速开始: zh/quickstart.md
-      - 调优你的第一个 Agent: zh/tune_your_first_agent.md
-      - 示例:
-          - 数学 Agent: zh/example_math_agent.md
-          - AppWorld Agent: zh/example_app_world.md
-          - 狼人杀游戏: zh/example_werewolves.md
-          - 学会提问: zh/example_learning_to_ask.md
-          - 冰湖问题: zh/example_frozenlake.md
-          - 倒计时游戏: zh/example_countdown.md
-      - 组件:
-          - 工作流: zh/workflow.md
-          - 数据管道: zh/data_pipeline.md
-          - 任务评判器: zh/task_judger.md
-      - 深入探索:
-          - 配置: zh/configuration.md
-          - 可视化: zh/visualization.md
-          - Beast Logger: zh/beast_logger.md
-          - 数据生成: zh/data_generation.md
-          - Tracing 反馈循环: zh/example_tracing_feedback_loop.md
+  # - 中文文档:
+  #     - 简介: zh/intro.md
+  #     - 安装: zh/installation.md
+  #     - 快速开始: zh/quickstart.md
+  #     - 调优你的第一个 Agent: zh/tune_your_first_agent.md
+  #     - 示例:
+  #         - 数学 Agent: zh/example_math_agent.md
+  #         - AppWorld Agent: zh/example_app_world.md
+  #         - 狼人杀游戏: zh/example_werewolves.md
+  #         - 学会提问: zh/example_learning_to_ask.md
+  #         - 冰湖问题: zh/example_frozenlake.md
+  #         - 倒计时游戏: zh/example_countdown.md
+  #     - 组件:
+  #         - 工作流: zh/workflow.md
+  #         - 数据管道: zh/data_pipeline.md
+  #         - 任务评判器: zh/task_judger.md
+  #     - 深入探索:
+  #         - 配置: zh/configuration.md
+  #         - 可视化: zh/visualization.md
+  #         - Beast Logger: zh/beast_logger.md
+  #         - 数据生成: zh/data_generation.md
+  #         - Tracing 反馈循环: zh/example_tracing_feedback_loop.md
 
 plugins:
   - search:
@@ -109,6 +117,7 @@ markdown_extensions:
 
 extra_css:
   - https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap
+  - stylesheets/font.css
   - stylesheets/feature-cards.css
   - stylesheets/tabbed-code.css
   - stylesheets/readability-enhancements.css

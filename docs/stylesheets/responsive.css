@@ -1,3 +1,61 @@
+
+article p {
+    font-size: 19px;
+}
+
+article ul>li {
+    font-size: 19px;
+    margin-top: calc(var(--spacing) * 2);
+}
+
+.card-desc {
+    margin: 0;
+    font-size: 15px;
+    opacity: 0.8;
+    line-height: 1.6;
+    pointer-events: none;
+}
+.card-header {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    font-size: 19px;
+    margin-bottom: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+
+/* 修改链接样式 */
+a[data-sidebar="menu-button"] {
+    font-size: 17px;
+    font-weight: 300;
+    margin-bottom: 12px;
+}
+
+.pr-2 {
+    font-size: 20px;
+}
+
+.text-muted-foreground {
+    font-size: 15px;
+    color: var(--color-muted-foreground);
+}
+
+article .typography h2 {
+    font-size: 50px;
+    font-weight: 500;
+    margin-top: calc(var(--spacing) * 20);
+}
+
+
+article .typography h2 {
+    font-size: 30px;
+    font-weight: 1000;
+    margin-top: calc(var(--spacing) * 20);
+}
+
+
 /*
  * Responsive Enhancements for OpenJudge Documentation
  * Phase 5: 响应式完善
