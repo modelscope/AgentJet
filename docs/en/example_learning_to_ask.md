@@ -42,6 +42,8 @@ After preprocessing, you should have: `train.jsonl` and`test.jsonl`。
 #### 2.2 Start Training
 
 ```bash
+ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='verl'
+# or
 ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --with-ray
 ```
 

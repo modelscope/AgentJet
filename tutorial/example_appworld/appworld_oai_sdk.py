@@ -7,7 +7,6 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 
 class ExampleAgentScopeWorkflow(Workflow):
-    trainer: str = Field(default="ajet-trinity")
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
 
