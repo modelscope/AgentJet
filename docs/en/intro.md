@@ -1,6 +1,6 @@
 # Introduction
 
-**AgentJet (AgentJet)** is a cutting-edge, user-friendly agent tunning framework designed to optimize LLM models and agent workflows.
+**AgentJet (AJet)** is a cutting-edge, user-friendly agent tunning framework designed to optimize LLM models and agent workflows.
 
 Simply provide your workflow (built from AgentScope, OpenAI SDK, Langchain, raw HTTP requests, or hybrid of all of them), training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
 
