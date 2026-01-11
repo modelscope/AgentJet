@@ -26,7 +26,7 @@ Scenario Overview
 Start training with the following command:
 ```
 # ( ajet --kill="python|ray|vllm" )
-ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='verl'
 ```
 
 <details>
@@ -72,9 +72,9 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
 At a high level, each training iteration follows this flow:
 - The task reader generates a new game setup (players, role assignments, initial state).
 - The rollout runs the AgentScope workflow to simulate a full game.
-- Agents in `trainable_targets` act using the trainable model (via `model_tuner`), while opponents use the fixed model.
+- Agents in `trainable_targets` act by using the trainable model (via `tuner.as_agentscope_model(...)`), while opponents use the fixed model.
 - The environment produces rewards / outcomes for the episode.
-- Trajectories are collected and passed to the backbone trainer (e.g., `trinity`) to update the trainable model.
+- Trajectories are collected and passed to the backbone trainer (`verl` or `trinity`) to update the trainable model.
 
 ### 3.2 Configuration Details
 

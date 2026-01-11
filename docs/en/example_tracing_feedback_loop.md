@@ -75,7 +75,8 @@ ajet:
 When everything is ready, start the training with `launcher.py`.
 
 ```bash
-# this launch the demo
+ajet --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='verl'
+# or
 ajet --conf tutorial/example_feedback_tracing/example_feedback_tracing.yaml --backbone='trinity' --with-ray
 ```
 

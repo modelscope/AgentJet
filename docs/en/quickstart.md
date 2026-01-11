@@ -3,7 +3,7 @@
 AgentJet provides a complete feature set for tuning agents. You can try starting training an agent right away:
 
 ```bash
-ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml
 ```
 
 ---

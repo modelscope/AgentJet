@@ -84,7 +84,7 @@ See details in `tutorial/example_countdown/countdown.py`. You can create new Age
 self.agent = ReActAgent(
     name="countdown_react_agent",
     sys_prompt=system_prompt,
-    model=model_tuner,
+    model=tuner.as_agentscope_model(),
     formatter=DashScopeChatFormatter(),
     memory=InMemoryMemory(),
     max_iters=2,

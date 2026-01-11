@@ -35,7 +35,7 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 # (optional) recommended cleanup before training
 # ajet --kill="python|ray|vllm"
 
-ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
 ```
 
 ??? tip "Quick Debugging (Optional)"
@@ -135,7 +135,7 @@ self.toolkit.register_tool_function(execute_python_code)
 self.agent = ReActAgent(
     name="math_react_agent",
     sys_prompt=system_prompt,
-    model=model_tuner,  # trainer-managed model wrapper
+    model=tuner.as_agentscope_model(),  # trainer-managed model wrapper
     formatter=DashScopeChatFormatter(),
     toolkit=self.toolkit,
     memory=InMemoryMemory(),
