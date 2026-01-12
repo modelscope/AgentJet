@@ -71,8 +71,8 @@ def create_external_llm_fn(alien_llm_model, alien_llm_response_length):
                 return {"role": message["role"], "content": message["content"]}
             except Exception as e:
                 logger.bind(exception=True).exception(f"Error calling alien llm: {e}")
+                logger.warning(f"Error calling alien llm: {e}, retrying...")
                 time.sleep(5)
-                print(f"Error calling alien llm: {e}, retrying...")
         raise RuntimeError(f"Failed to get response from alien llm after {max_try} attempts")
 
     return external_llm_chat_fn

@@ -96,7 +96,6 @@ def split_keys_and_operators(
     """
 
     # Parse the expression
-    # print(operation_str)
     try:
         tree = ast.parse(operation_str, mode="eval")
     except SyntaxError as e:
@@ -160,61 +159,61 @@ def split_keys_and_operators(
     return keys, eval_func
 
 
-# Test examples
-if __name__ == "__main__":
-    # Example 1
-    operation_str1 = "(ajet.data.train_batch_size * ajet.rollout.num_repeat * ajet.rollout.multi_turn.expected_steps)"
-    known_operators1 = []
+# # Test examples
+# if __name__ == "__main__":
+#     # Example 1
+#     operation_str1 = "(ajet.data.train_batch_size * ajet.rollout.num_repeat * ajet.rollout.multi_turn.expected_steps)"
+#     known_operators1 = []
 
-    keys1, func1 = split_keys_and_operators(operation_str1)
-    print("Example 1:")
-    print(f"Extracted keys: {keys1}")
+#     keys1, func1 = split_keys_and_operators(operation_str1)
+#     print("Example 1:")
+#     print(f"Extracted keys: {keys1}")
 
-    values1 = {
-        "ajet.data.train_batch_size": 32,
-        "ajet.rollout.num_repeat": 4,
-        "ajet.rollout.multi_turn.expected_steps": 10,
-    }
-    result1 = func1(values1)
-    print(f"Computed result: {result1}")  # 32 * 4 * 10 = 1280
-    print()
+#     values1 = {
+#         "ajet.data.train_batch_size": 32,
+#         "ajet.rollout.num_repeat": 4,
+#         "ajet.rollout.multi_turn.expected_steps": 10,
+#     }
+#     result1 = func1(values1)
+#     print(f"Computed result: {result1}")  # 32 * 4 * 10 = 1280
+#     print()
 
-    # Example 2
-    operation_str2 = "(ajet.rollout.max_env_worker // ajet.rollout.n_vllm_engine)"
-    known_operators2 = []
+#     # Example 2
+#     operation_str2 = "(ajet.rollout.max_env_worker // ajet.rollout.n_vllm_engine)"
+#     known_operators2 = []
 
-    keys2, func2 = split_keys_and_operators(operation_str2)
-    print("Example 2:")
-    print(f"Extracted keys: {keys2}")
+#     keys2, func2 = split_keys_and_operators(operation_str2)
+#     print("Example 2:")
+#     print(f"Extracted keys: {keys2}")
 
-    values2 = {"ajet.rollout.max_env_worker": 100, "ajet.rollout.n_vllm_engine": 8}
-    result2 = func2(values2)
-    print(f"Computed result: {result2}")  # 100 // 8 = 12
-    print()
+#     values2 = {"ajet.rollout.max_env_worker": 100, "ajet.rollout.n_vllm_engine": 8}
+#     result2 = func2(values2)
+#     print(f"Computed result: {result2}")  # 100 // 8 = 12
+#     print()
 
-    # Example 3: Mixed operators
-    operation_str3 = "(a * b / c + d - e)"
-    known_operators3 = []
+#     # Example 3: Mixed operators
+#     operation_str3 = "(a * b / c + d - e)"
+#     known_operators3 = []
 
-    keys3, func3 = split_keys_and_operators(operation_str3)
-    print("Example 3:")
-    print(f"Extracted keys: {keys3}")
+#     keys3, func3 = split_keys_and_operators(operation_str3)
+#     print("Example 3:")
+#     print(f"Extracted keys: {keys3}")
 
-    values3 = {"a": 100, "b": 5, "c": 10, "d": 20, "e": 5}
-    result3 = func3(values3)
-    print(f"Computed result: {result3}")  # 100 * 5 / 10 + 20 - 5 = 65.0
+#     values3 = {"a": 100, "b": 5, "c": 10, "d": 20, "e": 5}
+#     result3 = func3(values3)
+#     print(f"Computed result: {result3}")  # 100 * 5 / 10 + 20 - 5 = 65.0
 
-    # Example 4
-    operation_str4 = "(min(ajet.rollout.max_env_worker // ajet.rollout.n_vllm_engine, 64))"
-    known_operators4 = []
+#     # Example 4
+#     operation_str4 = "(min(ajet.rollout.max_env_worker // ajet.rollout.n_vllm_engine, 64))"
+#     known_operators4 = []
 
-    keys4, func4 = split_keys_and_operators(operation_str4)
-    print("Example 4:")
-    print(f"Extracted keys: {keys4}")
+#     keys4, func4 = split_keys_and_operators(operation_str4)
+#     print("Example 4:")
+#     print(f"Extracted keys: {keys4}")
 
-    values4 = {
-        "ajet.rollout.max_env_worker": 512,
-        "ajet.rollout.n_vllm_engine": 4,
-    }
-    result4 = func4(values4)
-    print(f"Computed result: {result4}")  # 64
+#     values4 = {
+#         "ajet.rollout.max_env_worker": 512,
+#         "ajet.rollout.n_vllm_engine": 4,
+#     }
+#     result4 = func4(values4)
+#     print(f"Computed result: {result4}")  # 64

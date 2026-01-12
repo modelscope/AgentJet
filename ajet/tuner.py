@@ -101,6 +101,7 @@ class AjetTuner(object):
             ```
         """
 
+        assert self.config.ajet.enable_experimental_reverse_proxy, "Please enable `ajet.enable_experimental_reverse_proxy` in yaml config to use `as_oai_baseurl_apikey` feature."
         baseurl_apikey_model = OpenaiClientBaseUrlTuner(
             config=self.config,
             context_tracker=self.context_tracker,
