@@ -2,24 +2,28 @@
 
 Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems. Rewards come from a **judge** that checks final-answer correctness.
 
----
 
 ## Overview
 
-<div class="callout-tip">
-<p>
 In <strong>Math Agent</strong>, each training sample is a math word problem (e.g., GSM8K). The agent learns to reason step by step (ReAct-style), call a Python tool when computation is needed, and produce a final answer that matches the reference.
-</p>
-</div>
 
-This tutorial is organized in two steps:
 
-1. **Run it**: Download the dataset and start training with the default YAML config
-2. **Understand & customize**: Read the workflow and the judge/reward logic
+This tutorial is organized into the following sections:
 
----
+- [**Run this tutorial**: Download the dataset and start training with the default YAML config.](#quick-start)
+- [**Understand & customize**: Read the workflow and the judge/reward logic.](#explain)
+- [**Training Curve**: Compare the training curlve.](#culve)
 
-## Quick Start
+
+
+
+
+
+
+
+
+
+## Quick Start {#quick-start}
 
 ### Prepare Dataset
 
@@ -71,11 +75,21 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
     }
     ```
 
----
 
-## Understanding the Training Pipeline
 
-### What Happens Each Step
+
+
+
+
+
+
+
+
+
+
+## Understanding the Training Pipeline {#explain}
+
+### Pipeline Abstraction
 
 <div class="workflow-single">
 <div class="workflow-header">Training Step Flow</div>
@@ -85,12 +99,12 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
 <li><strong>Load one problem</strong>
 
 Load a math problem from the dataset via `task_reader`.</li>
-<li><strong>Run the AgentScope workflow</strong>
+<li><strong>Run the Workflow</strong>
 
-Build the prompt, let the ReAct agent call Python tools, and extract the final answer.</li>
-<li><strong>Register info for evaluation</strong>
+Build the prompt, let the ReActAgent call Python tools, and extract the final answer.</li>
+<li><strong>Return result as `WorkflowOutput`</strong>
 
-Return `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`.</li>
+Return `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`. (reward=None because we want to compute reward outside the workflow)</li>
 <li><strong>Run the judge</strong>
 
 Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</li>
@@ -98,31 +112,6 @@ Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</l
 </div>
 </div>
 
-### YAML Configuration
-
-Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
-
-```yaml title="math_agent.yaml"
-ajet:
-  task_reader:
-    type: huggingface_dat_repo   # also supports: dataset_file / env_service
-
-  rollout:
-    user_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
-
-  task_judge:
-    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
-
-  model:
-    path: YOUR_MODEL_PATH
-```
-
-| Field | Description |
-|-------|-------------|
-| `task_reader` | Where tasks come from |
-| `user_workflow` | Which workflow runs per sample |
-| `judge_protocol` | Which judge computes rewards |
-| `model.path` | Pretrained model to fine-tune |
 
 ### Code Walkthrough
 
@@ -150,7 +139,11 @@ return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
 ```
 
 !!! warning "Important"
-    Always provide the final answer via `WorkflowOutput.metadata` so the judge can score it.
+    - User should put all elements necessary for reward computation in `WorkflowOutput.metadata`,
+    so the judge can use them.
+    - In this specific case, `final_answer` is that key element.
+
+
 
 ### Reward Computation
 
@@ -168,9 +161,38 @@ The judge receives:
     - Behavior penalty (tool called but no `print`)
     - Keep answer correctness as the primary signal
 
----
 
-## Results
+### YAML Configuration
+
+Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
+
+```yaml title="math_agent.yaml"
+ajet:
+  task_reader:
+    type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+  rollout:
+    user_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
+
+  task_judge:
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+  model:
+    path: YOUR_MODEL_PATH
+```
+
+| Field | Description |
+|-------|-------------|
+| `task_reader` | Where tasks come from |
+| `user_workflow` | Which workflow runs per sample |
+| `judge_protocol` | Which judge computes rewards |
+| `model.path` | Pretrained model to fine-tune |
+
+
+
+
+
+## Results {#culve}
 
 ### Training Curve
 
