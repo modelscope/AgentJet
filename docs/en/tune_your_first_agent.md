@@ -278,9 +278,9 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml
 
 ## Full Code {#full-code}
 
-=== "`math_agent.py` - AgentJet Workflow (After Convertion)"
+=== "`tutorial/example_math_agent/math_agent.py` - AgentJet Workflow (After Convertion)"
 
-    ```python title="math_agent.py"
+    ```python
     import re
     from loguru import logger
     from agentscope.message import Msg
@@ -344,9 +344,10 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml
             if match: is_success = (match.group(1) == reference_answer)
             else:     is_success = False
             return WorkflowOutput(reward=(1.0 if is_success else 0.0), metadata={"final_answer": final_answer})
+
     ```
 
-=== "`math_agent.yaml` - Configuration Yaml"
+=== "`tutorial/example_math_agent/math_agent.yaml` - Configuration Yaml"
 
     ```yaml
     # ------------------ main configuration ------------------
@@ -356,24 +357,24 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml
         type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
         # effective when `type: huggingface_dat_repo`
         huggingface_dat_repo:
-          dataset_path: 'openai/gsm8k'
+          dataset_path: 'openai/gsm8k'        # '/mnt/data_cpfs/dataset_cache/openai/gsm8k/main'
           training_split: "train"
           validation_split: "test"
 
-      task_judge:
-        # ✨✨✨✨ null, because in this certain case, we write reward function together with workflow
-        judge_protocol: null
-
       model:
         # ✨✨✨✨ set the model to be trained
-        path: Qwen/Qwen2.5-7B
+        path: Qwen/Qwen2___5-7B-Instruct      # /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
 
       rollout:
-        user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ write and select workflow
+        user_workflow: "tutorial/example_math_agent/math_agent.py->MathToolWorkflow" # ✨✨✨✨ write and select workflow
         num_repeat: 6 # grpo `n`
         tensor_model_parallel_size: 1 # vllm tp
         max_response_length_in_one_turn: 1024
         max_model_len: 10000
+
+      task_judge:
+        # ✨✨✨✨ null, because in this certain case, we write reward function together with workflow
+        judge_protocol: null
 
       data:
         train_batch_size:    100
