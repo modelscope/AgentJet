@@ -5,9 +5,14 @@
 [![License](https://img.shields.io/badge/License-Apache--2.0-4c1?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](docs/en/installation.md#requirements)
 
-**AgentJet (AJet)** is a cutting-edge, user-friendly training framework designed to optimize agents and workflows (built with OpenAI SDK, AgentScope, and even vllm http requests), fine-tuning language model weights behind the scenes.
+<div align="center">
+<img width="500" alt="AgentJet" src="docs/agentjet.jpg"/>
+</div>
 
-Simply provide your Agent workflow, training data, and reward function, and we will be ready to enhance your agents to their optimal performance!
+
+**AgentJet (AJet)** is a cutting-edge, user-friendly training framework designed to optimize agents and workflows (built with OpenAI SDK, AgentScope, Langchain, or just HTTP requests), fine-tuning language model weights behind the scenes.
+
+Simply provide your agent **workflow**, training **dataset**, and **reward** function, and **AgentJet** will be ready to enhance your agents to their optimal performance!
 
 
 
@@ -15,7 +20,7 @@ Simply provide your Agent workflow, training data, and reward function, and we w
 
 Let's begin with the simplest example: a math agent with a tool call.
 
-- First, please check out the [installation guide](docs/en/installation.md) to set up the training environment.
+- First, please check out the [installation guide](https://doc.agentjet.top/AgentJet/en/installation/) to set up the training environment.
 - Then, tune your first model using the minimum example.
   ```python
   ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl' --with-ray

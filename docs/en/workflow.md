@@ -8,7 +8,13 @@ This tutorial introduces how to define a trainable workflow.
     - **Simple**: Emphasizes simplicity, ease of use, and readability
     - **Advanced**: Emphasizes flexibility, controllability, and extensibility
 
-In this article we use AgentScope framework for demonstration.
+In this article we use **AgentScope** framework for demonstration. For other frameworks (OpenAI SDK, Langchain, HTTP Requests), please follow the same pattern.
+
+
+
+<div align="center">
+<img width="800" alt="AgentJet" src="https://img.alicdn.com/imgextra/i2/O1CN01eygO6k1CzCvHnALzs_!!6000000000151-2-tps-1408-768.png"/>
+</div>
 
 ## Simple Practice
 
@@ -92,7 +98,7 @@ Next, use the `tuner` argument, call its `tuner.as_agentscope_model()` method:
 
 ### 1. When to Use Advanced Practice
 
-When designing a **multi-agent collaborative** workflow where each agent plays a different **role**, AgentJet provides enhanced training and debugging capabilities.
+When designing a **multi-agent collaborative** workflow where each agent plays a different **target_tag**, AgentJet provides enhanced training and debugging capabilities.
 
 !!! warning "Multi-Agent Benefits"
     With a multi-agent setup, you can:
@@ -178,11 +184,9 @@ Here's a complete example with multiple agent roles (Werewolves game):
             players = []
             for i, role in enumerate(roles):
                 default_model = OpenAIChatModel(
-                    model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/",
+                    model_name="Qwen/Qwen3-235B-A22B-Instruct-2507",
                     stream=False,
-                    client_args={"base_url": "http://22.17.52.4:2888/v1"},
                     api_key="no_api_key",
-                    generate_kwargs={"temperature": 0.01},
                 )
                 model_for_this_agent = tuner.as_agentscope_model(
                     agent_name=f"Player{i + 1}",    # the name of this agent
