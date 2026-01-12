@@ -45,6 +45,7 @@ This article introduce the way to convert different types of ways to convert you
         model_name="whatever",
         client_args={"base_url": base_url},
         api_key=api_key,
+        stream=False,
     )
     self.agent = ReActAgent(
         name="math_react_agent", sys_prompt=system_prompt,
@@ -201,6 +202,7 @@ This article introduce the way to convert different types of ways to convert you
                 model_name="whatever",
                 client_args={"base_url": base_url},
                 api_key=api_key,
+                stream=False,
             )
             self.agent = ReActAgent(
                 name="math_react_agent", sys_prompt=system_prompt,
