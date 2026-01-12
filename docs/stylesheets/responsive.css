@@ -60,10 +60,20 @@ article .typography h2 {
     white-space: nowrap !important;
 }
 
+/* 方法3：如果上面不生效，使用更具体的选择器 */
+div[data-slot="sidebar-content"].no-scrollbar {
+    scrollbar-width: thin !important;
+}
 
-/* :root {
-    --sidebar-width: 30rem;
-} */
+div[data-slot="sidebar-content"].no-scrollbar::-webkit-scrollbar {
+    display: block !important;
+    width: 1px !important;
+}
+
+.sidebar .text-sidebar-foreground,
+div.text-sidebar-foreground.sticky {
+  height: calc(100svh - var(--header-height) - 20px) !important;
+}
 
 /*
  * Responsive Enhancements for OpenJudge Documentation
