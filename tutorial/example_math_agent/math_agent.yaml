@@ -19,6 +19,11 @@ ajet:
 
   rollout:
     user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ write and select workflow
+    # user_workflow: "tutorial.example_math_agent.math_agent_langchain->ExampleMathLearn"                     # ✨if you prefer langchain version
+    # user_workflow: "tutorial/example_math_agent/math_agent_oai_sdk.py->ExampleMathLearn_Simple_NoToolCall"  # ✨if you prefer openai sdk version without toolcall
+    # user_workflow: "tutorial/example_math_agent/math_agent_oai_sdk.py->ExampleMathLearn"                    # ✨if you prefer openai sdk version with toolcall
+    # user_workflow: "tutorial/example_math_agent/math_agent_raw_http.py->ExampleMathLearn"                   # ✨if you do not want to use any agentic framwork at all
+    # user_workflow: "tutorial/example_math_agent/math_agent_simplify.py->MathToolWorkflow"                   # ✨if you prefer to compute reward inside workflow
     temperature: 1.0
     max_env_worker: 64
     num_repeat: 6
