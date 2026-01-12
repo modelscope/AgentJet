@@ -16,7 +16,7 @@ Simply provide your agent **workflow**, training **dataset**, and **reward** fun
 
 
 
-## 💡 Minimum Example
+## 🛩️ Minimum Example
 
 Let's begin with the simplest example: a math agent with a tool call.
 
@@ -30,7 +30,7 @@ Let's begin with the simplest example: a math agent with a tool call.
   ```
 
 
-## Features
+## 🛩️ Features
 
 We aim to build a easy-to-learn Agent tuner that unlock more possibilities for agent developers:
 
@@ -48,7 +48,7 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 
 ---
 
-### 🚀 Quick Start
+### 🛩️ Quick Start
 
 #### Installation
 
@@ -76,7 +76,7 @@ Explore our rich library of examples to kickstart your journey:
 
 ---
 
-### 🧩 Core Concepts
+### 🛩️ Core Concepts
 
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
@@ -107,23 +107,24 @@ The internal system orchestrates several specialized modules to handle the compl
 
 
 
-### 🚦 Navigation
+### 🛩️ Navigation
 
-* 📖 **Tutorials**: From [Installation](https://doc.agentjet.top/AgentJet/en/installation) to [Tuning your first agent](https://doc.agentjet.top/AgentJet/en/tune_your_first_agent) — the essential path for beginners.
-* 🛠️ **Core Components**: Define your [Trainable Workflow](https://doc.agentjet.top/AgentJet/en/workflow) and manage [Data](https://doc.agentjet.top/AgentJet/en/data_pipeline) and [Reward](https://doc.agentjet.top/AgentJet/en/task_judger).
-* 💡 **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](https://doc.agentjet.top/AgentJet/en/example_math_agent), [Werewolves game](https://doc.agentjet.top/AgentJet/en/example_werewolves) and  [Learning to ask task](https://doc.agentjet.top/AgentJet/en/example_learning_to_ask).
-* ⚙️ **Deep Dive**: Master advanced [Configuration](https://doc.agentjet.top/AgentJet/en/configuration).
+* **Tutorials**: From [Installation](https://doc.agentjet.top/AgentJet/en/installation) to [Tuning your first agent](https://doc.agentjet.top/AgentJet/en/tune_your_first_agent) — the essential path for beginners.
+* **Core Components**: Define your [Trainable Workflow](https://doc.agentjet.top/AgentJet/en/workflow) and manage [Data](https://doc.agentjet.top/AgentJet/en/data_pipeline) and [Reward](https://doc.agentjet.top/AgentJet/en/task_judger).
+* **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](https://doc.agentjet.top/AgentJet/en/example_math_agent), [Werewolves game](https://doc.agentjet.top/AgentJet/en/example_werewolves) and  [Learning to ask task](https://doc.agentjet.top/AgentJet/en/example_learning_to_ask).
+* **Deep Dive**: Master advanced [Configuration](https://doc.agentjet.top/AgentJet/en/configuration).
 
-## 🗺️ Roadmap
+## 🛩️ Roadmap
 
 AgentJet is a constantly evolving project. We are planning to add the following features in the near future.
 
-- [ ] Advanced LLM-based multi-agent reinforcement learning.
-- [ ] Training dataset generation from few-shot samples.
-- [ ] Prompt tuning.
-- [ ] Multi-modal training support.
-- [ ] Cross-process Tuner wrapper to pass though process forking.
-- [ ] Providing training → user feedback → data augmentation → retraining data flywheel example.
-- [ ] Optimize configurations for long-context adaptation on smaller GPUs.
-- [ ] Add LoRA training examples.
-- [ ] Covering LangGraph and AutoGen frameworks.
+| Category | Feature | Status |
+| :--- | :--- | :--- |
+| **Examples** | Covering LangGraph and AutoGen frameworks | Done & Verifying |
+| **Examples** | Add LoRA training examples | Todo |
+| **Infra** | Cross-process Tuner wrapper to pass though process forking | Done & Verifying |
+| **Infra** | Optimize configurations for long-context adaptation on smaller GPUs | In Progress |
+| **Capability** | Prompt tuning | In Progress |
+| **Capability** | Multi-modal training support | Todo |
+| **Capability** | MARL Credit assignment | Todo |
+| **Capability** | Training dataset generation from few-shot samples | Done & Verifying |
