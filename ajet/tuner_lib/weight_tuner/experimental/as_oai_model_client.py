@@ -149,7 +149,11 @@ class InterchangeClient:
                                 continue
 
                             try:
-                                parsed_msg = InterchangeCompletionRequest.model_validate_json(data)
+                                try:
+                                    parsed_msg = InterchangeCompletionRequest(**json.loads(data))
+                                except Exception as e:
+                                    logger.error(f"Failed to parse SSE event data: {e}" + data)
+                                    continue
 
                                 result = await self.llm_infer(
                                     req=parsed_msg.completion_request,

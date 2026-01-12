@@ -48,7 +48,7 @@ class ExampleMathLearn(Workflow):
         response = requests.post(
              f"{base_url}/chat/completions",
              json={
-                 "model": "fill_whatever_model", # Of course, this `model` field will be ignored.
+                 "model": "whatever", # Of course, this `model` field will be ignored.
                  "messages": messages,
              },
              headers={
