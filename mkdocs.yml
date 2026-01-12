@@ -29,6 +29,7 @@ nav:
       - Installation: en/installation.md
       - Quick Start: en/quickstart.md
       - Tune Your First Agent: en/tune_your_first_agent.md
+      - AgentScope Support: en/support_agentscope.md
 
   - Examples:
       - Math Agent: en/example_math_agent.md
