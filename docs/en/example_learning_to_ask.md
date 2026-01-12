@@ -61,7 +61,6 @@ If the results are incorrect, the quickest troubleshooting points include: wheth
 
 </details>
 
----
 
 ### 3. Understand
 
