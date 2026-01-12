@@ -284,6 +284,10 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml
     import re
     from loguru import logger
     from agentscope.message import Msg
+    from agentscope.agent import ReActAgent
+    from agentscope.formatter import DashScopeChatFormatter
+    from agentscope.memory import InMemoryMemory
+    from agentscope.tool import Toolkit, execute_python_code
     from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
@@ -340,7 +344,6 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml
             if match: is_success = (match.group(1) == reference_answer)
             else:     is_success = False
             return WorkflowOutput(reward=(1.0 if is_success else 0.0), metadata={"final_answer": final_answer})
-
     ```
 
 === "`math_agent.yaml` - Configuration Yaml"
