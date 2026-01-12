@@ -24,6 +24,10 @@ from loguru import logger
 from pydantic import BaseModel, ConfigDict, model_validator
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException, Request
 import uvicorn
+import sys
+import subprocess
+import atexit
+import argparse
 
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
@@ -83,11 +87,11 @@ async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket,
                 # will be received by:
                 #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
                 #       await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
-                try:
-                    await websocket.send_bytes(pickle.dumps(new_req))
-                except:
-                    # AgentScope sometimes fails the standard OAI schema compliance check for ChatCompletionRequest
-                    await websocket.send_bytes(pickle.dumps(new_req.model_dump_json()))
+                # try:
+                #     await websocket.send_bytes(pickle.dumps(new_req))
+                # except:
+                #     # AgentScope sometimes fails the standard OAI schema compliance check for ChatCompletionRequest
+                await websocket.send_bytes(pickle.dumps(new_req.model_dump_json()))
             else:
                 await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
@@ -407,11 +411,76 @@ class InterchangeEndpointServer:
 def start_interchange_server(experiment_dir) -> int:
     """
     Start the interchange endpoint server and return the port number.
+    This launches a subprocess to run the server.
 
     Returns:
         int: The port number the server is running on.
     """
-    server = InterchangeEndpointServer()
-    port = server.start(experiment_dir)
+    # Find a free port if not specified or invalid
+    port = int(os.environ.get("AJET_DAT_INTERCHANGE_PORT", -1))
+    if port <= 0:
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))
+            port = s.getsockname()[1]
+        os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
+
+    # Launch as subprocess
+    env = os.environ.copy()
+
+    # We run this file as a script
+    cmd = [sys.executable, os.path.abspath(__file__), "--experiment_dir", experiment_dir, "--port", str(port)]
+
+    process = subprocess.Popen(
+        cmd,
+        env=env,
+        # redirect stdout/stderr if needed, but keeping them might be useful for debug
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL
+    )
+
+    def cleanup():
+        if process.poll() is None:
+            logger.info("Terminating interchange server subprocess")
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+    atexit.register(cleanup)
+
+    logger.info(f"Interchange server subprocess started on port {port} (pid: {process.pid})")
     return port
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="AJet Interchange Endpoint Server")
+    parser.add_argument("--experiment_dir", type=str, required=True, help="Directory to store debug info")
+    parser.add_argument("--port", type=int, required=True, help="Port to run the server on")
+
+    args = parser.parse_args()
+
+    async def serve_with_monitor():
+        # Start the monitor task
+        asyncio.create_task(monitor_debug_state(args.experiment_dir))
+
+        # Start the server
+        config = uvicorn.Config(
+            app=app,
+            host="0.0.0.0",
+            port=args.port,
+            log_level="error",
+            ws_max_queue=1024,
+            ws_ping_interval=60,
+            ws_ping_timeout=60,
+            ws_per_message_deflate=True,
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    try:
+        asyncio.run(serve_with_monitor())
+    except KeyboardInterrupt:
+        pass
 
