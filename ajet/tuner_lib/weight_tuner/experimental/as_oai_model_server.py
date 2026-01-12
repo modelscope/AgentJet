@@ -250,7 +250,7 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
     ajet_remote_handler_received[key][timeline_uuid] = int_req
 
     # Wait for response (with periodic checks for client disconnect)
-    max_wait_time = 1800  # 30 minutes timeout
+    max_wait_time = 600  # 10 minutes timeout
     elapsed_time = 0
 
     try:

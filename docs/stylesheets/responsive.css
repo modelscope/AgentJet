@@ -55,6 +55,15 @@ article .typography h2 {
     margin-top: calc(var(--spacing) * 20);
 }
 
+/* 如果你可以添加自定义类 */
+[data-slot="sidebar-menu-button"] {
+    white-space: nowrap !important;
+}
+
+
+/* :root {
+    --sidebar-width: 30rem;
+} */
 
 /*
  * Responsive Enhancements for OpenJudge Documentation
@@ -1062,4 +1071,3 @@ article img,
     right: max(2rem, calc(env(safe-area-inset-right) + 0.5rem));
   }
 }
-

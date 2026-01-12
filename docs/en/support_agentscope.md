@@ -23,7 +23,7 @@ This article introduce the way to convert different types of ways to convert you
     )
     ```
 
-=== "After Convertion (`as_agentscope_model`)"
+=== "After Convertion (`as_agentscope_model()`)"
 
     ```python
     model = tuner.as_agentscope_model() # 🛩️ change here
@@ -35,7 +35,7 @@ This article introduce the way to convert different types of ways to convert you
     )
     ```
 
-=== "After Convertion (`as_agentscope_model`)"
+=== "After Convertion (`as_oai_baseurl_apikey()`)"
 
     ```python
     url_and_apikey = tuner.as_oai_baseurl_apikey()

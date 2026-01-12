@@ -29,7 +29,7 @@ nav:
       - Installation: en/installation.md
       - Quick Start: en/quickstart.md
       - Tune Your First Agent: en/tune_your_first_agent.md
-      - AgentScope Support: en/support_agentscope.md
+      - Agentic Frameworks: en/agent_framework_support.md
 
   - Examples:
       - Math Agent: en/example_math_agent.md
@@ -43,6 +43,12 @@ nav:
       - Workflow: en/workflow.md
       - Data Pipeline: en/data_pipeline.md
       - Task Judger: en/task_judger.md
+
+  - Supported Frameworks:
+      - AgentScope: en/support_agentscope.md
+      - Langchain: en/support_langchain.md
+      - OpenAI SDK: en/support_oaisdk.md
+      - Raw HTTP: en/support_http.md
 
   - Deep Dive:
       - Configuration: en/configuration.md
