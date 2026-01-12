@@ -20,7 +20,7 @@ In this article we use **AgentScope** framework for demonstration. For other fra
 
 !!! Example "Simple Practice Abstract"
     - Simply set `model` argument in AgentScope ReActAgent argument to `tuner.as_agentscope_model()` when initializing your agent.
-    - Wrap your code with `class MyWorkflow(Workflow)` and you agent is ready to be tuned.
+    - Wrap your code with `class MyWorkflow(Workflow)` and your agent is ready to be tuned.
 
 ### 1. When to Use This Simple Practice
 
@@ -93,7 +93,7 @@ Next, use the `tuner` argument, call its `tuner.as_agentscope_model()` method:
 ## Advanced Practice
 
 !!! Example "Advanced Practice Abstract"
-    - The `tuner.as_agentscope_model()` function has hidden paramters, please further complete them to tell AgentJet the identity of agents.
+    - The `tuner.as_agentscope_model()` function has hidden parameters, please further complete them to tell AgentJet the identity of agents.
     - The `ajet.Workflow` class has hidden attribute `trainable_targets`, please assign it manually to narrow down agents to be tuned.
 
 ### 1. When to Use Advanced Practice
@@ -113,7 +113,7 @@ Simple, there are only two more issues that should be take care of in addition:
 
 i. **`.as_agentscope_model` has three hidden (optional) parameters, complete them for each agent.**
 
-| parameter | explaination |
+| parameter | explanation |
 |----------|------------|
 | `agent_name` | The name of this agent |
 | `target_tag` | A tag that mark the agent category |
@@ -135,7 +135,7 @@ i. **`.as_agentscope_model` has three hidden (optional) parameters, complete the
 
 ii. **`Workflow` has a hidden (optional) attribute called `trainable_targets`, config it.**
 
-| `trainable_targets` value | explaination |
+| `trainable_targets` value | explanation |
 |----------|------------|
 | `trainable_targets = None` | All agents using `as_agentscope_model` will be trained |
 | `trainable_targets = ["Agent_Type_1", "Agent_Type_2"]` | Agents with `target_tag=Agent_Type_1`, `target_tag=Agent_Type_2`, ... will be trained |
@@ -150,7 +150,7 @@ ii. **`Workflow` has a hidden (optional) attribute called `trainable_targets`, c
 
 
 !!! warning
-    Regardless of `target_tag` differences, all agents share a single model instance (one model weight to play different roles, the model receives different preceptions when playing different roles).
+    Regardless of `target_tag` differences, all agents share a single model instance (one model weight to play different roles, the model receives different perceptions when playing different roles).
 
 
 ### 2. Multi-Agent Example
@@ -245,7 +245,7 @@ Here's a complete example with multiple agent roles (Werewolves game):
 
 Wrapping and training your agent on a machine without GPU.
 
-Working in progress and comming soon.
+Working in progress and coming soon.
 
 
 ## Next Steps
