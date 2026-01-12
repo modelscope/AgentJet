@@ -237,7 +237,8 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
     # Parse request body
     body = await request.json()
     new_req = ChatCompletionRequest.model_validate(body)
-
+    if new_req.stream:
+        raise HTTPException(status_code=400, detail="Streaming responses not supported in current AgentJet version, please set `stream=false` for now.")
     # Create timeline UUID
     timeline_uuid = uuid.uuid4().hex
 
