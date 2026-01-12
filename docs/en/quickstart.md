@@ -45,7 +45,7 @@ tuned_model = job.tune()
 ## 3. Compare with Community Training Curves
 
 <div class="card-grid">
-<a href="https://benchmark.agent-matrix.com/examples" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>AgentJet Bechmark Tracking System (Developing-In-Progress)</h3></div><p class="card-desc">Compare training culves with community. Investigate the influence of versions, backbones, hyper-parameters, etc.</p></a>
+<a href="https://benchmark.agent-matrix.com/examples" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>AgentJet Benchmark Tracking System (Developing-In-Progress)</h3></div><p class="card-desc">Compare training curves with community. Investigate the influence of versions, backbones, hyper-parameters, etc.</p></a>
 </div>
 
 
