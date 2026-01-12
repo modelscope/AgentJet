@@ -112,6 +112,85 @@ Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</l
 </div>
 </div>
 
+### YAML Configuration
+
+Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
+
+=== "AgentScope"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+=== "OpenAI"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent_oai_sdk->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+=== "Raw HTTP"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent_raw_http->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+=== "langchain"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent_langchain->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+
+| Field | Description |
+|-------|-------------|
+| `task_reader` | Where tasks come from |
+| `user_workflow` | Which workflow runs per sample |
+| `judge_protocol` | Which judge computes rewards |
+| `model.path` | Pretrained model to fine-tune |
 
 ### Code Walkthrough
 
@@ -140,50 +219,134 @@ Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</l
     return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
     ```
 
+=== "OpenAI"
+
+    ```python title="Workflow Sketch"
+    client = tuner.as_raw_openai_sdk_client()
+
+    # call 1: get response with tool call
+    messages = [
+        { "role": "system", "content": self.system_prompt },
+        { "role": "user", "content": query }
+    ]
+    reply_message: ChatCompletion = await client.chat.completions.create(messages=messages, tools=self.available_functions)
+    if (reply_message.choices[0].message.content):
+        messages.append({
+            "role": "assistant",
+            "content": reply_message.choices[0].message.content
+        })
+
+    # If the model called a tool
+    if (reply_message.choices[0].message) and (reply_message.choices[0].message.tool_calls):
+        tool_calls: list[ChatCompletionMessageToolCall] = reply_message.choices[0].message.tool_calls
+        for tool_call in tool_calls:
+            if tool_call.function.name == "execute_python_code":
+                arguments = json.loads(tool_call.function.arguments)
+
+                def sync_wrapper():
+                    import subprocess
+                    import sys
+                    process = subprocess.run(
+                        [sys.executable, "-c", arguments["code"]],
+                        timeout=arguments.get("timeout", 300),
+                        capture_output=True,
+                        text=True
+                    )
+                    return process.stdout
+
+                result = await asyncio.to_thread(sync_wrapper)
+                tool_result_message = {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": json.dumps({
+                        "return_code": str(result),
+                    })
+                }
+                messages.append(tool_result_message)
+
+        # Step 3: Make a follow-up API call with the tool result
+        final_response: ChatCompletion = await client.chat.completions.create(
+            messages=messages,
+        )
+        final_stage_response = final_response.choices[0].message.content
+    else:
+        final_stage_response = reply_message.choices[0].message.content
+
+
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_stage_response})
+    ```
+
+
+=== "Raw HTTP"
+
+    ```python title="raw http"
+    url_and_apikey = tuner.as_oai_baseurl_apikey()
+    base_url = url_and_apikey.base_url
+    api_key = url_and_apikey.api_key
+
+    # take out query
+    query = workflow_task.task.main_query
+
+    messages = [
+        {
+            "role": "system",
+            "content": self.system_prompt
+        },
+        {
+            "role": "user",
+            "content": query
+        }
+    ]
+
+    # use raw http requests (non-streaming) to get response
+    response = requests.post(
+            f"{base_url}/chat/completions",
+            json={
+                "model": "fill_whatever_model", # Of course, this `model` field will be ignored.
+                "messages": messages,
+            },
+            headers={
+                "Authorization": f"Bearer {api_key}"
+            }
+    )
+    final_answer = response.json()['choices'][0]['message']['content']
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    ```
+
+
 === "Langchain"
 
-    ```python
+    ```python title="langchain"
+    # tuner to api key
+    url_and_apikey = tuner.as_oai_baseurl_apikey()
+    base_url = url_and_apikey.base_url
+    api_key = url_and_apikey.api_key
 
-    class ExampleMathLearn(Workflow):
+    from langchain_openai import ChatOpenAI
+    llm=ChatOpenAI(
+        base_url=base_url,
+        api_key=lambda:api_key,
+    )
+    agent=create_agent(
+        model=llm,
+        system_prompt=self.system_prompt,
+    )
 
-        name: str = "math_agent_workflow"
-        system_prompt: str = dedent("""
-            You are an agent specialized in solving math problems.
-            Please solve the math problem given to you.
-            You can write and execute Python code to perform calculation or verify your answer.
-            You should return your final answer within \\boxed{{}}.
-        """)
+    # take out query
+    query = workflow_task.task.main_query
 
-        async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
-            # tuner to api key
-            url_and_apikey = tuner.as_oai_baseurl_apikey()
-            base_url = url_and_apikey.base_url
-            api_key = url_and_apikey.api_key
+    response = agent.invoke({
+        "messages": [
+            {
+                "role": "user",
+                "content": query
+            }
+        ],
+    })
 
-            from langchain_openai import ChatOpenAI
-            llm=ChatOpenAI(
-                base_url=base_url,
-                api_key=lambda:api_key,
-            )
-            agent=create_agent(
-                model=llm,
-                system_prompt=self.system_prompt,
-            )
-
-            # take out query
-            query = workflow_task.task.main_query
-
-            response = agent.invoke({
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": query
-                    }
-                ],
-            })
-
-            final_answer = response['messages'][-1].content
-            return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    final_answer = response['messages'][-1].content
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
     ```
 
 !!! warning "Important"
