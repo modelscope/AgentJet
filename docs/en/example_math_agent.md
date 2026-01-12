@@ -117,26 +117,74 @@ Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</l
 
 **Workflow:** `tutorial/example_math_agent/math_agent.py`
 
-```python title="Workflow Sketch"
-self.toolkit = Toolkit()
-self.toolkit.register_tool_function(execute_python_code)
+=== "AgentScope"
 
-self.agent = ReActAgent(
-    name="math_react_agent",
-    sys_prompt=system_prompt,
-    model=tuner.as_agentscope_model(),  # trainer-managed model wrapper
-    formatter=DashScopeChatFormatter(),
-    toolkit=self.toolkit,
-    memory=InMemoryMemory(),
-)
+    ```python title="Workflow Sketch"
+    self.toolkit = Toolkit()
+    self.toolkit.register_tool_function(execute_python_code)
 
-msg = Msg("user", init_messages[0]["content"], role="user")
-result = await self.agent.reply(msg)
-final_answer = extract_final_answer(result)
+    self.agent = ReActAgent(
+        name="math_react_agent",
+        sys_prompt=system_prompt,
+        model=model_tuner,  # trainer-managed model wrapper
+        formatter=DashScopeChatFormatter(),
+        toolkit=self.toolkit,
+        memory=InMemoryMemory(),
+    )
 
-# IMPORTANT: provide final answer to the judge via WorkflowOutput metadata
-return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-```
+    msg = Msg("user", init_messages[0]["content"], role="user")
+    result = await self.agent.reply(msg)
+    final_answer = extract_final_answer(result)
+
+    # IMPORTANT: provide final answer to the judge via WorkflowOutput metadata
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    ```
+
+=== "Langchain"
+
+    ```python
+
+    class ExampleMathLearn(Workflow):
+
+        name: str = "math_agent_workflow"
+        system_prompt: str = dedent("""
+            You are an agent specialized in solving math problems.
+            Please solve the math problem given to you.
+            You can write and execute Python code to perform calculation or verify your answer.
+            You should return your final answer within \\boxed{{}}.
+        """)
+
+        async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:   # type: ignore
+            # tuner to api key
+            url_and_apikey = tuner.as_oai_baseurl_apikey()
+            base_url = url_and_apikey.base_url
+            api_key = url_and_apikey.api_key
+
+            from langchain_openai import ChatOpenAI
+            llm=ChatOpenAI(
+                base_url=base_url,
+                api_key=lambda:api_key,
+            )
+            agent=create_agent(
+                model=llm,
+                system_prompt=self.system_prompt,
+            )
+
+            # take out query
+            query = workflow_task.task.main_query
+
+            response = agent.invoke({
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": query
+                    }
+                ],
+            })
+
+            final_answer = response['messages'][-1].content
+            return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    ```
 
 !!! warning "Important"
     - User should put all elements necessary for reward computation in `WorkflowOutput.metadata`,
