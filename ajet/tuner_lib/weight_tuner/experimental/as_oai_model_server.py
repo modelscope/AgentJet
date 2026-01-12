@@ -54,12 +54,12 @@ active_websockets = {}
 # Create FastAPI app
 app = FastAPI(title="AJet Interchange Endpoint")
 
+POLL_INTERVAL_SECONDS = 0.5
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
-
 
 
 async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket, stop_event: asyncio.Event):
@@ -89,7 +89,7 @@ async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket,
                     # AgentScope sometimes fails the standard OAI schema compliance check for ChatCompletionRequest
                     await websocket.send_bytes(pickle.dumps(new_req.model_dump_json()))
             else:
-                await asyncio.sleep(0.25)
+                await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
     except WebSocketDisconnect:
         stop_event.set()
@@ -258,7 +258,6 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
 
     # Wait for response (with periodic checks for client disconnect)
     max_wait_time = 1800  # 30 minutes timeout
-    check_interval = 0.25  # Check every 250ms
     elapsed_time = 0
 
     try:
@@ -268,8 +267,8 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
                 and timeline_uuid in ajet_remote_handler_completed[key]:
                 openai_response = ajet_remote_handler_completed[key][timeline_uuid]
                 return openai_response
-            await asyncio.sleep(check_interval)
-            elapsed_time += check_interval
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            elapsed_time += POLL_INTERVAL_SECONDS
 
         # Timeout reached
         raise HTTPException(status_code=504, detail="Request timeout")
@@ -323,10 +322,10 @@ async def monitor_debug_state(experiment_dir):
                 f.write(pformat(debug_info, width=120, indent=2))
                 f.write('\n')
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(4)
         except Exception as e:
             logger.error(f"Error in monitor_debug_state: {e}")
-            await asyncio.sleep(2)
+            await asyncio.sleep(4)
 
 
 def ensure_dat_interchange_server_cache_clear():
@@ -373,14 +372,18 @@ class InterchangeEndpointServer:
         def run_server():
             async def serve_with_monitor():
                 # Start the monitor task
-                monitor_task = asyncio.create_task(monitor_debug_state(experiment_dir))
+                asyncio.create_task(monitor_debug_state(experiment_dir))
 
                 # Start the server
                 config = uvicorn.Config(
                     app=app,
                     host="0.0.0.0",
                     port=self.port,
-                    log_level="error"
+                    log_level="error",
+                    ws_max_queue=1024,
+                    ws_ping_interval=60,
+                    ws_ping_timeout=60,
+                    ws_per_message_deflate=True,
                 )
                 server = uvicorn.Server(config)
                 await server.serve()
