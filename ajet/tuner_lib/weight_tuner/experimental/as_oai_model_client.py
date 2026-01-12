@@ -128,6 +128,8 @@ class InterchangeClient:
                         parsed_msg: InterchangeCompletionRequest = pickle.loads(
                             await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
                         )
+                        if isinstance(parsed_msg, str):
+                            parsed_msg = InterchangeCompletionRequest(**json.loads(parsed_msg))
 
                         response = await self.llm_infer(
                             req=parsed_msg.completion_request,

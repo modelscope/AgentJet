@@ -83,7 +83,11 @@ async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket,
                 # will be received by:
                 #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
                 #       await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
-                await websocket.send_bytes(pickle.dumps(new_req))
+                try:
+                    await websocket.send_bytes(pickle.dumps(new_req))
+                except:
+                    # AgentScope sometimes fails the standard OAI schema compliance check for ChatCompletionRequest
+                    await websocket.send_bytes(pickle.dumps(new_req.model_dump_json()))
             else:
                 await asyncio.sleep(0.25)
 
@@ -243,12 +247,12 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
         timeline_uuid = timeline_uuid,
     )
 
-    # fix Pydantic validation issue for tool_calls field
-    for msg in int_req.completion_request.messages:
-        if isinstance(msg, dict) and 'tool_calls' in msg:
-            tc = msg['tool_calls']
-            if not isinstance(tc, list):
-                msg['tool_calls'] = list(tc) if tc else []
+    # # fix Pydantic validation issue for tool_calls field
+    # for msg in int_req.completion_request.messages:
+    #     if isinstance(msg, dict) and 'tool_calls' in msg:
+    #         tc = msg['tool_calls']
+    #         if not isinstance(tc, list):
+    #             msg['tool_calls'] = list(tc) if tc else []
 
     ajet_remote_handler_received[key][timeline_uuid] = int_req
 
