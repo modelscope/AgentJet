@@ -1,12 +1,14 @@
-# AgentJet
+# AgentJet (Beta)
 
 [![Benchmarking](https://img.shields.io/badge/Benchmarking-0078D4?style=for-the-badge&logo=github)](https://benchmark.agent-matrix.com/)
-[![Docs](https://img.shields.io/badge/Docs-Read%20the%20Guide-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://doc.agentjet.top/AgentJet)
+[![Docs](https://img.shields.io/badge/Docs-Read%20the%20Documents-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://doc.agentjet.top/AgentJet)
 [![License](https://img.shields.io/badge/License-Apache--2.0-4c1?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://doc.agentjet.top/AgentJet/en/installation#requirements)
 
 <div align="center">
-<img width="500" alt="AgentJet" src="docs/agentjet.jpg"/>
+  <a href="https://doc.agentjet.top/AgentJet" target="_blank">
+    <img width="500" alt="AgentJet" src="docs/agentjet.jpg"/>
+  </a>
 </div>
 
 
