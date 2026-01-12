@@ -99,7 +99,14 @@ def send_test_result(
     Post a single experiment result to the /report_test_result endpoint.
     Raises requests.HTTPError on non-2xx responses.
     """
+
+    access_token = os.environ.get("BENCHMARK_ACCESS_TOKEN", None)
+    if not access_token:
+        logger.error("Cannot report to benchmark site, missing administrator token (`BENCHMARK_ACCESS_TOKEN` env variable).")
+        return {}
+
     payload = {
+        "access_token": access_token,
         "git_hash": git_hash,
         "target": target,
         "status": status,
