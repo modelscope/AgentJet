@@ -51,6 +51,7 @@ dev = [
     "mypy>=1.7.0",
     "pytest>=8.0.0",
     "pytest-json-ctrf",
+    "langchain>=1.2.3",
 ]
 
 reward = [
