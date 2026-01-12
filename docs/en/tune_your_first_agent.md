@@ -51,7 +51,7 @@ tutorial/example_math_agent
 └── math_agent.yaml
 ```
 
-Next, define your workflow (or convert an existing workflow). Here we use AgentScope to implement this agent. You can toggle two code before and after convertion to see the difference. If you prefer langchain or openai sdk, [please refer to this article](../agent_framework_support).
+Next, define your workflow (or convert an existing workflow). Here we use AgentScope to implement this agent. You can toggle two code before and after convertion to see the difference. If you prefer langchain or openai sdk, [please refer to this article](agent_framework_support.md).
 
 === "`math_agent.py` - AgentJet Workflow (After Convertion)"
 
@@ -199,6 +199,32 @@ Now, we have obtained all materials required to train the agent.
 
     ```
 
+### Configuration Parameters
+
+| Category | Parameter | Description | Example Value |
+|----------|-----------|-------------|---------------|
+| **Project** | `project_name` | Name of the training project | `example_math_agent` |
+| **Task Reader** | `type` | Type of data source to read tasks from | `huggingface_dat_repo` (options: `env_service`, `dataset_file`, `huggingface_dat_repo`) |
+| | `dataset_path` | Path or identifier of the dataset | `openai/gsm8k` |
+| | `training_split` | Dataset split used for training | `train` |
+| | `validation_split` | Dataset split used for validation/testing | `test` |
+| **Model** | `path` | Path or identifier of the model to be trained | `Qwen/Qwen2.5-7B` |
+| **Rollout** | `user_workflow` | Python module path to the workflow class | `tutorial.example_math_agent.math_agent->ExampleMathLearn` |
+| | `num_repeat` | Number of rollout repeats per task (GRPO `n` parameter) | `6` |
+| | `tensor_model_parallel_size` | vLLM tensor parallelism size | `1` |
+| | `max_response_length_in_one_turn` | Maximum token length for a single agent response | `1024` |
+| | `max_model_len` | Maximum total context length for the model | `10000` |
+| **Data** | `train_batch_size` | Number of tasks per training batch | `100` |
+| | `max_prompt_length` | Maximum token length for input prompts | `3000` |
+| | `max_response_length` | Maximum token length for model responses | `7000` |
+| **Debug** | `debug_max_parallel` | Maximum parallel workers in debug mode | `1` |
+| | `debug_first_n_tasks` | Number of tasks to process in debug mode | `1` |
+| **Trainer** | `save_freq` | Frequency (in steps) to save model checkpoints | `100` |
+| | `test_freq` | Frequency (in steps) to run validation | `100` |
+| | `total_epochs` | Total number of training epochs | `100` |
+| | `logger` | Logging backend for experiment tracking | `swanlab` |
+| **Task Judge** | `judge_protocol` | Protocol for judging task completion | `null` (reward is computed in workflow) |
+
 
 ## Step 3: ✨Debug (Optional)
 
@@ -231,7 +257,7 @@ We choose VSCode to debug because it is open-source and fast.
 
 After `.vscode/launch.json` is created, press `F5` to start debugging. (Do not forget to configure python venv path in VSCode.)
 
-For more debugging techniques, please refer to [debugging guidelines](../debugging_guide).
+For more debugging techniques, please refer to [debugging guidelines](debugging_guide.md).
 
 
 ## Step 4: ✨Start Training

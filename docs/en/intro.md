@@ -12,7 +12,7 @@ AgentJet aims to build a state-of-the-art agent tuning platform for both develop
 - **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
 - **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support [trinity](https://github.com/modelscope/Trinity-RFT/) as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
-- **Flexible and Fast**. AgentJet supports [multi-agent workflows](docs/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Flexible and Fast**. AgentJet supports [multi-agent workflows](workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, comming soon).
 
 For advanced researchers, AgentJet also provides high-resolution logging and debugging solutions:

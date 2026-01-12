@@ -23,7 +23,7 @@ Let's begin with the simplest example: a math agent with a tool call.
 - First, please check out the [installation guide](https://doc.agentjet.top/AgentJet/en/installation/) to set up the training environment.
 - Then, tune your first model using the minimum example.
   ```python
-  ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl' --with-ray
+  ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
   ```
 
 

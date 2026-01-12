@@ -9,9 +9,10 @@ This document provides a step-by-step guide to installing AgentJet.
 
 ## Prerequisites
 
-| Requirement | Version |
+| Requirement | Detail |
 |-------------|---------|
-| **Python** | 3.10 |
+| **Python**         | 3.10 |
+| Package Management | `uv` or `conda` |
 
 
 ## Install from Source

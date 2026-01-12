@@ -82,7 +82,7 @@
 </div>
 
 
-We recommend using `uv` for dependency management. [Click here](./installation/) for details and other training backbone (e.g. Trinity-RFT) options.
+We recommend using `uv` for dependency management. [Click here](en/installation.md) for details and other training backbone (e.g. Trinity-RFT) options.
 
 - Clone the Repository:
     ```bash

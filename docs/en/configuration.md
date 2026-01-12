@@ -2,7 +2,7 @@
 
 This page provides a detailed description of the configuration files for AgentJet.
 
----
+
 
 ## Overview
 
@@ -31,7 +31,7 @@ At a high level, a typical config contains a single root section `ajet`, which i
 
 </div>
 
----
+
 
 ## Model Configuration
 
@@ -58,7 +58,6 @@ export DASHSCOPE_API_KEY='sk-xxxxxx|sk-yyyyyy'
 export DASHSCOPE_API_KEY_BACKUP='sk-zzzzzz'
 ```
 
----
 
 ## Data Configuration
 
@@ -123,7 +122,6 @@ ajet:
 | `customized_protocol` | Use a custom Python class for scoring |
 | `rubrics_auto_grader` | Use LLM-based automatic grading |
 
----
 
 ## Training Configuration
 
@@ -213,7 +211,6 @@ ajet:
 | `use_kl_loss` | Include KL divergence in loss |
 | `kl_loss_coef` | KL loss coefficient |
 
----
 
 ## Debug Mode
 
@@ -234,7 +231,6 @@ ajet:
     - **Fixing randomness**: `debug_vllm_seed` helps reproduce issues
     - **Reduced parallelism**: Easier to debug with smaller concurrency
 
----
 
 ## Logging & Monitoring
 
@@ -262,108 +258,7 @@ All experiment outputs are saved in `./launcher_record/{experiment_name}`:
 | **Metrics** | Training metrics (depends on logger) |
 | **Checkpoint** | Model checkpoints |
 
----
 
-## Full Configuration Example
-
-??? example "Complete Configuration Template"
-    ```yaml title="config.yaml"
-    ajet:
-      project_name: "ajet_default_project"
-      experiment_name: "read_yaml_name"
-      experiment_dir: "auto"
-      backbone: debug
-
-      model:
-        path: /path/to/model/Qwen2.5-14B-Instruct
-
-      data:
-        max_prompt_length: 3000
-        max_response_length: 15000
-        train_batch_size: 32
-
-      rollout:
-        user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
-        force_disable_toolcalls: False
-        max_env_worker: 128
-        gamma: 1.0
-        compute_madness_checklist:
-          - "nonsense"
-        agent_madness_termination: True
-        agent_madness_reward: -1.0
-        max_response_length_in_one_turn: 4096
-        max_model_len: 18000
-        multi_turn:
-          max_sample_per_task: 30
-          max_steps: 30
-          expected_steps: 1
-        tensor_model_parallel_size: 1
-        n_vllm_engine: 2
-        max_num_seqs: 10
-        name: vllm
-        num_repeat: 4
-        temperature: 0.9
-        top_p: 1.0
-        val_kwargs:
-          temperature: 0.0
-          top_k: -1
-          top_p: 1.0
-          do_sample: False
-          num_repeat: 1
-
-      task_reader:
-        type: env_service
-        env_service:
-          env_type: "appworld"
-          env_url: "http://127.0.0.1:8080"
-          env_action_preference: code
-          training_split: train
-          validation_split: dev
-
-      task_judge:
-        judge_type: customized_protocol
-        judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
-        alien_llm_model: qwen3-235b-a22b-instruct-2507
-        alien_llm_response_length: 512
-
-      debug:
-        debug_max_parallel: 16
-        debug_first_n_tasks: 2
-        debug_vllm_port: 18000
-        debug_vllm_seed: 12345
-        debug_tensor_parallel_size: 4
-
-      trainer_common:
-        val_before_train: False
-        val_pass_n: 4
-        save_freq: 20
-        test_freq: 20
-        total_epochs: 50
-        nnodes: 1
-        n_gpus_per_node: 8
-        logger: swanlab
-        algorithm:
-          adv_estimator: grpo
-          use_kl_in_reward: False
-        mini_batch_num: 1
-        fsdp_config:
-          param_offload: True
-          optimizer_offload: True
-        optim:
-          lr: 1e-6
-        use_kl_loss: True
-        kl_loss_coef: 0.002
-        kl_loss_type: low_var_kl
-        ulysses_sequence_parallel_size: 1
-        checkpoint_base_dir: ./saved_checkpoints
-
-      context_tracker:
-        context_tracker_type: "linear"
-        alien_llm_model: qwen3-235b-a22b-instruct-2507
-        alien_llm_response_length: 512
-    ```
-
----
 
 ## Next Steps
 
