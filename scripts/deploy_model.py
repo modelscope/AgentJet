@@ -57,12 +57,12 @@ if args.kill:
 
 
 def companion_launch():
-    print("Launching companion process for async LLM server...")
+    logger.info("Launching companion process for async LLM server...")
     model_path = args.target
     n_avail_gpus = torch.cuda.device_count()
     tensor_parallel_size = n_avail_gpus
     if tensor_parallel_size > n_avail_gpus:
-        print(
+        logger.warning(
             f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}."
         )
         tensor_parallel_size = n_avail_gpus

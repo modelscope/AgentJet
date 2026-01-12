@@ -1,8 +1,8 @@
+import torch
 import copy
 from collections import defaultdict
 from typing import List, Tuple
-
-import torch
+from loguru import logger
 
 from ajet.context_tracker.base_tracker import (
     BaseTracker,
@@ -231,7 +231,7 @@ class BaseContextTracker(BaseTracker):
             sample_arr += [sample]
 
         if len(sample_arr) > max_num_group:
-            print(f"Warning: allow {max_num_group} groups, but got {len(sample_arr)} groups")
+            logger.warning(f"Warning: allow {max_num_group} groups, but got {len(sample_arr)} groups")
             import random
 
             sample_arr = random.sample(sample_arr, max_num_group)  # preserve max_num_group groups

@@ -7,7 +7,7 @@ ajet:
 
 
   # the experimental reverse proxy feature that allows `tuner.as_oai_baseurl_apikey` feature
-  enable_experimental_reverse_proxy: True
+  enable_experimental_reverse_proxy: False
 
   model:
     # which model should be trained

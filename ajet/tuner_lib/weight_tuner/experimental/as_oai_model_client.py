@@ -4,6 +4,7 @@ import json
 import threading
 import os
 import time
+from loguru import logger
 from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest, ChatCompletionResponse
 from openai.types.chat.chat_completion import ChatCompletion
@@ -141,13 +142,13 @@ class InterchangeClient:
                         # 0.25s timeout, loop back to check should_terminate
                         continue
                     except websockets.exceptions.ConnectionClosed:
-                        print("Websocket connection closed by server")
+                        logger.warning("Websocket connection closed by server")
                         return # Exit inner loop to reconnect or finish
 
                 await websocket.send(pickle.dumps("terminate"))
 
             except (OSError, IOError) as e:
-                print(f"Websocket connection error: {e}")
+                logger.warning(f"Websocket connection error: {e}")
                 pass
 
 
