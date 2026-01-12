@@ -98,8 +98,16 @@ class InterchangeClient:
         """
         Starts the websocket service loop.
         """
-        t = threading.Thread(target=lambda: asyncio.run(self._service_loop()))
+        t = threading.Thread(target=lambda: asyncio.run(self._ensure_service_loop()))
         t.start()
+
+    async def _ensure_service_loop(self):
+        while not self.should_terminate:
+            try:
+                await self._service_loop()
+            except Exception as e:
+                logger.warning(f"InterchangeClient service loop error: {e}. Restarting...")
+                time.sleep(4)  # brief pause before reconnecting
 
     async def _service_loop(self):
         """
@@ -115,7 +123,7 @@ class InterchangeClient:
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
         uri = f"ws://127.0.0.1:{port}/hook/context_tracker_client_listen"
 
-        async with websockets.connect(uri, ping_timeout=3600) as websocket:
+        async with websockets.connect(uri, ping_timeout=3600, open_timeout=16) as websocket:
             try:
                 # Send initialization parameters
                 # Sending as a list [agent_name, target_tag, episode_uuid] to match "input (a,b,c)" structure
