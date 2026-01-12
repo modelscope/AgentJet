@@ -117,7 +117,6 @@ markdown_extensions:
 
 extra_css:
   - https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap
-  - stylesheets/font.css
   - stylesheets/feature-cards.css
   - stylesheets/tabbed-code.css
   - stylesheets/readability-enhancements.css

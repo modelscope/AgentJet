@@ -11,7 +11,7 @@
 ## 🛩️ Key Features
 
 <div class="card-grid">
-    <a href="en/configuration/" class="feature-card">
+    <a href="en/tune_your_first_agent/" class="feature-card">
         <div class="card-header"><img src="https://api.iconify.design/lucide:rocket.svg"
                 class="card-icon card-icon-agent" alt="">
             <h3>Get Started with Ease</h3>
@@ -52,7 +52,7 @@
             <b>accelerating</b> training speed 1.5x ~ 10x.
         </p>
     </a>
-    <a href="en/workflow/" class="feature-card">
+    <a href="en/beast_logger/" class="feature-card">
         <div class="card-header"><img src="https://api.iconify.design/lucide:microscope.svg" class="card-icon card-icon-tool"
                 alt="">
             <h3>High Resolution Logging</h3>
@@ -61,7 +61,7 @@
             Log <b>token-level</b> rollout details, capturing token IDs, token <b>loss masks</b>, and token <b>log probabilities</b> with <b>web UI display</b>. This Support workflow development, agent diagnostics, and facilitate research on advanced LLM algorithm studies.
         </p>
     </a>
-    <a href="en/workflow/" class="feature-card">
+    <a href="en/installation/" class="feature-card">
         <div class="card-header"><img src="https://api.iconify.design/lucide:cpu.svg" class="card-icon card-icon-tool"
                 alt="">
             <h3>Any Training Engine</h3>

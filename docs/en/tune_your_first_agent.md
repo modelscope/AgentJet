@@ -35,6 +35,11 @@ Launch the training process and track progress.</li>
 
 
 
+!!! info ""
+    Checkout the full code of this example by [clicking here](#full-code)
+
+
+
 ## Step 1: ✨Define agent Workflow + Reward
 
 
@@ -195,8 +200,7 @@ Now, we have obtained all materials required to train the agent.
     ```
 
 
-
-## Step 6: Debug (Optional)
+## Step 3: ✨Debug (Optional)
 
 Before full training, you can run some test in debug mode, using raw base model to test whether bug exists.
 We choose VSCode to debug because it is open-source and fast.
@@ -230,7 +234,7 @@ After `.vscode/launch.json` is created, press `F5` to start debugging. (Do not f
 For more debugging techniques, please refer to [debugging guidelines](../debugging_guide).
 
 
-## Step 7: Start Training
+## Step 4: ✨Start Training
 
 After debugging, launch the full training:
 
@@ -244,6 +248,134 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml
     ./saved_experiments/{exp_yaml_file_name}/
     ```
 
+
+
+## Full Code {#full-code}
+
+=== "`math_agent.py` - AgentJet Workflow (After Convertion)"
+
+    ```python title="math_agent.py"
+    import re
+    from loguru import logger
+    from agentscope.message import Msg
+    from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
+
+
+    def extract_final_answer(result) -> str:
+        """Extract the final answer from the agent's response."""
+        try:
+            if (
+                hasattr(result, "metadata")
+                and isinstance(result.metadata, dict)
+                and "result" in result.metadata
+            ):
+                return result.metadata["result"]
+            if hasattr(result, "content"):
+                if isinstance(result.content, dict) and "result" in result.content:
+                    return result.content["result"]
+                return str(result.content)
+            return str(result)
+        except Exception as e:
+            logger.warning(f"Extract final answer error: {e}. Raw: {result}")
+            return str(result)
+
+
+    system_prompt = """
+    You are an agent specialized in solving math problems with tools.
+    Please solve the math problem given to you.
+    You can write and execute Python code to perform calculation or verify your answer.
+    You should return your final answer within \\boxed{{}}.
+    """
+
+
+    class MathToolWorkflow(Workflow): # ✨✨ inherit `Workflow` class
+        name: str = "math_agent_workflow"
+
+        async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
+            # run agentscope
+            query = workflow_task.task.main_query
+            self.toolkit = Toolkit()
+            self.toolkit.register_tool_function(execute_python_code)
+            self.agent = ReActAgent(
+                name="math_react_agent", sys_prompt=system_prompt,
+                model=tuner.as_agentscope_model(),  # ✨✨ compared with a normal agentscope agent, here is the difference!
+                formatter=DashScopeChatFormatter(),
+                toolkit=self.toolkit,
+                memory=InMemoryMemory(), max_iters=2,
+            )
+            self.agent.set_console_output_enabled(False)
+            msg = Msg("user", query, role="user")
+            result = await self.agent.reply(msg)
+            final_answer = extract_final_answer(result)
+
+            # compute reward
+            reference_answer = workflow_task.task.metadata["answer"].split("####")[-1].strip()
+            match = re.search(r"\\boxed\{([^}]*)\}", final_answer)
+            if match: is_success = (match.group(1) == reference_answer)
+            else:     is_success = False
+            return WorkflowOutput(reward=(1.0 if is_success else 0.0), metadata={"final_answer": final_answer})
+
+    ```
+
+=== "`math_agent.yaml` - Configuration Yaml"
+
+    ```yaml
+    # ------------------ main configuration ------------------
+    ajet:
+      project_name: example_math_agent
+      task_reader:
+        type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
+        # effective when `type: huggingface_dat_repo`
+        huggingface_dat_repo:
+          dataset_path: 'openai/gsm8k'
+          training_split: "train"
+          validation_split: "test"
+
+      task_judge:
+        # ✨✨✨✨ null, because in this certain case, we write reward function together with workflow
+        judge_protocol: null
+
+      model:
+        # ✨✨✨✨ set the model to be trained
+        path: Qwen/Qwen2.5-7B
+
+      rollout:
+        user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ write and select workflow
+        num_repeat: 6 # grpo `n`
+        tensor_model_parallel_size: 1 # vllm tp
+        max_response_length_in_one_turn: 1024
+        max_model_len: 10000
+
+      data:
+        train_batch_size:    100
+        max_prompt_length:   3000
+        max_response_length: 7000
+
+      debug:
+        debug_max_parallel: 1
+        debug_first_n_tasks: 1
+
+      trainer_common:
+        save_freq: 100
+        test_freq: 100
+        total_epochs: 100
+        logger: swanlab
+
+    # ------------------ do not modify ------------------
+    hydra:
+      searchpath:
+        - file://ajet/default_config
+        - file://ajet/default_config/verl
+        - file://ajet/default_config/trinity
+
+    # ------------------ do not modify ------------------
+    defaults:
+      - verl_default
+      - trinity_default
+      - ajet_default
+      - _self_
+
+    ```
 
 ## Next Steps
 
