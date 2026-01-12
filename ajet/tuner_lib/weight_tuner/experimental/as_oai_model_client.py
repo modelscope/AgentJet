@@ -107,7 +107,7 @@ class InterchangeClient:
                 await self._service_loop()
             except Exception as e:
                 logger.warning(f"InterchangeClient service loop error: {e}. Restarting...")
-                time.sleep(4)  # brief pause before reconnecting
+                await asyncio.sleep(4)  # brief pause before reconnecting
 
     async def _service_loop(self):
         """
