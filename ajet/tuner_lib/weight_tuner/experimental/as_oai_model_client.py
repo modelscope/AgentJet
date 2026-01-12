@@ -98,7 +98,7 @@ class InterchangeClient:
         """
         Starts the websocket service loop.
         """
-        t = threading.Thread(target=lambda: asyncio.run(self._ensure_service_loop()))
+        t = threading.Thread(target=lambda: asyncio.run(self._ensure_service_loop()), daemon=True)
         t.start()
 
     async def _ensure_service_loop(self):
@@ -133,11 +133,10 @@ class InterchangeClient:
 
                     try:
                         # wait message from ajet/tuner_lib/weight_tuner/experimental/as_oai_model_server.py
-                        parsed_msg: InterchangeCompletionRequest = pickle.loads(
+                        parsed_msg_str: str = pickle.loads(
                             await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
                         )
-                        if isinstance(parsed_msg, str):
-                            parsed_msg = InterchangeCompletionRequest(**json.loads(parsed_msg))
+                        parsed_msg:InterchangeCompletionRequest = InterchangeCompletionRequest(**json.loads(parsed_msg_str))
 
                         response = await self.llm_infer(
                             req=parsed_msg.completion_request,
