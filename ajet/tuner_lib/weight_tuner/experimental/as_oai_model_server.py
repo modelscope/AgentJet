@@ -21,7 +21,7 @@ import pickle
 from pprint import pformat
 from loguru import logger
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, model_validator
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException, Request
 import uvicorn
 
@@ -30,13 +30,20 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 
 # Global variables for tracking requests and responses
+# class ChatCompletionRequestDeferBuildOff(ChatCompletionRequest):
+#     model_config = ConfigDict(
+#         defer_build=False,
+#         validate_default=True,
+#         validate_assignment=True,
+#     )
+# ChatCompletionRequest.model_validate_json(x)
+
 class InterchangeCompletionRequest(BaseModel):
     completion_request: ChatCompletionRequest
     agent_name: str
     target_tag: str
     episode_uuid: str
     timeline_uuid: str
-
 
 ajet_remote_handler_received: Dict[str, Dict[str, InterchangeCompletionRequest]] = defaultdict(dict)
 ajet_remote_handler_in_progress: Dict[str, Dict[str, InterchangeCompletionRequest]] = defaultdict(dict)
@@ -221,18 +228,29 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
 
     # Parse request body
     body = await request.json()
-    new_req = ChatCompletionRequest(**body)
+    new_req = ChatCompletionRequest.model_validate(body)
+
     # Create timeline UUID
     timeline_uuid = uuid.uuid4().hex
+
     # Add to received queue
     # logger.warning(f"Received new chat completion request for agent: {agent_name}, target_tag: {target_tag}, episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid}")
-    ajet_remote_handler_received[key][timeline_uuid] = InterchangeCompletionRequest(
+    int_req = InterchangeCompletionRequest(
         completion_request = new_req,
         agent_name = agent_name,
         target_tag = target_tag,
         episode_uuid = episode_uuid,
         timeline_uuid = timeline_uuid,
     )
+
+    # fix Pydantic validation issue for tool_calls field
+    for msg in int_req.completion_request.messages:
+        if isinstance(msg, dict) and 'tool_calls' in msg:
+            tc = msg['tool_calls']
+            if not isinstance(tc, list):
+                msg['tool_calls'] = list(tc) if tc else []
+
+    ajet_remote_handler_received[key][timeline_uuid] = int_req
 
     # Wait for response (with periodic checks for client disconnect)
     max_wait_time = 1800  # 30 minutes timeout

@@ -115,7 +115,7 @@ class InterchangeClient:
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
         uri = f"ws://127.0.0.1:{port}/hook/context_tracker_client_listen"
 
-        async with websockets.connect(uri) as websocket:
+        async with websockets.connect(uri, ping_timeout=3600) as websocket:
             try:
                 # Send initialization parameters
                 # Sending as a list [agent_name, target_tag, episode_uuid] to match "input (a,b,c)" structure
