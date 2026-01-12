@@ -9,10 +9,8 @@ Train an agent to **ask the next best question** (instead of answering directly)
 
 In **Learning to Ask**, each training sample is a short **doctor–patient chat history**. The agent outputs **one next question** the doctor should ask next (optionally with multiple-choice answers), rather than giving diagnosis or treatment.
 
-```{figure} https://img.alicdn.com/imgextra/i4/O1CN01m9WJCM1WJL1aJCSaS_!!6000000002767-2-tps-1024-559.png
-Figure: Why "Learning to Ask" matters. Left: LLM gives a diagnosis with too little information. Right: LLM asks clear follow-up questions before concluding, which feels more reassuring.
-```
-
+![](https://img.alicdn.com/imgextra/i4/O1CN01m9WJCM1WJL1aJCSaS_!!6000000002767-2-tps-1024-559.png)
+<center><small>Why "Learning to Ask" matters. Left: LLM gives a diagnosis with too little information. Right: LLM asks clear follow-up questions before concluding, which feels more reassuring.</small></center>
 
 
 This tutorial is organized in two steps:
