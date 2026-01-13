@@ -85,7 +85,9 @@ class ResourceKeeper(object):
                     params=self.env_params,
                 )
                 state_message: dict = init_response["state"]
-                _, init_messages = self._get_init_messages(state_message)
+                query, init_messages = self._get_init_messages(state_message)
+                # Update main_query with actual query from environment
+                self.workflow_task.task.main_query = query
             except Exception as e:
                 logger.bind(exception=True).exception(
                     f"encounter exception in env_worker.create_instance~ error={e.args}"
@@ -176,16 +178,23 @@ class BaseGymEnv(object):
         )
         obs = ""
         assert isinstance(env_output, dict)
-        if ("content" not in env_output["state"]) and ("error" in env_output["state"]):
-            obs = f"[Error from environment: {env_output['error']}]"
-        elif env_output["state"]["content"] == "":
-            obs = "Warning: the environment does not provide any feedback, please provide valid inpu and try again."
+
+        if isinstance(env_output["state"], list):
+            # 1. If state is a list (new standard format), pass through directly
+            obs = env_output["state"]
         else:
-            obs = env_output["state"]["content"]
+            # 2. If state is a dict (old format or error)
+            if ("content" not in env_output["state"]) and ("error" in env_output["state"]):
+                obs = f"[Error from environment: {env_output['error']}]"
+            elif env_output["state"].get("content", "") == "":
+                obs = "Warning: the environment does not provide any feedback, please provide valid inpu and try again."
+            else:
+                obs = env_output["state"]["content"]
+
         reward = 0
         info = {}
         terminate = env_output["is_terminated"]
-        return obs, reward, terminate, info
+        return obs, reward, terminate, info # type: ignore
 
     def reset(self) -> str:
         """Reset gym environment."""

@@ -40,7 +40,8 @@ def run_command_with_pty(cmd, working_dir, env_dict):
                 # log_f.write(data.decode())
                 # log_f.flush()
                 # Also print to stdout (optional)
-                print(data.decode(), end="")
+                # Use errors='replace' to handle incomplete UTF-8 sequences
+                print(data.decode(errors='replace'), end="")
             return data
 
         # Define stdin read callback
@@ -85,7 +86,7 @@ def base64_to_string(b):
 def pty_wrapper(
     cmd: list[str],
     dir: str,
-    env_dict: dict = {},
+    env_dict: dict[str, str] = {},
 ):
     run_command_with_pty(cmd, working_dir=dir, env_dict=env_dict)
 
@@ -109,7 +110,7 @@ def pty_launch(service_name: str, success_std_string="Starting server on"):
         use_pty=True,
     )
     companion.launch(
-        launch_wait_time=1800,
+        launch_wait_time=3600,
         success_std_string=success_std_string,
     )
 

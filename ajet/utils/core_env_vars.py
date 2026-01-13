@@ -40,6 +40,13 @@ def get_runtime_env(is_trinity: bool = False) -> dict:
         "AJET_GIT_HASH",
         "AJET_REQ_TXT",
         "AJET_BENCHMARK_NAME",
+        "FINANCE_MCP_URL",
+        # API Keys for RM Gallery and other services
+        "DASHSCOPE_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "API_KEY",
+        "BASE_URL",
     ]
 
     for var in optional_env_vars:

@@ -8,6 +8,7 @@ from tests.bench.benchmark_base import BenchmarkTestCase
 
 
 class TestBenchmarkAppworld(BenchmarkTestCase):
+
     def test_01_begin_verl(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "verl"
@@ -16,7 +17,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
         # tests/bench/benchmark_appworld/benchmark_appworld.py
         # tests/bench/benchmark_appworld/benchmark_appworld.yaml
         TARGET_NAME = f"benchmark_appworld_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".verl/bin/python"
+        PYTHON_EXECUTABLE = os.environ.get("VERL_PYTHON", ".verl/bin/python")
         multi_nodes = False
 
         self.execute_benchmark(
@@ -37,7 +38,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
         TEST_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld_2nodes.yaml"
         PROBE_TARGET = "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe"
         TARGET_NAME = f"benchmark_appworld_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".venv/bin/python"
+        PYTHON_EXECUTABLE = os.environ.get("TRINITY_PYTHON", ".venv/bin/python")
         multi_nodes = True
 
         self.execute_benchmark(

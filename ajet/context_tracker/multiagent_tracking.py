@@ -50,7 +50,6 @@ class MultiAgentContextTracker(BaseContextTracker):
         config,
         should_interrupt_fn,
         generated_token_callback_fn,
-        episode_uuid: str,
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
@@ -61,7 +60,6 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
         self.timeline_cache = {}
-        self.episode_uuid = episode_uuid
 
 
     def preprocess_tools_field(self, tools: List[dict] = [], disable_toolcalls: bool = False):
@@ -74,6 +72,40 @@ class MultiAgentContextTracker(BaseContextTracker):
                     tools[i]["function"]["parameters"] = tools[i]["function"].pop("parameters")
         return tools
 
+    def extract_text_content_from_content_dict(self, msg):
+        # msg = {
+        #    "role": "assistant",
+        #    "content": [
+        #        {
+        #           "type": "text",
+        #           "text": "some text"
+        #        },
+        #    ],
+        # }
+
+        str_content = ""
+        for item in msg["content"]:
+            # item = {
+            #   "type": "text",
+            #   "text": "some text"
+            # },
+
+            assert isinstance(item, dict), f"Unsupported non-dict item in message content: {item}. Full message: {msg}"
+
+            if ("text" not in item):
+                logger.warning(
+                    f"Non-text content in message content detected: {item}. Ignoring."
+                )
+                should_skip_message = True
+                return str_content, should_skip_message
+
+            if isinstance(item["text"], str):
+                str_content += str(item["text"])
+            else:
+                str_content = ""
+
+        should_skip_message = False
+        return str_content, should_skip_message
 
     def step_spawn_timeline(self, messages: List[dict], tools: List = [], disable_toolcalls: bool = False) -> List[ExtendedMessage]:
         """Spawn a timeline from messages.
@@ -93,39 +125,32 @@ class MultiAgentContextTracker(BaseContextTracker):
             consider_roles.remove("tool")
 
         for i, msg in enumerate(messages):
+
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
                 continue
+
             if msg["role"] not in consider_roles:
                 continue
+
             if not isinstance(msg["content"], str):
                 author = "env"
-                ignore = False
-                str_content = ""
+                should_skip_message = False
 
                 # fix msg content
                 if msg["content"] is None:
                     msg["content"] = ""
-                elif isinstance(msg["content"], list):
-                    for item in msg["content"]:
-                        if "text" not in item:
-                            logger.warning(
-                                f"Non-text content in message content detected: {item}. Ignoring."
-                            )
-                            ignore = True
-                            break
-                        if isinstance(item["text"], str):
-                            str_content += str(item["text"])
-                        else:
-                            str_content = ""
-                        msg["content"] = str_content
-                else:
-                    raise ValueError(
-                        f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}"
-                    )
 
-                if ignore:
+                elif isinstance(msg["content"], list):
+                    msg["content"], should_skip_message = self.extract_text_content_from_content_dict(msg)
+
+                else:
+                    raise ValueError(f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}")
+
+                if should_skip_message:
                     continue
-                msg["content"] = str(msg["content"])  # TODO: better handling mm data
+
+                if not isinstance(msg["content"], str):
+                    msg["content"] = str(msg["content"])  # TODO: better handling mm data
 
             if msg["role"] == "system":
                 author = "initialization"
@@ -143,7 +168,9 @@ class MultiAgentContextTracker(BaseContextTracker):
                     tokenizer=self.tokenizer,
                     tools=tools,
                     tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
+                    tool_call_id=(msg["tool_call_id"] if "tool_call_id" in msg else ""),
                     token_generator="auto",
+                    name = (msg["name"] if "name" in msg else ""),
                     first_message=(i == 0),
                 )
             ]
