@@ -74,6 +74,7 @@ class ExtendedMessage:
         tool_calls=[],
         tool_call_id="",
         token_logprob_arr=[],
+        name="",    # preserved field, not used currently
         first_message=False,
     ):
         self.author = author
@@ -90,6 +91,7 @@ class ExtendedMessage:
         self.tools = tools
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
+        self.name = name    # preserved field, not used currently
         if not isinstance(self.tool_calls, list):
             # agent scope sometimes gives weird type for tool_calls, which is against OpenAI schema
             self.tool_calls = list(self.tool_calls)
