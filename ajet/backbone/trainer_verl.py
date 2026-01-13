@@ -54,7 +54,7 @@ from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
-
+from ajet.utils.metric_helper import save_trajectory_as_json_file, update_metrics
 
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
     """
@@ -602,6 +602,8 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                                 ),
                             }
                         )
+                        save_trajectory_as_json_file(context_tracker_arr, self.global_steps, self.config, prefix="train")
+                        update_metrics(context_tracker_arr, metrics)
                         if self.config.ajet.execute_test:  # apply a test probe
                             from swanlab.data.run.main import get_run
 
@@ -1044,6 +1046,8 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             f"TGC@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,
         }
+        save_trajectory_as_json_file(ctx_trackers, self.global_steps, self.config, prefix="eval")
+        update_metrics(ctx_trackers, val_metrics)
         print_dict(
             val_metrics,
             narrow=True,

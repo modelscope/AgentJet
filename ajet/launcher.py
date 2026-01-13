@@ -16,7 +16,7 @@ from ajet.utils.launch_utils import (
 from ajet.utils.pty import pty_launch
 
 set_loguru_default_color()
-load_dotenv()
+load_dotenv(override=False)
 
 
 def parse_args():
@@ -60,6 +60,12 @@ def parse_args():
         help="Launch appworld",
     )
     parser.add_argument(
+        "--with-finworld",
+        action="store_true",
+        default=False,
+        help="Launch finworld",
+    )
+    parser.add_argument(
         "--with-webshop",
         action="store_true",
         default=False,
@@ -79,6 +85,7 @@ def parse_args():
         help="Launch Crafters Env Simulation",
     )
     parser.add_argument("--reboot", action="store_true", default=False, help="reboot flag")
+    parser.add_argument("--skip-check-avail-gpu", action="store_true", default=False, help="Skip GPU availability check")
     parser.add_argument(
         "--kill",
         type=str,
@@ -247,8 +254,9 @@ def main():
     args = parse_args()
 
     # Enforce GPU availability and free memory threshold before proceeding
-    if (args.backbone != "debug") and (not args.kill) and (not args.autokill):
-        check_avail_gpu(min_free_ratio=0.95)
+    if not args.skip_check_avail_gpu:
+        if (args.backbone != "debug") and (not args.kill) and (not args.autokill):
+            check_avail_gpu(min_free_ratio=0.95)
 
     if args.autokill:
         args.kill = "ray|vllm|VLLM|python"
@@ -294,6 +302,9 @@ def main():
 
     if args.with_appworld:
         pty_launch("appworld")
+
+    if args.with_finworld:
+        pty_launch("finworld")
 
     if args.with_crafters:
         pty_launch("crafters")

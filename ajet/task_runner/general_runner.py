@@ -1,4 +1,5 @@
 import asyncio
+from venv import logger
 
 from ajet import AjetTuner
 from ajet import Workflow, WorkflowOutput
@@ -16,9 +17,6 @@ class GeneralRunner(BaseAgentRunner):
     def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
         observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
-        task_batch_index = workflow_task.task_batch_index
-        task_tag = workflow_task.task_tag
-        task_id = workflow_task.task_id
 
         workflow_import = self.config.ajet.rollout.user_workflow
         workflow_cls = dynamic_import(workflow_import)
@@ -33,10 +31,7 @@ class GeneralRunner(BaseAgentRunner):
             llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,
             config=self.config,
-            task_batch_index=task_batch_index,
-            task_tag=task_tag,
-            task_id=task_id,
-            episode_uuid=workflow_task.episode_uuid,
+            workflow_task = workflow_task,
             **hooks,
         )
         tuner = AjetTuner(
@@ -45,7 +40,6 @@ class GeneralRunner(BaseAgentRunner):
             user_workflow=user_workflow,
             config=self.config,
         )
-
         workflow_output: WorkflowOutput = asyncio.run(
             user_workflow.execute(workflow_task, tuner)
         )
@@ -56,6 +50,7 @@ class GeneralRunner(BaseAgentRunner):
             )
         else:
             raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
+
         workflow_task.gym_env = None  # clear gym env client reference to avoid serialization issue
 
         assert not isinstance(
@@ -73,12 +68,11 @@ class GeneralRunner(BaseAgentRunner):
         )
         context_tracker.process_reward(reward)
         # generate token before merging
-        context_tracker.task_id = task_id
-        context_tracker.task_tag = task_tag
         context_tracker.group_merge()
         # after merging, process and align reward again
         context_tracker.process_reward(reward)
         # mark the thread as ended
         observation_window["step"][task_thread_index] = -1
         tuner.terminate_episode()
+        context_tracker.log_metrics = workflow_output.log_metrics
         return context_tracker

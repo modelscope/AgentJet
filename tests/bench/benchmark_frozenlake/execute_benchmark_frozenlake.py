@@ -1,15 +1,17 @@
-import unittest
+import os
 
 from tests.bench.benchmark_base import BenchmarkTestCase
 
 
 class TestBenchmarkFrozenLake(BenchmarkTestCase):
-    def test_01_begin_trinity(self):
-        BACKBONE = "trinity"
+
+    def test_01_begin_verl(self):
+        BACKBONE = "verl"
         TEST_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.yaml"
         PROBE_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.py->TestProbe"
         TARGET_NAME = f"benchmark_frozenlake_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".venv/bin/python"
+        PYTHON_EXECUTABLE = os.environ.get("VERL_PYTHON", ".verl/bin/python")
+
         self.execute_benchmark(
             backbone=BACKBONE,
             test_target=TEST_TARGET,
@@ -18,12 +20,13 @@ class TestBenchmarkFrozenLake(BenchmarkTestCase):
             python_executable=PYTHON_EXECUTABLE,
         )
 
-    def test_02_begin_verl(self):
-        BACKBONE = "verl"
+    def test_02_begin_trinity(self):
+        BACKBONE = "trinity"
         TEST_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.yaml"
         PROBE_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.py->TestProbe"
         TARGET_NAME = f"benchmark_frozenlake_{BACKBONE}"
-        PYTHON_EXECUTABLE = ".verl/bin/python"
+        PYTHON_EXECUTABLE = os.environ.get("TRINITY_PYTHON", ".venv/bin/python")
+
         self.execute_benchmark(
             backbone=BACKBONE,
             test_target=TEST_TARGET,

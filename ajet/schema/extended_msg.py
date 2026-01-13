@@ -72,7 +72,9 @@ class ExtendedMessage:
         build_from_uuid="",
         tools=[],
         tool_calls=[],
+        tool_call_id="",
         token_logprob_arr=[],
+        name="",    # preserved field, not used currently
         first_message=False,
     ):
         self.author = author
@@ -88,6 +90,8 @@ class ExtendedMessage:
         self.clip = clip
         self.tools = tools
         self.tool_calls = tool_calls
+        self.tool_call_id = tool_call_id
+        self.name = name    # preserved field, not used currently
         if not isinstance(self.tool_calls, list):
             # agent scope sometimes gives weird type for tool_calls, which is against OpenAI schema
             self.tool_calls = list(self.tool_calls)
@@ -146,6 +150,8 @@ class ExtendedMessage:
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
+            if self.tool_call_id:
+                auto_tokenize_target.update({"tool_call_id": self.tool_call_id})
             text_frag_to = ajet_apply_chat_template(
                 tokenizer=tokenizer,
                 conversation=DUMMY_MSG + [auto_tokenize_target],
