@@ -9,6 +9,13 @@ ajet:
   # the experimental reverse proxy feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_experimental_reverse_proxy: False
 
+  task_runner:
+    wrapper_type: "asyncio-with-gc"
+    wrapper_multiprocessing_timeout: 3600  # in seconds
+    # - wrapper_type: "asyncio-with-gc":  safe, with periodic garbage collection to prevent event loop leaks (recommended)
+    # - wrapper_type: "asyncio":          fast, but may cause event loop leak in long run
+    # - wrapper_type: "multi-processing": safe, but resource consuming
+
   model:
     # which model should be trained
     path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct

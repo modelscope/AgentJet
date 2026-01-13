@@ -40,7 +40,6 @@ class OpenaiClientBaseUrlTuner(BaseModel):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        workflow: "Workflow",
         target_tag: str,
         agent_name: str,
         episode_uuid: str,

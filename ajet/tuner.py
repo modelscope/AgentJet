@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Literal, Callable, Union
+from typing import TYPE_CHECKING, Any, Literal, Callable, Union, Type
 
 from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
@@ -18,16 +18,21 @@ class AjetTuner(object):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        user_workflow: "Workflow",
+        workflow_cls: Type["Workflow"],
         llm_inference_fn: Callable,
     ) -> None:
         self.config = config
-        self.workflow = user_workflow
+        self.trainable_targets = self._get_trainable_targets(workflow_cls)
         self.context_tracker = context_tracker
         self.llm_inference_fn = llm_inference_fn
         self.target2proxy_registry: dict[str, dict[str,TunerTypeUnion]] = {}
         if config.ajet.enable_experimental_reverse_proxy:
             self.proxy_client_started = False
+
+
+    def _get_trainable_targets(self, workflow_cls: Type["Workflow"]):
+        workflow_instance = workflow_cls(name="ajet-workflow")
+        return workflow_instance.trainable_targets
 
 
     def as_agentscope_model(
@@ -44,7 +49,6 @@ class AjetTuner(object):
         explicit_tuner_as_modelscope_model = AgentScopeModelTuner(
             config=self.config,
             context_tracker=self.context_tracker,
-            user_workflow=self.workflow,
             agent_name=agent_name,
             debug_model=debug_model,
             use_debug_model=(not self._is_target_trainable(target_tag)),
@@ -68,7 +72,6 @@ class AjetTuner(object):
         explicit_tuner_as_oai_client = OpenaiClientModelTuner(
             config=self.config,
             context_tracker=self.context_tracker,
-            workflow=self.workflow,
             agent_name=agent_name,
             debug_model=debug_model,
             use_debug_model=(not self._is_target_trainable(target_tag)),
@@ -108,7 +111,6 @@ class AjetTuner(object):
         baseurl_apikey_model = OpenaiClientBaseUrlTuner(
             config=self.config,
             context_tracker=self.context_tracker,
-            workflow=self.workflow,
             agent_name=agent_name,
             target_tag=target_tag,
             episode_uuid=self.context_tracker.episode_uuid,
@@ -145,13 +147,13 @@ class AjetTuner(object):
     def _is_target_trainable(self, target_name) -> bool:
         """Determine whether user have used `trainable_targets` to explicitly control training targets.
         """
-        if self.workflow.trainable_targets is None:
+        if self.trainable_targets is None:
             # always assume trainable when user has never changed trainable_targets
             return True
-        if not self.workflow.trainable_targets:
+        if not self.trainable_targets:
             # always assume trainable when trainable_targets is []
             return True
-        if target_name in self.workflow.trainable_targets:
+        if target_name in self.trainable_targets:
             return True
         else:
             return False
