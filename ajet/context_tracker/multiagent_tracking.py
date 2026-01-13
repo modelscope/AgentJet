@@ -50,7 +50,6 @@ class MultiAgentContextTracker(BaseContextTracker):
         config,
         should_interrupt_fn,
         generated_token_callback_fn,
-        episode_uuid: str,
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
@@ -61,7 +60,6 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
         self.timeline_cache = {}
-        self.episode_uuid = episode_uuid
 
 
     def preprocess_tools_field(self, tools: List[dict] = [], disable_toolcalls: bool = False):

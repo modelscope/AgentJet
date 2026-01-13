@@ -16,7 +16,6 @@ from ajet.utils.launch_utils import (
 from ajet.utils.pty import pty_launch
 
 set_loguru_default_color()
-# load_dotenv()
 load_dotenv(override=False)
 
 
