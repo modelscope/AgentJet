@@ -178,22 +178,23 @@ class BaseGymEnv(object):
         )
         obs = ""
         assert isinstance(env_output, dict)
-        # === Support list-type state passthrough ===
-        # 1. If state is a list (new standard format), pass through directly
+
         if isinstance(env_output["state"], list):
+            # 1. If state is a list (new standard format), pass through directly
             obs = env_output["state"]
-        # 2. If state is a dict (old format or error)
         else:
+            # 2. If state is a dict (old format or error)
             if ("content" not in env_output["state"]) and ("error" in env_output["state"]):
                 obs = f"[Error from environment: {env_output['error']}]"
             elif env_output["state"].get("content", "") == "":
                 obs = "Warning: the environment does not provide any feedback, please provide valid inpu and try again."
             else:
                 obs = env_output["state"]["content"]
+
         reward = 0
         info = {}
         terminate = env_output["is_terminated"]
-        return obs, reward, terminate, info
+        return obs, reward, terminate, info # type: ignore
 
     def reset(self) -> str:
         """Reset gym environment."""

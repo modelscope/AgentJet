@@ -1,5 +1,6 @@
 from typing import List, Tuple, Union
 from typing import List, Union, Tuple, Dict, Optional, Any
+from ajet.schema.task import WorkflowTask
 
 from ajet.schema.extended_msg import (
     INVALID_LOG_PROB_VALUE,
@@ -111,10 +112,14 @@ def replace_token_ids(
 
 
 class BaseTracker(object):
-    def __init__(self, config, tokenizer, **kwargs):
-        self.task_batch_index = kwargs.get("task_batch_index", "undefined")
-        self.task_tag = kwargs.get("task_tag", "undefined")
-        self.task_id = kwargs.get("task_id", "undefined")
+    def __init__(self, config, tokenizer, workflow_task: WorkflowTask, **kwargs):
+
+        self.workflow_task = workflow_task
+        self.task_batch_index = self.workflow_task.task_batch_index
+        self.task_tag = self.workflow_task.task_tag
+        self.task_id = self.workflow_task.task_id
+        self.episode_uuid = self.workflow_task.episode_uuid
+
         self.config = config
         self.tokenizer = tokenizer
         self.saved_timelines: List[List[ExtendedMessage]] = []
@@ -136,7 +141,7 @@ class BaseTracker(object):
         self.already_mad_flag: bool = False
         self.round_cnt = 0
         self.generation_prompt_token = None
-        self.workflow_metadata: Optional[Dict[str, Any]] = None  # Initialize workflow_metadata to store tool statistics
+        self.log_metrics: Optional[Dict[str, Union[float, List[float]]]] = None  # Initialize workflow_metadata to store tool statistics
 
         assert (
             self.config.ajet.data.max_prompt_length

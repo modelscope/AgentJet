@@ -32,10 +32,10 @@ from typing import List, Dict, Any, Union
 def openai_to_agentscope_single(msg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert a single OpenAI format message to AgentScope format.
-    
+
     Args:
         msg: Message dict in OpenAI format
-        
+
     Returns:
         Message dict in AgentScope format
     """
@@ -43,7 +43,7 @@ def openai_to_agentscope_single(msg: Dict[str, Any]) -> Dict[str, Any]:
     content = msg.get("content", "")
     tool_calls = msg.get("tool_calls", [])
     tool_call_id = msg.get("tool_call_id", "")
-    
+
     if tool_calls:
         # Assistant message contains tool_calls -> convert to ToolUseBlock format
         content_blocks = []
@@ -71,7 +71,7 @@ def openai_to_agentscope_single(msg: Dict[str, Any]) -> Dict[str, Any]:
             "role": "assistant",
             "content": content_blocks
         }
-    
+
     elif role == "tool" and tool_call_id:
         # Tool return result -> convert to ToolResultBlock format
         tool_result_block = {
@@ -84,7 +84,7 @@ def openai_to_agentscope_single(msg: Dict[str, Any]) -> Dict[str, Any]:
             "role": "user",  # tool_result in AgentScope is treated as user message
             "content": [tool_result_block]
         }
-    
+
     else:
         # Normal message, keep original format
         return {
@@ -97,27 +97,27 @@ def openai_to_agentscope_single(msg: Dict[str, Any]) -> Dict[str, Any]:
 def openai_to_agentscope(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Convert OpenAI format message list to AgentScope format.
-    
+
     Args:
         messages: Message list in OpenAI format
-        
+
     Returns:
         Message list in AgentScope format
     """
     return [openai_to_agentscope_single(msg) for msg in messages]
 
 
-def openai_to_agentscope_grouped(grouped_steps: List[List[Dict[str, Any]]]) -> List[List[Dict[str, Any]]]:
+def openai_to_agentscope_grouped(timelines: List[List[Dict[str, Any]]]) -> List[List[Dict[str, Any]]]:
     """
-    Convert grouped_steps (multi-turn conversation steps) from OpenAI format to AgentScope format.
-    
+    Convert timelines (multi-turn conversation steps) from OpenAI format to AgentScope format.
+
     Args:
-        grouped_steps: List of List of dict in OpenAI format
-        
+        timelines: List of List of dict in OpenAI format
+
     Returns:
         Trajectory data in AgentScope format
     """
-    return [[openai_to_agentscope_single(msg) for msg in step] for step in grouped_steps]
+    return [[openai_to_agentscope_single(msg) for msg in step] for step in timelines]
 
 
 # =============================================================================
@@ -127,23 +127,23 @@ def openai_to_agentscope_grouped(grouped_steps: List[List[Dict[str, Any]]]) -> L
 def agentscope_to_openai_single(msg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Convert a single AgentScope format message to OpenAI format.
-    
+
     Args:
         msg: Message dict in AgentScope format
-        
+
     Returns:
         Message dict in OpenAI format
     """
     role = msg.get("role", "user")
     content = msg.get("content", "")
-    
+
     # If content is string, return directly
     if isinstance(content, str):
         return {
             "role": role,
             "content": content
         }
-    
+
     # If content is list (AgentScope block format)
     if isinstance(content, list):
         text_parts = []
@@ -151,17 +151,17 @@ def agentscope_to_openai_single(msg: Dict[str, Any]) -> Dict[str, Any]:
         tool_call_id = ""
         tool_output = ""
         is_tool_result = False
-        
+
         for item in content:
             if not isinstance(item, dict):
                 continue
-            
+
             item_type = item.get("type", "")
-            
+
             if item_type == "text":
                 # TextBlock
                 text_parts.append(item.get("text", ""))
-            
+
             elif item_type == "tool_use":
                 # ToolUseBlock -> tool_calls
                 arguments = item.get("input", {})
@@ -175,7 +175,7 @@ def agentscope_to_openai_single(msg: Dict[str, Any]) -> Dict[str, Any]:
                         "arguments": arguments
                     }
                 })
-            
+
             elif item_type == "tool_result":
                 # ToolResultBlock -> tool response
                 is_tool_result = True
@@ -185,7 +185,7 @@ def agentscope_to_openai_single(msg: Dict[str, Any]) -> Dict[str, Any]:
                     tool_output += output
                 else:
                     tool_output += str(output)
-        
+
         # Build OpenAI format based on parsing result
         if is_tool_result and tool_call_id:
             return {
@@ -205,7 +205,7 @@ def agentscope_to_openai_single(msg: Dict[str, Any]) -> Dict[str, Any]:
                 "role": role,
                 "content": "".join(text_parts) if text_parts else ""
             }
-    
+
     # Otherwise, return as is
     return {
         "role": role,
@@ -216,27 +216,27 @@ def agentscope_to_openai_single(msg: Dict[str, Any]) -> Dict[str, Any]:
 def agentscope_to_openai(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Convert AgentScope format message list to OpenAI format.
-    
+
     Args:
         messages: Message list in AgentScope format
-        
+
     Returns:
         Message list in OpenAI format
     """
     return [agentscope_to_openai_single(msg) for msg in messages]
 
 
-def agentscope_to_openai_grouped(grouped_steps: List[List[Dict[str, Any]]]) -> List[List[Dict[str, Any]]]:
+def agentscope_to_openai_grouped(timelines: List[List[Dict[str, Any]]]) -> List[List[Dict[str, Any]]]:
     """
-    Convert grouped_steps (multi-turn conversation steps) from AgentScope format to OpenAI format.
-    
+    Convert timelines (multi-turn conversation steps) from AgentScope format to OpenAI format.
+
     Args:
-        grouped_steps: List of List of dict in AgentScope format
-        
+        timelines: List of List of dict in AgentScope format
+
     Returns:
         Trajectory data in OpenAI format
     """
-    return [[agentscope_to_openai_single(msg) for msg in step] for step in grouped_steps]
+    return [[agentscope_to_openai_single(msg) for msg in step] for step in timelines]
 
 
 # =============================================================================
@@ -246,10 +246,10 @@ def agentscope_to_openai_grouped(grouped_steps: List[List[Dict[str, Any]]]) -> L
 def convert_ext_msg_to_openai_format(ext_msg: Any) -> Dict[str, Any]:
     """
     Convert a single ExtendedMessage or dict to OpenAI format message.
-    
+
     Args:
         ext_msg: ExtendedMessage object or dict
-        
+
     Returns:
         Message dict in OpenAI format
     """
@@ -260,19 +260,19 @@ def convert_ext_msg_to_openai_format(ext_msg: Any) -> Dict[str, Any]:
         elif isinstance(obj, dict):
             return obj.get(attr_name, default)
         return default
-    
+
     # Check if there are tool_calls (assistant initiates tool call)
     tool_calls = get_attr(ext_msg, 'tool_calls')
     has_tool_calls = bool(tool_calls)
-    
+
     # Check if there's tool_call_id (tool return result)
     tool_call_id = get_attr(ext_msg, 'tool_call_id')
     has_tool_call_id = bool(tool_call_id)
-    
+
     # Get basic attributes
     role = get_attr(ext_msg, 'role', 'user')
     content = get_attr(ext_msg, 'content', '')
-    
+
     if has_tool_calls:
         # Assistant message contains tool_calls -> keep OpenAI format
         msg_dict = {
@@ -293,38 +293,25 @@ def convert_ext_msg_to_openai_format(ext_msg: Any) -> Dict[str, Any]:
             "role": role,
             "content": content if content else ""
         }
-    
+
     return msg_dict
 
 
-def convert_grouped_steps_to_openai_format(grouped_steps: List[List[Any]]) -> List[List[Dict[str, Any]]]:
+def convert_grouped_steps_to_openai_format(timelines: List[List[Any]]) -> List[List[Dict[str, Any]]]:
     """
-    Convert grouped_steps (multi-turn conversation steps) to OpenAI format.
-    
+    Convert timelines (multi-turn conversation steps) to OpenAI format.
+
     Args:
-        grouped_steps: List of List of ExtendedMessage or dict
-        
+        timelines: List of List of ExtendedMessage or dict
+
     Returns:
         Trajectory data in OpenAI format (List of List of dict)
     """
     formatted_traj = []
-    for context in grouped_steps:
+    for context in timelines:
         step_msgs = []
         for ext_msg in context:
             msg_dict = convert_ext_msg_to_openai_format(ext_msg)
             step_msgs.append(msg_dict)
         formatted_traj.append(step_msgs)
     return formatted_traj
-
-
-def convert_flat_messages_to_openai_format(messages: List[Any]) -> List[Dict[str, Any]]:
-    """
-    Convert flat message list to OpenAI format.
-    
-    Args:
-        messages: List of ExtendedMessage or dict
-        
-    Returns:
-        Message list in OpenAI format (List of dict)
-    """
-    return [convert_ext_msg_to_openai_format(msg) for msg in messages]
