@@ -1,5 +1,6 @@
 import asyncio
 import gc
+from threading import Lock
 from typing import Any, Callable, Union, Type
 from multiprocessing import Process, Queue
 from unittest import result
@@ -12,6 +13,7 @@ from ajet.utils.async_utils import run_async_coroutine_with_timeout
 from ajet.utils.dynamic_import import dynamic_import
 from ajet.workflow import Workflow
 
+gc_lock = Lock()
 
 class BaseAgentRunner(object):
 
@@ -67,7 +69,8 @@ class BaseAgentRunner(object):
         user_workflow: Workflow = workflow_cls(name="ajet-workflow")
         result = await user_workflow.execute(workflow_task, tuner)
         del user_workflow
-        gc.collect()    # force garbage collection
+        with gc_lock:
+            gc.collect()    # force garbage collection
         return result
 
 
