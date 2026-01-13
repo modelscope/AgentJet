@@ -2,24 +2,28 @@
 
 Train a **tool-using Math Agent** (ReAct + Python executor) to solve GSM8K-style math problems. Rewards come from a **judge** that checks final-answer correctness.
 
----
 
 ## Overview
 
-<div class="callout-tip">
-<p>
 In <strong>Math Agent</strong>, each training sample is a math word problem (e.g., GSM8K). The agent learns to reason step by step (ReAct-style), call a Python tool when computation is needed, and produce a final answer that matches the reference.
-</p>
-</div>
 
-This tutorial is organized in two steps:
 
-1. **Run it**: Download the dataset and start training with the default YAML config
-2. **Understand & customize**: Read the workflow and the judge/reward logic
+This tutorial is organized into the following sections:
 
----
+- [**Run this tutorial**: Download the dataset and start training with the default YAML config.](#quick-start)
+- [**Understand & customize**: Read the workflow and the judge/reward logic.](#explain)
+- [**Training Curve**: Compare the training curlve.](#culve)
 
-## Quick Start
+
+
+
+
+
+
+
+
+
+## Quick Start {#quick-start}
 
 ### Prepare Dataset
 
@@ -35,7 +39,7 @@ python scripts/download_dataset.py --target=openai/gsm8k --path=/the/path/to/sto
 # (optional) recommended cleanup before training
 # ajet --kill="python|ray|vllm"
 
-ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
 ```
 
 ??? tip "Quick Debugging (Optional)"
@@ -71,11 +75,21 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
     }
     ```
 
----
 
-## Understanding the Training Pipeline
 
-### What Happens Each Step
+
+
+
+
+
+
+
+
+
+
+## Understanding the Training Pipeline {#explain}
+
+### Pipeline Abstraction
 
 <div class="workflow-single">
 <div class="workflow-header">Training Step Flow</div>
@@ -85,18 +99,279 @@ ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --w
 <li><strong>Load one problem</strong>
 
 Load a math problem from the dataset via `task_reader`.</li>
-<li><strong>Run the AgentScope workflow</strong>
+<li><strong>Run the Workflow</strong>
 
-Build the prompt, let the ReAct agent call Python tools, and extract the final answer.</li>
-<li><strong>Register info for evaluation</strong>
+Build the prompt, let the ReActAgent call Python tools, and extract the final answer.</li>
+<li><strong>Return result as `WorkflowOutput`</strong>
 
-Return `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`.</li>
+Return `WorkflowOutput(reward=None, metadata={"final_answer": final_answer})`. (reward=None because we want to compute reward outside the workflow)</li>
 <li><strong>Run the judge</strong>
 
 Compare `final_answer` with reference, compute `raw_reward` and `is_success`.</li>
 </ol>
 </div>
 </div>
+
+### YAML Configuration
+
+Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
+
+=== "AgentScope"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+=== "OpenAI"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent_oai_sdk->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+=== "Raw HTTP"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent_raw_http->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+=== "langchain"
+
+    ```yaml title="math_agent.yaml"
+    ajet:
+    task_reader:
+        type: huggingface_dat_repo   # also supports: dataset_file / env_service
+
+    rollout:
+        user_workflow: tutorial.example_math_agent.math_agent_langchain->ExampleMathLearn
+
+    task_judge:
+        judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAndLlmAsJudge
+
+    model:
+        path: YOUR_MODEL_PATH
+    ```
+
+
+| Field | Description |
+|-------|-------------|
+| `task_reader` | Where tasks come from |
+| `user_workflow` | Which workflow runs per sample |
+| `judge_protocol` | Which judge computes rewards |
+| `model.path` | Pretrained model to fine-tune |
+
+### Code Walkthrough
+
+**Workflow:** `tutorial/example_math_agent/math_agent.py`
+
+=== "AgentScope"
+
+    ```python title="Workflow Sketch"
+    self.toolkit = Toolkit()
+    self.toolkit.register_tool_function(execute_python_code)
+
+    self.agent = ReActAgent(
+        name="math_react_agent",
+        sys_prompt=system_prompt,
+        model=model_tuner,  # trainer-managed model wrapper
+        formatter=DashScopeChatFormatter(),
+        toolkit=self.toolkit,
+        memory=InMemoryMemory(),
+    )
+
+    msg = Msg("user", init_messages[0]["content"], role="user")
+    result = await self.agent.reply(msg)
+    final_answer = extract_final_answer(result)
+
+    # IMPORTANT: provide final answer to the judge via WorkflowOutput metadata
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    ```
+
+=== "OpenAI"
+
+    ```python title="Workflow Sketch"
+    client = tuner.as_raw_openai_sdk_client()
+
+    # call 1: get response with tool call
+    messages = [
+        { "role": "system", "content": self.system_prompt },
+        { "role": "user", "content": query }
+    ]
+    reply_message: ChatCompletion = await client.chat.completions.create(messages=messages, tools=self.available_functions)
+    if (reply_message.choices[0].message.content):
+        messages.append({
+            "role": "assistant",
+            "content": reply_message.choices[0].message.content
+        })
+
+    # If the model called a tool
+    if (reply_message.choices[0].message) and (reply_message.choices[0].message.tool_calls):
+        tool_calls: list[ChatCompletionMessageToolCall] = reply_message.choices[0].message.tool_calls
+        for tool_call in tool_calls:
+            if tool_call.function.name == "execute_python_code":
+                arguments = json.loads(tool_call.function.arguments)
+
+                def sync_wrapper():
+                    import subprocess
+                    import sys
+                    process = subprocess.run(
+                        [sys.executable, "-c", arguments["code"]],
+                        timeout=arguments.get("timeout", 300),
+                        capture_output=True,
+                        text=True
+                    )
+                    return process.stdout
+
+                result = await asyncio.to_thread(sync_wrapper)
+                tool_result_message = {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": json.dumps({
+                        "return_code": str(result),
+                    })
+                }
+                messages.append(tool_result_message)
+
+        # Step 3: Make a follow-up API call with the tool result
+        final_response: ChatCompletion = await client.chat.completions.create(
+            messages=messages,
+        )
+        final_stage_response = final_response.choices[0].message.content
+    else:
+        final_stage_response = reply_message.choices[0].message.content
+
+
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_stage_response})
+    ```
+
+
+=== "Raw HTTP"
+
+    ```python title="raw http"
+    url_and_apikey = tuner.as_oai_baseurl_apikey()
+    base_url = url_and_apikey.base_url
+    api_key = url_and_apikey.api_key
+
+    # take out query
+    query = workflow_task.task.main_query
+
+    messages = [
+        {
+            "role": "system",
+            "content": self.system_prompt
+        },
+        {
+            "role": "user",
+            "content": query
+        }
+    ]
+
+    # use raw http requests (non-streaming) to get response
+    response = requests.post(
+            f"{base_url}/chat/completions",
+            json={
+                "model": "fill_whatever_model", # Of course, this `model` field will be ignored.
+                "messages": messages,
+            },
+            headers={
+                "Authorization": f"Bearer {api_key}"
+            }
+    )
+    final_answer = response.json()['choices'][0]['message']['content']
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    ```
+
+
+=== "Langchain"
+
+    ```python title="langchain"
+    # tuner to api key
+    url_and_apikey = tuner.as_oai_baseurl_apikey()
+    base_url = url_and_apikey.base_url
+    api_key = url_and_apikey.api_key
+
+    from langchain_openai import ChatOpenAI
+    llm=ChatOpenAI(
+        base_url=base_url,
+        api_key=lambda:api_key,
+    )
+    agent=create_agent(
+        model=llm,
+        system_prompt=self.system_prompt,
+    )
+
+    # take out query
+    query = workflow_task.task.main_query
+
+    response = agent.invoke({
+        "messages": [
+            {
+                "role": "user",
+                "content": query
+            }
+        ],
+    })
+
+    final_answer = response['messages'][-1].content
+    return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
+    ```
+
+!!! warning "Important"
+    - User should put all elements necessary for reward computation in `WorkflowOutput.metadata`,
+    so the judge can use them.
+    - In this specific case, `final_answer` is that key element.
+
+
+
+### Reward Computation
+
+The judge receives:
+
+| Object | Contains |
+|--------|----------|
+| `workflow_task` | Task info; reference answer from `metadata` |
+| `workflow_output` | Workflow result; final answer from `metadata["final_answer"]` |
+
+!!! tip "Extending the Judge"
+    If you observe issues like "almost solved but messed up tool-call formatting", you can extend the judge to add:
+
+    - Format penalty (invalid `<tool_call>`)
+    - Behavior penalty (tool called but no `print`)
+    - Keep answer correctness as the primary signal
+
 
 ### YAML Configuration
 
@@ -124,53 +399,11 @@ ajet:
 | `judge_protocol` | Which judge computes rewards |
 | `model.path` | Pretrained model to fine-tune |
 
-### Code Walkthrough
 
-**Workflow:** `tutorial/example_math_agent/math_agent.py`
 
-```python title="Workflow Sketch"
-self.toolkit = Toolkit()
-self.toolkit.register_tool_function(execute_python_code)
 
-self.agent = ReActAgent(
-    name="math_react_agent",
-    sys_prompt=system_prompt,
-    model=model_tuner,  # trainer-managed model wrapper
-    formatter=DashScopeChatFormatter(),
-    toolkit=self.toolkit,
-    memory=InMemoryMemory(),
-)
 
-msg = Msg("user", init_messages[0]["content"], role="user")
-result = await self.agent.reply(msg)
-final_answer = extract_final_answer(result)
-
-# IMPORTANT: provide final answer to the judge via WorkflowOutput metadata
-return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-```
-
-!!! warning "Important"
-    Always provide the final answer via `WorkflowOutput.metadata` so the judge can score it.
-
-### Reward Computation
-
-The judge receives:
-
-| Object | Contains |
-|--------|----------|
-| `workflow_task` | Task info; reference answer from `metadata` |
-| `workflow_output` | Workflow result; final answer from `metadata["final_answer"]` |
-
-!!! tip "Extending the Judge"
-    If you observe issues like "almost solved but messed up tool-call formatting", you can extend the judge to add:
-
-    - Format penalty (invalid `<tool_call>`)
-    - Behavior penalty (tool called but no `print`)
-    - Keep answer correctness as the primary signal
-
----
-
-## Results
+## Results {#culve}
 
 ### Training Curve
 

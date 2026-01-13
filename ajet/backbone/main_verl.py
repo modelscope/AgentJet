@@ -22,6 +22,7 @@ import socket
 import hydra
 import ray
 from beast_logger import print_dict
+from loguru import logger
 from omegaconf import OmegaConf
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
@@ -112,7 +113,7 @@ class TaskRunner:
         from omegaconf import OmegaConf
         from verl.utils.fs import copy_to_local
 
-        print(f"TaskRunner hostname: {socket.gethostname()}, PID: {os.getpid()}")
+        logger.info(f"TaskRunner hostname: {socket.gethostname()}, PID: {os.getpid()}")
         pprint(OmegaConf.to_container(config, resolve=True))
         OmegaConf.resolve(config)
 
@@ -148,8 +149,6 @@ class TaskRunner:
                 from verl.workers.fsdp_workers import CriticWorker
             elif use_legacy_worker_impl == "disable":
                 from verl.workers.roles import CriticWorker
-
-                print("Using new worker implementation")
             else:
                 raise ValueError(f"Invalid use_legacy_worker_impl: {use_legacy_worker_impl}")
 

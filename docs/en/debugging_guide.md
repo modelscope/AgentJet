@@ -1,6 +1,8 @@
 In this tutorial, we introduce the way to debug the workflow and the training algorithms.
 
-## Workflow Debugging
+
+
+## Workflow Debugging (--backbone=debug)
 
 1. Install VSCode and connect to GPU server.
 
@@ -75,3 +77,31 @@ Then, the modified launch.json will be
 7. Press `F5` to start debugging.
 
 8. You can set breakpoint inside the workflow to observe program execution now.
+
+
+## General Debugging (Ray Distributed Debugger)
+
+1. Install the Ray Distributed Debugger extension in VSCode.
+
+2. In AgentJet project:
+
+   2-1. In the place your want to set a conditional breakpoint, write
+         `from ajet import bp; bp("TAG_1")`
+
+   2-2. When launching the training process, add `--debug` as commandline argument
+         `ajet --conf your_config.yaml --debug="TAG_1"`
+
+   2-3. Open Tab "Ray Distributed Debugger" in VSCode, and just wait until the breakpoint is hit.
+
+
+## Comparison
+
+| Feature | Workflow Debugging | General Debugging (Ray) |
+| :--- | :--- | :--- |
+| **Backend** | `debug`, `tinker` | `verl`, `trinity` |
+| **Reboot Speed** | Very Fast  | Slow |
+| **Debug Target** | Workflow  | Everything |
+| **VSCode Extension** | Python |  Python + Ray Distributed Debugger |
+| **Launch Mode** | `F5` standard launch (via `launch.json`) | Command line execution with `ajet ... --debug="TAG"` |
+| **Commandline** | `--backbone=debug` | `--debug="TAG1\|TAG2\|TAG3"` |
+

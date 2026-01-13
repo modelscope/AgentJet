@@ -10,6 +10,7 @@ from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.launch_utils import set_loguru_default_color
 from ajet.schema.logprob import TokenAndProb
 from ajet.utils.core_env_vars import get_runtime_env
+from loguru import logger
 
 set_loguru_default_color()
 
@@ -116,12 +117,11 @@ def run(config):
         config.ajet.task_reader,
     )
     tasks = task_reader.get_validation_tasks()
-    print(tasks[:2])
+    logger.info(tasks[:n_task])
     ctx_tracker = parallel_env.rollout(
         tasks=tasks[:n_task], mode="sample", epoch="1"
     )  # "sample" or "validate"
     _ = parallel_env.to_dataproto(ctx_tracker)
-    print("Generated batch output")
 
 
 @hydra.main(
@@ -133,7 +133,6 @@ def main(config):
     from omegaconf import OmegaConf
 
     OmegaConf.resolve(config)
-    print("*" * 20)
 
     runtime_env = get_runtime_env()
     os.environ.update(runtime_env["env_vars"])
@@ -147,12 +146,12 @@ def main(config):
 
         from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
 
-        print("Launching companion process for async LLM server...")
+        logger.info("Launching companion process for async LLM server...")
         model_path = config.ajet.model.path
         tensor_parallel_size = config.ajet.debug.debug_tensor_parallel_size
         n_avail_gpus = torch.cuda.device_count()
         if tensor_parallel_size > n_avail_gpus:
-            print(
+            logger.info(
                 f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}."
             )
             tensor_parallel_size = n_avail_gpus

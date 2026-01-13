@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Union
 
 import numpy as np
 from pydantic import BaseModel, Field
+from loguru import logger
 
 
 class Reward(BaseModel):
@@ -31,7 +32,6 @@ class Reward(BaseModel):
         # this reward is NOT used in training
         if (self.step_reward_arr is not None) and len(self.step_reward_arr) > 0:
             res = np.mean(self.step_reward_arr)
-            # print(f"Performance reward computed as mean of step_reward_arr: {res}")
             return res
         else:
             return self.raw_reward
@@ -146,13 +146,13 @@ class Sample(BaseModel):
 
         if len(self.response_ids) > self.max_response_len:
             truncate_any = True
-            print(
+            logger.warning(
                 "-------------------------------------------------------------------------------------------------------"
             )
-            print(
+            logger.warning(
                 f"Warning: response_ids length {len(self.response_ids)} exceeds max_response_len {self.max_response_len}, truncating."
             )
-            print(
+            logger.warning(
                 "-------------------------------------------------------------------------------------------------------"
             )
             self.response_ids = self.response_ids[: self.max_response_len]

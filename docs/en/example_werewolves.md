@@ -7,6 +7,7 @@ This tutorial demonstrates how to train **multiple agents** to play the Werewolv
 The Werewolves role-playing game is a typical POMDP (Partially Observable Markov Decision Process) problem. We can train agents in this cooperative multi-agent problem using shared-parameter methods.
 
 Terms explained:
+
 - **Partially Observable**: Agents are only able to receive **local information**. One agent cannot obtain others' perception, even if they are teammates.
 - **Markov Decision Process**: Making decisions according to current situations.
 - **Shared-parameter**: Using one model as policy for multiple agents. But notice agents **share** policy (model parameters) but **do not share** perception (model input).
@@ -18,6 +19,7 @@ Terms explained:
 This page shows how to use the Werewolves social deduction game as a multi-agent environment to prepare data and environment, write an AgentScope Workflow, configure the reward module (Judge), and complete the full process from local debugging to formal training.
 
 Scenario Overview
+
 - Scenario: Classic Werewolves game, including roles such as werewolf, villager, seer, witch, and hunter.
 - Goal: Train a specific role (in this example, the `werewolf`) to achieve a higher win rate in games.
 
@@ -26,7 +28,7 @@ Scenario Overview
 Start training with the following command:
 ```
 # ( ajet --kill="python|ray|vllm" )
-ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_werewolves/werewolves.yaml --backbone='verl'
 ```
 
 <details>
@@ -70,11 +72,12 @@ When `--backbone=debug`, Ray is disabled. You can use a VSCode `.vscode/launch.j
 ### 3.1 Core Process
 
 At a high level, each training iteration follows this flow:
+
 - The task reader generates a new game setup (players, role assignments, initial state).
 - The rollout runs the AgentScope workflow to simulate a full game.
-- Agents in `trainable_targets` act using the trainable model (via `model_tuner`), while opponents use the fixed model.
+- Agents in `trainable_targets` act by using the trainable model (via `tuner.as_agentscope_model(...)`), while opponents use the fixed model.
 - The environment produces rewards / outcomes for the episode.
-- Trajectories are collected and passed to the backbone trainer (e.g., `trinity`) to update the trainable model.
+- Trajectories are collected and passed to the backbone trainer (`verl` or `trinity`) to update the trainable model.
 
 ### 3.2 Configuration Details
 
@@ -112,11 +115,13 @@ When `judge_protocol: null`, training relies on the reward (or win/loss outcome)
 In `ExampleWerewolves.execute()`, the workflow first runs a full game by calling `werewolves_game(players, roles)`, and obtains `good_guy_win` (whether the good-guy side wins).
 
 Then it uses a **turn-level sparse win/loss reward**:
+
 - If `good_guy_win == True` and the training target is not `werewolf` (i.e., you are training a good-guy role), then `raw_reward = 1` and `is_success = True`.
 - If `good_guy_win == False` and the training target is `werewolf` (i.e., you are training a werewolf-side role), then `raw_reward = 1` and `is_success = True`.
 - Otherwise, the training side did not win: `raw_reward = 0` and `is_success = False`.
 
 Exception / invalid-behavior penalty:
+
 - If an exception is thrown during the game (e.g., the game cannot proceed), all trainable targets are penalized uniformly: `raw_reward = -0.1` and `is_success = False`.
 
 If you need a more fine-grained evaluation (e.g., giving partial credit for key intermediate decisions instead of only win/loss), implement a custom Judge and enable it via `ajet.task_judge.judge_protocol`.

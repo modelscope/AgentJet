@@ -31,7 +31,6 @@ class TracingReader(BaseTaskReader):
 
         super().__init__(reader_config)
         # config patch
-        # print("*********", config, "**********")
         self.reader_config = reader_config.feedback_tracing
 
         logger.info(

@@ -12,6 +12,7 @@ A shadow FastAPI server for serving as interchange endpoint between Tuner and Wo
 import asyncio
 import threading
 import uuid
+import time
 from collections import defaultdict
 from typing import Dict, List
 import base64
@@ -21,15 +22,28 @@ import pickle
 from pprint import pformat
 from loguru import logger
 
-from pydantic import BaseModel
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, model_validator
+from fastapi import FastAPI, Header, HTTPException, Request, Body
+from fastapi.responses import StreamingResponse
 import uvicorn
+import sys
+import subprocess
+import atexit
+import argparse
 
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 
 
 # Global variables for tracking requests and responses
+# class ChatCompletionRequestDeferBuildOff(ChatCompletionRequest):
+#     model_config = ConfigDict(
+#         defer_build=False,
+#         validate_default=True,
+#         validate_assignment=True,
+#     )
+# ChatCompletionRequest.model_validate_json(x)
+
 class InterchangeCompletionRequest(BaseModel):
     completion_request: ChatCompletionRequest
     agent_name: str
@@ -37,16 +51,16 @@ class InterchangeCompletionRequest(BaseModel):
     episode_uuid: str
     timeline_uuid: str
 
-
 ajet_remote_handler_received: Dict[str, Dict[str, InterchangeCompletionRequest]] = defaultdict(dict)
 ajet_remote_handler_in_progress: Dict[str, Dict[str, InterchangeCompletionRequest]] = defaultdict(dict)
 ajet_remote_handler_completed: Dict[str, Dict[str, ChatCompletion]] = defaultdict(dict)
 ajet_remote_handler_discarded: Dict[str, Dict[str, bool]] = defaultdict(dict)
-active_websockets = {}
+active_websockets: Dict[str, asyncio.Event] = {}
 
 # Create FastAPI app
 app = FastAPI(title="AJet Interchange Endpoint")
 
+POLL_INTERVAL_SECONDS = 0.5
 
 @app.get("/health")
 async def health_check():
@@ -54,15 +68,22 @@ async def health_check():
     return {"status": "ok"}
 
 
-
-async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket, stop_event: asyncio.Event):
-    # Monitor for new requests
+async def sse_event_generator(key: str, stop_event: asyncio.Event, request: Request):
+    """
+    Generator for Server-Sent Events.
+    Yields requests to the client.
+    """
     try:
+        wait_cnt = 0
         while not stop_event.is_set():
+
+            if await request.is_disconnected():
+                logger.info(f"Client disconnected for key: {key}")
+                stop_event.set()
+                break
+
             # Check for new requests in ajet_remote_handler_received
             if (key in ajet_remote_handler_received) and len(ajet_remote_handler_received[key]) > 0:
-                # logger.warning(f"Sending new request to client for key: {key}")
-
                 timeline_uuid = list(ajet_remote_handler_received[key].keys())[0]
 
                 # Get the next request
@@ -73,108 +94,39 @@ async def coro_task_1_lookup_dict_received__send_loop(key, websocket: WebSocket,
                 # Move to in_progress
                 ajet_remote_handler_in_progress[key][timeline_uuid] = new_req
 
-                # will be received by:
-                #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
-                #       await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
-                await websocket.send_bytes(pickle.dumps(new_req))
+                # Send via SSE
+                # We send the JSON representation of the request
+                # Client expects: parsed_msg:InterchangeCompletionRequest
+
+                # We simply yield the json string.
+                # The client side will need to read this json.
+                json_data = new_req.model_dump_json()
+                yield f"data: {json_data}\n\n"
             else:
-                await asyncio.sleep(0.25)
+                await asyncio.sleep(POLL_INTERVAL_SECONDS)
+                wait_cnt += 1
+                if wait_cnt * POLL_INTERVAL_SECONDS >= 5:
+                    wait_cnt = 0
+                    # Send keepalive comment to prevent timeouts
+                    yield ": keepalive\n\n"
 
-    except WebSocketDisconnect:
-        stop_event.set()
-        try: await websocket.close()
-        except: pass
-        return
-
-    except Exception as e:
-        stop_event.set()
-        try: await websocket.close()
-        except: pass
-        logger.exception(f"Error in websocket handler: {e}")
-        return
-
-
-async def coro_task_2_lookup_dict_received__receive_loop(key, websocket: WebSocket, stop_event: asyncio.Event):
-    try:
-        while not stop_event.is_set():
-            # Wait for client response:
-            #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
-            #       await websocket.send(pickle.dumps(response))
-            # logger.warning(f"Waiting for response from client for key: {key}")
-            response_data = pickle.loads(await websocket.receive_bytes())
-            # logger.warning(f"Received response from client for key: {key}")
-
-            if not isinstance(response_data, ChatCompletion):
-                stop_event.set()
-                assert response_data == "terminate", "Invalid terminate signal from client"
-                await websocket.close()
-                return
-
-            # Process the response
-            openai_response: ChatCompletion = response_data
-
-            # see `ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py::response.id = timeline_uuid`
-            timeline_uuid = openai_response.id
-
-            # Remove from in_progress
-            if timeline_uuid in ajet_remote_handler_in_progress[key]:
-                ajet_remote_handler_in_progress[key].pop(timeline_uuid)
-
-            # Add to completed if not discarded
-            if (key not in ajet_remote_handler_discarded) or (timeline_uuid not in ajet_remote_handler_discarded[key]):
-                # openai_response should already be a ChatCompletion object if client sent pickle
-                ajet_remote_handler_completed[key][timeline_uuid] = openai_response
-
-    except WebSocketDisconnect:
-        stop_event.set()
-        try: await websocket.close()
-        except: pass
-        return
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
     except Exception as e:
-        stop_event.set()
-        try: await websocket.close()
-        except: pass
-        logger.exception(f"Error in websocket handler: {e}")
-        return
-
-
-
-@app.websocket("/hook/context_tracker_client_listen")
-async def context_tracker_client_listen(websocket: WebSocket):
-    """
-    WebSocket endpoint for clients to listen for completion requests.
-    Clients send (agent_name, target_tag, episode_uuid) and receive requests to process.
-    """
-    await websocket.accept()
-
-    key = ""
-    try:
-        # Receive initial connection data (
-        #   ajet/tuner_lib/weight_tuner/experimental/as_oai_model_client.py
-        #       await websocket.send(f"episode_uuid:{self.episode_uuid}"))
-        episode_uuid_str = pickle.loads(await websocket.receive_bytes())
-        assert episode_uuid_str.startswith("episode_uuid:")
-        episode_uuid = episode_uuid_str.split("episode_uuid:")[-1]
-
-        # logger.warning(f"WebSocket client connected for episode_uuid: {episode_uuid}")
-
-        key = f"episode_uuid:{episode_uuid}"
-        active_websockets[key] = websocket
-
-        stop_event = asyncio.Event()
-        asyncio.create_task(coro_task_1_lookup_dict_received__send_loop(key, websocket, stop_event))
-        asyncio.create_task(coro_task_2_lookup_dict_received__receive_loop(key, websocket, stop_event))
-        await stop_event.wait()
-
-    except Exception as e:
-        logger.exception(f"Error in websocket connection setup: {e}")
+        logger.exception(f"Error in SSE generator: {e}")
 
     finally:
-        # logger.warning(f"WebSocket client disconnected for key: {key}")
+        stop_event.set()
+        # Cleanup
+        if key in active_websockets:
+            active_websockets.pop(key)
+
+        # Clean up any in-progress requests for this key could be here, or explicitly on reset/timeout
+        # Mirroring original finally block logic:
+        # Note: In SSE, we might not want to aggressively clear everything on disconnect if retries are expected,
+        # but the original code cleaned up on websocket disconnect.
         if key:
-            # Clean up any in-progress requests for this key
-            for container in [
+             for container in [
                 ajet_remote_handler_received,
                 ajet_remote_handler_in_progress,
                 ajet_remote_handler_completed,
@@ -182,14 +134,65 @@ async def context_tracker_client_listen(websocket: WebSocket):
                 if key in container:
                     container.pop(key)
 
-            if key in ajet_remote_handler_discarded:
+             if key in ajet_remote_handler_discarded:
                 ajet_remote_handler_discarded.pop(key)
 
-            if key in active_websockets:
-                websocket = active_websockets.pop(key)
-                try: await websocket.close()
-                except: pass
 
+@app.post("/hook/context_tracker_client_response")
+async def context_tracker_client_response(key: str, response_data: bytes = Body(...)):
+    """
+    Endpoint to receive processing results from the client.
+    """
+    try:
+        # Decode response
+        # The client sends pickled ChatCompletion object or "terminate" string
+        try:
+            openai_response = pickle.loads(response_data)
+        except Exception as e:
+            logger.error(f"Pickle load failed: {e}")
+            # Try assuming it might not be pickled if we change client, but let's stick to pickle for complex objects
+            raise HTTPException(status_code=400, detail="Invalid response format")
+
+        if openai_response == "terminate":
+             # Handle termination signal if needed, though usually handled by disconnect
+             if key in active_websockets:
+                 active_websockets[key].set()
+             return {"status": "terminated"}
+
+        if not isinstance(openai_response, ChatCompletion):
+             logger.error(f"Invalid response object type: {type(openai_response)}")
+             raise HTTPException(status_code=400, detail="Invalid response object")
+
+        timeline_uuid = openai_response.id
+
+        if key in ajet_remote_handler_in_progress and timeline_uuid in ajet_remote_handler_in_progress[key]:
+            ajet_remote_handler_in_progress[key].pop(timeline_uuid)
+
+        # Add to completed if not discarded
+        if (key not in ajet_remote_handler_discarded) or (timeline_uuid not in ajet_remote_handler_discarded[key]):
+            ajet_remote_handler_completed[key][timeline_uuid] = openai_response
+
+        return {"status": "accepted"}
+
+    except Exception as e:
+        logger.exception(f"Error in response handler: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/hook/context_tracker_client_listen")
+async def context_tracker_client_listen(request: Request, episode_uuid: str):
+    """
+    SSE endpoint for clients to listen for completion requests.
+    """
+    key = f"episode_uuid:{episode_uuid}"
+
+    stop_event = asyncio.Event()
+    active_websockets[key] = stop_event # Storing stop_event instead of websocket
+
+    return StreamingResponse(
+        sse_event_generator(key, stop_event, request),
+        media_type="text/event-stream"
+    )
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request, authorization: str = Header(None)):
@@ -221,12 +224,15 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
 
     # Parse request body
     body = await request.json()
-    new_req = ChatCompletionRequest(**body)
+    new_req = ChatCompletionRequest.model_validate(body)
+    if new_req.stream:
+        raise HTTPException(status_code=400, detail="Streaming responses not supported in current AgentJet version, please set `stream=false` for now.")
     # Create timeline UUID
     timeline_uuid = uuid.uuid4().hex
+
     # Add to received queue
     # logger.warning(f"Received new chat completion request for agent: {agent_name}, target_tag: {target_tag}, episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid}")
-    ajet_remote_handler_received[key][timeline_uuid] = InterchangeCompletionRequest(
+    int_req = InterchangeCompletionRequest(
         completion_request = new_req,
         agent_name = agent_name,
         target_tag = target_tag,
@@ -234,9 +240,17 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
         timeline_uuid = timeline_uuid,
     )
 
+    # # fix Pydantic validation issue for tool_calls field
+    # for msg in int_req.completion_request.messages:
+    #     if isinstance(msg, dict) and 'tool_calls' in msg:
+    #         tc = msg['tool_calls']
+    #         if not isinstance(tc, list):
+    #             msg['tool_calls'] = list(tc) if tc else []
+
+    ajet_remote_handler_received[key][timeline_uuid] = int_req
+
     # Wait for response (with periodic checks for client disconnect)
-    max_wait_time = 1800  # 30 minutes timeout
-    check_interval = 0.25  # Check every 250ms
+    max_wait_time = 600  # 10 minutes timeout
     elapsed_time = 0
 
     try:
@@ -246,8 +260,8 @@ async def chat_completions(request: Request, authorization: str = Header(None)):
                 and timeline_uuid in ajet_remote_handler_completed[key]:
                 openai_response = ajet_remote_handler_completed[key][timeline_uuid]
                 return openai_response
-            await asyncio.sleep(check_interval)
-            elapsed_time += check_interval
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            elapsed_time += POLL_INTERVAL_SECONDS
 
         # Timeout reached
         raise HTTPException(status_code=504, detail="Request timeout")
@@ -266,9 +280,9 @@ async def reset():
     """
     # logger.warning("Resetting interchange endpoint server state.")
     # Disconnect all websockets
-    for key, ws in list(active_websockets.items()):
+    for key, stop_event in list(active_websockets.items()):
         try:
-            await ws.close()
+            stop_event.set()
         except:
             pass
 
@@ -301,10 +315,10 @@ async def monitor_debug_state(experiment_dir):
                 f.write(pformat(debug_info, width=120, indent=2))
                 f.write('\n')
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(4)
         except Exception as e:
             logger.error(f"Error in monitor_debug_state: {e}")
-            await asyncio.sleep(2)
+            await asyncio.sleep(4)
 
 
 def ensure_dat_interchange_server_cache_clear():
@@ -351,14 +365,14 @@ class InterchangeEndpointServer:
         def run_server():
             async def serve_with_monitor():
                 # Start the monitor task
-                monitor_task = asyncio.create_task(monitor_debug_state(experiment_dir))
+                asyncio.create_task(monitor_debug_state(experiment_dir))
 
                 # Start the server
                 config = uvicorn.Config(
                     app=app,
                     host="0.0.0.0",
                     port=self.port,
-                    log_level="error"
+                    log_level="error",
                 )
                 server = uvicorn.Server(config)
                 await server.serve()
@@ -382,11 +396,89 @@ class InterchangeEndpointServer:
 def start_interchange_server(experiment_dir) -> int:
     """
     Start the interchange endpoint server and return the port number.
+    This launches a subprocess to run the server.
 
     Returns:
         int: The port number the server is running on.
     """
-    server = InterchangeEndpointServer()
-    port = server.start(experiment_dir)
+    # Find a free port if not specified or invalid
+    port = int(os.environ.get("AJET_DAT_INTERCHANGE_PORT", -1))
+    if port <= 0:
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))
+            port = s.getsockname()[1]
+        os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
+
+    # Launch as subprocess
+    env = os.environ.copy()
+
+    # We run this file as a script
+    cmd = [sys.executable, os.path.abspath(__file__), "--experiment_dir", experiment_dir, "--port", str(port)]
+
+    process = subprocess.Popen(
+        cmd,
+        env=env,
+        # redirect stdout/stderr if needed, but keeping them might be useful for debug
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL
+    )
+
+    def cleanup():
+        if process.poll() is None:
+            logger.info("Terminating interchange server subprocess")
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+    # Wait for server to be ready
+    import httpx
+    health_url = f"http://localhost:{port}/health"
+    start_time = time.time()
+    while time.time() - start_time < 20:
+        if process.poll() is not None:
+            logger.error(f"Interchange server subprocess failed to start. Return code: {process.returncode}")
+            break
+
+        try:
+            if httpx.get(health_url, timeout=0.5).status_code == 200:
+                break
+        except Exception:
+            pass
+
+        time.sleep(0.5)
+
+    atexit.register(cleanup)
+
+    logger.info(f"Interchange server subprocess started on port {port} (pid: {process.pid})")
     return port
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="AJet Interchange Endpoint Server")
+    parser.add_argument("--experiment_dir", type=str, required=True, help="Directory to store debug info")
+    parser.add_argument("--port", type=int, required=True, help="Port to run the server on")
+
+    args = parser.parse_args()
+
+    async def serve_with_monitor():
+        # Start the monitor task
+        asyncio.create_task(monitor_debug_state(args.experiment_dir))
+
+        # Start the server
+        config = uvicorn.Config(
+            app=app,
+            host="0.0.0.0",
+            port=args.port,
+            log_level="error",
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    try:
+        asyncio.run(serve_with_monitor())
+    except KeyboardInterrupt:
+        pass
 

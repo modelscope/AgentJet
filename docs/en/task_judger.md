@@ -2,7 +2,18 @@
 
 Task Judger evaluates agent outputs and assigns rewards during training. This page covers built-in judgers for common scenarios and how to create custom judgers for specific evaluation needs.
 
----
+!!! warning "When to use the task judger"
+    - **Is task judger necessary for all tasks? No**:
+        - There are two options to generate reward:
+            - Compute reward **inside** the user-defined workflow (`WorkflowOutput.reward is not None`)
+            - Compute reward **outside** the user-defined workflow (`WorkflowOutput.reward is None`)
+        - **Task judger** is how AgentJet handles **out-of-workflow** reward computation.
+        - Task judger will be **Disabled and Ignored** when the user-defined workflow returned an effective `WorkflowOutput.reward` and `WorkflowOutput.reward != None`
+        - Task judger will be **Enabled** when the user-defined workflow returned `WorkflowOutput.reward = None`.
+    - **When to use the task judger**:
+        - When the user plan to **re-used** the reward function in multiple other workflows in the future.
+        - When the user want to **decouple** rollout and reward computation logic.
+        - When the user want to use our [**OpenJudge**](https://github.com/modelscope/OpenJudge) integration to generate [Auto Rubrics reward](https://modelscope.github.io/OpenJudge/building_graders/generate_rubrics_as_graders/).
 
 ## Overview
 
@@ -13,10 +24,8 @@ A Task Judger evaluates the agent's execution results and returns two values:
 | `raw_reward` | `float` | Numerical score representing output quality (often 0.0 to 1.0) |
 | `is_success` | `bool` | Whether the task was successfully completed |
 
-!!! info "Training Guidance"
-    These values guide the RL training process, helping agents learn which behaviors produce better outcomes.
+These values guide the RL training process, helping agents learn which behaviors produce better outcomes.
 
----
 
 ## Base Interface
 
@@ -46,7 +55,6 @@ class BaseJudge:
         raise NotImplementedError
 ```
 
----
 
 ## Built-in Task Judgers
 
@@ -83,7 +91,6 @@ Evaluates mathematical answers by exact string matching, designed for tasks wher
 | `final_answer` | `workflow_output.metadata` | Agent's answer with `\boxed{}` format |
 | `answer` | `workflow_task.task.metadata` | Reference answer |
 
----
 
 ### 2. CountdownAnswerAsJudge
 
@@ -111,7 +118,6 @@ Evaluates mathematical equations with partial credit for proper formatting.
     | `0.1` | Properly formatted equation but wrong result |
     | `1.0` | Correct equation and result |
 
----
 
 ### 3. EnvServiceJudge
 
@@ -119,7 +125,6 @@ Delegates evaluation to an external environment service, useful for complex inte
 
 !!! tip "When to use"
     - Tasks with external simulators (e.g., AppWorld)
-    - Complex state-based evaluation
     - Interactive environments with built-in evaluators
 
 ```yaml title="config.yaml"
@@ -129,13 +134,6 @@ ajet:
     judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
 ```
 
-!!! note "How it works"
-    1. Calls `workflow_task.gym_env.evaluate()` to get a score from the environment
-    2. Converts the score to a normalized reward:
-        - Success (score ≥ 1): `1.0 + score * 0.5`
-        - Failure (score < 1): `0.0 + score * 0.5`
-
----
 
 ## Creating Custom Task Judgers
 
@@ -211,7 +209,6 @@ class MyWorkflow(Workflow):
         )
 ```
 
----
 
 ## Configuration Summary
 
@@ -222,7 +219,6 @@ ajet:
     judge_protocol: ajet.task_judge.<module>-><ClassName>
 ```
 
----
 
 ## Next Steps
 

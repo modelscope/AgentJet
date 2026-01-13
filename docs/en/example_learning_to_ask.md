@@ -9,10 +9,8 @@ Train an agent to **ask the next best question** (instead of answering directly)
 
 In **Learning to Ask**, each training sample is a short **doctor–patient chat history**. The agent outputs **one next question** the doctor should ask next (optionally with multiple-choice answers), rather than giving diagnosis or treatment.
 
-```{figure} https://img.alicdn.com/imgextra/i4/O1CN01m9WJCM1WJL1aJCSaS_!!6000000002767-2-tps-1024-559.png
-Figure: Why "Learning to Ask" matters. Left: LLM gives a diagnosis with too little information. Right: LLM asks clear follow-up questions before concluding, which feels more reassuring.
-```
-
+![](https://img.alicdn.com/imgextra/i4/O1CN01m9WJCM1WJL1aJCSaS_!!6000000002767-2-tps-1024-559.png)
+<center><small>Why "Learning to Ask" matters. Left: LLM gives a diagnosis with too little information. Right: LLM asks clear follow-up questions before concluding, which feels more reassuring.</small></center>
 
 
 This tutorial is organized in two steps:
@@ -42,6 +40,8 @@ After preprocessing, you should have: `train.jsonl` and`test.jsonl`。
 #### 2.2 Start Training
 
 ```bash
+ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='verl'
+# or
 ajet --conf tutorial/example_learn2ask/learn2ask.yaml --backbone='trinity' --with-ray
 ```
 
@@ -59,7 +59,6 @@ If the results are incorrect, the quickest troubleshooting points include: wheth
 
 </details>
 
----
 
 ### 3. Understand
 
@@ -97,6 +96,68 @@ At the code level, everything is implemented in `tutorial/example_learn2ask/lear
 
 * `ExampleLearn2Ask` defines the workflow: how the dialogue context is converted into the agent’s prompt/input, and what output format is expected (one follow-up question, optionally with choices).
 * `reward_fn` defines how to convert the judge’s feedback into a scalar reward used for training.
+
+We provide two implmentations of the agent based on AgentScope and langchain:
+
+=== "AgentScope"
+
+    ```python
+    # create the agent
+    self.agent = ReActAgent(
+      name="math_react_agent",
+      sys_prompt=system_prompt,
+      model=tuner.as_agentscope_model(),
+      formatter=DashScopeChatFormatter(),
+      toolkit=None,
+      memory=InMemoryMemory(),
+      max_iters=1,
+    )
+    self.agent.set_console_output_enabled(False)
+
+    # convert the messages to agent scope format and send to the agent
+    msg = [
+      # Msg("system", system_prompt, role="system"),
+      *[Msg(name=x["role"], content=x["content"], role=x["role"]) for x in messages]
+    ]
+    result = await self.agent.reply(msg)
+    if isinstance(result.content, str):
+      response = result.content
+    elif isinstance(result.content, list):
+      response = result.content[0]["text"]  # type: ignore
+    else:
+      raise NotImplementedError(f"do not know how to handle {type(result.content)}")
+    reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)
+    return WorkflowOutput(reward=reward)
+    ```
+
+=== "Langchain"
+
+    ```python
+    # get the trainable llm
+    llm_info=tuner.as_oai_baseurl_apikey()
+    
+    # create the langchain agent
+    llm=ChatOpenAI(
+        base_url=llm_info.base_url,
+        api_key=lambda:llm_info.api_key,
+    )
+    agent=create_agent(
+        model=llm,
+        system_prompt=system_prompt,
+    )
+    
+    # build messages and send to the agent
+    msg=[
+        {"role": x["role"], "content": x["content"]} for x in messages
+    ]
+    result = agent.invoke({
+        "messages": msg, # type: ignore
+    })
+    
+    response = result["messages"][-1].content
+    reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)
+    return WorkflowOutput(reward=reward)
+    ```
 
 #### 3.4 Reward
 
