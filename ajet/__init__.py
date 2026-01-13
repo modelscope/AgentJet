@@ -10,7 +10,7 @@ __all__ = [
     "WorkflowOutput",
     "AjetTuner",
     "AgentJetJob",
-    "bp",
+    "bp"
 ]
 
 __version__ = "0.1.0"

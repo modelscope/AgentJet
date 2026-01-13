@@ -2,19 +2,18 @@
 
 This document provides a step-by-step guide to installing AgentJet.
 
-!!! tip "Latest Version Recommended"
+!!! tip "Latest Version Recommended:"
+
     AgentJet is under active development and iteration. We recommend installing from source to get the latest features and bug fixes.
 
----
 
 ## Prerequisites
 
-| Requirement | Version |
+| Requirement | Detail |
 |-------------|---------|
-| **Python** | 3.10 |
-| **CUDA** | 12.8 or higher |
+| **Python**         | 3.10 |
+| Package Management | `uv` or `conda` |
 
----
 
 ## Install from Source
 
@@ -34,97 +33,95 @@ AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (re
 !!! info "Package Manager"
     We recommend using `uv` to manage your Python environment as it is incredibly fast. See also [`uv` installation document](https://docs.astral.sh/uv/getting-started/installation/).
 
-    If you prefer `conda`, you can also install via conda and pip (simply change `uv pip` to `pip`).
+    And of course, if you prefer `conda`, you can also install via conda and pip (simply change `uv pip` to `pip`).
 
-=== "Trinity (Recommended)"
-
-    Install with `trinity` training backbone for fully asynchronous RFT:
+=== "VERL (uv)"
 
     ```bash
+    # Install with `verl` training backbone:
+
     uv venv --python=3.10
     source .venv/bin/activate
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
+    uv pip install -e .[verl]
+
+    #`flash-attn` must be installed after other dependencies
+    uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
 
-=== "Verl"
+    !!! warning "flash-attn Installation"
+        `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
 
-    Install with `verl` training backbone:
+=== "VERL (conda)"
 
     ```bash
+    # Install with `verl` training backbone:
+
+    conda create -n ajet-verl python=3.10
+    conda activate ajet-verl
+    pip install -e .[verl]
+
+    #`flash-attn` must be installed after other dependencies
+    pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
+    ```
+
+    !!! warning "flash-attn Installation"
+        `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
+
+
+=== "VERL (aliyun)"
+
+
+    ```bash
+    # Install with `verl` training backbone:
+
     uv venv --python=3.10
     source .venv/bin/activate
     uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
+
+    #`flash-attn` must be installed after other dependencies
     uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
 
     !!! warning "flash-attn Installation"
         `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
 
----
 
-## Install via Docker
+=== "Trinity"
 
-If you prefer one-click dependency installation, we provide a Docker image to jump start!
-
-!!! warning "Prerequisites"
-    Before proceeding, ensure you have **nvidia docker** installed on your system. CUDA is needed inside our docker container, which requires toolkits from Nvidia for GPU support.
-
-### Setup Nvidia Docker Runtime
-
-Please install nvidia docker runtime on the host Ubuntu system. For details, refer to:
-
-- [Nvidia Official Document](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installing-on-ubuntu-and-debian)
-- [Setup Ubuntu Guide](./setup_ubuntu.md) (our step-by-step manual)
-
-### Run Docker Container
-
-This command mounts your current working directory (the root directory of agentjet) to `/workspace` and your data directory to `/data` inside the container.
-
-```bash
-docker run -it \
-  --gpus all \
-  --shm-size="64g" \
-  --rm \
-  -v $PWD:/workspace \
-  -v /path/to/your/checkpoint/and/data:/data \
-  agentjet:latest
-```
-
----
-
-## Verify Installation
-
-After installation, verify that everything is working correctly:
-
-```python
-import ajet
-print(ajet.__version__)
-```
-
----
-
-## Troubleshooting
-
-??? note "Common Issues"
-    **Issue**: `flash-attn` installation fails
-
-    **Solution**: Make sure you have CUDA toolkit installed and `MAX_JOBS` environment variable set:
     ```bash
-    export MAX_JOBS=4
-    uv pip install flash-attn --no-build-isolation
+    # Install with `trinity` training backbone for fully asynchronous RFT:
+
+    uv venv --python=3.10
+    source .venv/bin/activate
+    uv pip install -e .[trinity]
+    uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
 
-??? note "GPU Not Detected"
-    **Issue**: Docker container doesn't see GPU
 
-    **Solution**: Ensure nvidia-docker is properly installed:
+=== "Trinity (aliyun)"
+
     ```bash
-    nvidia-smi  # Should show GPU info
-    docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+    # Install with `trinity` training backbone for fully asynchronous RFT:
+
+    uv venv --python=3.10
+    source .venv/bin/activate
+    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
+    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
 
----
+
+| Backbone  | VeRL     | Trinity-RFT     |
+| -------- |--------  | -------------   |
+| Core design   | Share-GPU actor-rollout engine (colocate) |   Async actor-rollout engine    |
+| Speed         | ⭐⭐⭐⭐    |       ⭐⭐⭐⭐          |
+| Scalability   |  ⭐⭐   |        ⭐⭐⭐⭐      |
+| Minimum Required GPU Resource   |   1  |             2                |
+| Training Stability   | ⭐⭐⭐⭐ |     ⭐⭐⭐            |
+| vLLM Version   | 0.10.0 |     0.10.0         |
+
+
+
+
 
 ## Next Steps
 

@@ -23,13 +23,13 @@ pip install gymnasium[toy_text]
 Use the provided configuration file to quickly start training:
 
 ```bash
-ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_frozenlake/frozenlake_easy.yaml --backbone='verl'
 ```
 
 To try a harder setting:
 
 ```bash
-ajet --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone=trinity --with-ray
+ajet --conf tutorial/example_frozenlake/frozenlake_hard.yaml --backbone='verl'
 ```
 
 <details>

@@ -27,7 +27,7 @@ class AjetTuner(object):
         self.llm_inference_fn = llm_inference_fn
         self.target2proxy_registry: dict[str, dict[str,TunerTypeUnion]] = {}
         if config.ajet.enable_experimental_reverse_proxy:
-            self._enable_experimental_interchange_server(llm_inference_fn)
+            self.proxy_client_started = False
 
 
     def as_agentscope_model(
@@ -101,6 +101,10 @@ class AjetTuner(object):
             ```
         """
 
+        assert self.config.ajet.enable_experimental_reverse_proxy, "Please enable `ajet.enable_experimental_reverse_proxy` in yaml config to use `as_oai_baseurl_apikey` feature."
+        if self.proxy_client_started is False:
+            self._enable_experimental_interchange_server(self.llm_inference_fn)
+            self.proxy_client_started = True
         baseurl_apikey_model = OpenaiClientBaseUrlTuner(
             config=self.config,
             context_tracker=self.context_tracker,
@@ -177,4 +181,5 @@ class AjetTuner(object):
     def terminate_episode(self):
         # experimental reverse proxy cleanup
         if self.config.ajet.enable_experimental_reverse_proxy:
-            self.interchange_client._should_terminate = True
+            if (self.proxy_client_started is True) and hasattr(self, "interchange_client"):
+                self.interchange_client._should_terminate = True

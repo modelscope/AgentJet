@@ -1,15 +1,15 @@
-## 运行 Appworld AgentScope Agent
+## Run Appworld AgentScope Agent
 
-### 1. 准备 dataset
+### 1. Prepare dataset
 
-请下载 `env_service` 以及 `appworld`。具体步骤请参考 [EnvService文档](https://code.alibaba-inc.com/EconML/EnvService)
+Please download `env_service` and `appworld`. For specific steps, please refer to [EnvService Documentation](https://code.alibaba-inc.com/EconML/EnvService)
 
 
-### 2. 准备 AgentScope Workflow
+### 2. Prepare AgentScope Workflow
 
-详细请见 `tutorial/math_agent.py`。可以在项目任意地方新建新的 AgentScope Workflow 代码
+See `tutorial/math_agent.py` for details. You can create new AgentScope Workflow code anywhere in the project
 
-- 定义 AgentScope 的工作流 （把agent的model修改为`ajet_proxy`）
+- Define AgentScope Workflow (Change the agent's model to `ajet_proxy`)
 
 ```python
 
@@ -36,42 +36,42 @@ for _ in range(config.ajet.rollout.multi_turn.max_steps):
 
 ```
 
-- 其中，使用了 ajet_proxy 与 agentscope runtime 环境交互的一些接口如下：
-    - `ajet_proxy.gym_step` 模拟gym接口，输入动作，输出 observation, reward, terminate_flag, info 四元组
-    - `ajet_proxy.context_overflow` 查询当前的context窗口是否token溢出
+- Among them, some interfaces used by `ajet_proxy` to interact with the agentscope runtime environment are as follows:
+    - `ajet_proxy.gym_step`: Simulates the gym interface, inputs action, outputs (observation, reward, terminate_flag, info) tuple
+    - `ajet_proxy.context_overflow`: Queries whether the current context window has token overflow
 
-### 3. 准备Judge (奖励模块)
+### 3. Prepare Judge (Reward Module)
 
-在 `ajet/task_judge/env_service_as_judge.py` 中，我们直接向 env_service 发送http请求，读取奖励。
+In `ajet/task_judge/env_service_as_judge.py`, we directly send an http request to env_service to read the reward.
 
-Judge的返回值： raw_reward, is_success
-
-
-### 4. 测试
+Judge returns: raw_reward, is_success
 
 
-4.1 复制并修改 [tutorial/example_appworld/appworld.yaml](../tutorial/example_appworld/appworld.yaml) 中的关键参数，yaml中与本文档最相关的部分已经用✨✨✨✨符号标记
+### 4. Testing
 
-1. 读取task（对应配置字段 ajet.task_reader）
-2. 定义 Workflow（对应配置字段 ajet.rollout.user_workflow ）
-    - 举例如果 agentscope workflow 定义在 `tutorial/appworld.py` 的`ExampleAgentScopeWorkflow` 类
-    - 则填写 ajet.rollout.user_workflow=`tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow`
-3. 定义评分函数（对应配置字段 ajet.task_judge.judge_protocol ）
-    - 填写 ajet.task_judge.judge_protocol=`ajet.task_judge.env_service_as_judge->EnvServiceJudge`
-4. 指定模型（对应配置字段 ajet.model.path ）
+
+4.1 Copy and modify key parameters in [tutorial/example_appworld/appworld.yaml](../tutorial/example_appworld/appworld.yaml). The parts most relevant to this document in the yaml have been marked with ✨✨✨✨ symbols
+
+1. Read task (corresponding configuration field `ajet.task_reader`)
+2. Define Workflow (corresponding configuration field `ajet.rollout.user_workflow`)
+    - For example, if the agentscope workflow is defined in the `ExampleAgentScopeWorkflow` class of `tutorial/appworld.py`
+    - Then fill in `ajet.rollout.user_workflow=tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow`
+3. Define scoring function (corresponding configuration field `ajet.task_judge.judge_protocol`)
+    - Fill in `ajet.task_judge.judge_protocol=ajet.task_judge.env_service_as_judge->EnvServiceJudge`
+4. Specify model (corresponding configuration field `ajet.model.path`)
 
 ```yaml
 ajet
   project_name: appworld_ajet
   experiment_name: "read_yaml_name"
   task_judge:
-    # ✨✨✨✨ 编写并选择评价函数
+    # ✨✨✨✨ Write and select evaluation function
     judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
   model:
-    # ✨✨✨✨ 设置待训练的模型
+    # ✨✨✨✨ Set model to be trained
     path: YOUR_MODEL_PATH
   rollout:
-    # ✨✨✨✨ 编写并选择Agent
+    # ✨✨✨✨ Write and select Agent
     user_workflow: tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow
     force_disable_toolcalls: True
   debug:
@@ -80,13 +80,13 @@ ajet
 ```
 
 
-4.2 全链路调试（脱离ray快速调试:--backbone='debug'）
+4.2 Full-link debugging (Quick debugging without ray: --backbone='debug')
 ```bash
-# （训练math agent demo）建议开始前杀死所有ray、env_service进程 ( ajet --kill="python|ray" )
+# (Training math agent demo) It is recommended to kill all ray and env_service processes before starting ( ajet --kill="python|ray" )
 clear && ajet --conf tutorial/example_appworld/appworld.yaml --backbone='debug' --with-logview
 
 ```
-备注：当--backbone=debug时，程序不再使用ray，可以编写vscode的launch.json进行便捷的断点调试，launch.json的配置:
+Note: When --backbone=debug, the program no longer uses ray. You can write vscode's launch.json for convenient breakpoint debugging. launch.json configuration:
 ```json
 {
 
@@ -111,21 +111,21 @@ clear && ajet --conf tutorial/example_appworld/appworld.yaml --backbone='debug' 
 ```
 
 
-4.3 当调试完成后，开始训练(只需要把backbone切换一下即可：--backbone='trinity')
+4.3 When debugging is complete, start training (just switch backbone: --backbone='verl')
 ```bash
-# 建议开始前杀死所有ray、vllm、env_service进程 ( ajet --kill="python|ray|vllm" )
-ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity'
+# It is recommended to kill all ray, vllm, and env_service processes before starting ( ajet --kill="python|ray|vllm" )
+ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
 ```
 
 
-### 5. 读取Rollout日志
+### 5. Read Rollout Log
 
 <div align="center">
-  <img src="tutorial/figure/best-logger.png" alt="日志界面">
+  <img src="tutorial/figure/best-logger.png" alt="Log Interface">
 </div>
 
-- 找到日志文件夹，默认在 `./saved_experiments/exp_yaml_file_name/*` 下面
-- 运行 `beast_logger_go` 启动日志浏览器，vscode端口映射8181端口
+- Find the log folder, default is under `./saved_experiments/exp_yaml_file_name/*`
+- Run `beast_logger_go` to start the log browser, vscode port mapping 8181 port
 ```bash
 root@xxxx:/xxx/xxx/xxx# beast_logger_go
 INFO:     Started server process [74493]
@@ -133,21 +133,21 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8181 (Press CTRL+C to quit)
 ```
-- 打开 http://127.0.0.1:8181，提示输入日志文件路径，填写日志文件夹的**绝对路径**，以下形式皆可
+- Open http://127.0.0.1:8181, prompt to enter the log file path, fill in the **absolute path** of the log folder, the following forms are acceptable
     - /ajet/ajet/saved_experiments
     - /ajet/ajet/saved_experiments/exp_yaml_file_name
     - /ajet/ajet/saved_experiments/exp_yaml_file_name/2025_11_10_02_52/rollout
 
-- 依次打开界面 **左侧** 的日志文件目标，**中间** 的日志条目，**右侧** 的交互记录，即可显示完整的轨迹
+- Open the log file target on the **left**, the log entry in the **middle**, and the interaction record on the **right** of the interface to display the complete trajectory
 
-- 蓝色 Token 代表参与loss计算的 Token，黄色反之
+- Blue Token represents Token involved in loss calculation, yellow is the opposite
 
-- 鼠标悬浮在 Token 上面可以查看 Token 的 **logprob** (暂时仅限trinity backbone)
+- Hover over the Token to view the Token's **logprob** (currently limited to trinity backbone)
 
 
-### 6. 参考训练曲线
+### 6. Reference Training Curve
 
 
 <div align="center">
-  <img src="tutorial/figure/appworld.png" alt="训练曲线">
+  <img src="tutorial/figure/appworld.png" alt="Training Curve">
 </div>

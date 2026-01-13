@@ -31,7 +31,7 @@ ajet:
 Launch your training as usual:
 
 ```bash
-ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_math_agent/math_agent.yaml
 ```
 
 ### Step 3: View Training Curves

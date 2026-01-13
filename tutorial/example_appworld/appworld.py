@@ -5,7 +5,6 @@ from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 class ExampleAgentScopeWorkflow(Workflow):
-    trainer: str = Field(default="ajet-trinity")
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent

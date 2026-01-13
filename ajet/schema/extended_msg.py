@@ -90,6 +90,9 @@ class ExtendedMessage:
         self.tools = tools
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
+        if not isinstance(self.tool_calls, list):
+            # agent scope sometimes gives weird type for tool_calls, which is against OpenAI schema
+            self.tool_calls = list(self.tool_calls)
         self.uuid = uuid.uuid4().hex
         self.build_from_uuid = build_from_uuid
         self.first_message = first_message

@@ -43,7 +43,7 @@ export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 Run the training script:
 
 ```bash
-ajet --conf tutorial/example_appworld/appworld.yaml --backbone='trinity' --with-ray
+ajet --conf tutorial/example_appworld/appworld.yaml --with-appworld
 ```
 
 <details>
@@ -90,13 +90,13 @@ This section explains how the AppWorld example is assembled: workflow, reward, c
 
 The AgentScope workflow code for the AppWorld example is located at `tutorial/example_appworld/appworld.py`.
 
-The code first defines the AgentScope workflow (set the agent's `model` to `model_tuner`):
+The code first defines the AgentScope workflow (set the agent's `model` to `tuner.as_agentscope_model()`):
 
 ```python
 agent = ReActAgent(
     name="Qwen",
     sys_prompt=first_msg["content"],
-    model=model_tuner,
+    model=tuner.as_agentscope_model(),
     formatter=DashScopeChatFormatter(),
     memory=InMemoryMemory(),
     toolkit=None,
@@ -105,7 +105,7 @@ agent = ReActAgent(
 
 env = workflow_task.gym_env
 
-for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
+for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
     # agentscope deal with interaction message
     reply_message = await agent(interaction_message)
     # env service protocol
@@ -117,14 +117,14 @@ for step in range(model_tuner.config.ajet.rollout.multi_turn.max_steps):
     # is terminated?
     if terminate:
         break
-    if model_tuner.get_context_tracker().context_overflow:
+    if tuner.get_context_tracker().context_overflow:
         break
 ```
 
 In the above code:
 
 - `env.step`: simulates the gym interface. It takes an action as input and returns a four-tuple `(observation, reward, terminate_flag, info)`.
-- `model_tuner.get_context_tracker().context_overflow`: checks whether the current context window has exceeded the token limit.
+- `tuner.get_context_tracker().context_overflow`: checks whether the current context window has exceeded the token limit.
 
 
 ### 3.2 Reward

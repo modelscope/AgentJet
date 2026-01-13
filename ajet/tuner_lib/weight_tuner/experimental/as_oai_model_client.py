@@ -4,12 +4,16 @@ import json
 import threading
 import os
 import time
+from loguru import logger
 from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest, ChatCompletionResponse
 from openai.types.chat.chat_completion import ChatCompletion
 
 import pickle
-import websockets
+import httpx
+import logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 import base64
 import json
 
@@ -95,15 +99,23 @@ class InterchangeClient:
 
     def begin_service(self):
         """
-        Starts the websocket service loop.
+        Starts the SSE service loop.
         """
-        t = threading.Thread(target=lambda: asyncio.run(self._service_loop()))
+        t = threading.Thread(target=lambda: asyncio.run(self._ensure_service_loop()), daemon=True)
         t.start()
+
+    async def _ensure_service_loop(self):
+        while not self.should_terminate:
+            try:
+                await self._service_loop()
+            except Exception as e:
+                logger.warning(f"InterchangeClient service loop error: {e}. Restarting...")
+                await asyncio.sleep(4)  # brief pause before reconnecting
 
     async def _service_loop(self):
         """
         In fact this is not a service,
-        it is a client that pretends to be a service, by interacting with a local websocket interchange server.
+        it is a client that pretends to be a service, by interacting with a local interchange server via SSE.
 
         This design is for efficiency
         """
@@ -112,42 +124,70 @@ class InterchangeClient:
 
         port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
-        uri = f"ws://127.0.0.1:{port}/hook/context_tracker_client_listen"
 
-        async with websockets.connect(uri) as websocket:
+        base_url = f"http://127.0.0.1:{port}"
+        listen_url = f"{base_url}/hook/context_tracker_client_listen"
+        response_url = f"{base_url}/hook/context_tracker_client_response"
+        key = f"episode_uuid:{self.episode_uuid}"
+
+        async with httpx.AsyncClient(timeout=None) as client:
             try:
-                # Send initialization parameters
-                # Sending as a list [agent_name, target_tag, episode_uuid] to match "input (a,b,c)" structure
-                await websocket.send(pickle.dumps(f"episode_uuid:{self.episode_uuid}"))
+                async with client.stream("GET", listen_url, params={"episode_uuid": self.episode_uuid}, timeout=None) as response:
+                    async for line in response.aiter_lines():
+                        if self.should_terminate:
+                            break
 
-                while not self.should_terminate:
+                        if not line.strip():
+                            continue
 
-                    try:
-                        # wait message from ajet/tuner_lib/weight_tuner/experimental/as_oai_model_server.py
-                        parsed_msg: InterchangeCompletionRequest = pickle.loads(
-                            await asyncio.wait_for(websocket.recv(decode=False), timeout=0.25)
-                        )
+                        if line.startswith(":"): # keepalive
+                            continue
 
-                        response = await self.llm_infer(
-                            req=parsed_msg.completion_request,
-                            timeline_uuid=parsed_msg.timeline_uuid,
-                            agent_name=parsed_msg.agent_name,
-                            target_tag=parsed_msg.target_tag,
-                            episode_uuid=parsed_msg.episode_uuid,
-                        )
-                        await websocket.send(pickle.dumps(response))
+                        if line.startswith("data: "):
+                            data = line[6:].strip()
+                            if not data:
+                                continue
 
-                    except asyncio.TimeoutError:
-                        # 0.25s timeout, loop back to check should_terminate
-                        continue
-                    except websockets.exceptions.ConnectionClosed:
-                        print("Websocket connection closed by server")
-                        return # Exit inner loop to reconnect or finish
+                            try:
+                                try:
+                                    parsed_msg = InterchangeCompletionRequest(**json.loads(data))
+                                except Exception as e:
+                                    logger.error(f"Failed to parse SSE event data: {e}" + data)
+                                    continue
 
-                await websocket.send(pickle.dumps("terminate"))
+                                result = await self.llm_infer(
+                                    req=parsed_msg.completion_request,
+                                    timeline_uuid=parsed_msg.timeline_uuid,
+                                    agent_name=parsed_msg.agent_name,
+                                    target_tag=parsed_msg.target_tag,
+                                    episode_uuid=parsed_msg.episode_uuid,
+                                )
 
-            except (OSError, IOError) as e:
-                print(f"Websocket connection error: {e}")
+                                # Send response back
+                                await client.post(
+                                    response_url,
+                                    params={"key": key},
+                                    content=pickle.dumps(result),
+                                    headers={"Content-Type": "application/octet-stream"}
+                                )
+
+                            except Exception as e:
+                                logger.error(f"Error processing SSE event: {e}")
+                                continue
+
+            except httpx.RequestError as e:
+                 logger.warning(f"SSE connection error: {e}")
+                 raise # Let ensure_service_loop handle restart
+
+            # Send terminate signal if we are exiting cleanly
+            try:
+                await client.post(
+                    response_url,
+                    params={"key": key},
+                    content=pickle.dumps("terminate"),
+                    headers={"Content-Type": "application/octet-stream"}
+                )
+            except:
                 pass
 
 

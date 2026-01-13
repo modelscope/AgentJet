@@ -7,6 +7,7 @@ from textwrap import dedent
 import json
 import asyncio
 import requests
+from langchain.agents import create_agent
 
 
 # ------------------------------------------------------
@@ -29,36 +30,28 @@ class ExampleMathLearn(Workflow):
         url_and_apikey = tuner.as_oai_baseurl_apikey()
         base_url = url_and_apikey.base_url
         api_key = url_and_apikey.api_key
-
+        
+        from langchain_openai import ChatOpenAI
+        llm=ChatOpenAI(
+            base_url=base_url,
+            api_key=lambda:api_key,
+        )
+        agent=create_agent(
+            model=llm,
+            system_prompt=self.system_prompt,
+        )
+        
         # take out query
         query = workflow_task.task.main_query
-
-        messages = [
-            {
-                "role": "system",
-                "content": self.system_prompt
-            },
-            {
-                "role": "user",
-                "content": query
-            }
-        ]
-
-        # use raw http requests (non-streaming) to get response
-        response = requests.post(
-             f"{base_url}/chat/completions",
-             json={
-                 "model": "whatever", # Of course, this `model` field will be ignored.
-                 "messages": messages,
-             },
-             headers={
-                 "Authorization": f"Bearer {api_key}"
-             }
-        )
-        final_answer = response.json()['choices'][0]['message']['content']
+        
+        response = agent.invoke({
+            "messages": [
+                {
+                    "role": "user",
+                    "content": query
+                }
+            ],
+        })
+        
+        final_answer = response['messages'][-1].content
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-
-
-
-
-

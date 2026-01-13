@@ -144,7 +144,7 @@ def verify_python_env(args, exp_config):
             time.sleep(5)
             raise ImportError(cause + " " + solution)
     elif args.backbone == "verl":
-        if not any([v in verl.__version__ for v in ["0.5.0.post", "0.7.0.post"]]):  # you must install via `pip install -e .[verl]` to get every dependency right
+        if not any([v in verl.__version__ for v in ["0.5.0.post", "0.5.0.dev", "0.7.0.post"]]):  # you must install via `pip install -e .[verl]` to get every dependency right
             cause = "Python environment does not match current backbone 'verl'."
             solution = "Please `cd /path/to/project/AgentJet` and run `(uv) pip install -e .[verl]` to install the correct environment."
             print_dict(

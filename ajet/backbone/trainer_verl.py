@@ -302,7 +302,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             )
 
         if self.config.algorithm.use_kl_in_reward and config.actor_rollout_ref.actor.use_kl_loss:
-            print("NOTICE: You have both enabled in-reward kl and kl loss.")
+            logger.warning("NOTICE: You have both enabled in-reward kl and kl loss.")
 
         # critic
         if self.use_critic:
@@ -310,7 +310,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             critic_config.validate(n_gpus, config.ajet.data.train_batch_size)
 
         if config.data.get("val_batch_size", None) is not None:
-            print(
+            logger.warning(
                 "WARNING: val_batch_size is deprecated."
                 + " Validation datasets are sent to inference engines as a whole batch,"
                 + " which will schedule the memory themselves."
@@ -322,7 +322,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 config.ajet.rollout.temperature > 0
             ), "validation gen temperature should be greater than 0 when enabling do_sample"
 
-        print("[validate_config] All configuration checks passed successfully!")
+        logger.success("[validate_config] All configuration checks passed successfully!")
 
     def init_workers(self):
         """Initialize distributed training workers using Ray backend.
@@ -807,7 +807,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         or esi_close_to_expiration
                     ):
                         if esi_close_to_expiration:
-                            print("Force saving checkpoint: ESI instance expiration approaching.")
+                            logger.info("Force saving checkpoint: ESI instance expiration approaching.")
                         with marked_timer("save_checkpoint", timing_raw, color="green"):
                             self._save_checkpoint()
 

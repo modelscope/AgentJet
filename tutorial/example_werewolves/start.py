@@ -80,7 +80,6 @@ def get_official_agent_prompt(name) -> str:
 
 
 class ExampleWerewolves(Workflow):
-    trainer: str = Field(default="ajet-trinity")
     trainable_targets: List[str] | None = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
