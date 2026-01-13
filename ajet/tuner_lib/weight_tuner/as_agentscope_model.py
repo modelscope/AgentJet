@@ -25,7 +25,6 @@ class AgentScopeModelTuner(DashScopeChatModel):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        user_workflow: "Workflow",
         agent_name: str,
         debug_model: DashScopeChatModel | None,
         use_debug_model: bool = False,
@@ -33,7 +32,6 @@ class AgentScopeModelTuner(DashScopeChatModel):
     ) -> None:
         self.config = config
         self.context_tracker = context_tracker
-        self.user_workflow = user_workflow
 
         self.agent_name = agent_name
         self.debug_model = debug_model
