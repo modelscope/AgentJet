@@ -86,6 +86,7 @@ def parse_args():
         help="Launch Crafters Env Simulation",
     )
     parser.add_argument("--reboot", action="store_true", default=False, help="reboot flag")
+    parser.add_argument("--skip-check-avail-gpu", action="store_true", default=False, help="Skip GPU availability check")
     parser.add_argument(
         "--kill",
         type=str,
@@ -305,7 +306,7 @@ def main():
 
     if args.with_finworld:
         pty_launch("finworld")
-        
+
     if args.with_crafters:
         pty_launch("crafters")
 
