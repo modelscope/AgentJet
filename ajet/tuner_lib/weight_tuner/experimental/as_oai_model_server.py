@@ -11,6 +11,7 @@ A shadow FastAPI server for serving as interchange endpoint between Tuner and Wo
 
 import asyncio
 from functools import cache
+from contextlib import asynccontextmanager
 from multiprocessing import Process
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -72,167 +73,164 @@ def get_redis_client():
     pool = get_redis_connection_pool()
     return redis.Redis(connection_pool=pool, decode_responses=False, encoding='utf-8')
 
-
 # Create FastAPI app
-app = FastAPI(title="AJet Interchange Endpoint")
+SERVER_SHUTDOWN_EVENT = threading.Event()
 
-@app.on_event("startup")
-async def startup_event():
-    app.state.executor = ThreadPoolExecutor(max_workers=512)
+def get_app():
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    app.state.executor.shutdown()
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup
+        SERVER_SHUTDOWN_EVENT.clear()
+        app.state.executor = ThreadPoolExecutor(max_workers=512)
+        yield
+        # Shutdown
+        SERVER_SHUTDOWN_EVENT.set()
+        app.state.executor.shutdown(wait=False, cancel_futures=True)
 
 
-def _begin_handle_chat_completion(int_req, episode_uuid, timeline_uuid, client_offline: asyncio.Event):
-    """ run this in thread to avoid blocking main event loop
-    """
-    logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request for episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid} (inside thread)")
 
-    redis_client = get_redis_client()
-    episode_stream = f"stream:episode:{episode_uuid}"
-    timeline_stream = f"stream:timeline:{timeline_uuid}"
+    app = FastAPI(title="AJet Interchange Endpoint", lifespan=lifespan)
 
-    max_wait_time = 600  # 10 minutes timeout
-    try:
-        logger.info(f"episode_uuid: {episode_uuid} | redis_client.xadd int_req ")
-        redis_client.xadd(episode_stream, {'data': pickle.dumps(int_req.model_dump_json())})
-        logger.info(f"episode_uuid: {episode_uuid} | redis_client.xadd int_req end")
 
-        # record start
-        begin_time = time.time()
+    def _begin_handle_chat_completion(int_req, episode_uuid, timeline_uuid, client_offline: threading.Event):
+        """ run this in thread to avoid blocking main event loop
+        """
+        logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request for episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid} (inside thread)")
 
-        # wait for result
-        last_id = '0-0'
-        while not client_offline.is_set():
-            timepassed = time.time() - begin_time
-            if timepassed > max_wait_time:
-                return HTTPException(status_code=504, detail="Request timeout")
-            try:
-                logger.info(f"episode_uuid: {episode_uuid} | redis_client.xread block=30000")
-                # Block for 30 seconds to allow loop to check client_offline
-                response = redis_client.xread({timeline_stream: last_id}, count=1, block=30*1000) # block for 30 seconds
-                logger.info(f"episode_uuid: {episode_uuid} | redis_client.xread after")
+        redis_client = get_redis_client()
+        episode_stream = f"stream:episode:{episode_uuid}"
+        timeline_stream = f"stream:timeline:{timeline_uuid}"
 
-                if not response:
-                    if timepassed > 60:
-                        logger.warning(f"episode_uuid: {episode_uuid} |  LLM client infer still waiting... (time passed {timepassed}) for episode_uuid:{episode_uuid}, timeline_uuid:{timeline_uuid}...")
+        max_wait_time = 600  # 10 minutes timeout
+        try:
+            logger.info(f"episode_uuid: {episode_uuid} | redis_client.xadd int_req ")
+            redis_client.xadd(episode_stream, {'data': pickle.dumps(int_req.model_dump_json())})
+            logger.info(f"episode_uuid: {episode_uuid} | redis_client.xadd int_req end")
+
+            # record start
+            begin_time = time.time()
+
+            # wait for result
+            last_id = '0-0'
+            while (not client_offline.is_set()) and (not SERVER_SHUTDOWN_EVENT.is_set()):
+                timepassed = time.time() - begin_time
+                if timepassed > max_wait_time:
+                    return HTTPException(status_code=504, detail="Request timeout")
+                try:
+                    logger.info(f"episode_uuid: {episode_uuid} | redis_client.xread block=30000")
+                    # Block for 30 seconds to allow loop to check client_offline
+                    response = redis_client.xread({timeline_stream: last_id}, count=1, block=30*1000) # block for 30 seconds
+                    logger.info(f"episode_uuid: {episode_uuid} | redis_client.xread after")
+
+
+                    if not response:
+                        if timepassed > 60:
+                            logger.warning(f"episode_uuid: {episode_uuid} |  LLM client infer still waiting... (time passed {timepassed}) for episode_uuid:{episode_uuid}, timeline_uuid:{timeline_uuid}...")
+                        continue
+
+                    # response format: [[stream_name, [[message_id, data_dict]]]]
+                    stream_result = response[0] # type: ignore
+                    messages = stream_result[1]
+                    message_id, data_dict = messages[0]
+
+                    logger.info(f"episode_uuid: {episode_uuid} | successfully get message from redis stream")
+
+                    # Retrieve data, decode_responses=False so keys/values are bytes
+                    if b'data' in data_dict:
+                        data_bytes = data_dict[b'data']
+                    else:
+                        logger.error(f"Missing 'data' field in stream message: {data_dict}")
+                        continue
+
+                    result_object_str = pickle.loads(data_bytes)
+
+                    if result_object_str.startswith('[ERR]'):
+                        return HTTPException(status_code=500, detail="Error response, " + result_object_str)
+                    result_object = ChatCompletion(**json.loads(result_object_str))
+
+                    # Cleanup stream
+                    redis_client.delete(timeline_stream)
+
+                    return result_object
+
+                except TimeoutError:
+                    logger.info(f"episode_uuid: {episode_uuid} | still waiting, (time passed {timepassed}) for result for episode_uuid:{episode_uuid}, timeline_uuid:{timeline_uuid}...")
                     continue
+                except Exception as e:
+                    logger.error(f"Error reading from stream: {e}")
+                    if timepassed > max_wait_time:
+                        raise e
+                    time.sleep(1)
 
-                # response format: [[stream_name, [[message_id, data_dict]]]]
-                stream_result = response[0]
-                messages = stream_result[1]
-                message_id, data_dict = messages[0]
+        except Exception as e:
+            logger.error(f"Communication failed: {e}")
+            return HTTPException(status_code=500, detail=f"Communication failed: {e}")
 
-                logger.info(f"episode_uuid: {episode_uuid} | successfully get message from redis stream")
-
-                # Retrieve data, decode_responses=False so keys/values are bytes
-                if b'data' in data_dict:
-                     data_bytes = data_dict[b'data']
-                else:
-                     logger.error(f"Missing 'data' field in stream message: {data_dict}")
-                     continue
-
-                result_object_str = pickle.loads(data_bytes)
-
-                if result_object_str.startswith('[ERR]'):
-                    return HTTPException(status_code=500, detail="Error response, " + result_object_str)
-                result_object = ChatCompletion(**json.loads(result_object_str))
-
-                # Cleanup stream
-                redis_client.delete(timeline_stream)
-
-                return result_object
-
-            except TimeoutError:
-                logger.info(f"episode_uuid: {episode_uuid} | still waiting, (time passed {timepassed}) for result for episode_uuid:{episode_uuid}, timeline_uuid:{timeline_uuid}...")
-                continue
-            except Exception as e:
-                 logger.error(f"Error reading from stream: {e}")
-                 if timepassed > max_wait_time:
-                     raise e
-                 time.sleep(1)
-
-    except Exception as e:
-        logger.error(f"Communication failed: {e}")
-        return HTTPException(status_code=500, detail=f"Communication failed: {e}")
-
-    finally:
-        redis_client.close()
+        finally:
+            redis_client.close()
 
 
-@app.post("/v1/chat/completions")
-async def chat_completions(request: Request, authorization: str = Header(None)):
-    """
-    OpenAI-compatible chat completions endpoint.
-    Receives ChatCompletionRequest and returns ChatCompletion.
-    """
-    # Parse authorization header (base64 encoded JSON)
-    if not authorization:
-        return HTTPException(status_code=401, detail="Missing authorization header")
+    @app.post("/v1/chat/completions")
+    async def chat_completions(request: Request, authorization: str = Header(None)):
+        """
+        OpenAI-compatible chat completions endpoint.
+        Receives ChatCompletionRequest and returns ChatCompletion.
+        """
+        # Parse authorization header (base64 encoded JSON)
+        if not authorization:
+            return HTTPException(status_code=401, detail="Missing authorization header")
 
-    try:
-        # Remove "Bearer " prefix if present
-        auth_token = authorization.replace("Bearer ", "").replace("bearer ", "")
-        decoded = base64.b64decode(auth_token).decode('utf-8')
-        auth_data = json.loads(decoded)
+        try:
+            # Remove "Bearer " prefix if present
+            auth_token = authorization.replace("Bearer ", "").replace("bearer ", "")
+            decoded = base64.b64decode(auth_token).decode('utf-8')
+            auth_data = json.loads(decoded)
 
-        agent_name = auth_data.get("agent_name")
-        target_tag = auth_data.get("target_tag")
-        episode_uuid = auth_data.get("episode_uuid")
+            agent_name = auth_data.get("agent_name")
+            target_tag = auth_data.get("target_tag")
+            episode_uuid = auth_data.get("episode_uuid")
 
-        if not all([agent_name, target_tag, episode_uuid]):
-            return HTTPException(status_code=401, detail="Invalid authorization data")
-    except Exception as e:
-        return HTTPException(status_code=401, detail=f"Invalid authorization header: {str(e)}")
+            if not all([agent_name, target_tag, episode_uuid]):
+                return HTTPException(status_code=401, detail="Invalid authorization data")
+        except Exception as e:
+            return HTTPException(status_code=401, detail=f"Invalid authorization header: {str(e)}")
 
-    # Parse request body
-    body = await request.json()
-    new_req = ChatCompletionRequest.model_validate(body)
-    if new_req.stream:
-        return HTTPException(status_code=400, detail="Streaming responses not supported in current AgentJet version, please set `stream=false` for now.")
-    # Create timeline UUID
-    timeline_uuid = uuid.uuid4().hex
+        # Parse request body
+        body = await request.json()
+        new_req = ChatCompletionRequest.model_validate(body)
+        if new_req.stream:
+            return HTTPException(status_code=400, detail="Streaming responses not supported in current AgentJet version, please set `stream=false` for now.")
+        # Create timeline UUID
+        timeline_uuid = uuid.uuid4().hex
 
-    # Add to received queue
-    # logger.warning(f"Received new chat completion request for agent: {agent_name}, target_tag: {target_tag}, episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid}")
-    int_req = InterchangeCompletionRequest(
-        completion_request = new_req,
-        agent_name = agent_name,
-        target_tag = target_tag,
-        episode_uuid = episode_uuid,
-        timeline_uuid = timeline_uuid,
-    )
-    logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request for episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid} (outside thread)")
-    client_offline = asyncio.Event()
-    try:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, int_req, episode_uuid, timeline_uuid, client_offline)
-    finally:
-        client_offline.set()
+        # Add to received queue
+        # logger.warning(f"Received new chat completion request for agent: {agent_name}, target_tag: {target_tag}, episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid}")
+        int_req = InterchangeCompletionRequest(
+            completion_request = new_req,
+            agent_name = agent_name,
+            target_tag = target_tag,
+            episode_uuid = episode_uuid,
+            timeline_uuid = timeline_uuid,
+        )
+        logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request for episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid} (outside thread)")
+        client_offline = threading.Event()
+        try:
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, int_req, episode_uuid, timeline_uuid, client_offline)
+        finally:
+            client_offline.set()
 
 
 
 
-@app.post("/reset")
-async def reset():
+    @app.post("/reset")
+    async def reset():
 
-    return {"status": "reset_complete"}
-
-
-async def monitor_debug_state(experiment_dir):
-    """
-    Background task to write debug state to ./interchange_debug.txt every 1 second.
-    """
-    while True:
-        await asyncio.sleep(4)
+        return {"status": "reset_complete"}
 
 
-def ensure_dat_interchange_server_cache_clear():
-    return
-
-
+    return app
 
 class InterchangeServer(Process):
     def __init__(self, experiment_dir: str, port: int):
@@ -241,9 +239,8 @@ class InterchangeServer(Process):
         self.port = port
 
     def run(self):
+        app = get_app()
         async def serve_with_monitor():
-            # Start the monitor task
-            asyncio.create_task(monitor_debug_state(self.experiment_dir))
             # Start the server
             config = uvicorn.Config(
                 app=app,
@@ -254,8 +251,11 @@ class InterchangeServer(Process):
             )
             server = uvicorn.Server(config)
             await server.serve()
-
-        asyncio.run(serve_with_monitor())
+        try:
+            asyncio.run(serve_with_monitor())
+        except KeyboardInterrupt as e:
+            SERVER_SHUTDOWN_EVENT.set()
+            raise e
 
 
 # Convenience function for quick server startup
@@ -270,7 +270,6 @@ def start_interchange_server(experiment_dir) -> int:
         os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
 
     interchange_server = InterchangeServer(experiment_dir, port)
-    interchange_server.daemon = True
     interchange_server.start()
 
     # Wait for server to be ready
@@ -288,6 +287,7 @@ def start_interchange_server(experiment_dir) -> int:
         time.sleep(0.5)
 
     logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
+    atexit.register(lambda: interchange_server.terminate())
     return port
 
 
