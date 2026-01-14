@@ -84,7 +84,7 @@ class BaseRolloutManager:
         (with validation overrides), and robust retry on transient failures.
         """
         sampling_params = get_sample_params(mode, self.config)
-        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn(
+        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(
             sampling_params=sampling_params
         )
 

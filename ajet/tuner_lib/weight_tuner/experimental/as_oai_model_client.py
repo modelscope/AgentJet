@@ -140,7 +140,7 @@ class InterchangeClient:
         try:
             data_as_json = json.loads(pickle.loads(msg))
             timeline_uuid = data_as_json["timeline_uuid"]
-            topic = f"timeline_uuid:{timeline_uuid}/episode_uuid:{self.episode_uuid}"
+            topic = f"stream:timeline:{timeline_uuid}"
             logger.info(f"[client] {self.episode_uuid} | json.loads(pickle.loads(msg))")
 
 
@@ -163,15 +163,17 @@ class InterchangeClient:
             # send result back
             bytes_arr = pickle.dumps(result)
             logger.info(f"[client] {self.episode_uuid} | bytes_arr = pickle.dumps(result)")
-            redis_client.publish(topic, bytes_arr)
-            logger.info(f"[client] {self.episode_uuid} | redis_client.publish(topic, pickle.dumps(result))")
+            redis_client.xadd(topic, {'data': bytes_arr})
+            redis_client.expire(topic, 600)  # expire after 10 mins
+            logger.info(f"[client] {self.episode_uuid} | redis_client.xadd(topic, ...)")
 
         except Exception as e:
             err = f"[ERR]: Error when processing data: {data_as_json} Error: {e}"
             result = err
             logger.error(err)
             if topic:
-                redis_client.publish(topic, pickle.dumps(result))
+                redis_client.xadd(topic, {'data': pickle.dumps(result)})
+                redis_client.expire(topic, 600)
 
         finally:
             # release semaphore when done
@@ -185,35 +187,53 @@ class InterchangeClient:
         """begin listening for service requests in a threading model
         """
         # logger.success(f"InterchangeClient starting for episode_uuid:{self.episode_uuid}")
-        debug_logs = []
+        # debug_logs = []
         begin_time = time.time()
         logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
         redis_client = get_redis_client()
-        redis_sub = redis_client.pubsub()
-        episode_topic = f"episode_uuid:{self.episode_uuid}"
-        redis_sub.subscribe(episode_topic)
+        episode_stream = f"stream:episode:{self.episode_uuid}"
+
         sem = threading.Semaphore(8)    # 4 concurrent requests max
-        logger.info(f"[client] {self.episode_uuid} | Subscribed to topic {episode_topic}, waiting for messages...")
+        logger.info(f"[client] {self.episode_uuid} | Listening to stream {episode_stream}, waiting for messages...")
+
+        last_id = '0-0'
         is_init = True
+
         try:
             while not self.should_terminate:
                 # wait for a new message
-                logger.info(f"[client] {self.episode_uuid} | Waiting for new message on topic {episode_topic}...")
-                response = redis_sub.get_message(timeout=10)  # type: ignore
+                logger.info(f"[client] {self.episode_uuid} | Waiting for new message on stream {episode_stream}...")
+
+                # Check messages
+                try:
+                    response = redis_client.xread({episode_stream: last_id}, count=1, block=30*1000)   # block for 30 seconds (30000 ms)
+                except TimeoutError:
+                    time.sleep(5)
+                    continue
+
                 timepassed = time.time() - begin_time
 
-                if response is None:
+                if not response:
                     if is_init and timepassed > 30:
                         logger.warning(f"[client] Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
-                if response['type'] not in ['message', 'pmessage']:
-                    continue
-
+                # Got message
                 is_init = False
                 logger.info(f"[client] {self.episode_uuid} | get message...")
-                # got a message
-                msg: bytes = response['data']   # type: ignore
+
+                stream_result = response[0]
+                messages = stream_result[1]
+                msg_id, data_dict = messages[0]
+
+                last_id = msg_id
+
+                if b'data' in data_dict:
+                    msg: bytes = data_dict[b'data']
+                else:
+                    logger.error(f"Missing 'data' in stream message {msg_id}")
+                    continue
+
                 # are we free to spawn a new thread?
                 sem.acquire()
                 logger.info(f"[client] {self.episode_uuid} | sem acquire...")
@@ -225,6 +245,6 @@ class InterchangeClient:
             return
 
         finally:
-            redis_sub.close()
+            redis_client.delete(episode_stream)
             redis_client.close()
 
