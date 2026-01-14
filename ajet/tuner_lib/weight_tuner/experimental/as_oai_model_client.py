@@ -3,14 +3,19 @@ import asyncio
 import json
 import threading
 import os
+import redis
 import time
 from loguru import logger
 from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest, ChatCompletionResponse
 from openai.types.chat.chat_completion import ChatCompletion
+from redis.exceptions import TimeoutError
+
+from functools import cache
 
 import pickle
 import httpx
+import zmq
 import logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -49,6 +54,24 @@ def generate_auth_token(agent_name, target_tag, episode_uuid):
     auth_token = f"Bearer {base64_encoded}"
 
     return auth_token
+
+
+@cache
+def get_redis_connection_pool():
+    pool = redis.BlockingConnectionPool(
+        host='localhost',
+        port=6379,
+        max_connections=256,
+        socket_timeout=30,
+        socket_connect_timeout=30,
+        retry_on_timeout=True
+    )
+    return pool
+
+
+def get_redis_client():
+    pool = get_redis_connection_pool()
+    return redis.Redis(connection_pool=pool, decode_responses=False, encoding='utf-8')
 
 
 class InterchangeClient:
@@ -101,94 +124,107 @@ class InterchangeClient:
         """
         Starts the SSE service loop.
         """
-        t = threading.Thread(target=lambda: asyncio.run(self._ensure_service_loop()), daemon=True)
+        t = threading.Thread(target=self._begin_service_threading, daemon=True)
         t.start()
 
-    async def _ensure_service_loop(self):
-        while not self.should_terminate:
-            try:
-                await self._service_loop()
-            except Exception as e:
-                logger.warning(f"InterchangeClient service loop error: {e}. Restarting...")
-                await asyncio.sleep(4)  # brief pause before reconnecting
 
-    async def _service_loop(self):
+    def _handle_service_request(self, msg: bytes, sem: threading.Semaphore):
+        """handle a single service request in its own thread
         """
-        In fact this is not a service,
-        it is a client that pretends to be a service, by interacting with a local interchange server via SSE.
-
-        This design is for efficiency
-        """
-
         from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
-
-        port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
-        assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
-
-        base_url = f"http://127.0.0.1:{port}"
-        listen_url = f"{base_url}/hook/context_tracker_client_listen"
-        response_url = f"{base_url}/hook/context_tracker_client_response"
-        key = f"episode_uuid:{self.episode_uuid}"
-
-        async with httpx.AsyncClient(timeout=None) as client:
-            try:
-                async with client.stream("GET", listen_url, params={"episode_uuid": self.episode_uuid}, timeout=None) as response:
-                    async for line in response.aiter_lines():
-                        if self.should_terminate:
-                            break
-
-                        if not line.strip():
-                            continue
-
-                        if line.startswith(":"): # keepalive
-                            continue
-
-                        if line.startswith("data: "):
-                            data = line[6:].strip()
-                            if not data:
-                                continue
-
-                            try:
-                                try:
-                                    parsed_msg = InterchangeCompletionRequest(**json.loads(data))
-                                except Exception as e:
-                                    logger.error(f"Failed to parse SSE event data: {e}" + data)
-                                    continue
-
-                                result = await self.llm_infer(
-                                    req=parsed_msg.completion_request,
-                                    timeline_uuid=parsed_msg.timeline_uuid,
-                                    agent_name=parsed_msg.agent_name,
-                                    target_tag=parsed_msg.target_tag,
-                                    episode_uuid=parsed_msg.episode_uuid,
-                                )
-
-                                # Send response back
-                                await client.post(
-                                    response_url,
-                                    params={"key": key},
-                                    content=pickle.dumps(result),
-                                    headers={"Content-Type": "application/octet-stream"}
-                                )
-
-                            except Exception as e:
-                                logger.error(f"Error processing SSE event: {e}")
-                                continue
-
-            except httpx.RequestError as e:
-                 logger.warning(f"SSE connection error: {e}")
-                 raise # Let ensure_service_loop handle restart
-
-            # Send terminate signal if we are exiting cleanly
-            try:
-                await client.post(
-                    response_url,
-                    params={"key": key},
-                    content=pickle.dumps("terminate"),
-                    headers={"Content-Type": "application/octet-stream"}
-                )
-            except:
-                pass
+        logger.info(f"[client] {self.episode_uuid} | inside _handle_service_request")
+        redis_client = get_redis_client()
+        logger.info(f"[client] {self.episode_uuid} | get_redis_client")
+        data_as_json = ""
+        topic = ""
+        try:
+            data_as_json = json.loads(pickle.loads(msg))
+            timeline_uuid = data_as_json["timeline_uuid"]
+            topic = f"timeline_uuid:{timeline_uuid}/episode_uuid:{self.episode_uuid}"
+            logger.info(f"[client] {self.episode_uuid} | json.loads(pickle.loads(msg))")
 
 
+            if "health_check" in data_as_json and data_as_json["health_check"]:
+                # logger.info(f"Received health check for timeline_uuid: {timeline_uuid}")
+                result = '{"health_check_ok": "True"}'
+                # logger.success(f"Health check OK for timeline_uuid: {timeline_uuid}")
+            else:
+                parsed_msg = InterchangeCompletionRequest(**data_as_json)
+                # start llm request
+                result = asyncio.run(self.llm_infer(
+                    req=parsed_msg.completion_request,
+                    timeline_uuid=parsed_msg.timeline_uuid,
+                    agent_name=parsed_msg.agent_name,
+                    target_tag=parsed_msg.target_tag,
+                    episode_uuid=parsed_msg.episode_uuid,
+                )).model_dump_json()
+                # logger.success(f"LLM inference completed for timeline_uuid: {timeline_uuid}")
+            logger.info(f"[client] {self.episode_uuid} | result = asyncio.run(self.llm_infer")
+            # send result back
+            bytes_arr = pickle.dumps(result)
+            logger.info(f"[client] {self.episode_uuid} | bytes_arr = pickle.dumps(result)")
+            redis_client.publish(topic, bytes_arr)
+            logger.info(f"[client] {self.episode_uuid} | redis_client.publish(topic, pickle.dumps(result))")
+
+        except Exception as e:
+            err = f"[ERR]: Error when processing data: {data_as_json} Error: {e}"
+            result = err
+            logger.error(err)
+            if topic:
+                redis_client.publish(topic, pickle.dumps(result))
+
+        finally:
+            # release semaphore when done
+            sem.release()
+            redis_client.close()
+
+
+
+
+    def _begin_service_threading(self):
+        """begin listening for service requests in a threading model
+        """
+        # logger.success(f"InterchangeClient starting for episode_uuid:{self.episode_uuid}")
+        debug_logs = []
+        begin_time = time.time()
+        logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
+        redis_client = get_redis_client()
+        redis_sub = redis_client.pubsub()
+        episode_topic = f"episode_uuid:{self.episode_uuid}"
+        redis_sub.subscribe(episode_topic)
+        sem = threading.Semaphore(8)    # 4 concurrent requests max
+        logger.info(f"[client] {self.episode_uuid} | Subscribed to topic {episode_topic}, waiting for messages...")
+        is_init = True
+        try:
+            while not self.should_terminate:
+                # wait for a new message
+                logger.info(f"[client] {self.episode_uuid} | Waiting for new message on topic {episode_topic}...")
+                response = redis_sub.get_message(timeout=10)  # type: ignore
+                timepassed = time.time() - begin_time
+
+                if response is None:
+                    if is_init and timepassed > 30:
+                        logger.warning(f"[client] Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
+                    continue
+
+                if response['type'] not in ['message', 'pmessage']:
+                    continue
+
+                is_init = False
+                logger.info(f"[client] {self.episode_uuid} | get message...")
+                # got a message
+                msg: bytes = response['data']   # type: ignore
+                # are we free to spawn a new thread?
+                sem.acquire()
+                logger.info(f"[client] {self.episode_uuid} | sem acquire...")
+                # begin a new thread to handle this request
+                threading.Thread(target=self._handle_service_request, args=(msg, sem), daemon=True).start()
+
+
+        except KeyboardInterrupt:
+            return
+
+        finally:
+            redis_sub.close()
+            redis_client.close()
 

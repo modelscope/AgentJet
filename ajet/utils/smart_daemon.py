@@ -258,7 +258,8 @@ class LaunchWhenAbsent:
                             "Action": "Launching command",
                             "Command": " ".join(self.cmd),
                             "LogFile": str(log_file),
-                        }
+                        },
+                        header = "Smart Daemon Launch",
                     )
                     f = open(log_file, "a")
 
@@ -305,7 +306,8 @@ class LaunchWhenAbsent:
                             "Command": " ".join(self.cmd),
                             "LogFile": str(log_file),
                             "Converted": " ".join(converted_cmd),
-                        }
+                        },
+                        header = "Smart Daemon Launch - PTY",
                     )
                     proc = subprocess.Popen(
                         converted_cmd,
