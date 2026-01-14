@@ -91,50 +91,76 @@ def _begin_handle_chat_completion(int_req, episode_uuid, timeline_uuid, client_o
     logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request for episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid} (inside thread)")
 
     redis_client = get_redis_client()
-    episode_topic = f"episode_uuid:{episode_uuid}"
-    timeline_topic = f"timeline_uuid:{timeline_uuid}/episode_uuid:{episode_uuid}"
-    redis_sub = redis_client.pubsub()
-    redis_sub.subscribe(timeline_topic)
+    episode_stream = f"stream:episode:{episode_uuid}"
+    timeline_stream = f"stream:timeline:{timeline_uuid}"
+
     max_wait_time = 600  # 10 minutes timeout
     try:
-        logger.info(f"episode_uuid: {episode_uuid} | redis_client.publish int_req ")
-        redis_client.publish(episode_topic, pickle.dumps(int_req.model_dump_json()))
-        logger.info(f"episode_uuid: {episode_uuid} | redis_client.publish int_req end")
+        logger.info(f"episode_uuid: {episode_uuid} | redis_client.xadd int_req ")
+        redis_client.xadd(episode_stream, {'data': pickle.dumps(int_req.model_dump_json())})
+        logger.info(f"episode_uuid: {episode_uuid} | redis_client.xadd int_req end")
 
         # record start
         begin_time = time.time()
-        max_wait_time = 600  # 10 minutes timeout
+
         # wait for result
+        last_id = '0-0'
         while not client_offline.is_set():
             timepassed = time.time() - begin_time
             if timepassed > max_wait_time:
                 return HTTPException(status_code=504, detail="Request timeout")
             try:
-                logger.info(f"episode_uuid: {episode_uuid} | redis_sub.get_message(timeout=60)")
-                result = redis_sub.get_message(timeout=60)
-                logger.info(f"episode_uuid: {episode_uuid} | redis_sub.get_message(timeout=60) after")
-                if result is None:
+                logger.info(f"episode_uuid: {episode_uuid} | redis_client.xread block=30000")
+                # Block for 30 seconds to allow loop to check client_offline
+                response = redis_client.xread({timeline_stream: last_id}, count=1, block=30*1000) # block for 30 seconds
+                logger.info(f"episode_uuid: {episode_uuid} | redis_client.xread after")
+
+                if not response:
                     if timepassed > 60:
                         logger.warning(f"episode_uuid: {episode_uuid} |  LLM client infer still waiting... (time passed {timepassed}) for episode_uuid:{episode_uuid}, timeline_uuid:{timeline_uuid}...")
                     continue
-                if result['type'] not in ['message', 'pmessage']:
-                    continue
-                logger.info(f"episode_uuid: {episode_uuid} | successfully get message from redis_sub")
-                result_object_str = pickle.loads(result['data'])   # type: ignore
+
+                # response format: [[stream_name, [[message_id, data_dict]]]]
+                stream_result = response[0]
+                messages = stream_result[1]
+                message_id, data_dict = messages[0]
+
+                logger.info(f"episode_uuid: {episode_uuid} | successfully get message from redis stream")
+
+                # Retrieve data, decode_responses=False so keys/values are bytes
+                if b'data' in data_dict:
+                     data_bytes = data_dict[b'data']
+                else:
+                     logger.error(f"Missing 'data' field in stream message: {data_dict}")
+                     continue
+
+                result_object_str = pickle.loads(data_bytes)
+
                 if result_object_str.startswith('[ERR]'):
                     return HTTPException(status_code=500, detail="Error response, " + result_object_str)
                 result_object = ChatCompletion(**json.loads(result_object_str))
+
+                # Cleanup stream
+                redis_client.delete(timeline_stream)
+
                 return result_object
+
             except TimeoutError:
                 logger.info(f"episode_uuid: {episode_uuid} | still waiting, (time passed {timepassed}) for result for episode_uuid:{episode_uuid}, timeline_uuid:{timeline_uuid}...")
                 continue
+            except Exception as e:
+                 logger.error(f"Error reading from stream: {e}")
+                 if timepassed > max_wait_time:
+                     raise e
+                 time.sleep(1)
 
-    except:
-        return HTTPException(status_code=500, detail="ZMQ communication socket failed.")
+    except Exception as e:
+        logger.error(f"Communication failed: {e}")
+        return HTTPException(status_code=500, detail=f"Communication failed: {e}")
 
     finally:
-        redis_sub.close()
         redis_client.close()
+
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request, authorization: str = Header(None)):

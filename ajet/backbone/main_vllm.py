@@ -3,7 +3,7 @@ import sys
 from types import SimpleNamespace
 
 import hydra
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from ajet.backbone.warm_up import warm_up_process
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
@@ -88,6 +88,53 @@ class ChatCompletionScheduler:
         )
         return messages
 
+    async def submit_chat_completions_async(self, messages, sampling_params, request_id, tools=[]):
+        client = AsyncOpenAI(
+            base_url=self.url,
+            api_key="token-abc123",
+        )
+        sampling_params = dict(
+            n=1,
+            max_completion_tokens=self.config.ajet.rollout.max_response_length_in_one_turn,
+        )
+        sampling_params["temperature"] = self.config.ajet.rollout.val_kwargs.temperature
+        sampling_params["top_k"] = self.config.ajet.rollout.val_kwargs.top_k
+        sampling_params["top_p"] = self.config.ajet.rollout.val_kwargs.top_p
+
+        sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
+
+        if tools:
+            completion = await client.chat.completions.create(
+                model=self.config.ajet.model.path,
+                messages=messages,
+                tools=tools,
+                extra_body=sampling_params,
+            )
+        else:
+            completion = await client.chat.completions.create(
+                model=self.config.ajet.model.path,
+                messages=messages,
+                extra_body=sampling_params,
+            )
+
+        message = completion.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
+
+        # sometimes tool use message has no content field
+        if "content" not in message:
+            message["content"] = ""
+
+        messages.append(
+            {
+                "role": message["role"],
+                "request_id": completion.id,
+                "content": message["content"],
+                "tool_calls": message.get("tool_calls", None),
+                "tokens": [
+                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content # type: ignore
+                ],
+            }
+        )
+        return messages
 
 def run(config):
     from ajet.task_reader import RouterTaskReader
