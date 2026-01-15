@@ -55,7 +55,7 @@ def run_ppo(config) -> None:
     # Check if Ray is not initialized
     if not ray.is_initialized():
         # this is for local ray cluster
-        runtime_env = get_runtime_env()
+        runtime_env = get_runtime_env(config)
         print_dict(runtime_env["env_vars"], "runtime_env")
         ray.init(
             runtime_env=runtime_env,

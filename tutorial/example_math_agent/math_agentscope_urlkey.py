@@ -48,6 +48,10 @@ class MathToolWorkflow(Workflow): # ✨✨ inherit `Workflow` class
         url_and_apikey = tuner.as_oai_baseurl_apikey()
         base_url = url_and_apikey.base_url
         api_key = url_and_apikey.api_key    # the api key contain information, do not discard it
+
+        # print(f"[MathToolWorkflow] Using base_url: [{base_url}], api_key: [{api_key}]")
+        # base_url: [http://10.56.3.98:57817/v1], api_key: [sk-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+
         model = OpenAIChatModel(
             model_name="whatever",
             client_args={"base_url": base_url},

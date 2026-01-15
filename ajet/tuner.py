@@ -26,7 +26,8 @@ class AjetTuner(object):
         self.context_tracker = context_tracker
         self.llm_inference_fn = llm_inference_fn
         self.target2proxy_registry: dict[str, dict[str,TunerTypeUnion]] = {}
-        if config.ajet.enable_experimental_interchange_server:
+        self.enable_interchange_server = config.ajet.enable_experimental_interchange_server
+        if self.enable_interchange_server:
             self.proxy_client_started = False
 
 
@@ -104,7 +105,7 @@ class AjetTuner(object):
             ```
         """
 
-        assert self.config.ajet.enable_experimental_interchange_server, "Please enable `ajet.enable_experimental_interchange_server` in yaml config to use `as_oai_baseurl_apikey` feature."
+        assert self.enable_interchange_server, "Please enable `ajet.enable_experimental_interchange_server` in yaml config to use `as_oai_baseurl_apikey` feature."
         if self.proxy_client_started is False:
             self.proxy_client_started = True
             self._enable_experimental_interchange_server(self.llm_inference_fn)
@@ -171,7 +172,7 @@ class AjetTuner(object):
 
     def _enable_experimental_interchange_server(self, llm_inference_fn):
         # experimental reverse proxy start
-        if self.config.ajet.enable_experimental_interchange_server:
+        if self.enable_interchange_server:
             from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_client import InterchangeClient
             self.interchange_client = InterchangeClient(
                 episode_uuid=self.context_tracker.episode_uuid,
@@ -184,6 +185,6 @@ class AjetTuner(object):
 
     def terminate_episode(self):
         # experimental reverse proxy cleanup
-        if self.config.ajet.enable_experimental_interchange_server:
+        if self.enable_interchange_server:
             if (self.proxy_client_started is True) and hasattr(self, "interchange_client"):
                 self.interchange_client._should_terminate = True

@@ -180,7 +180,7 @@ def run(config):
 def main(config):
     from omegaconf import OmegaConf
     OmegaConf.resolve(config)
-    runtime_env = get_runtime_env()
+    runtime_env = get_runtime_env(config)
     os.environ.update(runtime_env["env_vars"])
     # atexit.register(lambda: print("Process exiting, performing cleanup..."))
 

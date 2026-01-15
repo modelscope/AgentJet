@@ -32,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 
+API_KEY_PREFIX = "sk-ajet-"
 
 class InterchangeCompletionRequest(BaseModel):
     completion_request: ChatCompletionRequest
@@ -119,7 +120,7 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
 
         try:
             # Remove "Bearer " prefix if present
-            auth_token = authorization.replace("Bearer ", "").replace("bearer ", "")
+            auth_token = authorization.replace("Bearer ", "").replace("bearer ", "").replace(API_KEY_PREFIX, "")
             decoded = base64.b64decode(auth_token).decode('utf-8')
             auth_data = json.loads(decoded)
 

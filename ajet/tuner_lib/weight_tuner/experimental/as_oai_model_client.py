@@ -12,9 +12,10 @@ from loguru import logger
 from typing import TYPE_CHECKING
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
-from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
+from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
-from ajet.utils.free_port import find_free_port
+from ajet.utils.networking import find_free_port
+
 
 context = zmq.Context()
 atexit.register(context.term)
@@ -52,7 +53,7 @@ def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     base64_encoded = base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
 
     # Step 4: Prepend "Bearer " to the Base64-encoded string
-    auth_token = f"Bearer {base64_encoded}"
+    auth_token = f"{API_KEY_PREFIX}{base64_encoded}"    # API_KEY_PREFIX: Literal['sk-ajet-']
 
     return auth_token
 
@@ -68,10 +69,11 @@ class InterchangeClient:
         self.config = config
         self._should_terminate = False
 
-        interchange_method = config.ajet.interchange_server.interchange_method
-        if interchange_method == 'tcp':
-            self.episode_contect_address = f"tcp://localhost:{find_free_port()}"
-        else:
+        self.interchange_method = config.ajet.interchange_server.interchange_method
+        if self.interchange_method == 'tcp':
+            master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+            self.episode_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
+        elif self.interchange_method == 'ipc':
             self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
             self.episode_contect_address = f"ipc://{self.ipc_path}"
         self.max_inference_tracker_threads = config.ajet.interchange_server.max_inference_tracker_threads
@@ -193,6 +195,7 @@ class InterchangeClient:
         finally:
             self.socket.close()
             if DEBUG: logger.info(f"[client] {self.episode_uuid} | ZMQ socket closed, service loop terminated.")
-            if os.path.exists(self.ipc_path):
-                os.remove(self.ipc_path)
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")
+            if self.interchange_method == 'ipc':
+                if os.path.exists(self.ipc_path):
+                    os.remove(self.ipc_path)
+                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")
