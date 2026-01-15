@@ -62,7 +62,7 @@ class AsyncLlmBridge(object):
         self.tokenizer = tokenizer
         self.llm_mode = llm_mode
         self.max_llm_retries = max_llm_retries
-
+        self.tool_parser = Hermes2ProToolParser(self.tokenizer)
 
     def get_llm_inference_fn_sync(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
 
@@ -123,8 +123,7 @@ class AsyncLlmBridge(object):
                 and ("</tool_call>" in decoded_text)
                 and (not self.config.ajet.rollout.force_disable_toolcalls)
             ):
-                tool_parser = Hermes2ProToolParser(self.tokenizer)
-                parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
+                parsed_tool_calls = self.tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
                 parsed_tool_calls = parsed_tool_calls.model_dump()
                 if self.config.ajet.execute_test:
                     _test_if_test_mode(
@@ -323,8 +322,8 @@ class AsyncLlmBridge(object):
                 and ("</tool_call>" in decoded_text)
                 and (not self.config.ajet.rollout.force_disable_toolcalls)
             ):
-                tool_parser = Hermes2ProToolParser(self.tokenizer)
-                parsed_tool_calls = tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
+
+                parsed_tool_calls = self.tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
                 parsed_tool_calls = parsed_tool_calls.model_dump()
                 if self.config.ajet.execute_test:
                     _test_if_test_mode(
@@ -535,14 +534,15 @@ class OpenaiLlmProxyWithTracker(object):
             #     otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
         # run llm inference ✨
-        # if sync:
-        #     llm_output = await asyncio.wait_for(
-        #         asyncio.to_thread(
-        #             self.llm_inference_fn, converted_message, custom_sampling_params, tools
-        #         ),
-        #         timeout=1800,
-        #     )
-        llm_output = await asyncio.wait_for(self.llm_inference_fn(converted_message, custom_sampling_params, tools), timeout=1800)
+        if self.config.ajet.llm_infer_submit_method == "sync":
+            llm_output = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.llm_inference_fn, converted_message, custom_sampling_params, tools
+                ),
+                timeout=1800,
+            )
+        else:
+            llm_output = await asyncio.wait_for(self.llm_inference_fn(converted_message, custom_sampling_params, tools), timeout=1800)
 
 
         # begin context tracking

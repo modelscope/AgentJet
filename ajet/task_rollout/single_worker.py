@@ -84,9 +84,15 @@ class BaseRolloutManager:
         (with validation overrides), and robust retry on transient failures.
         """
         sampling_params = get_sample_params(mode, self.config)
-        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(
-            sampling_params=sampling_params
-        )
+
+        if self.config.ajet.llm_infer_submit_method == "sync":
+            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_sync(
+                sampling_params=sampling_params
+            )
+        else:
+            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(
+                sampling_params=sampling_params
+            )
 
         workflow_task = WorkflowTask(
             env_type=task.env_type,

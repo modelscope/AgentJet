@@ -3,16 +3,7 @@ from pathlib import Path
 
 from beast_logger import print_dict
 from dotenv import load_dotenv
-import socket
-
-
-def find_free_port() -> int:
-    """Find a free port on the system."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        s.listen(1)
-        port = s.getsockname()[1]
-    return port
+from ajet.utils.free_port import find_free_port
 
 
 def get_runtime_env(is_trinity: bool = False) -> dict:

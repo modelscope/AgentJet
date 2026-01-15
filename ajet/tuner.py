@@ -114,6 +114,7 @@ class AjetTuner(object):
             agent_name=agent_name,
             target_tag=target_tag,
             episode_uuid=self.context_tracker.episode_uuid,
+            episode_contect_address=self.interchange_client.episode_contect_address,
         )
         return baseurl_apikey_model
 
@@ -178,6 +179,7 @@ class AjetTuner(object):
                 config=self.config,
                 llm_inference_fn=llm_inference_fn,
             )
+            return self.interchange_client.begin_service()
 
 
     def terminate_episode(self):

@@ -12,6 +12,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.resources.chat.chat import Chat, AsyncChat
 from openai.resources.completions import AsyncCompletions
 from openai import OpenAI, AsyncOpenAI
+from ajet.utils.free_port import find_free_port
 from .experimental.as_oai_model_client import generate_auth_token
 
 if TYPE_CHECKING:
@@ -43,6 +44,7 @@ class OpenaiClientBaseUrlTuner(BaseModel):
         target_tag: str,
         agent_name: str,
         episode_uuid: str,
+        episode_contect_address: str,
         **kwargs,
     ):
         port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
@@ -52,6 +54,7 @@ class OpenaiClientBaseUrlTuner(BaseModel):
             agent_name=agent_name,
             target_tag=target_tag,
             episode_uuid=episode_uuid,
+            episode_address=episode_contect_address,
         )
         model = "reserved_field"
 
