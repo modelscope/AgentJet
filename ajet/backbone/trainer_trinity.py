@@ -116,7 +116,7 @@ class AjetWorkflowWrap(Workflow):
 
     async def run_async(self):
         ajet_config = get_ajet_config_from_trinity_side()
-        if ajet_config.ajet.enable_experimental_reverse_proxy:
+        if ajet_config.ajet.enable_experimental_interchange_server:
             raise NotImplementedError(
                 "The experimental reverse proxy is not supported in Trinity backbone yet."
             )

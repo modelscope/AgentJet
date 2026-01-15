@@ -11,6 +11,7 @@ from beast_logger import print_dict
 from loguru import logger
 
 from ajet.utils.dynamic_import import dynamic_import
+from ajet.utils.sington import singleton
 
 
 class TestSuccessException(Exception):
@@ -72,17 +73,6 @@ def _mock_if_test_mode(key, value, config):
     if key not in test_lambda.probe_list:
         return value
     return test_lambda.mock(key)
-
-
-def singleton(cls):
-    instances = {}
-
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-
-    return get_instance
 
 
 def send_test_result(

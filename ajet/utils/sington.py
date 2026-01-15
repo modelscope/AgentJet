@@ -1,19 +1,10 @@
-import concurrent.futures
-from ajet.utils.testing_utils import singleton
 
-@singleton
-class ThreadExecutorSingleton:
-    def __init__(self):
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=64)
+def singleton(cls):
+    instances = {}
 
-    def get_executor(self) -> concurrent.futures.ThreadPoolExecutor:
-        return self.executor
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
 
-
-@singleton
-class ThreadExecutorContextTrackerSingleton:
-    def __init__(self):
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=64)
-
-    def get_executor(self) -> concurrent.futures.ThreadPoolExecutor:
-        return self.executor
+    return get_instance

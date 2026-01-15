@@ -19,18 +19,12 @@ import json
 import os
 import zmq
 import uvicorn
-import sys
-import subprocess
 import atexit
-import argparse
 import httpx
 
 from loguru import logger
-from collections import defaultdict
-from typing import Dict, List
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel
 from fastapi import FastAPI, Header, HTTPException, Request, Body
-from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 from multiprocessing import Process
 from concurrent.futures import ThreadPoolExecutor
@@ -63,13 +57,13 @@ context = zmq.Context()
 atexit.register(context.term)
 
 
-def get_app():
+def get_app(max_fastapi_threads: int = 512) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # Startup
         SERVER_SHUTDOWN_EVENT.clear()
-        app.state.executor = ThreadPoolExecutor(max_workers=512)
+        app.state.executor = ThreadPoolExecutor(max_workers=max_fastapi_threads)
         yield
         # Shutdown
         SERVER_SHUTDOWN_EVENT.set()
@@ -84,14 +78,14 @@ def get_app():
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | Received new chat completion request (inside thread)")
 
         socket = context.socket(zmq.REQ)
-        socket.setsockopt(zmq.RCVTIMEO, 60*1000)  # 60秒超时，避免永久阻塞
+        socket.setsockopt(zmq.RCVTIMEO, 60*1000)  # 1 minute recv timeout
         socket.connect(f"{episode_address}")
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | connect done")
         socket.send_string(int_req.model_dump_json())
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | send_string")
 
         result_str = ""
-        for _ in range(5):
+        for _ in range(5):  # max 5 minutes wait
             try:
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
                 result_str = socket.recv_string()
@@ -106,7 +100,6 @@ def get_app():
             if DEBUG: logger.success(f"[server] episode_uuid: {episode_uuid} | recv_string done.")
         result_object = ChatCompletion(**json.loads(result_str))
         return result_object
-
 
 
     @app.post("/v1/chat/completions")
@@ -144,7 +137,6 @@ def get_app():
         timeline_uuid = uuid.uuid4().hex
 
         # Add to received queue
-        # logger.warning(f"Received new chat completion request for agent: {agent_name}, target_tag: {target_tag}, episode_uuid: {episode_uuid}, timeline_uuid: {timeline_uuid}")
         int_req = InterchangeCompletionRequest(
             completion_request = new_req,
             agent_name = agent_name,
@@ -160,25 +152,22 @@ def get_app():
         finally:
             client_offline.set()
 
-
-
-
     @app.post("/reset")
     async def reset():
-
         return {"status": "reset_complete"}
-
 
     return app
 
 class InterchangeServer(Process):
-    def __init__(self, experiment_dir: str, port: int):
+    def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 2, max_fastapi_threads: int = 512):
         super().__init__()
         self.experiment_dir = experiment_dir
         self.port = port
+        self.num_fastapi_process = num_fastapi_process
+        self.max_fastapi_threads = max_fastapi_threads
 
     def run(self):
-        app = get_app()
+        app = get_app(self.max_fastapi_threads)
         async def serve_with_monitor():
             # Start the server
             config = uvicorn.Config(
@@ -186,7 +175,7 @@ class InterchangeServer(Process):
                 host="0.0.0.0",
                 port=self.port,
                 log_level="error",
-                workers=2
+                workers=self.num_fastapi_process
             )
             server = uvicorn.Server(config)
             await server.serve()
@@ -198,9 +187,16 @@ class InterchangeServer(Process):
 
 
 # Convenience function for quick server startup
-def start_interchange_server(experiment_dir) -> int:
+def start_interchange_server(config) -> int:
+    experiment_dir = config.ajet.experiment_dir
+    num_fastapi_process = config.ajet.interchange_server.num_fastapi_process
+    max_fastapi_threads = config.ajet.interchange_server.max_fastapi_threads
     # Find a free port if not specified or invalid
     port = int(os.environ.get("AJET_DAT_INTERCHANGE_PORT", -1))
+
+    if config.ajet.interchange_server.interchange_server_port != 'auto':
+        port = int(config.ajet.interchange_server.interchange_server_port)
+
     if port <= 0:
         import socket
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -208,25 +204,32 @@ def start_interchange_server(experiment_dir) -> int:
             port = s.getsockname()[1]
         os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
 
-    interchange_server = InterchangeServer(experiment_dir, port)
+    interchange_server = InterchangeServer(experiment_dir, port, num_fastapi_process, max_fastapi_threads)
     interchange_server.start()
 
     # Wait for server to be ready
     health_url = f"http://localhost:{port}/health"
     start_time = time.time()
-    while time.time() - start_time < 20:
+    while True:
         if interchange_server.exitcode is not None:
             logger.error(f"Interchange server subprocess failed to start. Return code: {interchange_server.exitcode}")
-            break
+            raise RuntimeError("Interchange server subprocess failed to start.")
+        if time.time() - start_time > 30:
+            logger.error("Interchange server subprocess failed to start within 30 seconds.")
+            raise RuntimeError("Interchange server subprocess failed to start within 30 seconds.")
         try:
             if httpx.get(health_url, timeout=0.5).status_code == 200:
                 break
         except Exception:
+            # keep waiting
             pass
         time.sleep(0.5)
 
+    # register a termination handler
     if DEBUG: logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
     atexit.register(lambda: interchange_server.terminate())
+
+    # return port
     return port
 
 

@@ -534,7 +534,7 @@ class OpenaiLlmProxyWithTracker(object):
             #     otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
         # run llm inference ✨
-        if self.config.ajet.llm_infer_submit_method == "sync":
+        if self.config.ajet.task_runner.llm_infer_submit_method == "sync":
             llm_output = await asyncio.to_thread(
                 self.llm_inference_fn, converted_message, custom_sampling_params, tools
             )

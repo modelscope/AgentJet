@@ -85,7 +85,7 @@ class BaseRolloutManager:
         """
         sampling_params = get_sample_params(mode, self.config)
 
-        if self.config.ajet.llm_infer_submit_method == "sync":
+        if self.config.ajet.task_runner.llm_infer_submit_method == "sync":
             llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_sync(
                 sampling_params=sampling_params
             )

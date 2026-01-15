@@ -835,7 +835,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 self.global_steps += 1
 
                 # # when enabled oai request interchange, we need to clear the cache from time to time
-                # if self.config.ajet.enable_experimental_reverse_proxy:
+                # if self.config.ajet.enable_experimental_interchange_server:
                 #     from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import ensure_dat_interchange_server_cache_clear
                 #     ensure_dat_interchange_server_cache_clear()
 
