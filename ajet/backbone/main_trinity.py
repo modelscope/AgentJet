@@ -25,6 +25,7 @@ def patch_runtime_env_to_get_actor():
     """Patch the classmethod of Explorer and Trainer to pass in the runtime env."""
     ajet_config = get_ajet_config_from_trinity_side()
     runtime_env = get_runtime_env(ajet_config, is_trinity=True)
+    os.environ.update(runtime_env["env_vars"])
 
     def patched_explorer_get_actor(cls, config: Config):
         return (
