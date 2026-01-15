@@ -6,6 +6,8 @@ Process level warm up
 import asyncio
 import logging
 import os
+from ajet.utils.async_utils import apply_httpx_aclose_patch
+apply_httpx_aclose_patch()
 
 
 def init_parallel_rollout_logger(experiment_name):
