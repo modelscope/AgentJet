@@ -280,7 +280,7 @@ ajet:
     save_trajectory_as_json_file: False
 
 
-  # the experimental reverse proxy feature that allows `tuner.as_oai_baseurl_apikey` feature
+  # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_experimental_interchange_server: True
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)

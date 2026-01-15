@@ -43,6 +43,42 @@ def init_parallel_rollout_logger(experiment_name):
 
 
 
+def warm_up_task_judge_when_needed(config):
+    if config.ajet.task_judge.judge_type == "rubrics_auto_grader":
+        from ajet.task_judge.rm_auto_grader_judge import AutoGraderJudge
+
+        judge = AutoGraderJudge(config)
+        asyncio.run(judge.generate_rubrics_from_samples())
+        asyncio.run(judge.load_rubrics_from_cache())
+
+
+def clean_up_tmp_ajet_dir(config):
+    """Clean up old IPC socket files in /tmp/ajet directory."""
+    import time
+    if config.ajet.enable_experimental_interchange_server is False:
+        return
+
+    tmp_dir = "/tmp/ajet"
+    if not os.path.exists(tmp_dir):
+        return
+    current_time = time.time()
+    ttl = 4 * 3600
+    try:
+        for filename in os.listdir(tmp_dir):
+            if not filename.endswith(".sock"):
+                continue
+
+            file_path = os.path.join(tmp_dir, filename)
+            try:
+                print(current_time - os.path.getmtime(file_path))
+                if current_time - os.path.getmtime(file_path) > ttl:
+                    os.remove(file_path)
+            except OSError:
+                pass
+    except OSError:
+        pass
+
+
 def warm_up_process(config):
     """
     Process level warm up
@@ -65,12 +101,4 @@ def warm_up_process(config):
     experiment_name = config.ajet.experiment_name
     init_parallel_rollout_logger(experiment_name)
     warm_up_task_judge_when_needed(config)
-
-
-def warm_up_task_judge_when_needed(config):
-    if config.ajet.task_judge.judge_type == "rubrics_auto_grader":
-        from ajet.task_judge.rm_auto_grader_judge import AutoGraderJudge
-
-        judge = AutoGraderJudge(config)
-        asyncio.run(judge.generate_rubrics_from_samples())
-        asyncio.run(judge.load_rubrics_from_cache())
+    clean_up_tmp_ajet_dir(config)

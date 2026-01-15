@@ -31,27 +31,24 @@ def _dynamic_import(module_class_str: str):
     if ".py->" in module_class_str:
         # Handle file path format
         file_path = module_str
-
-        # Convert to absolute path
-        if not os.path.isabs(file_path):
-            file_path = os.path.abspath(file_path)
-        if not os.path.exists(file_path):
-            raise ImportError(f"Module file not found: {file_path}")
-
         # Split module name
         module_name = os.path.splitext(os.path.basename(file_path))[0]
 
-        # Load module from file using importlib.util
-        spec = importlib.util.spec_from_file_location(module_name, file_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Cannot create module spec for: {file_path}")
-
-        module = importlib.util.module_from_spec(spec)
-
-        # 检查是否已经加载过这个模块
+        # check if module already loaded
         if module_name in sys.modules:
             module = sys.modules[module_name]
         else:
+            # Convert to absolute path
+            if not os.path.isabs(file_path):
+                file_path = os.path.abspath(file_path)
+            if not os.path.exists(file_path):
+                raise ImportError(f"Module file not found: {file_path}")
+            # Load module from file using importlib.util
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Cannot create module spec for: {file_path}")
+
+            module = importlib.util.module_from_spec(spec)
             # Load module from file using importlib.util
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             if spec is None or spec.loader is None:
