@@ -186,7 +186,7 @@ class InterchangeServer(Process):
                 host="0.0.0.0",
                 port=self.port,
                 log_level="error",
-                # workers=4
+                workers=2
             )
             server = uvicorn.Server(config)
             await server.serve()

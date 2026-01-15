@@ -13,7 +13,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
 from redis.exceptions import TimeoutError
 from ajet.utils.free_port import find_free_port
-from ajet.utils.sington import ThreadExecutorLlmInferSingleton, ThreadExecutorSingleton
+from ajet.utils.sington import ThreadExecutorContextTrackerSingleton, ThreadExecutorSingleton
 from functools import cache
 
 import pickle
@@ -141,14 +141,19 @@ class InterchangeClient:
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"{self.episode_contect_address}")
-        self.socket.setsockopt(zmq.RCVTIMEO, 2*1000)  # 60 秒超时
+        self.socket.setsockopt(zmq.RCVTIMEO, 3*1000)  # 60 秒超时
 
         self.executor = ThreadExecutorSingleton().get_executor()
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Submitting _begin_service_threading to executor...")
         future = self.executor.submit(self._begin_service_threading)
-        time.sleep(1)
+
+        # wait till service begin running
+        time.sleep(0.5)
+        w_time = 1
         while future._state == 'PENDING':
-            time.sleep(1)
+            time.sleep(min(w_time * 2, 10))
+            w_time += 1
+
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Future ready...")
 
         # t = threading.Thread(target=self._begin_service_threading, daemon=True)
@@ -189,9 +194,9 @@ class InterchangeClient:
                     loop = asyncio.get_running_loop()
                 except:
                     loop = asyncio.new_event_loop()
-                executor = ThreadExecutorLlmInferSingleton().get_executor()
+                context_tracker_executor = ThreadExecutorContextTrackerSingleton().get_executor()
                 future = loop.run_in_executor(
-                    executor,  # executor
+                    context_tracker_executor,
                     asyncio.run,
                     self.llm_infer(
                         req=parsed_msg.completion_request,

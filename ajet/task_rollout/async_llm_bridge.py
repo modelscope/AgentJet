@@ -535,14 +535,11 @@ class OpenaiLlmProxyWithTracker(object):
 
         # run llm inference ✨
         if self.config.ajet.llm_infer_submit_method == "sync":
-            llm_output = await asyncio.wait_for(
-                asyncio.to_thread(
-                    self.llm_inference_fn, converted_message, custom_sampling_params, tools
-                ),
-                timeout=1800,
+            llm_output = await asyncio.to_thread(
+                self.llm_inference_fn, converted_message, custom_sampling_params, tools
             )
         else:
-            llm_output = await asyncio.wait_for(self.llm_inference_fn(converted_message, custom_sampling_params, tools), timeout=1800)
+            llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools)
 
 
         # begin context tracking

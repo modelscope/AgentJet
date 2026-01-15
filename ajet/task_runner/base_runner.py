@@ -68,9 +68,16 @@ class BaseAgentRunner(object):
     async def wrapper_type_asyncio(self, workflow_cls: Type[Workflow], workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         user_workflow: Workflow = workflow_cls(name="ajet-workflow")
         result = await user_workflow.execute(workflow_task, tuner)
+
+        # malloc garbage collection
         del user_workflow
-        with gc_lock:
-            gc.collect()    # force garbage collection
+
+        # run gc in a thread-safe way
+        if gc_lock.acquire(blocking=False):
+            try:
+                gc.collect()
+            finally:
+                gc_lock.release()
         return result
 
 
