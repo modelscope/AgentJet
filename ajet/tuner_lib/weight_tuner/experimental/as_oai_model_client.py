@@ -1,5 +1,6 @@
 
 import asyncio
+import atexit
 import json
 import threading
 import os
@@ -9,14 +10,17 @@ from loguru import logger
 from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest, ChatCompletionResponse
 from openai.types.chat.chat_completion import ChatCompletion
+from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
 from redis.exceptions import TimeoutError
-
+from ajet.utils.free_port import find_free_port
+from ajet.utils.sington import ThreadExecutorLlmInferSingleton, ThreadExecutorSingleton
 from functools import cache
 
 import pickle
 import httpx
 import zmq
 import logging
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 import base64
@@ -25,7 +29,10 @@ import json
 if TYPE_CHECKING:
     from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 
-def generate_auth_token(agent_name, target_tag, episode_uuid):
+DEBUG = False
+# DEBUG = True
+
+def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     """
     Generate a Base64-encoded auth_token from the given agent_name, target_tag, and episode_uuid.
 
@@ -41,7 +48,8 @@ def generate_auth_token(agent_name, target_tag, episode_uuid):
     auth_data = {
         "agent_name": agent_name,
         "target_tag": target_tag,
-        "episode_uuid": episode_uuid
+        "episode_uuid": episode_uuid,
+        "episode_address": episode_address,
     }
 
     # Step 2: Convert the dictionary to a JSON string
@@ -68,11 +76,14 @@ def get_redis_connection_pool():
     )
     return pool
 
-
+@cache
 def get_redis_client():
     pool = get_redis_connection_pool()
     return redis.Redis(connection_pool=pool, decode_responses=False, encoding='utf-8')
 
+
+context = zmq.Context()
+atexit.register(context.term)
 
 class InterchangeClient:
 
@@ -82,7 +93,10 @@ class InterchangeClient:
         self.llm_inference_fn = llm_inference_fn
         self.config = config
         self._should_terminate = False
-        self.begin_service()
+
+        # self.episode_contect_address = f"tcp://localhost:{find_free_port()}"
+        self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
+        self.episode_contect_address = f"ipc://{self.ipc_path}"
 
 
     async def llm_infer(
@@ -124,127 +138,78 @@ class InterchangeClient:
         """
         Starts the SSE service loop.
         """
-        t = threading.Thread(target=self._begin_service_threading, daemon=True)
-        t.start()
+        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
+        self.socket = context.socket(zmq.REP)
+        self.socket.bind(f"{self.episode_contect_address}")
+        self.socket.setsockopt(zmq.RCVTIMEO, 2*1000)  # 60 秒超时
 
+        self.executor = ThreadExecutorSingleton().get_executor()
+        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Submitting _begin_service_threading to executor...")
+        future = self.executor.submit(self._begin_service_threading)
+        time.sleep(1)
+        while future._state == 'PENDING':
+            time.sleep(1)
+        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Future ready...")
 
-    def _handle_service_request(self, msg: bytes, sem: threading.Semaphore):
-        """handle a single service request in its own thread
-        """
-        from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
-        logger.info(f"[client] {self.episode_uuid} | inside _handle_service_request")
-        redis_client = get_redis_client()
-        logger.info(f"[client] {self.episode_uuid} | get_redis_client")
-        data_as_json = ""
-        topic = ""
-        try:
-            data_as_json = json.loads(pickle.loads(msg))
-            timeline_uuid = data_as_json["timeline_uuid"]
-            topic = f"stream:timeline:{timeline_uuid}"
-            logger.info(f"[client] {self.episode_uuid} | json.loads(pickle.loads(msg))")
-
-
-            if "health_check" in data_as_json and data_as_json["health_check"]:
-                # logger.info(f"Received health check for timeline_uuid: {timeline_uuid}")
-                result = '{"health_check_ok": "True"}'
-                # logger.success(f"Health check OK for timeline_uuid: {timeline_uuid}")
-            else:
-                parsed_msg = InterchangeCompletionRequest(**data_as_json)
-                # start llm request
-                result = asyncio.run(self.llm_infer(
-                    req=parsed_msg.completion_request,
-                    timeline_uuid=parsed_msg.timeline_uuid,
-                    agent_name=parsed_msg.agent_name,
-                    target_tag=parsed_msg.target_tag,
-                    episode_uuid=parsed_msg.episode_uuid,
-                )).model_dump_json()
-                # logger.success(f"LLM inference completed for timeline_uuid: {timeline_uuid}")
-            logger.info(f"[client] {self.episode_uuid} | result = asyncio.run(self.llm_infer")
-            # send result back
-            bytes_arr = pickle.dumps(result)
-            logger.info(f"[client] {self.episode_uuid} | bytes_arr = pickle.dumps(result)")
-            redis_client.xadd(topic, {'data': bytes_arr})
-            redis_client.expire(topic, 600)  # expire after 10 mins
-            logger.info(f"[client] {self.episode_uuid} | redis_client.xadd(topic, ...)")
-
-        except Exception as e:
-            err = f"[ERR]: Error when processing data: {data_as_json} Error: {e}"
-            result = err
-            logger.error(err)
-            if topic:
-                redis_client.xadd(topic, {'data': pickle.dumps(result)})
-                redis_client.expire(topic, 600)
-
-        finally:
-            # release semaphore when done
-            sem.release()
-            redis_client.close()
-
-
+        # t = threading.Thread(target=self._begin_service_threading, daemon=True)
+        # t.start()
+        return self.episode_contect_address
 
 
     def _begin_service_threading(self):
         """begin listening for service requests in a threading model
         """
-        # logger.success(f"InterchangeClient starting for episode_uuid:{self.episode_uuid}")
-        # debug_logs = []
+
         begin_time = time.time()
-        logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
-        redis_client = get_redis_client()
-        episode_stream = f"stream:episode:{self.episode_uuid}"
-
-        sem = threading.Semaphore(8)    # 4 concurrent requests max
-        logger.info(f"[client] {self.episode_uuid} | Listening to stream {episode_stream}, waiting for messages...")
-
-        last_id = '0-0'
-        is_init = True
+        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting ZMQ socket bind complete")
 
         try:
             while not self.should_terminate:
-                # wait for a new message
-                logger.info(f"[client] {self.episode_uuid} | Waiting for new message on stream {episode_stream}...")
 
-                # Check messages
                 try:
-                    response = redis_client.xread({episode_stream: last_id}, count=1, block=30*1000)   # block for 30 seconds (30000 ms)
-                except TimeoutError:
-                    time.sleep(5)
+                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun")
+                    message = self.socket.recv_string()
+                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() is done")
+                except zmq.Again as e:
+                    if self.should_terminate:
+                        if DEBUG: logger.info(f"[client] {self.episode_uuid} | episode over")
+                        break
+                    timepassed = time.time() - begin_time
+                    if timepassed > 60:
+                        logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
-                timepassed = time.time() - begin_time
+                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before json.loads(message)")
+                data_as_json = json.loads(message)
+                parsed_msg = InterchangeCompletionRequest(**data_as_json)
 
-                if not response:
-                    if is_init and timepassed > 30:
-                        logger.warning(f"[client] Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
-                    continue
+                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before asyncio run self.llm_infer")
 
-                # Got message
-                is_init = False
-                logger.info(f"[client] {self.episode_uuid} | get message...")
+                try:
+                    loop = asyncio.get_running_loop()
+                except:
+                    loop = asyncio.new_event_loop()
+                executor = ThreadExecutorLlmInferSingleton().get_executor()
+                future = loop.run_in_executor(
+                    executor,  # executor
+                    asyncio.run,
+                    self.llm_infer(
+                        req=parsed_msg.completion_request,
+                        timeline_uuid=parsed_msg.timeline_uuid,
+                        agent_name=parsed_msg.agent_name,
+                        target_tag=parsed_msg.target_tag,
+                        episode_uuid=parsed_msg.episode_uuid,
+                    )
+                )
+                result = loop.run_until_complete(future).model_dump_json()  # type: ignore
 
-                stream_result = response[0]
-                messages = stream_result[1]
-                msg_id, data_dict = messages[0]
-
-                last_id = msg_id
-
-                if b'data' in data_dict:
-                    msg: bytes = data_dict[b'data']
-                else:
-                    logger.error(f"Missing 'data' in stream message {msg_id}")
-                    continue
-
-                # are we free to spawn a new thread?
-                sem.acquire()
-                logger.info(f"[client] {self.episode_uuid} | sem acquire...")
-                # begin a new thread to handle this request
-                threading.Thread(target=self._handle_service_request, args=(msg, sem), daemon=True).start()
-
-
-        except KeyboardInterrupt:
-            return
-
+                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string")
+                self.socket.send_string(result)
+        except:
+            logger.exception(f"[client] {self.episode_uuid} | Exception occurred in service loop.")
         finally:
-            redis_client.delete(episode_stream)
-            redis_client.close()
-
+            self.socket.close()
+            if DEBUG: logger.info(f"[client] {self.episode_uuid} | ZMQ socket closed, service loop terminated.")
+            if os.path.exists(self.ipc_path):
+                os.remove(self.ipc_path)
+                if DEBUG: logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")

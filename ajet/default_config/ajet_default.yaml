@@ -9,6 +9,9 @@ ajet:
   # the experimental reverse proxy feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_experimental_reverse_proxy: False
 
+  # submit llm infer submit method
+  llm_infer_submit_method: "async" # options: "sync", "async"
+
   task_runner:
     wrapper_type: "asyncio-with-gc"
     wrapper_multiprocessing_timeout: 3600  # in seconds

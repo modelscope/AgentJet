@@ -188,6 +188,9 @@ def execute_training_process(
         "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
     )
 
+    os.makedirs('/tmp/ajet', exist_ok=True)
+    assert os.path.exists('/tmp/ajet'), "Temporary directory /tmp/ajet cannot be create."
+
     # let's begin the training process
     if args.backbone == "trinity":
         # replace boot yaml
