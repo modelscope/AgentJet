@@ -83,7 +83,10 @@ AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (re
     ```
 
     !!! warning "flash-attn Installation"
-        `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
+        - `flash-attn` must be installed **after** other dependencies.
+        - Ensure a healthy connection to GitHub to install pre-compiled wheels.
+        - If you find your machine spend a long time installing flash-attn, ensure a healthy connection to GitHub.
+        - To build faster, export `MAX_JOBS=${N_CPU}`.
 
 
 === "Trinity"

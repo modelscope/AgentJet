@@ -102,6 +102,11 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
         return result_object
 
 
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
+
+
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request, authorization: str = Header(None)):
         """
@@ -167,6 +172,7 @@ class InterchangeServer(Process):
         self.max_fastapi_threads = max_fastapi_threads
 
     def run(self):
+        logger.info(f"Starting Interchange Server on port {self.port} with {self.num_fastapi_process} processes and {self.max_fastapi_threads} threads per process.")
         app = get_app(self.max_fastapi_threads)
         async def serve_with_monitor():
             # Start the server
@@ -215,15 +221,16 @@ def start_interchange_server(config) -> int:
             logger.error(f"Interchange server subprocess failed to start. Return code: {interchange_server.exitcode}")
             raise RuntimeError("Interchange server subprocess failed to start.")
         if time.time() - start_time > 30:
-            logger.error("Interchange server subprocess failed to start within 30 seconds.")
-            raise RuntimeError("Interchange server subprocess failed to start within 30 seconds.")
+            msg = f"Interchange server subprocess failed to start within {time.time() - start_time} seconds."
+            logger.error(msg)
+            raise RuntimeError(msg)
         try:
             if httpx.get(health_url, timeout=0.5).status_code == 200:
                 break
         except Exception:
             # keep waiting
             pass
-        time.sleep(0.5)
+        time.sleep(1)
 
     # register a termination handler
     if DEBUG: logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
