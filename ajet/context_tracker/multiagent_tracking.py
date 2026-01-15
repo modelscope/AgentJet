@@ -107,6 +107,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         should_skip_message = False
         return str_content, should_skip_message
 
+
     def step_spawn_timeline(self, messages: List[dict], tools: List = [], disable_toolcalls: bool = False) -> List[ExtendedMessage]:
         """Spawn a timeline from messages.
 
