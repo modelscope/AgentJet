@@ -89,7 +89,7 @@ in this AI era, you can always start from scratch and build your own "high-scrap
 
     ajet:
         ...
-        enable_experimental_reverse_proxy: True
+        enable_experimental_interchange_server: True
         ...
 
     ```

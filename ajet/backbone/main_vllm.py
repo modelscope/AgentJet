@@ -184,9 +184,9 @@ def main(config):
     os.environ.update(runtime_env["env_vars"])
     # atexit.register(lambda: print("Process exiting, performing cleanup..."))
 
-    if config.ajet.enable_experimental_reverse_proxy:
+    if config.ajet.enable_experimental_interchange_server:
         from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
-        start_interchange_server(config.ajet.experiment_dir)
+        start_interchange_server(config)
 
     def companion_launch():
         import torch

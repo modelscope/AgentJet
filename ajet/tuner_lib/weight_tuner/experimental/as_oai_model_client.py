@@ -2,29 +2,22 @@
 import asyncio
 import atexit
 import json
-import threading
 import os
-import redis
 import time
-from loguru import logger
-from typing import Optional, List, Dict, Any, Union, TYPE_CHECKING
-from vllm.entrypoints.openai.protocol import ChatCompletionRequest, ChatCompletionResponse
-from openai.types.chat.chat_completion import ChatCompletion
-from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
-from redis.exceptions import TimeoutError
-from ajet.utils.free_port import find_free_port
-from ajet.utils.sington import ThreadExecutorContextTrackerSingleton, ThreadExecutorSingleton
-from functools import cache
-
-import pickle
-import httpx
 import zmq
-import logging
-
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
 import base64
 import json
+
+from loguru import logger
+from typing import TYPE_CHECKING
+from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+from openai.types.chat.chat_completion import ChatCompletion
+from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest
+from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
+from ajet.utils.free_port import find_free_port
+
+context = zmq.Context()
+atexit.register(context.term)
 
 if TYPE_CHECKING:
     from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
@@ -64,28 +57,9 @@ def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     return auth_token
 
 
-@cache
-def get_redis_connection_pool():
-    pool = redis.BlockingConnectionPool(
-        host='localhost',
-        port=6379,
-        max_connections=256,
-        socket_timeout=30,
-        socket_connect_timeout=30,
-        retry_on_timeout=True
-    )
-    return pool
-
-@cache
-def get_redis_client():
-    pool = get_redis_connection_pool()
-    return redis.Redis(connection_pool=pool, decode_responses=False, encoding='utf-8')
-
-
-context = zmq.Context()
-atexit.register(context.term)
-
 class InterchangeClient:
+    """ InterchangeClient is re-created in each episode
+    """
 
     def __init__(self, episode_uuid: str, context_tracker: "MultiAgentContextTracker", llm_inference_fn, config):
         self.episode_uuid = episode_uuid
@@ -94,9 +68,13 @@ class InterchangeClient:
         self.config = config
         self._should_terminate = False
 
-        # self.episode_contect_address = f"tcp://localhost:{find_free_port()}"
-        self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
-        self.episode_contect_address = f"ipc://{self.ipc_path}"
+        interchange_method = config.ajet.interchange_server.interchange_method
+        if interchange_method == 'tcp':
+            self.episode_contect_address = f"tcp://localhost:{find_free_port()}"
+        else:
+            self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
+            self.episode_contect_address = f"ipc://{self.ipc_path}"
+        self.max_inference_tracker_threads = config.ajet.interchange_server.max_inference_tracker_threads
 
 
     async def llm_infer(
@@ -110,7 +88,6 @@ class InterchangeClient:
         from ajet.task_rollout.async_llm_bridge import OpenaiLlmProxyWithTracker
 
         req_as_dict = req.model_dump()
-
         self.llm_proxy_with_tracker = OpenaiLlmProxyWithTracker(
             context_tracker=self.context_tracker,
             config=self.config,
@@ -134,16 +111,17 @@ class InterchangeClient:
     def should_terminate(self) -> bool:
         return self._should_terminate
 
+
     def begin_service(self):
         """
-        Starts the SSE service loop.
+        Starts the zmq communication loop.
         """
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"{self.episode_contect_address}")
-        self.socket.setsockopt(zmq.RCVTIMEO, 3*1000)  # 60 秒超时
+        self.socket.setsockopt(zmq.RCVTIMEO, 3*1000)  # 3 second timeout for REP
 
-        self.executor = ThreadExecutorSingleton().get_executor()
+        self.executor = SharedInterchangeThreadExecutor(self.max_inference_tracker_threads).get_shared_executor()
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Submitting _begin_service_threading to executor...")
         future = self.executor.submit(self._begin_service_threading)
 
@@ -155,9 +133,6 @@ class InterchangeClient:
             w_time += 1
 
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Future ready...")
-
-        # t = threading.Thread(target=self._begin_service_threading, daemon=True)
-        # t.start()
         return self.episode_contect_address
 
 
@@ -170,7 +145,7 @@ class InterchangeClient:
 
         try:
             while not self.should_terminate:
-
+                # listen for next request from remote
                 try:
                     if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun")
                     message = self.socket.recv_string()
@@ -184,17 +159,19 @@ class InterchangeClient:
                         logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
+                # parse the incoming request
                 if DEBUG: logger.info(f"[client] {self.episode_uuid} | before json.loads(message)")
                 data_as_json = json.loads(message)
                 parsed_msg = InterchangeCompletionRequest(**data_as_json)
 
+                # begin to run the llm request, monitored by context tracker
+                # we re-use previously created thread for best performance
                 if DEBUG: logger.info(f"[client] {self.episode_uuid} | before asyncio run self.llm_infer")
-
                 try:
                     loop = asyncio.get_running_loop()
                 except:
                     loop = asyncio.new_event_loop()
-                context_tracker_executor = ThreadExecutorContextTrackerSingleton().get_executor()
+                context_tracker_executor = SharedInferenceTrackerThreadExecutor(self.max_inference_tracker_threads).get_shared_executor()
                 future = loop.run_in_executor(
                     context_tracker_executor,
                     asyncio.run,
@@ -208,6 +185,7 @@ class InterchangeClient:
                 )
                 result = loop.run_until_complete(future).model_dump_json()  # type: ignore
 
+                # great, let's send back the result
                 if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string")
                 self.socket.send_string(result)
         except:
