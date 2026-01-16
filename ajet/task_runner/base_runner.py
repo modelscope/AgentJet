@@ -3,7 +3,6 @@ import gc
 from threading import Lock
 from typing import Any, Callable, Union, Type
 from multiprocessing import Process, Queue
-from unittest import result
 
 from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import WorkflowOutput, WorkflowTask
@@ -117,4 +116,3 @@ class BaseAgentRunner(object):
 
         else:
             raise ValueError(f"Unsupported wrapper type: {self.wrapper_type}")
-

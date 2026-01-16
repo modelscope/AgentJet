@@ -1,11 +1,6 @@
-from loguru import logger
 from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
-from openai.types.chat.chat_completion import ChatCompletion
-from openai.types.chat import ChatCompletionMessageToolCall
 from textwrap import dedent
 
-import json
-import asyncio
 import requests
 
 
@@ -57,8 +52,3 @@ class ExampleMathLearn(Workflow):
         )
         final_answer = response.json()['choices'][0]['message']['content']
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-
-
-
-
-

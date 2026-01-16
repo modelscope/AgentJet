@@ -104,4 +104,3 @@ Then, the modified launch.json will be
 | **VSCode Extension** | Python |  Python + Ray Distributed Debugger |
 | **Launch Mode** | `F5` standard launch (via `launch.json`) | Command line execution with `ajet ... --debug="TAG"` |
 | **Commandline** | `--backbone=debug` | `--debug="TAG1\|TAG2\|TAG3"` |
-

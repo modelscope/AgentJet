@@ -875,4 +875,3 @@ img {
 .duration-fast { animation-duration: var(--rm-transition-fast); }
 .duration-normal { animation-duration: var(--rm-transition-normal); }
 .duration-slow { animation-duration: var(--rm-transition-slow); }
-

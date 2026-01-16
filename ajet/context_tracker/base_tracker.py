@@ -1,5 +1,5 @@
 from typing import List, Tuple, Union
-from typing import List, Union, Tuple, Dict, Optional, Any
+from typing import List, Union, Tuple, Dict, Optional
 from ajet.schema.task import WorkflowTask
 
 from ajet.schema.extended_msg import (

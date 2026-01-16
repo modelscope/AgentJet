@@ -12,7 +12,7 @@ from textwrap import dedent
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
-from agentscope.model import DashScopeChatModel, OpenAIChatModel
+from agentscope.model import OpenAIChatModel
 from loguru import logger
 from pydantic import Field
 

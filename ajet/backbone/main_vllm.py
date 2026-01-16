@@ -1,4 +1,3 @@
-import atexit
 import os
 import sys
 from types import SimpleNamespace
@@ -83,7 +82,7 @@ class ChatCompletionScheduler:
                 "content": message["content"],
                 "tool_calls": message.get("tool_calls", None),
                 "tokens": [
-                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content # type: ignore
+                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content  # type: ignore
                 ],
             }
         )
@@ -131,7 +130,7 @@ class ChatCompletionScheduler:
                 "content": message["content"],
                 "tool_calls": message.get("tool_calls", None),
                 "tokens": [
-                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content # type: ignore
+                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content  # type: ignore
                 ],
             }
         )

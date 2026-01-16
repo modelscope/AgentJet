@@ -223,4 +223,3 @@ This article introduce the way to convert different types of ways to convert you
             else:     is_success = False
             return WorkflowOutput(reward=(1.0 if is_success else 0.0), metadata={"final_answer": final_answer})
     ```
-
