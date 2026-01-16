@@ -1,7 +1,7 @@
 # Build and run the docker image with the following command:
 #
-# docker build -f scripts/docker/dockerfile -t ajet:latest .
-# docker run -it --gpus all --shm-size="64g" --rm -v $PWD:/workspace -v <root_path_of_data_and_checkpoints>:/data ajet:latest
+# docker build -f scripts/docker/dockerfile_trinity -t ajet:trinity_latest .
+# docker run -it --gpus all --shm-size="64g" --rm -v $PWD:/workspace -v <root_path_of_data_and_checkpoints>:/data ajet:trinity_latest
 
 
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
@@ -41,7 +41,7 @@ ENV UV_HTTP_TIMEOUT=9999
 # RUN . /opt/venv/bin/activate && uv pip install flash_attn==2.8.3 --no-deps --no-cache-dir --no-build-isolation
 
 # for ZH users
-RUN . /opt/venv/bin/activate && uv pip install -e .[verl] -i https://mirrors.aliyun.com/pypi/simple/
+RUN . /opt/venv/bin/activate && uv pip install -e .[trinity] -i https://mirrors.aliyun.com/pypi/simple/
 COPY flash_attn-2.8.3+cu12torch2.7cxx11abiTRUE-cp310-cp310-linux_x86_64.whl flash_attn-2.8.3+cu12torch2.7cxx11abiTRUE-cp310-cp310-linux_x86_64.whl
 RUN . /opt/venv/bin/activate && uv pip install flash_attn-2.8.3+cu12torch2.7cxx11abiTRUE-cp310-cp310-linux_x86_64.whl
 
