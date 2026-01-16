@@ -135,7 +135,7 @@ We provide two implmentations of the agent based on AgentScope and langchain:
     ```python
     # get the trainable llm
     llm_info=tuner.as_oai_baseurl_apikey()
-    
+
     # create the langchain agent
     llm=ChatOpenAI(
         base_url=llm_info.base_url,
@@ -145,7 +145,7 @@ We provide two implmentations of the agent based on AgentScope and langchain:
         model=llm,
         system_prompt=system_prompt,
     )
-    
+
     # build messages and send to the agent
     msg=[
         {"role": x["role"], "content": x["content"]} for x in messages
@@ -153,7 +153,7 @@ We provide two implmentations of the agent based on AgentScope and langchain:
     result = agent.invoke({
         "messages": msg, # type: ignore
     })
-    
+
     response = result["messages"][-1].content
     reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)
     return WorkflowOutput(reward=reward)

@@ -174,4 +174,3 @@
   // Export for manual re-initialization if needed
   window.initTabbedSets = initTabbedSets;
 })();
-

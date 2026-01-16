@@ -26,7 +26,7 @@ def main(input_file_path, output_file_path):
             if_keep, info_set, decision = process_message(data)
             if not if_keep:
                 continue
-            
+
             new_item = {
                 'main_query':'[no query]',
                 'init_messages': data['messages'],
