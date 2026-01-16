@@ -36,15 +36,12 @@ class AgentScopeModelTuner(DashScopeChatModel):
         self.agent_name = agent_name
         self.debug_model = debug_model
         self.use_debug_model = use_debug_model
-        self.llm_proxy = AgentScopeLlmProxyWithTracker(
-            context_tracker=context_tracker, config=config, llm_inference_fn=llm_inference_fn
-        )
+        self.llm_proxy = AgentScopeLlmProxyWithTracker(context_tracker=context_tracker, config=config, llm_inference_fn=llm_inference_fn)
         super().__init__(
             model_name="ajet",
             api_key="dummy-api-key",
             stream=False,
         )
-
 
     async def __call__(
         self,
@@ -54,13 +51,11 @@ class AgentScopeModelTuner(DashScopeChatModel):
         structured_model: Type[BaseModel] | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
-
         # route first
         if self.use_debug_model and self.debug_model is not None:
             chatresponse = await self.debug_model(messages, tools, tool_choice, structured_model, **kwargs)
             assert isinstance(chatresponse, ChatResponse)
             return chatresponse
-
 
         # For qvq and qwen-vl models, the content field cannot be `None` or
         # `[{"text": None}]`, so we need to convert it to an empty list.
@@ -92,10 +87,7 @@ class AgentScopeModelTuner(DashScopeChatModel):
         if structured_model:
             if tools or tool_choice:
                 logger.warning(
-                    "structured_model is provided. Both 'tools' and "
-                    "'tool_choice' parameters will be overridden and "
-                    "ignored. The model will only perform structured output "
-                    "generation without calling any other tools.",
+                    "structured_model is provided. Both 'tools' and " "'tool_choice' parameters will be overridden and " "ignored. The model will only perform structured output " "generation without calling any other tools.",
                 )
             format_tool = _create_tool_from_base_model(structured_model)
             kwargs["tools"] = self._format_tools_json_schemas(

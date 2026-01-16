@@ -12,11 +12,7 @@ from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 def extract_final_answer(result) -> str:
     """Extract the final answer from the agent's response."""
     try:
-        if (
-            hasattr(result, "metadata")
-            and isinstance(result.metadata, dict)
-            and "result" in result.metadata
-        ):
+        if hasattr(result, "metadata") and isinstance(result.metadata, dict) and "result" in result.metadata:
             return result.metadata["result"]
         if hasattr(result, "content"):
             if isinstance(result.content, dict) and "result" in result.content:
@@ -36,7 +32,7 @@ You should return your final answer within \\boxed{{}}.
 """
 
 
-class MathToolWorkflow(Workflow): # ✨✨ inherit `Workflow` class
+class MathToolWorkflow(Workflow):  # ✨✨ inherit `Workflow` class
     name: str = "math_agent_workflow"
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
@@ -47,7 +43,7 @@ class MathToolWorkflow(Workflow): # ✨✨ inherit `Workflow` class
 
         url_and_apikey = tuner.as_oai_baseurl_apikey()
         base_url = url_and_apikey.base_url
-        api_key = url_and_apikey.api_key    # the api key contain information, do not discard it
+        api_key = url_and_apikey.api_key  # the api key contain information, do not discard it
 
         # print(f"[MathToolWorkflow] Using base_url: [{base_url}], api_key: [{api_key}]")
         # base_url: [http://10.56.3.98:57817/v1], api_key: [sk-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
@@ -59,11 +55,13 @@ class MathToolWorkflow(Workflow): # ✨✨ inherit `Workflow` class
             stream=False,
         )
         self.agent = ReActAgent(
-            name="math_react_agent", sys_prompt=system_prompt,
+            name="math_react_agent",
+            sys_prompt=system_prompt,
             model=model,  # ✨✨ compared with a normal agentscope agent, here is the difference!
             formatter=OpenAIChatFormatter(),
             toolkit=self.toolkit,
-            memory=InMemoryMemory(), max_iters=2,
+            memory=InMemoryMemory(),
+            max_iters=2,
         )
         self.agent.set_console_output_enabled(False)
         msg = Msg("user", query, role="user")
@@ -73,6 +71,8 @@ class MathToolWorkflow(Workflow): # ✨✨ inherit `Workflow` class
         # compute reward
         reference_answer = workflow_task.task.metadata["answer"].split("####")[-1].strip()
         match = re.search(r"\\boxed\{([^}]*)\}", final_answer)
-        if match: is_success = (match.group(1) == reference_answer)
-        else:     is_success = False
+        if match:
+            is_success = match.group(1) == reference_answer
+        else:
+            is_success = False
         return WorkflowOutput(reward=(1.0 if is_success else 0.0), metadata={"final_answer": final_answer})

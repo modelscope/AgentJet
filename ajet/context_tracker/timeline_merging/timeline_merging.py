@@ -21,10 +21,7 @@ def is_timeline_mergeable(
         all_msg_match = True
         for i in range(len(target_timeline)):
             if timeline_compare_level == "text":
-                same = (
-                    source_timeline[i].content_for_future
-                    == target_timeline[i].content_for_future
-                )
+                same = source_timeline[i].content_for_future == target_timeline[i].content_for_future
             elif timeline_compare_level == "token":
                 same = source_timeline[i].token_arr == target_timeline[i].token_arr
             else:
@@ -43,8 +40,6 @@ def is_timeline_mergeable(
 
         if all_msg_match:
             can_merge = True
-
-
 
     # # developer only: code below is only for debugging (print a nice comparison table)
     # if debug:
@@ -91,10 +86,7 @@ def toggle_author_and_mask(
     return source_timeline
 
 
-def merge_tracker_timelines(
-    timelines: List[List[ExtendedMessage]],
-    timeline_merging_policy
-) -> List[List[ExtendedMessage]]:
+def merge_tracker_timelines(timelines: List[List[ExtendedMessage]], timeline_merging_policy) -> List[List[ExtendedMessage]]:
     """Merge multiple timelines by absorbing those that can be merged.
     > Input:  a list of timelines. (a timeline means: List[ExtendedMessage])
     > Output: a shorter list of timelines after merging

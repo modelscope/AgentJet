@@ -9,9 +9,7 @@ from llm_info_extraction import LLM_info_extraction, parse_llm_output
 from message_splitter import split_session_to_json_lines
 
 
-def process_jsonl_file(
-    input_file, output_file, model_call_mode="online_api", max_retries=3, max_workers=16, **kwargs
-):
+def process_jsonl_file(input_file, output_file, model_call_mode="online_api", max_retries=3, max_workers=16, **kwargs):
     """
     Process all sessions in a JSONL file and save results to output file using multi-threading.
     Supports resuming from previous progress if interrupted.
@@ -43,12 +41,8 @@ def process_jsonl_file(
             return line_num, None, None
         try:
             session = json.loads(line)
-            print(
-                f"Processing session {session.get('session_id', 'unknown')} (line {line_num})..."
-            )
-            processed_lines = process_session(
-                session, model_call_mode, max_retries, **kwargs
-            )
+            print(f"Processing session {session.get('session_id', 'unknown')} (line {line_num})...")
+            processed_lines = process_session(session, model_call_mode, max_retries, **kwargs)
             return line_num, processed_lines, None
         except json.JSONDecodeError as e:
             return line_num, None, f"Warning: Skipping invalid JSON at line {line_num}: {e}"
@@ -189,15 +183,9 @@ def process_session(session, model_call_mode="online_api", max_retries=3, **kwar
 # Example usage:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--input_file", type=str, default="examples/learn_to_ask/data_raw/train_origin.jsonl"
-    )
-    parser.add_argument(
-        "--output_file", type=str, default="examples/learn_to_ask/data_raw/train_processed.jsonl"
-    )
-    parser.add_argument(
-        "--model_call_mode", type=str, choices=["online_api", "local_vllm"], default="online_api"
-    )
+    parser.add_argument("--input_file", type=str, default="examples/learn_to_ask/data_raw/train_origin.jsonl")
+    parser.add_argument("--output_file", type=str, default="examples/learn_to_ask/data_raw/train_processed.jsonl")
+    parser.add_argument("--model_call_mode", type=str, choices=["online_api", "local_vllm"], default="online_api")
     args = parser.parse_args()
     print(
         process_jsonl_file(

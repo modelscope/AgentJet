@@ -25,25 +25,15 @@ def save_trajectory_as_json(ctx_trackers, global_steps, prefix="train"):
         formatted_traj = convert_grouped_steps_to_openai_format(ctx_tracker.timeline_cache)
 
         # Prepare trajectory data
-        traj_data = {
-            "task_id": ctx_tracker.task_id,
-            "task_tag": ctx_tracker.tag,
-            "reward_structure": ctx_tracker.reward_structure.model_dump(),
-            "traj": formatted_traj
-        }
+        traj_data = {"task_id": ctx_tracker.task_id, "task_tag": ctx_tracker.tag, "reward_structure": ctx_tracker.reward_structure.model_dump(), "traj": formatted_traj}
 
         # Extract reward_stats from workflow_metadata if available
-        if hasattr(ctx_tracker, 'workflow_metadata') and ctx_tracker.workflow_metadata:
-            if 'reward_stats' in ctx_tracker.workflow_metadata:
-                traj_data['reward_structure']['reward_stats'] = ctx_tracker.workflow_metadata['reward_stats']
+        if hasattr(ctx_tracker, "workflow_metadata") and ctx_tracker.workflow_metadata:
+            if "reward_stats" in ctx_tracker.workflow_metadata:
+                traj_data["reward_structure"]["reward_stats"] = ctx_tracker.workflow_metadata["reward_stats"]
 
         # Define save directory and file path
-        traj_save_dir = os.path.join(
-            os.environ.get("BEST_LOGGER_PATH", "launcher_record"),
-            "ctx_trackers",
-            prefix,
-            f"step_{global_steps}"
-        )
+        traj_save_dir = os.path.join(os.environ.get("BEST_LOGGER_PATH", "launcher_record"), "ctx_trackers", prefix, f"step_{global_steps}")
         os.makedirs(traj_save_dir, exist_ok=True)
         traj_file_path = os.path.join(traj_save_dir, f"{ctx_tracker.task_id}.json")
 

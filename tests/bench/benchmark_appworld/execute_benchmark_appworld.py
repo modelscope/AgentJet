@@ -8,7 +8,6 @@ from tests.bench.benchmark_base import BenchmarkTestCase
 
 
 class TestBenchmarkAppworld(BenchmarkTestCase):
-
     def test_01_begin_verl(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "verl"
@@ -59,9 +58,7 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
 
         total_seconds = 15
         for i in range(total_seconds):
-            logger.warning(
-                f"Warning: To install Appworld, we have kill all `python / VLLM / vllm / ray` processes in your system. IF this is NOT acceptable, TERMINATE NOW! Execute in {total_seconds - i} seconds..."
-            )
+            logger.warning(f"Warning: To install Appworld, we have kill all `python / VLLM / vllm / ray` processes in your system. IF this is NOT acceptable, TERMINATE NOW! Execute in {total_seconds - i} seconds...")
             time.sleep(1)
 
         kill = "ray|vllm|VLLM|python"

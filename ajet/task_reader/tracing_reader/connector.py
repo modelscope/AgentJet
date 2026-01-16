@@ -66,9 +66,7 @@ class PhoenixConnector:
         return all_spans
 
     def load_tasks_from_conversation(self) -> List[Task]:
-        all_spans = self.load_spans(
-            projects_limit=self._projects_limit, spans_limit=self._spans_limit
-        )
+        all_spans = self.load_spans(projects_limit=self._projects_limit, spans_limit=self._spans_limit)
         all_spans.sort(key=lambda x: datetime.fromisoformat(x["end_time"]))
         all_spans = list(filter(lambda x: x["name"].startswith("invoke_agent"), all_spans))
 
@@ -150,9 +148,7 @@ class LocalSqliteConnectorV1:
     def load_tasks_from_conversation(self) -> List[Task]:
         conn = sqlite3.connect(self._db_path)
         cursor = conn.cursor()
-        rows = cursor.execute(
-            "SELECT attributes FROM span_table where name='ReActAgent.reply'"
-        ).fetchall()
+        rows = cursor.execute("SELECT attributes FROM span_table where name='ReActAgent.reply'").fetchall()
         logger.debug(f"Loaded {len(rows)} rows from {self._db_path}")
 
         qa = []
@@ -222,9 +218,7 @@ class LocalSqliteConnectorV2:
     def load_tasks_from_conversation(self) -> List[Task]:
         conn = sqlite3.connect(self._db_path)
         cursor = conn.cursor()
-        rows = cursor.execute(
-            "SELECT attributes FROM span_table where name='ReActAgent.reply'"
-        ).fetchall()
+        rows = cursor.execute("SELECT attributes FROM span_table where name='ReActAgent.reply'").fetchall()
 
         qa = []
         for row in rows:

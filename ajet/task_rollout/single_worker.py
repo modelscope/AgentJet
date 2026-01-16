@@ -86,13 +86,9 @@ class BaseRolloutManager:
         sampling_params = get_sample_params(mode, self.config)
 
         if self.config.ajet.task_runner.llm_infer_submit_method == "sync":
-            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_sync(
-                sampling_params=sampling_params
-            )
+            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_sync(sampling_params=sampling_params)
         else:
-            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(
-                sampling_params=sampling_params
-            )
+            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(sampling_params=sampling_params)
 
         workflow_task = WorkflowTask(
             env_type=task.env_type,
@@ -110,24 +106,18 @@ class BaseRolloutManager:
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
-                agent_runner = GeneralRunner(
-                    llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
-                )
+                agent_runner = GeneralRunner(llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config)
                 tracker = agent_runner.execute(
                     workflow_task=workflow_task,
                 )
             except TestSuccessException as e:
-                logger.success(
-                    f"env_worker.agent_flow completed with TestSuccessException: {e.args}"
-                )
+                logger.success(f"env_worker.agent_flow completed with TestSuccessException: {e.args}")
                 raise e
             except TestFailException as e:
                 logger.error(f"env_worker.agent_flow failed with TestFailException: {e.args}")
                 raise e
             except Exception as e:
-                logger.bind(exception=True).exception(
-                    f"encounter exception in env_worker.agent_flow error={e.args}"
-                )
+                logger.bind(exception=True).exception(f"encounter exception in env_worker.agent_flow error={e.args}")
                 raise e
 
         return tracker

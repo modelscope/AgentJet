@@ -94,9 +94,7 @@ class AutoGraderJudge(BaseJudge):
         # Get API key from config or environment
         import os
 
-        api_key = getattr(
-            config.ajet.task_judge.rubrics_auto_grader, "api_key", None
-        ) or os.getenv("DASHSCOPE_API_KEY")
+        api_key = getattr(config.ajet.task_judge.rubrics_auto_grader, "api_key", None) or os.getenv("DASHSCOPE_API_KEY")
 
         self.model = DashScopeChatModel(
             model=config.ajet.task_judge.rubrics_auto_grader.model_name,
@@ -113,20 +111,11 @@ class AutoGraderJudge(BaseJudge):
         self.rubrics_generated = False
 
         # Field mappings for data extraction
-        self.query_field = getattr(
-            config.ajet.task_judge.rubrics_auto_grader, "query_field", "main_query"
-        )
-        self.answer_field = getattr(
-            config.ajet.task_judge.rubrics_auto_grader, "answer_field", "final_answer"
-        )
-        self.reference_field = getattr(
-            config.ajet.task_judge.rubrics_auto_grader, "reference_field", "answer"
-        )
+        self.query_field = getattr(config.ajet.task_judge.rubrics_auto_grader, "query_field", "main_query")
+        self.answer_field = getattr(config.ajet.task_judge.rubrics_auto_grader, "answer_field", "final_answer")
+        self.reference_field = getattr(config.ajet.task_judge.rubrics_auto_grader, "reference_field", "answer")
 
-        logger.info(
-            f"AutoGraderJudge initialized with mode={self.generator_config.grader_mode.value}, "
-            f"language={self.generator_config.language.value}"
-        )
+        logger.info(f"AutoGraderJudge initialized with mode={self.generator_config.grader_mode.value}, " f"language={self.generator_config.language.value}")
 
     def _parse_config(
         self,
@@ -136,9 +125,7 @@ class AutoGraderJudge(BaseJudge):
 
         # Parse grader mode
         grader_mode_str = getattr(judge_config, "grader_mode", "pointwise").lower()
-        grader_mode = (
-            GraderMode.POINTWISE if grader_mode_str == "pointwise" else GraderMode.LISTWISE
-        )
+        grader_mode = GraderMode.POINTWISE if grader_mode_str == "pointwise" else GraderMode.LISTWISE
 
         # Parse language
         language_str = getattr(judge_config, "language", "en").upper()
@@ -150,9 +137,7 @@ class AutoGraderJudge(BaseJudge):
             "grader_name": getattr(judge_config, "grader_name", "RM Iterative Rubric Grader"),
             "language": language,
             "enable_categorization": getattr(judge_config, "enable_categorization", False),
-            "query_specific_generate_number": getattr(
-                judge_config, "query_specific_generate_number", 1
-            ),
+            "query_specific_generate_number": getattr(judge_config, "query_specific_generate_number", 1),
             "categories_number": getattr(judge_config, "categories_number", 5),
             "max_retries": getattr(judge_config, "max_retries", 5),
             "max_epochs": getattr(judge_config, "max_epochs", 3),
@@ -290,9 +275,7 @@ class AutoGraderJudge(BaseJudge):
                         "label_score": metadata["score"],
                     }
                 else:
-                    raise ValueError(
-                        f"Metadata must contain 'answer' and 'score' for pointwise training data in task {task.task_id}"
-                    )
+                    raise ValueError(f"Metadata must contain 'answer' and 'score' for pointwise training data in task {task.task_id}")
 
             else:  # LISTWISE
                 # Listwise: expect metadata with "candidates" containing list of {answer, rank}
@@ -309,17 +292,13 @@ class AutoGraderJudge(BaseJudge):
                         "label_rank": label_ranks,
                     }
                 else:
-                    raise ValueError(
-                        f"Metadata must contain 'candidates' list for listwise training data in task {task.task_id}"
-                    )
+                    raise ValueError(f"Metadata must contain 'candidates' list for listwise training data in task {task.task_id}")
 
         except Exception as e:
             logger.warning(f"Failed to convert task to training data: {e}")
             return None
 
-    async def _async_compute_reward(
-        self, task: Task, workflow_output: WorkflowOutput | List[WorkflowOutput]
-    ):
+    async def _async_compute_reward(self, task: Task, workflow_output: WorkflowOutput | List[WorkflowOutput]):
         """
         Asynchronously compute reward using the generated rubrics.
 
@@ -332,10 +311,7 @@ class AutoGraderJudge(BaseJudge):
             For listwise: List of ranking results
         """
         if not self.rubrics_generated or self.llm_grader is None:
-            raise RuntimeError(
-                "Rubrics have not been generated yet. "
-                "Call generate_rubrics_from_samples() first."
-            )
+            raise RuntimeError("Rubrics have not been generated yet. " "Call generate_rubrics_from_samples() first.")
 
         # Extract query
         query = getattr(task, self.query_field, "")
@@ -367,13 +343,9 @@ class AutoGraderJudge(BaseJudge):
                     responses.append(output.metadata.get(self.answer_field, ""))
 
                 # Format answer as required by listwise grader
-                answer = "\n\n".join(
-                    [f"Response {i+1}:\n{resp}" for i, resp in enumerate(responses)]
-                )
+                answer = "\n\n".join([f"Response {i+1}:\n{resp}" for i, resp in enumerate(responses)])
 
-                result = await self.llm_grader.aevaluate(
-                    query=query, answer=answer, num_responses=len(responses)
-                )
+                result = await self.llm_grader.aevaluate(query=query, answer=answer, num_responses=len(responses))
                 return result
 
         except Exception as e:
@@ -404,11 +376,7 @@ class AutoGraderJudge(BaseJudge):
                 nest_asyncio.apply()
                 return loop.run_until_complete(self._async_compute_reward(task, workflow_output))
             except ImportError:
-                raise RuntimeError(
-                    "compute_reward() was called from an async context. "
-                    "Please use 'await judge._async_compute_reward(task, output)' instead, "
-                    "or install nest_asyncio: pip install nest_asyncio"
-                )
+                raise RuntimeError("compute_reward() was called from an async context. " "Please use 'await judge._async_compute_reward(task, output)' instead, " "or install nest_asyncio: pip install nest_asyncio")
         except RuntimeError:
             # No event loop running, create a new one
             loop = asyncio.new_event_loop()

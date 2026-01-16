@@ -14,9 +14,7 @@ class DummyConnector:
         self._tasks = tasks
         self.called = 0
 
-    def load_tasks_from_conversation(
-        self, projects_limit: int = 100, spans_limit: int = 100
-    ) -> List[Task]:
+    def load_tasks_from_conversation(self, projects_limit: int = 100, spans_limit: int = 100) -> List[Task]:
         self.called += 1
         return self._tasks
 

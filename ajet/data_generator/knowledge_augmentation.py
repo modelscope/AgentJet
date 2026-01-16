@@ -19,22 +19,7 @@ class KnowledgeAugmentor(BaseDataGenerator):
         document: Optional[Document] = None,
     ) -> str:
         # The template can be read from self.config, but here we hardcode an example for now
-        return (
-            "You are an Expert Question Generation Assistant.\n"
-            "Your task is to read long, complex documents and generate a large set of high-quality, non-repetitive questions that thoroughly cover all aspects of the provided content.\n"
-            "**Global Rules:**\n"
-            "1. Coverage: Cover all sections, topics, major themes, nuanced details, facts, arguments, examples.\n"
-            "2. Diversity: Include factual, conceptual, comparative, analytical, application, and critical thinking questions. Avoid overly trivial or repetitive questions.\n"
-            "3. Quality: Questions must be clear, specific, unique, and relevant to the document. Avoid vague or generic questions.\n"
-            "4. Depth: Include multi-step reasoning, chronological, cause-effect, data-driven, and abstract-contextual questions.\n"
-            "5. Formatting: Output must be in a JSON list of dictionaries, each dictionary containing `query` and `related_doc` keys.\n"
-            "    - `query` = the generated question (one sentence, ending with a question mark)\n"
-            "    - `related_doc` = the exact excerpt or closely matching text from the document that related_docs or relates to the question\n"
-            "6. Boundaries: The `related_doc` field must be taken directly from the provided document; do not fabricate or introduce information from outside sources.\n"
-            "7. Few-shot: If given sample questions, match style and complexity but ensure diversity.\n"
-            "8. Non-repetition: Ensure no two questions are duplicates or paraphrases of the same idea. If content overlaps, merge rather than replicate.\n"
-            "Always strictly follow these rules in every output."
-        )
+        return "You are an Expert Question Generation Assistant.\n" "Your task is to read long, complex documents and generate a large set of high-quality, non-repetitive questions that thoroughly cover all aspects of the provided content.\n" "**Global Rules:**\n" "1. Coverage: Cover all sections, topics, major themes, nuanced details, facts, arguments, examples.\n" "2. Diversity: Include factual, conceptual, comparative, analytical, application, and critical thinking questions. Avoid overly trivial or repetitive questions.\n" "3. Quality: Questions must be clear, specific, unique, and relevant to the document. Avoid vague or generic questions.\n" "4. Depth: Include multi-step reasoning, chronological, cause-effect, data-driven, and abstract-contextual questions.\n" "5. Formatting: Output must be in a JSON list of dictionaries, each dictionary containing `query` and `related_doc` keys.\n" "    - `query` = the generated question (one sentence, ending with a question mark)\n" "    - `related_doc` = the exact excerpt or closely matching text from the document that related_docs or relates to the question\n" "6. Boundaries: The `related_doc` field must be taken directly from the provided document; do not fabricate or introduce information from outside sources.\n" "7. Few-shot: If given sample questions, match style and complexity but ensure diversity.\n" "8. Non-repetition: Ensure no two questions are duplicates or paraphrases of the same idea. If content overlaps, merge rather than replicate.\n" "Always strictly follow these rules in every output."
 
     def _build_user_prompt(
         self,
@@ -48,24 +33,16 @@ class KnowledgeAugmentor(BaseDataGenerator):
 
         user_part = []
         N = 10  # 10 is the hyperparameter we found that produces relatively stable outputs
-        user_part.append(
-            f"Generate exactly {N} unique, high-quality questions from the following document according to the rules in the system prompt above."
-        )
-        user_part.append(
-            "For each question, provide the corresponding reference excerpt from the document in the `related_doc` field."
-        )
+        user_part.append(f"Generate exactly {N} unique, high-quality questions from the following document according to the rules in the system prompt above.")
+        user_part.append("For each question, provide the corresponding reference excerpt from the document in the `related_doc` field.")
         user_part.append("[DOCUMENT START]")
         user_part.append(ref_doc)
         user_part.append("[DOCUMENT END]")
         user_part.append("Now generate queries that is suitable for the JSON format.")
         user_part.append("Return your output strictly in JSON format as follows:")
         user_part.append("[")
-        user_part.append(
-            '  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},'
-        )
-        user_part.append(
-            '  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},'
-        )
+        user_part.append('  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},')
+        user_part.append('  {"query": "Question text here?", "related_doc": "Direct excerpt from the document here."},')
         user_part.append("]")
         return "\n".join(user_part)
 

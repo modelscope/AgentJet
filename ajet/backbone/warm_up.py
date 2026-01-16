@@ -7,6 +7,7 @@ import asyncio
 import logging
 import os
 from ajet.utils.async_utils import apply_httpx_aclose_patch
+
 apply_httpx_aclose_patch()
 
 
@@ -42,7 +43,6 @@ def init_parallel_rollout_logger(experiment_name):
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-
 def warm_up_task_judge_when_needed(config):
     if config.ajet.task_judge.judge_type == "rubrics_auto_grader":
         from ajet.task_judge.rm_auto_grader_judge import AutoGraderJudge
@@ -55,6 +55,7 @@ def warm_up_task_judge_when_needed(config):
 def clean_up_tmp_ajet_dir(config):
     """Clean up old IPC socket files in /tmp/ajet directory."""
     import time
+
     if config.ajet.enable_experimental_interchange_server is False:
         return
 

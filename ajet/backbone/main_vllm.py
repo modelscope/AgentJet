@@ -82,9 +82,7 @@ class ChatCompletionScheduler:
                 "request_id": completion.id,
                 "content": message["content"],
                 "tool_calls": message.get("tool_calls", None),
-                "tokens": [
-                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content # type: ignore
-                ],
+                "tokens": [TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content],  # type: ignore
             }
         )
         return messages
@@ -130,12 +128,11 @@ class ChatCompletionScheduler:
                 "request_id": completion.id,
                 "content": message["content"],
                 "tool_calls": message.get("tool_calls", None),
-                "tokens": [
-                    TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content # type: ignore
-                ],
+                "tokens": [TokenAndProbVllmDebug(t) for t in completion.choices[0].logprobs.content],  # type: ignore
             }
         )
         return messages
+
 
 def run(config):
     from ajet.task_reader import RouterTaskReader
@@ -147,9 +144,7 @@ def run(config):
     vllm_port = config.ajet.debug.debug_vllm_port
 
     # --------- init ---------
-    async_rollout_manager = ChatCompletionScheduler(
-        config=config, url=f"http://localhost:{vllm_port}/v1"
-    )
+    async_rollout_manager = ChatCompletionScheduler(config=config, url=f"http://localhost:{vllm_port}/v1")
     parallel_env = VerlRolloutManager(
         config=config,
         async_rollout_manager=async_rollout_manager,
@@ -159,16 +154,13 @@ def run(config):
         tokenizer=async_rollout_manager.tokenizer,
     )
 
-
     task_reader = RouterTaskReader(
         config.ajet.task_reader.type,
         config.ajet.task_reader,
     )
     tasks = task_reader.get_validation_tasks()
     logger.info(tasks[:n_task])
-    ctx_tracker = parallel_env.rollout(
-        tasks=tasks[:n_task], mode="sample", epoch="1"
-    )  # "sample" or "validate"
+    ctx_tracker = parallel_env.rollout(tasks=tasks[:n_task], mode="sample", epoch="1")  # "sample" or "validate"
     _ = parallel_env.to_dataproto(ctx_tracker)
 
 
@@ -179,6 +171,7 @@ def run(config):
 )
 def main(config):
     from omegaconf import OmegaConf
+
     OmegaConf.resolve(config)
     runtime_env = get_runtime_env(config)
     os.environ.update(runtime_env["env_vars"])
@@ -186,6 +179,7 @@ def main(config):
 
     if config.ajet.enable_experimental_interchange_server:
         from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+
         start_interchange_server(config)
 
     def companion_launch():
@@ -198,9 +192,7 @@ def main(config):
         tensor_parallel_size = config.ajet.debug.debug_tensor_parallel_size
         n_avail_gpus = torch.cuda.device_count()
         if tensor_parallel_size > n_avail_gpus:
-            logger.info(
-                f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}."
-            )
+            logger.info(f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}.")
             tensor_parallel_size = n_avail_gpus
         gpu_memory_utilization = config.actor_rollout_ref.rollout.gpu_memory_utilization
         max_num_seqs = config.actor_rollout_ref.rollout.max_num_seqs

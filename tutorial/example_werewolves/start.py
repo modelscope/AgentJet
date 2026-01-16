@@ -6,6 +6,7 @@
 from typing import List
 import numpy as np
 import dotenv
+
 dotenv.load_dotenv()
 
 from textwrap import dedent
@@ -83,7 +84,6 @@ class ExampleWerewolves(Workflow):
     trainable_targets: List[str] | None = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-
         # ensure trainable targets is legal
         assert self.trainable_targets is not None, "trainable_targets cannot be None in ExampleWerewolves (because we want to demonstrate a explicit multi-agent case)."
 
@@ -111,17 +111,15 @@ class ExampleWerewolves(Workflow):
                 generate_kwargs={"temperature": 0.01},
             )
             model_for_this_agent = tuner.as_agentscope_model(
-                agent_name=f"Player{i + 1}",    # the name of this agent
-                target_tag=role,                # `target_tag in self.trainable_targets` means we train this agent, otherwise we do not train this agent.
-                debug_model=default_model,      # the model used when this agent is not in `self.trainable_targets`
+                agent_name=f"Player{i + 1}",  # the name of this agent
+                target_tag=role,  # `target_tag in self.trainable_targets` means we train this agent, otherwise we do not train this agent.
+                debug_model=default_model,  # the model used when this agent is not in `self.trainable_targets`
             )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
                 model=model_for_this_agent,
-                formatter=DashScopeMultiAgentFormatter()
-                     if role in self.trainable_targets
-                     else OpenAIMultiAgentFormatter(),
+                formatter=DashScopeMultiAgentFormatter() if role in self.trainable_targets else OpenAIMultiAgentFormatter(),
                 max_iters=3 if role in self.trainable_targets else 5,
             )
             # agent.set_console_output_enabled(False)
@@ -132,23 +130,17 @@ class ExampleWerewolves(Workflow):
             good_guy_win = await werewolves_game(players, roles)
             raw_reward = 0
             is_success = False
-            if (good_guy_win and self.trainable_targets[0] != "werewolf") or (
-                not good_guy_win and self.trainable_targets[0] == "werewolf"
-            ):
+            if (good_guy_win and self.trainable_targets[0] != "werewolf") or (not good_guy_win and self.trainable_targets[0] == "werewolf"):
                 raw_reward = 1
                 is_success = True
             logger.warning(f"Raw reward: {raw_reward}")
             logger.warning(f"Is success: {is_success}")
         except BadGuyException as e:
-            logger.bind(exception=True).exception(
-                f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
-            )
+            logger.bind(exception=True).exception(f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent).")
             raw_reward = -0.1
             is_success = False
         except Exception as e:
-            logger.bind(exception=True).exception(
-                f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent)."
-            )
+            logger.bind(exception=True).exception(f"Error during game execution. Game cannot continue, whatever the cause, let's punish trainable agents  (Although they maybe innocent).")
             raw_reward = -0.1
             is_success = False
 

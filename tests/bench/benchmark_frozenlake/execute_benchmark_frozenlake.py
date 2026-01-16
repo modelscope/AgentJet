@@ -4,7 +4,6 @@ from tests.bench.benchmark_base import BenchmarkTestCase
 
 
 class TestBenchmarkFrozenLake(BenchmarkTestCase):
-
     def test_01_begin_verl(self):
         BACKBONE = "verl"
         TEST_TARGET = "tests/bench/benchmark_frozenlake/benchmark_frozenlake.yaml"

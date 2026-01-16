@@ -6,9 +6,7 @@ from beast_logger import print_list
 from datasets import DatasetDict, load_dataset
 
 parser = argparse.ArgumentParser(description="download Hugging Face dataset")
-parser.add_argument(
-    "--target", default="Jiayi-Pan/Countdown-Tasks-3to4", type=str, help="HuggingFace dataset name"
-)
+parser.add_argument("--target", default="Jiayi-Pan/Countdown-Tasks-3to4", type=str, help="HuggingFace dataset name")
 parser.add_argument(
     "--path",
     default="./dataset",
@@ -68,9 +66,7 @@ try:
 
     # Ensure we have enough data
     if total_size < test_size + train_size:
-        print(
-            f"\nWarning: Dataset size ({total_size}) is smaller than required ({test_size + train_size})"
-        )
+        print(f"\nWarning: Dataset size ({total_size}) is smaller than required ({test_size + train_size})")
         print("Adjusting sizes proportionally...")
         test_size = min(test_size, total_size // 11)
         train_size = test_size * 10

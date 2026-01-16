@@ -46,8 +46,7 @@ def get_poison_model(agents: list[AgentBase]) -> type[BaseModel]:
         )
         name: Literal[tuple(_.name for _ in agents)] | None = (  # type: ignore
             Field(
-                description="The name of the player you want to poison, if you "
-                "don't want to poison anyone, just leave it empty",
+                description="The name of the player you want to poison, if you " "don't want to poison anyone, just leave it empty",
                 default=None,
             )
         )
@@ -79,8 +78,7 @@ def get_hunter_model(agents: list[AgentBase]) -> type[BaseModel]:
         )
         name: Literal[tuple(_.name for _ in agents)] | None = (  # type: ignore
             Field(
-                description="The name of the player you want to shoot, if you "
-                "don't want to the ability, just leave it empty",
+                description="The name of the player you want to shoot, if you " "don't want to the ability, just leave it empty",
                 default=None,
             )
         )

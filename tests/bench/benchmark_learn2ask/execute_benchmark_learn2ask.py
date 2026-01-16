@@ -4,7 +4,6 @@ from tests.bench.benchmark_base import BenchmarkTestCase
 
 
 class TestBenchmarkLearnToAsk(BenchmarkTestCase):
-
     def test_01_begin_verl(self):
         # get probe target, so as to get timeout settings
         BACKBONE = "verl"

@@ -62,9 +62,7 @@ def companion_launch():
     n_avail_gpus = torch.cuda.device_count()
     tensor_parallel_size = n_avail_gpus
     if tensor_parallel_size > n_avail_gpus:
-        logger.warning(
-            f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}."
-        )
+        logger.warning(f"Warning: tensor_parallel_size {tensor_parallel_size} is greater than available GPUs {n_avail_gpus}. Setting tensor_parallel_size to {n_avail_gpus}.")
         tensor_parallel_size = n_avail_gpus
 
     # gpu_memory_utilization = 0.95

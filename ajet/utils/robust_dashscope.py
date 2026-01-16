@@ -22,11 +22,7 @@ class RobustDashScopeChatModel(DashScopeChatModel):
 
         # Parse API keys from environment variables
         self.regular_key_list = os.environ.get("DASHSCOPE_API_KEY", "").split("|")
-        self.backup_key_list = (
-            os.environ.get("DASHSCOPE_API_KEY_BACKUP", "").split("|")
-            if os.environ.get("DASHSCOPE_API_KEY_BACKUP")
-            else []
-        )
+        self.backup_key_list = os.environ.get("DASHSCOPE_API_KEY_BACKUP", "").split("|") if os.environ.get("DASHSCOPE_API_KEY_BACKUP") else []
 
         api_key = random.choice(self.regular_key_list)
 
@@ -104,6 +100,4 @@ class RobustDashScopeChatModel(DashScopeChatModel):
                 print(f"Error calling DashScope API: {e}, retrying ({n_try + 1}/{self.max_try})...")
 
         # If all attempts fail
-        raise RuntimeError(
-            f"Failed to get response from DashScope API after {self.max_try} attempts"
-        )
+        raise RuntimeError(f"Failed to get response from DashScope API after {self.max_try} attempts")

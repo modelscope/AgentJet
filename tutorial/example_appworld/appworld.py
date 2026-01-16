@@ -5,7 +5,6 @@ from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 
 
 class ExampleAgentScopeWorkflow(Workflow):
-
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
@@ -42,9 +41,7 @@ class ExampleAgentScopeWorkflow(Workflow):
             # agentscope deal with interaction message
             reply_message = await agent(interaction_message)
             # env service protocol
-            obs, _, terminate, _ = env.step(
-                action={"content": reply_message.content, "role": "assistant"}
-            )
+            obs, _, terminate, _ = env.step(action={"content": reply_message.content, "role": "assistant"})
             # generate new message from env output
             interaction_message = Msg(name="env", content=obs, role="user")
             # is terminated?

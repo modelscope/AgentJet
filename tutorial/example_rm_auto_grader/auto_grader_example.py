@@ -176,9 +176,7 @@ async def example_listwise_mode():
         print(f"Evaluating {len(candidate_outputs)} candidates...")
 
         # Evaluate all candidates together (pass list for listwise mode)
-        grader_rank_result = await judge._async_compute_reward(
-            workflow_task.task, candidate_outputs
-        )
+        grader_rank_result = await judge._async_compute_reward(workflow_task.task, candidate_outputs)
 
         if grader_rank_result and hasattr(grader_rank_result, "rank"):
             ranks = grader_rank_result.rank

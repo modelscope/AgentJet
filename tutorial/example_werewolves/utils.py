@@ -140,13 +140,7 @@ class Players:
         """Check if the game is over and return the winning message."""
 
         # Prepare true roles string
-        true_roles = (
-            f'{names_to_str(self.role_to_names["werewolf"])} are werewolves, '
-            f'{names_to_str(self.role_to_names["villager"])} are villagers, '
-            f'{names_to_str(self.role_to_names["seer"])} is the seer, '
-            f'{names_to_str(self.role_to_names["hunter"])} is the hunter, '
-            f'and {names_to_str(self.role_to_names["witch"])} is the witch.'
-        )
+        true_roles = f'{names_to_str(self.role_to_names["werewolf"])} are werewolves, ' f'{names_to_str(self.role_to_names["villager"])} are villagers, ' f'{names_to_str(self.role_to_names["seer"])} is the seer, ' f'{names_to_str(self.role_to_names["hunter"])} is the hunter, ' f'and {names_to_str(self.role_to_names["witch"])} is the witch.'
 
         if len(self.werewolves) * 2 >= len(self.current_alive):
             return Prompts.to_all_wolf_win.format(

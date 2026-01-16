@@ -14,9 +14,7 @@ from ajet.utils.config_utils import (
 class TestConfigUtils(unittest.TestCase):
     def test_load_config(self):
         """A simple test to check if the configuration file is loaded without errors."""
-        yaml_backup_dst, exp_base, exp_name, config = prepare_experiment_config(
-            "tests/data/config.yaml", "tests/temp", backbone="debug"
-        )
+        yaml_backup_dst, exp_base, exp_name, config = prepare_experiment_config("tests/data/config.yaml", "tests/temp", backbone="debug")
         self.assertEqual(exp_name, "sample")
         self.assertEqual(exp_base, "tests/temp/sample")
         self.assertEqual(yaml_backup_dst, "tests/temp/sample/yaml_backup.yaml")
@@ -31,9 +29,7 @@ class TestConfigUtils(unittest.TestCase):
         """Test configuration alignment based on conversion JSON."""
         from_config_fp = "tests/data/config.yaml"
         # Fixed config asset locations
-        TRINITY_CONFIG_AUTO_CONVERSION = (
-            "ajet/default_config/trinity/config_auto_convertion_trinity.jsonc"
-        )
+        TRINITY_CONFIG_AUTO_CONVERSION = "ajet/default_config/trinity/config_auto_convertion_trinity.jsonc"
 
         with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:
             config = read_ajet_hierarchical_config(
@@ -44,9 +40,7 @@ class TestConfigUtils(unittest.TestCase):
                 exp_dir="tests/temp",
             )
             expand_ajet_hierarchical_config(config, write_to=temp_yaml1.name)
-            align_parameters(
-                temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity"
-            )
+            align_parameters(temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity")
             with open(temp_yaml1.name, "r") as file:
                 to_config = yaml.safe_load(file)
             self.assertEqual(to_config["checkpoint_root_dir"], "/wow/ajet_checkpoints")
@@ -73,9 +67,7 @@ class TestConfigUtils(unittest.TestCase):
         """Test configuration alignment based on conversion JSON."""
         from_config_fp = "tests/data/config.yaml"
         # Fixed config asset locations
-        TRINITY_CONFIG_AUTO_CONVERSION = (
-            "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
-        )
+        TRINITY_CONFIG_AUTO_CONVERSION = "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
 
         with tempfile.NamedTemporaryFile(mode="r", suffix=".yaml") as temp_yaml1:
             config = read_ajet_hierarchical_config(
@@ -86,14 +78,10 @@ class TestConfigUtils(unittest.TestCase):
                 exp_dir="tests/temp",
             )
             expand_ajet_hierarchical_config(config, write_to=temp_yaml1.name)
-            align_parameters(
-                temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity"
-            )
+            align_parameters(temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity")
             with open(temp_yaml1.name, "r") as file:
                 to_config = yaml.safe_load(file)
-            self.assertEqual(
-                to_config["trainer"]["checkpoint_base_dir"], "/wow/ajet_checkpoints"
-            )
+            self.assertEqual(to_config["trainer"]["checkpoint_base_dir"], "/wow/ajet_checkpoints")
             self.assertEqual(
                 to_config["trainer"]["default_local_dir"],
                 r"${checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}",

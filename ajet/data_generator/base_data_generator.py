@@ -50,9 +50,7 @@ class BaseDataGenerator:
         response = self.llm_client(messages=messages, sampling_params_override=self.sampling_params)
         # Extract content from response
         raw_response = response.get("content", "")
-        new_task = self._parse_llm_output_to_task(
-            raw_response, source_task, document, extra_metadata
-        )
+        new_task = self._parse_llm_output_to_task(raw_response, source_task, document, extra_metadata)
         return new_task
 
     def _build_system_prompt(

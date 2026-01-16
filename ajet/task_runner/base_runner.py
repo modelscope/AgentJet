@@ -15,8 +15,8 @@ from ajet.workflow import Workflow
 
 gc_lock = Lock()
 
-class BaseAgentRunner(object):
 
+class BaseAgentRunner(object):
     def __init__(self, llm_inference_fn: Callable, tokenizer: Any, config, **kwargs):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
@@ -30,9 +30,7 @@ class BaseAgentRunner(object):
 
         self.wrapper_type = self.config.ajet.task_runner.wrapper_type
         self.wrapper_multiprocessing_timeout = self.config.ajet.task_runner.wrapper_multiprocessing_timeout
-        assert self.wrapper_type in ["asyncio", "asyncio-with-gc", "multi-processing"], \
-            f"Unsupported wrapper type: {self.wrapper_type}, available options: ['asyncio', 'asyncio-with-gc', 'multi-processing']"
-
+        assert self.wrapper_type in ["asyncio", "asyncio-with-gc", "multi-processing"], f"Unsupported wrapper type: {self.wrapper_type}, available options: ['asyncio', 'asyncio-with-gc', 'multi-processing']"
 
     def get_judge(self) -> BaseJudge:  # type: ignore
         if self.config.ajet.task_judge.judge_type == "customized_protocol":
@@ -47,12 +45,9 @@ class BaseAgentRunner(object):
             run_async_coroutine_with_timeout(judge.load_rubrics_from_cache())
             return judge
 
-
     def runner_hooks(self, observation_window, task_thread_index, workflow_task):
         def should_interrupt_fn() -> bool:
-            if (observation_window["stop"] is not None) and observation_window["stop"][
-                task_thread_index
-            ]:  # Check if the thread should stop (because other threads have completed, making this thread useless)
+            if (observation_window["stop"] is not None) and observation_window["stop"][task_thread_index]:  # Check if the thread should stop (because other threads have completed, making this thread useless)
                 return True
             return False
 
@@ -63,7 +58,6 @@ class BaseAgentRunner(object):
             "should_interrupt_fn": should_interrupt_fn,
             "generated_token_callback_fn": generated_token_callback_fn,
         }
-
 
     async def wrapper_type_asyncio(self, workflow_cls: Type[Workflow], workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         user_workflow: Workflow = workflow_cls(name="ajet-workflow")
@@ -80,12 +74,12 @@ class BaseAgentRunner(object):
                 gc_lock.release()
         return result
 
-
     def wrapper_type_multiprocessing(self, workflow_cls: Type[Workflow], workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
         def worker(q: Queue):
             user_workflow: Workflow = workflow_cls(name="ajet-workflow")
             result = asyncio.run(user_workflow.execute(workflow_task, tuner))
             q.put(result)
+
         q = Queue()
         p = Process(target=worker, args=(q,))
         p.daemon = True
@@ -97,14 +91,12 @@ class BaseAgentRunner(object):
             raise TimeoutError(f"Workflow execution timeout after {self.wrapper_multiprocessing_timeout} seconds")
         return q.get()
 
-
     def run_user_workflow(
         self,
         workflow_cls: Type[Workflow],
         workflow_task: WorkflowTask,
         tuner: AjetTuner,
     ) -> WorkflowOutput:
-
         if self.wrapper_type == "asyncio":
             user_workflow: Workflow = workflow_cls(name="ajet-workflow")
             return asyncio.run(user_workflow.execute(workflow_task, tuner))

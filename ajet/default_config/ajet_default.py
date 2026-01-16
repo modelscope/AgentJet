@@ -92,9 +92,7 @@ class Config:
                         setattr(
                             config_as_dataclass,
                             key,
-                            Config.update_from_dict_recursive(
-                                getattr(config_as_dataclass, key), target_value
-                            ),
+                            Config.update_from_dict_recursive(getattr(config_as_dataclass, key), target_value),
                         )
                 else:
                     setattr(config_as_dataclass, key, target_value)

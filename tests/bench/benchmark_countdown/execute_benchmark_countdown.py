@@ -4,10 +4,7 @@ import unittest
 from tests.bench.benchmark_base import BenchmarkTestCase
 
 
-
-
 class TestBenchmarkCountdown(BenchmarkTestCase, unittest.TestCase):
-
     def test_01_begin_verl(self):
         BACKBONE = "verl"
         TEST_TARGET = "tests/bench/benchmark_countdown/benchmark_countdown.yaml"

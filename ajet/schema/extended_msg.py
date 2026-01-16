@@ -74,7 +74,7 @@ class ExtendedMessage:
         tool_calls=[],
         tool_call_id="",
         token_logprob_arr=[],
-        name="",    # preserved field, not used currently
+        name="",  # preserved field, not used currently
         first_message=False,
     ):
         self.author = author
@@ -91,7 +91,7 @@ class ExtendedMessage:
         self.tools = tools
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
-        self.name = name    # preserved field, not used currently
+        self.name = name  # preserved field, not used currently
         if not isinstance(self.tool_calls, list):
             # agent scope sometimes gives weird type for tool_calls, which is against OpenAI schema
             self.tool_calls = list(self.tool_calls)
@@ -121,9 +121,7 @@ class ExtendedMessage:
         if (not self.first_message) and (self.role == "system"):
             raise ValueError("The system message is usually the first message, check program bugs.")
         elif (self.first_message) and (self.role != "system"):
-            raise ValueError(
-                "The first message is supposed to be the system message, check program bugs, or remove this warning."
-            )
+            raise ValueError("The first message is supposed to be the system message, check program bugs, or remove this warning.")
         if not self.first_message:
             self.token_arr = self.auto_tokenize_non_first_message(tokenizer=tokenizer, tools=tools)
         else:
@@ -159,9 +157,7 @@ class ExtendedMessage:
                 tools=tools,
             )
         except Exception as e:
-            raise ValueError(
-                f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}"
-            )
+            raise ValueError(f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}")
         self.token_arr, _ = self.get_inc_simple(
             text_frag_from=ajet_apply_chat_template(
                 tokenizer=tokenizer,
@@ -184,11 +180,7 @@ class ExtendedMessage:
 
     @property
     def need_training(self):
-        assert (
-            (self.author in NEED_TRAIN_AUTHORS)
-            or (self.author in NON_TRAIN_AUTHORS)
-            or (self.author.endswith("(discard)"))
-        ), f"author {self.author} is not identified"
+        assert (self.author in NEED_TRAIN_AUTHORS) or (self.author in NON_TRAIN_AUTHORS) or (self.author.endswith("(discard)")), f"author {self.author} is not identified"
         return self.author in NEED_TRAIN_AUTHORS
 
     def generate_content_for_future(self, tokenizer, clip, clip_token_limit=-1):
@@ -209,9 +201,7 @@ class ExtendedMessage:
         if self.need_training:
             # keep eos, but blackout everything after eos
             msg_token_mask = [1] * len(self.token_arr)
-            msg_token_mask = blackout_specific_token_ids_first_encounter(
-                msg_token_mask, self.token_arr, blackout_token_combo
-            )
+            msg_token_mask = blackout_specific_token_ids_first_encounter(msg_token_mask, self.token_arr, blackout_token_combo)
             # in normal case, we will blackout everything after the EOS token
             # but EOS still participates in the loss calculation
             msg_token_mask = blackout_everything_after_eos_but_keep_eos(
@@ -263,9 +253,7 @@ class ExtendedMessage:
         return input_id_increment, msg
 
     @staticmethod
-    def check_and_merge_chained_tool_response(
-        ext_msg_array: List["ExtendedMessage"], tokenizer: PreTrainedTokenizer
-    ) -> List["ExtendedMessage"]:
+    def check_and_merge_chained_tool_response(ext_msg_array: List["ExtendedMessage"], tokenizer: PreTrainedTokenizer) -> List["ExtendedMessage"]:
         """
         Inside a list of ExtendedMessage,
         Find consecutive ext msg with role=="tool", then merge them into one ExtendedMessage
@@ -294,9 +282,7 @@ class ExtendedMessage:
                 return group[0]
 
             msg0 = group[0]
-            merged_content = "".join(
-                f"<tool_response>\n{msg.content}\n</tool_response>\n" for msg in group
-            )
+            merged_content = "".join(f"<tool_response>\n{msg.content}\n</tool_response>\n" for msg in group)
             merged_content = merged_content[len("<tool_response>\n") :]
             merged_content = merged_content[: -len("</tool_response>\n")]
             merged = ExtendedMessage(
@@ -312,9 +298,7 @@ class ExtendedMessage:
                 first_message=msg0.first_message,
             )
             # re-compute token_arr
-            auto_tokenize_targets = [
-                {"role": msg.role, "content": msg.content_for_future} for msg in group
-            ]
+            auto_tokenize_targets = [{"role": msg.role, "content": msg.content_for_future} for msg in group]
             merged.token_arr, _ = merged.get_inc_simple(
                 text_frag_from=ajet_apply_chat_template(
                     tokenizer=tokenizer,

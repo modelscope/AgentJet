@@ -36,9 +36,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         delta_time = current_time - self.current_token_count_time
         self.current_token = current_token
         self.current_token_count_time = current_time
-        token_gen_per_sec_str = (
-            f"{delta_token/delta_time:.2f} tokens/s" if delta_time > 0 else "N/A"
-        )
+        token_gen_per_sec_str = f"{delta_token/delta_time:.2f} tokens/s" if delta_time > 0 else "N/A"
 
         for step in observation_window["step"]:
             if step == -1:
@@ -107,9 +105,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                     for f in failed_futures:
                         logger.error(f"Thread failed with exception: {f.exception()}")
 
-                    raise RuntimeError(
-                        f"One of the rollout threads has encountered an exception. {len(failed_futures)} threads failed."
-                    )
+                    raise RuntimeError(f"One of the rollout threads has encountered an exception. {len(failed_futures)} threads failed.")
 
                 self.step_status_printer(observation_window)
                 time.sleep(10)
@@ -119,12 +115,8 @@ class DynamicRolloutManager(BaseRolloutManager):
                 tracker_array.append(result)
 
             # TODO: support multi-step reward
-            task_success_rate = np.mean(
-                [tracker.reward_structure.success_rate for tracker in tracker_array]
-            )
-            task_scalar_reward = np.mean(
-                [tracker.reward_structure.final_scalar_reward for tracker in tracker_array]
-            )
+            task_success_rate = np.mean([tracker.reward_structure.success_rate for tracker in tracker_array])
+            task_scalar_reward = np.mean([tracker.reward_structure.final_scalar_reward for tracker in tracker_array])
 
             for tracker in tracker_array:
                 tracker.current_batch_success_rate = float(task_success_rate)
@@ -139,11 +131,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         epoch: str,
     ) -> List[BaseContextTracker]:
         """Delegate to dynamic rollout when oversampling is enabled."""
-        if (
-            mode == "sample"
-            and (self.rollout_n != 1)
-            and self.config.ajet.rollout.enable_oversample
-        ):
+        if mode == "sample" and (self.rollout_n != 1) and self.config.ajet.rollout.enable_oversample:
             return self.rollout_dynamic(tasks, mode, epoch)
         else:
             return self.rollout_static(tasks, mode, epoch)
@@ -210,9 +198,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         submit_oversample_multiplier = self.config.ajet.rollout.submit_oversample_multiplier
         rollout_n_oversample = int(rollout_n * submit_oversample_multiplier)
         rollout_n_confirm = int(rollout_n * (1 + submit_oversample_multiplier) / 2)
-        assert (
-            rollout_n < rollout_n_confirm < rollout_n_oversample
-        ), f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
+        assert rollout_n < rollout_n_confirm < rollout_n_oversample, f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
 
         observation_window: Dict[str, List[int | bool]] = {
             "step": [0 for _ in range(len(tasks) * rollout_n_oversample)],
@@ -247,36 +233,26 @@ class DynamicRolloutManager(BaseRolloutManager):
                 for j, task_future_array in enumerate(futures):
                     completed_task_futures = [f for f in task_future_array if f.done()]
                     completed_results = [f.result() for f in completed_task_futures]
-                    completed_results = [
-                        tracker for tracker in completed_results if not tracker.discarded
-                    ]
-                    reward = [
-                        tracker.reward_structure.performance_reward for tracker in completed_results
-                    ]
+                    completed_results = [tracker for tracker in completed_results if not tracker.discarded]
+                    reward = [tracker.reward_structure.performance_reward for tracker in completed_results]
                     reward_std = np.std(reward) if reward else 0.0
                     all_finished = len(completed_task_futures) == len(task_future_array)
                     if all_finished:
                         can_terminate[j] = True
                         terminate_status[j] = f"all_fin({len(completed_results)}/{reward_std:.2f})"
                     num_finished = len(completed_task_futures)
-                    task_cmd_reward_array = [
-                        tracker.reward_structure.performance_reward for tracker in completed_results
-                    ]
+                    task_cmd_reward_array = [tracker.reward_structure.performance_reward for tracker in completed_results]
                     all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                     if not all_equal:
                         if num_finished >= rollout_n:
                             can_terminate[j] = True
-                            terminate_status[
-                                j
-                            ] = f"early_end({len(completed_results)}/{reward_std:.2f})"
+                            terminate_status[j] = f"early_end({len(completed_results)}/{reward_std:.2f})"
                         else:
                             pass
                     else:
                         if num_finished >= rollout_n_confirm:
                             can_terminate[j] = True
-                            terminate_status[
-                                j
-                            ] = f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
+                            terminate_status[j] = f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
                             if allow_force_stop:
                                 for k in range(
                                     j * rollout_n_oversample,
@@ -294,9 +270,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                 else:
                     if tic % 10 == 0:
                         self.step_status_printer(observation_window)
-                        logger.info(
-                            f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}"
-                        )
+                        logger.info(f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}")
                     time.sleep(5)
 
             # We have enough number of samples, but we need to wait for all threads to finish, including discarded threads
@@ -310,19 +284,13 @@ class DynamicRolloutManager(BaseRolloutManager):
             # find sample group that has identical reward, mark them as need_amend
             task_ineffective_thread_cnt = []
             task_completed_thread_cnt = []  # how many effective threads are obtained per group
-            task_extra_thread_cnt = (
-                []
-            )  # using rollout_n as baseline, how many extra threads are obtained per group
+            task_extra_thread_cnt = []  # using rollout_n as baseline, how many extra threads are obtained per group
             task_need_amend = 0  # how many groups need amendment due to identical rewards
             for j, task_future_array in enumerate(futures):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
-                completed_results = [
-                    tracker for tracker in completed_results if not tracker.discarded
-                ]
-                task_cmd_reward_array = [
-                    tracker.reward_structure.performance_reward for tracker in completed_results
-                ]
+                completed_results = [tracker for tracker in completed_results if not tracker.discarded]
+                task_cmd_reward_array = [tracker.reward_structure.performance_reward for tracker in completed_results]
                 all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                 completed_task_cnt = len(completed_results)
                 if all_equal:
@@ -349,14 +317,10 @@ class DynamicRolloutManager(BaseRolloutManager):
             # - num_task_to_amend: how many groups can be amended according to removal plan
             if allow_sample_num_change and (total_sample > world_size * 2):
                 # When changing the number of samples is ALLOWED
-                num_task_to_amend = len(
-                    futures
-                )  # this means infinate budget to amend, indicating that we throw away all ineffective samples
+                num_task_to_amend = len(futures)  # this means infinate budget to amend, indicating that we throw away all ineffective samples
                 task_extra_thread_cnt = task_extra_thread_cnt  # do not change extra thread cnt, we simply take all diverse samples
                 # log
-                logger.info(
-                    f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
-                )
+                logger.info(f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}")
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
             else:
                 # When changing the number of samples is NOT ALLOWED (or the number of samples are too small)
@@ -370,25 +334,18 @@ class DynamicRolloutManager(BaseRolloutManager):
                 extra_num_thread_required = num_task_to_amend * rollout_n
                 # after CONSUME, how many extra samples are really EXTRA and should be REMOVED
                 remove_count = sum(task_extra_thread_cnt) - extra_num_thread_required
-                logger.info(
-                    f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, "
-                    f"num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, "
-                )
+                logger.info(f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, " f"num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, ")
                 # remove extra samples according to `remove_count`
                 while remove_count != 0:
                     # if we should remove some extra samples, we always remove from the group that has the MOST extra samples
                     max_extra_index = task_extra_thread_cnt.index(max(task_extra_thread_cnt))
-                    assert (
-                        task_extra_thread_cnt[max_extra_index] > 0
-                    ), "task_extra_thread_cnt should be greater than 0"
+                    assert task_extra_thread_cnt[max_extra_index] > 0, "task_extra_thread_cnt should be greater than 0"
                     task_extra_thread_cnt[max_extra_index] -= 1
                     task_completed_thread_cnt[max_extra_index] -= 1
                     remove_count -= 1
 
                 # now, we have computed the final `task_extra_thread_cnt` and `num_task_to_amend`, which the removal plan deps
-                logger.info(
-                    f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
-                )
+                logger.info(f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}")
                 logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
 
             # collect results and get the final tracker_array according to removal plan (`task_extra_thread_cnt` and `num_task_to_amend`)
@@ -396,29 +353,14 @@ class DynamicRolloutManager(BaseRolloutManager):
             print_buffer = ""
             task_success_rate = []
             task_group_reward = []
-            for j, task_future_array, avail_extra_cnt in zip(
-                range(len(futures)), futures, task_extra_thread_cnt
-            ):
+            for j, task_future_array, avail_extra_cnt in zip(range(len(futures)), futures, task_extra_thread_cnt):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
-                completed_results = [
-                    tracker for tracker in completed_results if not tracker.discarded
-                ]
+                completed_results = [tracker for tracker in completed_results if not tracker.discarded]
                 # in-group success rate and reward
-                task_cmd_reward_array = [
-                    tracker.reward_structure.performance_reward for tracker in completed_results
-                ]
-                success_rate_array = [
-                    tracker.reward_structure.success_rate for tracker in completed_results
-                ]
-                task_group_reward += [
-                    np.mean(
-                        [
-                            tracker.reward_structure.final_scalar_reward
-                            for tracker in completed_results
-                        ]
-                    )
-                ]
+                task_cmd_reward_array = [tracker.reward_structure.performance_reward for tracker in completed_results]
+                success_rate_array = [tracker.reward_structure.success_rate for tracker in completed_results]
+                task_group_reward += [np.mean([tracker.reward_structure.final_scalar_reward for tracker in completed_results])]
                 task_success_rate += [np.mean(success_rate_array)]
                 # whether this group need amendment
                 need_amend = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
@@ -438,9 +380,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                         # this group is good and healthy, if it has extra samples, we accept them
                         num_to_be_selected = rollout_n + avail_extra_cnt
                     # if num_to_be_selected > the number of resulting samples, we choose them to maximum reward diversity
-                    selected_tracker_array = self.greedy_max_std_selection(
-                        completed_results, num_to_be_selected
-                    )
+                    selected_tracker_array = self.greedy_max_std_selection(completed_results, num_to_be_selected)
                     # good, we have collected selected samples from this group
                     tracker_array += selected_tracker_array
                     # print info
@@ -479,12 +419,8 @@ class VerlRolloutManager(DynamicRolloutManager):
                 raise e
             finally:
                 tracker.generate_log(global_step=self.current_global_steps)
-                if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get(
-                    "AJET_DEBUG", None
-                ):
-                    logger.success(
-                        f"View rollout details at [http://localhost:8181/?path={quote(os.path.abspath(os.environ['BEST_LOGGER_PATH']))}]"
-                    )
+                if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get("AJET_DEBUG", None):
+                    logger.success(f"View rollout details at [http://localhost:8181/?path={quote(os.path.abspath(os.environ['BEST_LOGGER_PATH']))}]")
             sample_arr_final += sample_arr
 
         if self.config.ajet.backbone in ["verl"]:
@@ -518,12 +454,7 @@ class VerlRolloutManager(DynamicRolloutManager):
         reference_advantage = []
 
         for sample in samples:
-            assert (
-                len(sample.input_ids)
-                == len(sample.attention_mask)
-                == len(sample.position_ids)
-                == len(sample.loss_mask)
-            ), f"Sample has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
+            assert len(sample.input_ids) == len(sample.attention_mask) == len(sample.position_ids) == len(sample.loss_mask), f"Sample has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
 
             task_ids.append(sample.task_id)
             rollout_ids.append(sample.task_tag)
@@ -538,17 +469,11 @@ class VerlRolloutManager(DynamicRolloutManager):
             prompt_ids.append(torch.tensor(sample.prompt_ids, dtype=torch.int))
             response_ids.append(torch.tensor(sample.response_ids, dtype=torch.int))
 
-            prompt_attention_mask.append(
-                torch.tensor(sample.prompt_attention_mask, dtype=torch.int)
-            )
-            response_attention_mask.append(
-                torch.tensor(sample.response_attention_mask, dtype=torch.int)
-            )
+            prompt_attention_mask.append(torch.tensor(sample.prompt_attention_mask, dtype=torch.int))
+            response_attention_mask.append(torch.tensor(sample.response_attention_mask, dtype=torch.int))
 
             prompt_position_ids.append(torch.tensor(sample.prompt_position_ids, dtype=torch.int))
-            response_position_ids.append(
-                torch.tensor(sample.response_position_ids, dtype=torch.int)
-            )
+            response_position_ids.append(torch.tensor(sample.response_position_ids, dtype=torch.int))
 
             prompt_loss_mask.append(torch.tensor(sample.prompt_loss_mask, dtype=torch.int))
             response_loss_mask.append(torch.tensor(sample.response_loss_mask, dtype=torch.int))
@@ -600,34 +525,18 @@ class VerlRolloutManager(DynamicRolloutManager):
             0,
             left_pad=True,
         )
-        prompt_position_ids = pad_sequence_to_length(
-            prompt_position_ids, max_prompt_length_this_batch, 0, left_pad=True
-        )
-        prompt_loss_mask = pad_sequence_to_length(
-            prompt_loss_mask, max_prompt_length_this_batch, 0, left_pad=True
-        )
+        prompt_position_ids = pad_sequence_to_length(prompt_position_ids, max_prompt_length_this_batch, 0, left_pad=True)
+        prompt_loss_mask = pad_sequence_to_length(prompt_loss_mask, max_prompt_length_this_batch, 0, left_pad=True)
 
         response_ids = pad_sequence(response_ids, batch_first=True, padding_value=self.pad_token_id)
-        response_attention_mask = pad_sequence(
-            response_attention_mask, batch_first=True, padding_value=0
-        )
+        response_attention_mask = pad_sequence(response_attention_mask, batch_first=True, padding_value=0)
         response_loss_mask = pad_sequence(response_loss_mask, batch_first=True, padding_value=0)
 
-        response_ids = pad_sequence_to_length(
-            response_ids, max_response_length_this_batch, self.pad_token_id
-        )
-        response_attention_mask = pad_sequence_to_length(
-            response_attention_mask, max_response_length_this_batch, 0
-        )
-        response_loss_mask = pad_sequence_to_length(
-            response_loss_mask, max_response_length_this_batch, 0
-        )
+        response_ids = pad_sequence_to_length(response_ids, max_response_length_this_batch, self.pad_token_id)
+        response_attention_mask = pad_sequence_to_length(response_attention_mask, max_response_length_this_batch, 0)
+        response_loss_mask = pad_sequence_to_length(response_loss_mask, max_response_length_this_batch, 0)
 
-        delta_position_id = (
-            torch.arange(1, response_ids.size(1) + 1, device=response_ids.device)
-            .unsqueeze(0)
-            .repeat(len(samples), 1)
-        )
+        delta_position_id = torch.arange(1, response_ids.size(1) + 1, device=response_ids.device).unsqueeze(0).repeat(len(samples), 1)
         response_position_ids = prompt_position_ids[:, -1:] + delta_position_id
 
         input_ids = torch.cat((prompt_ids, response_ids), dim=-1)

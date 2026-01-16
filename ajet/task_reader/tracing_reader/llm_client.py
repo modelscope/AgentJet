@@ -28,9 +28,7 @@ class DashScopeClient:
     ):
         self.api_key = api_key or os.getenv("DASHSCOPE_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "API key is required. Please set DASHSCOPE_API_KEY environment variable or pass it directly."
-            )
+            raise ValueError("API key is required. Please set DASHSCOPE_API_KEY environment variable or pass it directly.")
 
         self.model_name = model_name
         self.temperature = temperature
@@ -63,15 +61,11 @@ class DashScopeClient:
             str: The complete response from the LLM as a single string.
         """
         res = ""
-        for x in self.chat_stream(
-            messages, sampling_params
-        ):  # ⭐ Aggregates the streaming responses into a single string
+        for x in self.chat_stream(messages, sampling_params):  # ⭐ Aggregates the streaming responses into a single string
             res += x
         return res
 
-    def chat_stream(
-        self, messages: list[dict[str, str]], sampling_params: dict[str, Any]
-    ) -> Generator[str, None, None]:
+    def chat_stream(self, messages: list[dict[str, str]], sampling_params: dict[str, Any]) -> Generator[str, None, None]:
         """
         Initiates a streaming chat session and returns a generator that yields the response as it is being generated.
 
@@ -82,13 +76,9 @@ class DashScopeClient:
         Returns:
             Generator[str, None, None]: A generator that yields the response text as it is being generated.
         """
-        return self.chat_stream_with_retry(
-            messages, **sampling_params
-        )  # ⭐ Calls the retry mechanism for streaming chat
+        return self.chat_stream_with_retry(messages, **sampling_params)  # ⭐ Calls the retry mechanism for streaming chat
 
-    def chat_completion(
-        self, messages: list[dict[str, str]], stream: bool = False, **kwargs
-    ) -> str | Generator[str, None, None]:
+    def chat_completion(self, messages: list[dict[str, str]], stream: bool = False, **kwargs) -> str | Generator[str, None, None]:
         """
         Sends a request to the chat completion API, supporting both non-streaming and streaming modes, and handles various exceptions.
 
@@ -116,9 +106,7 @@ class DashScopeClient:
             if stream:
                 return self._handle_stream_response(url, params)  # ⭐ Handles the streaming response
             else:
-                return self._handle_normal_response(
-                    url, params
-                )  # ⭐ Handles the non-streaming response
+                return self._handle_normal_response(url, params)  # ⭐ Handles the non-streaming response
 
         except requests.exceptions.RequestException as e:
             logger.error(f"API request failed: {e}")
@@ -141,9 +129,7 @@ class DashScopeClient:
         Returns:
             str: The content of the first choice's message in the response, or an empty string if the response format is unexpected.
         """
-        response = requests.post(
-            url, headers=self.headers, json=params, timeout=600
-        )  # ⭐ Sends the POST request to the API
+        response = requests.post(url, headers=self.headers, json=params, timeout=600)  # ⭐ Sends the POST request to the API
         if not response.ok:
             # check inappropriate content
             try:
@@ -160,9 +146,7 @@ class DashScopeClient:
 
         result = response.json()
         if "choices" in result and len(result["choices"]) > 0:
-            return result["choices"][0]["message"][
-                "content"
-            ].strip()  # ⭐ Extracts and returns the content of the first choice's message
+            return result["choices"][0]["message"]["content"].strip()  # ⭐ Extracts and returns the content of the first choice's message
         else:
             logger.error(f"Unexpected response format: {result}")
             return ""
@@ -178,9 +162,7 @@ class DashScopeClient:
         Yields:
             str: The content of the response, if it meets the specified conditions.
         """
-        response = requests.post(
-            url, headers=self.headers, json=params, stream=True, timeout=600
-        )  # ⭐ Send the POST request and get the streaming response
+        response = requests.post(url, headers=self.headers, json=params, stream=True, timeout=600)  # ⭐ Send the POST request and get the streaming response
         if not response.ok:
             # check inappropriate content
             try:
@@ -235,17 +217,13 @@ class DashScopeClient:
         """
         for attempt in range(max_retries):
             try:
-                result = cast(
-                    str, self.chat_completion(messages, stream=False, **kwargs)
-                )  # ⭐ Attempt to get a chat completion
+                result = cast(str, self.chat_completion(messages, stream=False, **kwargs))  # ⭐ Attempt to get a chat completion
                 if result:  # If a valid response is obtained
                     return result
 
             except LlmException as e:
                 if e.typ == "inappropriate content":
-                    logger.warning(
-                        "llm return inappropriate content, which is blocked by the remote"
-                    )
+                    logger.warning("llm return inappropriate content, which is blocked by the remote")
                     return "[inappropriate content]"
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1} failed: {e}")
@@ -291,9 +269,7 @@ class DashScopeClient:
                     return  # success
             except LlmException as e:
                 if e.typ == "inappropriate content":
-                    logger.warning(
-                        "llm return inappropriate content, which is blocked by the remote"
-                    )
+                    logger.warning("llm return inappropriate content, which is blocked by the remote")
                     yield "[inappropriate content]"
                     return
             except Exception as e:

@@ -1,4 +1,3 @@
-
 import re
 import time
 import asyncio
@@ -147,8 +146,8 @@ async def reward_fn(init_messages: list[dict], response: str, truth_action: str,
 
 _reward_semaphore = threading.Semaphore(16)
 
-async def reward_fn_with_semaphore(*args, **kwargs):
 
+async def reward_fn_with_semaphore(*args, **kwargs):
     get_sem_ok = False
     while not get_sem_ok:
         get_sem_ok = _reward_semaphore.acquire(blocking=False)
@@ -175,24 +174,24 @@ class ExampleLearn2Ask(Workflow):
         truth_action = workflow_task.task.metadata["decision_truth"] or "continue"
         truth_info = workflow_task.task.metadata["info_truth"]
 
-        llm_info=tuner.as_oai_baseurl_apikey()
+        llm_info = tuner.as_oai_baseurl_apikey()
 
-        llm=ChatOpenAI(
+        llm = ChatOpenAI(
             base_url=llm_info.base_url,
-            api_key=lambda:llm_info.api_key,
+            api_key=lambda: llm_info.api_key,
         )
 
-        agent=create_agent(
+        agent = create_agent(
             model=llm,
             system_prompt=system_prompt,
         )
 
-        msg=[
-            {"role": x["role"], "content": x["content"]} for x in messages
-        ]
-        result = agent.invoke({
-            "messages": msg, # type: ignore
-        })
+        msg = [{"role": x["role"], "content": x["content"]} for x in messages]
+        result = agent.invoke(
+            {
+                "messages": msg,  # type: ignore
+            }
+        )
 
         response = result["messages"][-1].content
         reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)

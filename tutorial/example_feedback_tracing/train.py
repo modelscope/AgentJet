@@ -19,11 +19,7 @@ You should return your final answer within \\boxed{{}}.
 def extract_final_answer(result) -> str:
     """Extract the final answer from the agent's response."""
     try:
-        if (
-            hasattr(result, "metadata")
-            and isinstance(result.metadata, dict)
-            and "result" in result.metadata
-        ):
+        if hasattr(result, "metadata") and isinstance(result.metadata, dict) and "result" in result.metadata:
             return result.metadata["result"]
         if hasattr(result, "content"):
             if isinstance(result.content, dict) and "result" in result.content:
@@ -36,9 +32,7 @@ def extract_final_answer(result) -> str:
 
 
 class FinalResult(BaseModel):
-    result: str = Field(
-        description="Your solution of the given math problem. Put your final answer in boxed format, e.g., \\boxed{42}"
-    )
+    result: str = Field(description="Your solution of the given math problem. Put your final answer in boxed format, e.g., \\boxed{42}")
 
 
 class ExampleTracingFeedbackTrain(Workflow):

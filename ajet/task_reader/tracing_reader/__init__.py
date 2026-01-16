@@ -33,9 +33,7 @@ class TracingReader(BaseTaskReader):
         # config patch
         self.reader_config = reader_config.feedback_tracing
 
-        logger.info(
-            f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters', []))}"
-        )
+        logger.info(f"reading tasks from {self.reader_config.get('base_url')}, #filter {len(self.reader_config.get('filters', []))}")
         self._connector = LocalSqliteConnectorV1(self.reader_config.get("base_url"))
         filters_config = self.reader_config.get("filters")
         built_filters = build_filters(filters_config)
@@ -84,18 +82,9 @@ class TracingReader(BaseTaskReader):
         logger.info(f"Loaded {len(tasks)} tasks from conversation")
 
         existing_tasks = self._load_existing_tasks(output_path)
-        existing_hashes = {
-            t.metadata.get("qa_hash")
-            for t in existing_tasks
-            if t.metadata.get("qa_hash") is not None
-        }
+        existing_hashes = {t.metadata.get("qa_hash") for t in existing_tasks if t.metadata.get("qa_hash") is not None}
 
-        new_tasks = [
-            t
-            for t in tasks
-            if t.metadata.get("qa_hash") is not None
-            and t.metadata["qa_hash"] not in existing_hashes
-        ]
+        new_tasks = [t for t in tasks if t.metadata.get("qa_hash") is not None and t.metadata["qa_hash"] not in existing_hashes]
 
         new_tasks_filtered = self._apply_filters(new_tasks)
 

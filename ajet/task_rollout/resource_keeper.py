@@ -40,9 +40,7 @@ class ResourceKeeper(object):
             if self.env:
                 self.env.release_instance(self.workflow_task.episode_uuid)
         except Exception as e:
-            logger.bind(exception=True).exception(
-                f"encounter exception in env_worker.release_instance~ error={e.args}"
-            )
+            logger.bind(exception=True).exception(f"encounter exception in env_worker.release_instance~ error={e.args}")
             raise e
 
     def prepare(self):
@@ -89,9 +87,7 @@ class ResourceKeeper(object):
                 # Update main_query with actual query from environment
                 self.workflow_task.task.main_query = query
             except Exception as e:
-                logger.bind(exception=True).exception(
-                    f"encounter exception in env_worker.create_instance~ error={e.args}"
-                )
+                logger.bind(exception=True).exception(f"encounter exception in env_worker.create_instance~ error={e.args}")
                 if self.env is not None:
                     self.env.release_instance(self.workflow_task.episode_uuid)
                 raise e
@@ -130,9 +126,7 @@ class ResourceKeeper(object):
 
         return query, init_messages
 
-    def generate_gym_env(
-        self, env_client: Any, episode_uuid: str, task_thread_index: int, observation_window: Dict
-    ) -> "BaseGymEnv":
+    def generate_gym_env(self, env_client: Any, episode_uuid: str, task_thread_index: int, observation_window: Dict) -> "BaseGymEnv":
         return BaseGymEnv(env_client, episode_uuid, task_thread_index, observation_window)
 
 
@@ -166,9 +160,7 @@ class BaseGymEnv(object):
             try:
                 action["content"] = action["content"][0]["text"]
             except Exception:
-                logger.exception(
-                    f"Failed to parse action content from agentscope output. {action['content']}"
-                )
+                logger.exception(f"Failed to parse action content from agentscope output. {action['content']}")
                 action["content"] = str(action["content"])
 
         self.observation_window["step"][self.task_thread_index] += 1
@@ -194,7 +186,7 @@ class BaseGymEnv(object):
         reward = 0
         info = {}
         terminate = env_output["is_terminated"]
-        return obs, reward, terminate, info # type: ignore
+        return obs, reward, terminate, info  # type: ignore
 
     def reset(self) -> str:
         """Reset gym environment."""

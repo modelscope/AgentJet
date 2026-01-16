@@ -25,10 +25,10 @@ import json
 from typing import List, Dict, Any, Union
 
 
-
 # =============================================================================
 # ExtendedMessage -> OpenAI conversion (backward compatible functions)
 # =============================================================================
+
 
 def convert_ext_msg_to_openai_format(ext_msg: Any) -> Dict[str, Any]:
     """
@@ -40,6 +40,7 @@ def convert_ext_msg_to_openai_format(ext_msg: Any) -> Dict[str, Any]:
     Returns:
         Message dict in OpenAI format
     """
+
     # Helper function: get attribute value
     def get_attr(obj, attr_name, default=None):
         if hasattr(obj, attr_name):
@@ -49,37 +50,26 @@ def convert_ext_msg_to_openai_format(ext_msg: Any) -> Dict[str, Any]:
         return default
 
     # Check if there are tool_calls (assistant initiates tool call)
-    tool_calls = get_attr(ext_msg, 'tool_calls')
+    tool_calls = get_attr(ext_msg, "tool_calls")
     has_tool_calls = bool(tool_calls)
 
     # Check if there's tool_call_id (tool return result)
-    tool_call_id = get_attr(ext_msg, 'tool_call_id')
+    tool_call_id = get_attr(ext_msg, "tool_call_id")
     has_tool_call_id = bool(tool_call_id)
 
     # Get basic attributes
-    role = get_attr(ext_msg, 'role', 'user')
-    content = get_attr(ext_msg, 'content', '')
+    role = get_attr(ext_msg, "role", "user")
+    content = get_attr(ext_msg, "content", "")
 
     if has_tool_calls:
         # Assistant message contains tool_calls -> keep OpenAI format
-        msg_dict = {
-            "role": "assistant",
-            "content": content if content else "",
-            "tool_calls": tool_calls
-        }
+        msg_dict = {"role": "assistant", "content": content if content else "", "tool_calls": tool_calls}
     elif has_tool_call_id:
         # Tool return result -> use OpenAI format (role: "tool")
-        msg_dict = {
-            "role": "tool",
-            "content": content if content else "",
-            "tool_call_id": tool_call_id
-        }
+        msg_dict = {"role": "tool", "content": content if content else "", "tool_call_id": tool_call_id}
     else:
         # Normal message, keep original format
-        msg_dict = {
-            "role": role,
-            "content": content if content else ""
-        }
+        msg_dict = {"role": role, "content": content if content else ""}
 
     return msg_dict
 

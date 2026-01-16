@@ -18,19 +18,22 @@ from .experimental.as_oai_model_client import generate_auth_token
 if TYPE_CHECKING:
     from ajet import Workflow
 
+
 class MockAsyncCompletions(AsyncCompletions):
-    async def create(self, *args, **kwargs) -> Any: # type: ignore
-        return await self._client.create(*args, **kwargs) # type: ignore
+    async def create(self, *args, **kwargs) -> Any:  # type: ignore
+        return await self._client.create(*args, **kwargs)  # type: ignore
+
 
 class MockAsyncChat(AsyncChat):
     @property
     def completions(self) -> MockAsyncCompletions:  # type: ignore
         return MockAsyncCompletions(self._client)
 
+
 class OpenaiClientBaseUrlTuner(BaseModel):
-    """ At this layer, we will determine which model to use:
-        - training model
-        - debug model assigned by user, used when this target is not being trained
+    """At this layer, we will determine which model to use:
+    - training model
+    - debug model assigned by user, used when this target is not being trained
     """
 
     base_url: str = Field(default="http://localhost:27788/v1", description="The base URL for the Ajet's fake OpenAI API")
@@ -47,7 +50,6 @@ class OpenaiClientBaseUrlTuner(BaseModel):
         episode_contect_address: str,
         **kwargs,
     ):
-
         port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
         master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")

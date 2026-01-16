@@ -34,6 +34,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 API_KEY_PREFIX = "sk-ajet-"
 
+
 class InterchangeCompletionRequest(BaseModel):
     completion_request: ChatCompletionRequest
     agent_name: str
@@ -41,12 +42,14 @@ class InterchangeCompletionRequest(BaseModel):
     episode_uuid: str
     timeline_uuid: str
 
+
 class HealthCheckRequest(BaseModel):
     agent_name: str
     target_tag: str
     episode_uuid: str
     timeline_uuid: str
     health_check: bool = True
+
 
 # Create FastAPI app
 SERVER_SHUTDOWN_EVENT = threading.Event()
@@ -59,7 +62,6 @@ atexit.register(context.term)
 
 
 def get_app(max_fastapi_threads: int = 512) -> FastAPI:
-
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # Startup
@@ -72,41 +74,43 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
 
     app = FastAPI(title="AJet Interchange Endpoint", lifespan=lifespan)
 
-
     def _begin_handle_chat_completion(episode_address, int_req: InterchangeCompletionRequest, episode_uuid, timeline_uuid, client_offline: threading.Event):
-        """ run this in thread to avoid blocking main event loop
-        """
-        if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | Received new chat completion request (inside thread)")
+        """run this in thread to avoid blocking main event loop"""
+        if DEBUG:
+            logger.info(f"[server] episode_uuid: {episode_uuid} | Received new chat completion request (inside thread)")
 
         socket = context.socket(zmq.REQ)
-        socket.setsockopt(zmq.RCVTIMEO, 60*1000)  # 1 minute recv timeout
+        socket.setsockopt(zmq.RCVTIMEO, 60 * 1000)  # 1 minute recv timeout
         socket.connect(f"{episode_address}")
-        if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | connect done")
+        if DEBUG:
+            logger.info(f"[server] episode_uuid: {episode_uuid} | connect done")
         socket.send_string(int_req.model_dump_json())
-        if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | send_string")
+        if DEBUG:
+            logger.info(f"[server] episode_uuid: {episode_uuid} | send_string")
 
         result_str = ""
         for _ in range(5):  # max 5 minutes wait
             try:
-                if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
+                if DEBUG:
+                    logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
                 result_str = socket.recv_string()
                 break
             except zmq.Again as e:
-                if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string timeout, retrying.")
+                if DEBUG:
+                    logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string timeout, retrying.")
                 continue
 
         if not result_str:
             raise RuntimeError(f"Failed to get response from episode_address: {episode_address} after 5 attempts.")
         else:
-            if DEBUG: logger.success(f"[server] episode_uuid: {episode_uuid} | recv_string done.")
+            if DEBUG:
+                logger.success(f"[server] episode_uuid: {episode_uuid} | recv_string done.")
         result_object = ChatCompletion(**json.loads(result_str))
         return result_object
-
 
     @app.get("/health")
     async def health():
         return {"status": "ok"}
-
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request, authorization: str = Header(None)):
@@ -121,7 +125,7 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
         try:
             # Remove "Bearer " prefix if present
             auth_token = authorization.replace("Bearer ", "").replace("bearer ", "").replace(API_KEY_PREFIX, "")
-            decoded = base64.b64decode(auth_token).decode('utf-8')
+            decoded = base64.b64decode(auth_token).decode("utf-8")
             auth_data = json.loads(decoded)
 
             agent_name = auth_data.get("agent_name")
@@ -144,13 +148,14 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
 
         # Add to received queue
         int_req = InterchangeCompletionRequest(
-            completion_request = new_req,
-            agent_name = agent_name,
-            target_tag = target_tag,
-            episode_uuid = episode_uuid,
-            timeline_uuid = timeline_uuid,
+            completion_request=new_req,
+            agent_name=agent_name,
+            target_tag=target_tag,
+            episode_uuid=episode_uuid,
+            timeline_uuid=timeline_uuid,
         )
-        if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request (outside thread)")
+        if DEBUG:
+            logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request (outside thread)")
         client_offline = threading.Event()
         try:
             loop = asyncio.get_running_loop()
@@ -164,6 +169,7 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
 
     return app
 
+
 class InterchangeServer(Process):
     def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 2, max_fastapi_threads: int = 512):
         super().__init__()
@@ -175,17 +181,13 @@ class InterchangeServer(Process):
     def run(self):
         logger.info(f"Starting Interchange Server on port {self.port} with {self.num_fastapi_process} processes and {self.max_fastapi_threads} threads per process.")
         app = get_app(self.max_fastapi_threads)
+
         async def serve_with_monitor():
             # Start the server
-            config = uvicorn.Config(
-                app=app,
-                host="0.0.0.0",
-                port=self.port,
-                log_level="error",
-                workers=self.num_fastapi_process
-            )
+            config = uvicorn.Config(app=app, host="0.0.0.0", port=self.port, log_level="error", workers=self.num_fastapi_process)
             server = uvicorn.Server(config)
             await server.serve()
+
         try:
             asyncio.run(serve_with_monitor())
         except KeyboardInterrupt as e:
@@ -201,11 +203,12 @@ def start_interchange_server(config) -> int:
     # Find a free port if not specified or invalid
     port = int(os.environ.get("AJET_DAT_INTERCHANGE_PORT", -1))
 
-    if config.ajet.interchange_server.interchange_server_port != 'auto':
+    if config.ajet.interchange_server.interchange_server_port != "auto":
         port = int(config.ajet.interchange_server.interchange_server_port)
 
     if port <= 0:
         import socket
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(("", 0))
             port = s.getsockname()[1]
@@ -234,7 +237,8 @@ def start_interchange_server(config) -> int:
         time.sleep(1)
 
     # register a termination handler
-    if DEBUG: logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
+    if DEBUG:
+        logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
     atexit.register(lambda: interchange_server.terminate())
 
     # return port

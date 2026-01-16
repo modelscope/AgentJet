@@ -9,9 +9,7 @@ from typing import Any, Callable, Dict, List, Optional
 import requests
 from loguru import logger
 
-LOG_PATH = os.environ.get(
-    "CLIENT_LOG_PATH", os.path.join(tempfile.gettempdir(), "app_logs", "error.out")
-)
+LOG_PATH = os.environ.get("CLIENT_LOG_PATH", os.path.join(tempfile.gettempdir(), "app_logs", "error.out"))
 
 
 def retry_call(
@@ -28,18 +26,12 @@ def retry_call(
         try:
             res = fn()
             if i > 0:
-                logger.info(
-                    f"{err_prefix} {action_name} [instance={instance_id}] succeed at try {i+1}/{max_retry}"
-                )
+                logger.info(f"{err_prefix} {action_name} [instance={instance_id}] succeed at try {i+1}/{max_retry}")
             return res
         except Exception as e:
-            logger.info(
-                f"{err_prefix} {action_name} [instance={instance_id}] retry {i+1}/{max_retry} failed: {e}"
-            )
+            logger.info(f"{err_prefix} {action_name} [instance={instance_id}] retry {i+1}/{max_retry} failed: {e}")
             if i + 1 == max_retry:
-                logger.exception(
-                    f"{err_prefix} {action_name} [instance={instance_id}] max retries exceeded, fallback used."
-                )
+                logger.exception(f"{err_prefix} {action_name} [instance={instance_id}] max retries exceeded, fallback used.")
                 raise RuntimeError("Env Service Timeout")
             wait = random.uniform(min_backoff, max_backoff)
             time.sleep(wait)
@@ -75,9 +67,7 @@ class EnvClient:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            logger.exception(
-                f"[{endpoint}] _make_request failed (instance={instance_id}): {e}, data: {data}"
-            )
+            logger.exception(f"[{endpoint}] _make_request failed (instance={instance_id}): {e}, data: {data}")
             raise Exception(f"Request failed: {str(e)}, data: {data}")
 
     def get_env_profile(

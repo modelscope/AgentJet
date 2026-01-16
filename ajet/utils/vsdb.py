@@ -21,41 +21,43 @@ Starting with Ray 2.39, Anyscale has introduced the
 
 """
 
-def vscode_conditional_breakpoint(tag=None, once=True):
 
-   env_tag = f'HIT_BREAKPOINT_REC_{tag}'
-   if not os.getenv('RAY_DEBUG_POST_MORTEM'): return
-   if tag is None:
-      if once:
-         if os.getenv(env_tag, "") != "1":
-            os.environ[env_tag] = "1"
-            breakpoint()
-            return
-      else:
-         breakpoint()
-         return
-   else:
-      debug_tags = os.getenv('DEBUG_TAGS', '').split('|')
-      if tag in debug_tags:
-         if once:
+def vscode_conditional_breakpoint(tag=None, once=True):
+    env_tag = f"HIT_BREAKPOINT_REC_{tag}"
+    if not os.getenv("RAY_DEBUG_POST_MORTEM"):
+        return
+    if tag is None:
+        if once:
             if os.getenv(env_tag, "") != "1":
-               os.environ[env_tag] = "1"
-               breakpoint()
-               return
-         else:
+                os.environ[env_tag] = "1"
+                breakpoint()
+                return
+        else:
             breakpoint()
             return
+    else:
+        debug_tags = os.getenv("DEBUG_TAGS", "").split("|")
+        if tag in debug_tags:
+            if once:
+                if os.getenv(env_tag, "") != "1":
+                    os.environ[env_tag] = "1"
+                    breakpoint()
+                    return
+            else:
+                breakpoint()
+                return
 
 
 def objdump(obj, file="objdump.tmp"):
-   with open(file, "wb+") as f:
-      pickle.dump(obj, f)
-   return
+    with open(file, "wb+") as f:
+        pickle.dump(obj, f)
+    return
 
 
 def objload(file="objdump.tmp"):
-   import os
-   if not os.path.exists(file):
-      return
-   with open(file, "rb") as f:
-      return pickle.load(f)
+    import os
+
+    if not os.path.exists(file):
+        return
+    with open(file, "rb") as f:
+        return pickle.load(f)

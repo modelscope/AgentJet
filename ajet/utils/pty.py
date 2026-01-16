@@ -41,7 +41,7 @@ def run_command_with_pty(cmd, working_dir, env_dict):
                 # log_f.flush()
                 # Also print to stdout (optional)
                 # Use errors='replace' to handle incomplete UTF-8 sequences
-                print(data.decode(errors='replace'), end="")
+                print(data.decode(errors="replace"), end="")
             return data
 
         # Define stdin read callback
@@ -119,9 +119,7 @@ if __name__ == "__main__":
     import argparse
     import json
 
-    parser = argparse.ArgumentParser(
-        description="Run a shell command in a PTY with logging and custom env."
-    )
+    parser = argparse.ArgumentParser(description="Run a shell command in a PTY with logging and custom env.")
     parser.add_argument("--human-cmd", type=str, help="Shell command to run (as a string)")
     parser.add_argument("--dir", type=str, default=".", help="Working directory")
     parser.add_argument(

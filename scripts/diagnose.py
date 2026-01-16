@@ -64,11 +64,7 @@ def test_connection(name, url, timeout=10):
         print("Error open {}: {}, {}, DNS finished in {} sec.".format(name, url, e, dns_elapsed))
         return
     load_elapsed = time.time() - start
-    print(
-        "Timing for {}: {}, DNS: {:.4f} sec, LOAD: {:.4f} sec.".format(
-            name, url, dns_elapsed, load_elapsed
-        )
-    )
+    print("Timing for {}: {}, DNS: {:.4f} sec, LOAD: {:.4f} sec.".format(name, url, dns_elapsed, load_elapsed))
 
 
 def check_python():
@@ -182,13 +178,7 @@ def check_network(args):
 def check_environment():
     print("----------Environment----------")
     for k, v in os.environ.items():
-        if (
-            k.startswith("VERL_")
-            or k.startswith("OMP_")
-            or k.startswith("KMP_")
-            or k == "CC"
-            or k == "CXX"
-        ):
+        if k.startswith("VERL_") or k.startswith("OMP_") or k.startswith("KMP_") or k == "CC" or k == "CXX":
             print('{}="{}"'.format(k, v))
 
 

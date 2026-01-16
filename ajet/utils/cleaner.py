@@ -38,10 +38,7 @@ def fast_kill_by_keyword_bash(
     # Build a fast PID collector using pgrep if available; fallback to ps/grep
     # We prefer pgrep -af to filter by full command and then extract PID (column 1)
     exclude_filters = " ".join([f"| grep -v -F {shlex.quote(s)}" for s in exclude_substrings])
-    pid_list_cmd = (
-        f"(pgrep -af -- {shlex.quote(keyword)} 2>/dev/null || true) "
-        f"{exclude_filters} | awk '{{print $1}}' | grep -v -x {self_pid} || true"
-    )
+    pid_list_cmd = f"(pgrep -af -- {shlex.quote(keyword)} 2>/dev/null || true) " f"{exclude_filters} | awk '{{print $1}}' | grep -v -x {self_pid} || true"
 
     try:
         res = subprocess.run(
@@ -57,10 +54,7 @@ def fast_kill_by_keyword_bash(
 
     # Fallback to ps/grep if pgrep path     produced nothing (e.g., no pgrep installed)
     if not pids:
-        ps_pid_cmd = (
-            f"ps -eo pid,command -ww | grep -F -- {shlex.quote(keyword)} | grep -v grep "
-            f"{exclude_filters} | awk '{{print $1}}' | grep -v -x {self_pid} || true"
-        )
+        ps_pid_cmd = f"ps -eo pid,command -ww | grep -F -- {shlex.quote(keyword)} | grep -v grep " f"{exclude_filters} | awk '{{print $1}}' | grep -v -x {self_pid} || true"
         try:
             res2 = subprocess.run(
                 ["bash", "-lc", ps_pid_cmd],

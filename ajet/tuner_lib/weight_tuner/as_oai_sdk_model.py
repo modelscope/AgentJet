@@ -17,19 +17,22 @@ if TYPE_CHECKING:
 
 
 class MockAsyncCompletions(AsyncCompletions):
-    async def create(self, *args, **kwargs) -> Any: # type: ignore
-        return await self._client.create(*args, **kwargs) # type: ignore
+    async def create(self, *args, **kwargs) -> Any:  # type: ignore
+        return await self._client.create(*args, **kwargs)  # type: ignore
+
 
 class MockAsyncChat(AsyncChat):
     @property
     def completions(self) -> MockAsyncCompletions:  # type: ignore
         return MockAsyncCompletions(self._client)
 
+
 class OpenaiClientModelTuner(AsyncOpenAI):
-    """ At this layer, we will determine which model to use:
-        - training model
-        - debug model assigned by user, used when this target is not being trained
+    """At this layer, we will determine which model to use:
+    - training model
+    - debug model assigned by user, used when this target is not being trained
     """
+
     def __init__(
         self,
         config,
@@ -50,33 +53,25 @@ class OpenaiClientModelTuner(AsyncOpenAI):
         )
 
     @property
-    def chat(self) -> MockAsyncChat:    # type: ignore
+    def chat(self) -> MockAsyncChat:  # type: ignore
         return MockAsyncChat(self)
 
-    async def create(
-        self,
-        messages: List[dict],
-        tools: List = [],
-        tool_choice: str = "auto",
-        *args,
-        **kwargs
-    ) -> ChatCompletion:
-
+    async def create(self, messages: List[dict], tools: List = [], tool_choice: str = "auto", *args, **kwargs) -> ChatCompletion:
         # route first
         if self.use_debug_model and (self.debug_model is not None):
             client = AsyncOpenAI()
             return await client.chat.completions.create(
-                model = self.debug_model,
-                messages = messages,    # type: ignore
-                tools = tools,
-                tool_choice = tool_choice, # type: ignore
+                model=self.debug_model,
+                messages=messages,  # type: ignore
+                tools=tools,
+                tool_choice=tool_choice,  # type: ignore
             )
 
         # call llm model ✨
         response_gen = await self.llm_proxy(
-            messages = messages,
-            tools = tools,
-            tool_choice = tool_choice,
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice,
         )
         assert isinstance(response_gen, ChatCompletion)
         return response_gen

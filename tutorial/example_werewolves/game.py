@@ -177,9 +177,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:  # noqa: C90
                         healing = False
 
                 # Has poison potion and hasn't used the healing potion
-                if poison and not (
-                    msg_witch_resurrect and msg_witch_resurrect.metadata["resurrect"]
-                ):
+                if poison and not (msg_witch_resurrect and msg_witch_resurrect.metadata["resurrect"]):
                     msg_witch_poison = await agent(
                         await moderator(
                             Prompts.to_witch_poison.format(

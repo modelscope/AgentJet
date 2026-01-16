@@ -70,9 +70,7 @@ class LlmEvaluateFilter(Filter):
         self._fn = ReActAgent(
             name="agent",
             sys_prompt=EVALUATE_PROMPT.format(custom_rubrics=custom_rubrics),
-            model=DashScopeChatModel(
-                "qwen3-235b-a22b-instruct-2507", os.environ["DASHSCOPE_API_KEY"]
-            ),
+            model=DashScopeChatModel("qwen3-235b-a22b-instruct-2507", os.environ["DASHSCOPE_API_KEY"]),
             formatter=DashScopeMultiAgentFormatter(),
             max_iters=1,
         )
@@ -80,13 +78,9 @@ class LlmEvaluateFilter(Filter):
     async def filter(self, tasks: Iterable[Task]) -> List[Task]:
         kept: List[Task] = []
         for task in tasks:
-            payload = "query: " + task.main_query + "\n" "answer: " + task.metadata.get(
-                "answer", ""
-            )
+            payload = "query: " + task.main_query + "\n" "answer: " + task.metadata.get("answer", "")
 
-            res = await self._fn(
-                Msg("user", content=payload, role="user"), structured_model=EvalResModel
-            )
+            res = await self._fn(Msg("user", content=payload, role="user"), structured_model=EvalResModel)
             assert isinstance(res, EvalResModel)
             if self._print_reason:
                 print(res.reason)

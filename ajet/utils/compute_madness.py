@@ -9,30 +9,9 @@ WHITE_LIST_REGEX_PARTS = {
     # Chinese punctuation
     "chinese_punct": "，。！？、；：“”‘’（）【】《》（）——……「」『』",
     # Emoji ranges
-    "emoji": (
-        "\U0001F300-\U0001F5FF"
-        "\U0001F600-\U0001F64F"
-        "\U0001F680-\U0001F6FF"
-        "\U0001F700-\U0001F77F"
-        "\U0001F780-\U0001F7FF"
-        "\U0001F800-\U0001F8FF"
-        "\U0001F900-\U0001F9FF"
-        "\U0001FA00-\U0001FA6F"
-        "\U0001FA70-\U0001FAFF"
-        "\u2702-\u27B0"
-        "\u24C2-\U0001F251"
-    ),
+    "emoji": ("\U0001F300-\U0001F5FF" "\U0001F600-\U0001F64F" "\U0001F680-\U0001F6FF" "\U0001F700-\U0001F77F" "\U0001F780-\U0001F7FF" "\U0001F800-\U0001F8FF" "\U0001F900-\U0001F9FF" "\U0001FA00-\U0001FA6F" "\U0001FA70-\U0001FAFF" "\u2702-\u27B0" "\u24C2-\U0001F251"),
     # Chinese characters
-    "chinese": (
-        "\u4E00-\u9FFF"
-        "\u3400-\u4DBF"
-        "\U00020000-\U0002A6DF"
-        "\U0002A700-\U0002B73F"
-        "\U0002B740-\U0002B81F"
-        "\U0002B820-\U0002CEAF"
-        "\uF900-\uFAFF"
-        "\U0002F800-\U0002FA1F"
-    ),
+    "chinese": ("\u4E00-\u9FFF" "\u3400-\u4DBF" "\U00020000-\U0002A6DF" "\U0002A700-\U0002B73F" "\U0002B740-\U0002B81F" "\U0002B820-\U0002CEAF" "\uF900-\uFAFF" "\U0002F800-\U0002FA1F"),
 }
 
 
@@ -104,9 +83,7 @@ def compute_string_madness_format(completion, detail, format_type) -> float:
             # print("think tag order wrong")
             return -1.0
         # remove think part
-        think_part = completion[
-            completion.index(r"<think>") : completion.index(r"</think>") + len(r"</think>")
-        ]
+        think_part = completion[completion.index(r"<think>") : completion.index(r"</think>") + len(r"</think>")]
         rest_part = completion.replace(think_part, "")
         # Check that ```python and ``` appear exactly once and in order
         if not rest_part.strip().startswith(r"```python"):

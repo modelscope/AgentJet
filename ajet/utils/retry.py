@@ -36,15 +36,11 @@ def retry_with_backoff(
                     raise exc
                 except Exception as exc:  # noqa: BLE001
                     if attempt < target_max_retry - 1:
-                        logger.bind(exception=True).exception(
-                            f"{func.__name__} error: {exc.args}, retrying {attempt + 1}/{target_max_retry}"
-                        )
+                        logger.bind(exception=True).exception(f"{func.__name__} error: {exc.args}, retrying {attempt + 1}/{target_max_retry}")
                         sleep_seconds = backoff_fn(attempt) if backoff_fn else 2**attempt
                         time.sleep(sleep_seconds)
                     else:
-                        logger.bind(exception=True).exception(
-                            f"{func.__name__} failed after {target_max_retry} retries: {exc.args}"
-                        )
+                        logger.bind(exception=True).exception(f"{func.__name__} failed after {target_max_retry} retries: {exc.args}")
                         raise
 
             raise RuntimeError("retry_with_backoff exhausted attempts")

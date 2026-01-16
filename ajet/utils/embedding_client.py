@@ -32,9 +32,7 @@ class OpenAIEmbeddingClient:
             rate_limit_window (int): The time window in seconds for the rate limit, defaulting to 60 seconds.
         """
         self.api_key = api_key
-        self.base_url = base_url.rstrip(
-            "/"
-        )  # ⭐ Ensures the base URL does not end with a trailing slash
+        self.base_url = base_url.rstrip("/")  # ⭐ Ensures the base URL does not end with a trailing slash
         self.model_name = model_name
         # Set up the request headers
         self.headers = {
@@ -42,9 +40,7 @@ class OpenAIEmbeddingClient:
             "Authorization": f"Bearer {self.api_key}",  # ⭐ Constructs the authorization header using the provided API key
         }
 
-        logger.info(
-            f"init OpenAI Embedding client, quota: {rate_limit_calls} times/{rate_limit_window}s"
-        )
+        logger.info(f"init OpenAI Embedding client, quota: {rate_limit_calls} times/{rate_limit_window}s")
 
     @retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, min=4, max=60))
     def get_embeddings(
@@ -103,9 +99,7 @@ class OpenAIEmbeddingClient:
                     json=payload,
                 )
             if not response.is_success:
-                logger.error(
-                    f"failed to request embedding: {response.status_code} {response.reason_phrase}"
-                )
+                logger.error(f"failed to request embedding: {response.status_code} {response.reason_phrase}")
                 try:
                     logger.error(f"err json: {response.json()}")
                 except Exception:
@@ -128,9 +122,7 @@ class OpenAIEmbeddingClient:
         Returns:
             List[float]: The embedding vector for the provided text.
         """
-        result = self.get_embeddings(
-            text, **kwargs
-        )  # ⭐ Calls the get_embeddings method with the given text and additional arguments
+        result = self.get_embeddings(text, **kwargs)  # ⭐ Calls the get_embeddings method with the given text and additional arguments
         return result["data"][0]["embedding"]
 
     def get_multiple_embeddings(self, texts: Sequence[str], **kwargs) -> List[List[float]]:
@@ -144,12 +136,8 @@ class OpenAIEmbeddingClient:
         Returns:
             List[List[float]]: A list of embedding vectors.
         """
-        result = self.get_embeddings(
-            texts, **kwargs
-        )  # ⭐ Calls the `get_embeddings` method with provided texts and additional arguments
-        return [
-            item["embedding"] for item in result["data"]
-        ]  # ⭐ Extracts the 'embedding' field from each item in the returned data
+        result = self.get_embeddings(texts, **kwargs)  # ⭐ Calls the `get_embeddings` method with provided texts and additional arguments
+        return [item["embedding"] for item in result["data"]]  # ⭐ Extracts the 'embedding' field from each item in the returned data
 
     def set_model(self, model_name: str):
         """
@@ -177,9 +165,7 @@ class OpenAIEmbeddingClient:
             api_key (str): The API key for authentication.
         """
         self.api_key = api_key
-        self.headers[
-            "Authorization"
-        ] = f"Bearer {self.api_key}"  # ⭐ Update the authorization header
+        self.headers["Authorization"] = f"Bearer {self.api_key}"  # ⭐ Update the authorization header
 
 
 class EmbeddingClient:
@@ -200,13 +186,9 @@ class EmbeddingClient:
 
         self._client = OpenAIEmbeddingClient(api_key=api_key, base_url=base_url, model_name=model)
         self.similarity_threshold = similarity_threshold
-        self._chroma_client = chromadb.PersistentClient(
-            path=chroma_db_path, settings=Settings(anonymized_telemetry=False)
-        )
+        self._chroma_client = chromadb.PersistentClient(path=chroma_db_path, settings=Settings(anonymized_telemetry=False))
 
-        self._collection = self._chroma_client.get_or_create_collection(
-            name=collection_name, metadata={"hnsw:space": "cosine"}
-        )
+        self._collection = self._chroma_client.get_or_create_collection(name=collection_name, metadata={"hnsw:space": "cosine"})
 
     def add(self, text: str, id: int):
         """
@@ -339,9 +321,7 @@ class EmbeddingClient:
         """clear all stored texts and embeddings"""
         try:
             self._chroma_client.delete_collection(self._collection.name)
-            self._collection = self._chroma_client.get_or_create_collection(
-                name=self._collection.name, metadata={"hnsw:space": "cosine"}
-            )
+            self._collection = self._chroma_client.get_or_create_collection(name=self._collection.name, metadata={"hnsw:space": "cosine"})
         except Exception as e:
             print(f"failed to clear stores: {e}")
 

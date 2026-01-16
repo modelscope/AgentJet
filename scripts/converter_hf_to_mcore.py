@@ -92,9 +92,7 @@ def test_conversion(megatron_model_provider, tfconfig, output_path, model):
         dut_data = dut_state_dict[name].data
         if name in ref_state_dict:
             ref_data = ref_state_dict[name].data
-            assert (
-                dut_data.shape == ref_state_dict.shape
-            ), f"{name=} {dut_data.shape=} {ref_data.shape=}"
+            assert dut_data.shape == ref_state_dict.shape, f"{name=} {dut_data.shape=} {ref_data.shape=}"
             assert (dut_data == ref_data).all(), f"{name} is not equal"
             print(f"{name} is equal")
         else:
@@ -121,9 +119,7 @@ def convert_checkpoint_from_transformers_to_megatron(hf_model, model, hf_config)
     head_dim = getattr(hf_config, "head_dim", hidden_dim // num_attention_heads)
     if num_attention_heads != num_key_value_heads:
         print("[WARNING] Converting GQA model")
-    has_qkv_bias = getattr(hf_config, "qkv_bias", False) or getattr(
-        hf_config, "attention_bias", False
-    )
+    has_qkv_bias = getattr(hf_config, "qkv_bias", False) or getattr(hf_config, "attention_bias", False)
     has_share_expert = getattr(hf_config, "shared_expert_intermediate_size", None)
     with torch.no_grad():
         model.embedding.word_embeddings.weight.copy_(hf_model.model.embed_tokens.weight)
@@ -161,9 +157,7 @@ def convert_checkpoint_from_transformers_to_megatron(hf_model, model, hf_config)
             for idx, hf_expert in enumerate(hf_layer.mlp.experts):
                 fc1_weight = torch.cat([hf_expert.gate_proj.weight, hf_expert.up_proj.weight])
                 layer.mlp.experts.linear_fc1._parameters[f"weight{idx}"].copy_(fc1_weight)
-                layer.mlp.experts.linear_fc2._parameters[f"weight{idx}"].copy_(
-                    hf_expert.down_proj.weight
-                )
+                layer.mlp.experts.linear_fc2._parameters[f"weight{idx}"].copy_(hf_expert.down_proj.weight)
 
             if has_share_expert:
                 layer.mlp.shared_experts.gate_weight.copy_(hf_layer.mlp.shared_expert_gate.weight)
@@ -174,9 +168,7 @@ def convert_checkpoint_from_transformers_to_megatron(hf_model, model, hf_config)
                     ]
                 )
                 layer.mlp.shared_experts.linear_fc1.weight.copy_(shared_fc1_weight)
-                layer.mlp.shared_experts.linear_fc2.weight.copy_(
-                    hf_layer.mlp.shared_expert.down_proj.weight
-                )
+                layer.mlp.shared_experts.linear_fc2.weight.copy_(hf_layer.mlp.shared_expert.down_proj.weight)
 
         model.decoder.final_layernorm.weight.copy_(hf_model.model.norm.weight)
         model.output_layer.weight.copy_(hf_model.lm_head.weight)
@@ -193,9 +185,7 @@ def convert_checkpoint_from_transformers_to_megatron_dpskv3(hf_model, model, hf_
     ):
         if not skip_dtype_assert:
             if src_tensor.dtype != dst_tensor.dtype:
-                raise ValueError(
-                    f"Get source dtype {src_tensor.dtype}, but target dtype {dst_tensor.dtype}"
-                )
+                raise ValueError(f"Get source dtype {src_tensor.dtype}, but target dtype {dst_tensor.dtype}")
         assert src_tensor.shape == dst_tensor.shape
         dst_tensor.data.copy_(src_tensor.data)
         return src_tensor.numel()
@@ -210,17 +200,11 @@ def convert_checkpoint_from_transformers_to_megatron_dpskv3(hf_model, model, hf_
         else:
             layer.self_attention.linear_q_down_proj.weight.copy_(hf_layer.self_attn.q_a_proj.weight)
             layer.self_attention.linear_q_up_proj.weight.copy_(hf_layer.self_attn.q_b_proj.weight)
-            layer.self_attention.linear_q_up_proj.layer_norm_weight.copy_(
-                hf_layer.self_attn.q_a_layernorm.weight
-            )
+            layer.self_attention.linear_q_up_proj.layer_norm_weight.copy_(hf_layer.self_attn.q_a_layernorm.weight)
 
-        layer.self_attention.linear_kv_down_proj.weight.copy_(
-            hf_layer.self_attn.kv_a_proj_with_mqa.weight
-        )
+        layer.self_attention.linear_kv_down_proj.weight.copy_(hf_layer.self_attn.kv_a_proj_with_mqa.weight)
         layer.self_attention.linear_kv_up_proj.weight.copy_(hf_layer.self_attn.kv_b_proj.weight)
-        layer.self_attention.linear_kv_up_proj.layer_norm_weight.copy_(
-            hf_layer.self_attn.kv_a_layernorm.weight
-        )
+        layer.self_attention.linear_kv_up_proj.layer_norm_weight.copy_(hf_layer.self_attn.kv_a_layernorm.weight)
         layer.self_attention.linear_proj.weight.copy_(hf_layer.self_attn.o_proj.weight)
 
         if not hasattr(layer.mlp, "router"):
@@ -264,9 +248,7 @@ def convert_checkpoint_from_transformers_to_megatron_dpskv3(hf_model, model, hf_
                 ]
             )
             layer.mlp.shared_experts.linear_fc1.weight.copy_(shared_fc1_weight)
-            layer.mlp.shared_experts.linear_fc2.weight.copy_(
-                hf_layer.mlp.shared_experts.down_proj.weight
-            )
+            layer.mlp.shared_experts.linear_fc2.weight.copy_(hf_layer.mlp.shared_experts.down_proj.weight)
 
         model.decoder.final_layernorm.weight.copy_(hf_model.model.norm.weight)
         if not hf_config.tie_word_embeddings:
@@ -345,9 +327,7 @@ def convert_hf_to_mcore(
     if "Qwen2MoeForCausalLM" in hf_config.architectures:
         convert_checkpoint_from_transformers_to_megatron(hf_model, model[0].module, hf_config)
     elif "DeepseekV3ForCausalLM" in hf_config.architectures:
-        convert_checkpoint_from_transformers_to_megatron_dpskv3(
-            hf_model, model[0].module, hf_config, tfconfig=tfconfig
-        )
+        convert_checkpoint_from_transformers_to_megatron_dpskv3(hf_model, model[0].module, hf_config, tfconfig=tfconfig)
     elif "Qwen3MoeForCausalLM" in hf_config.architectures:
         convert_checkpoint_from_transformers_to_megatron(hf_model, model[0].module, hf_config)
     else:

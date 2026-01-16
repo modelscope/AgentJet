@@ -11,9 +11,7 @@ class MathAnswerAsJudge(BaseJudge):
 
     def compute_reward(self, workflow_task: WorkflowTask, workflow_output: WorkflowOutput) -> tuple:
         raw_reward = 0
-        final_answer = workflow_output.metadata[
-            "final_answer"
-        ]  # By default there's no final_answer; register it by calling ajet_proxy.update_judge_input_dictionary(final_answer=final_answer) in the workflow
+        final_answer = workflow_output.metadata["final_answer"]  # By default there's no final_answer; register it by calling ajet_proxy.update_judge_input_dictionary(final_answer=final_answer) in the workflow
         reference_answer = workflow_task.task.metadata["answer"]
         reference_answer = reference_answer.split("####")[-1].strip()
 
@@ -35,9 +33,7 @@ class MathAnswerAndLlmAsJudge(BaseJudge):
 
     def compute_reward(self, workflow_task: WorkflowTask, workflow_output: WorkflowOutput) -> tuple:
         raw_reward = 0
-        final_answer = workflow_output.metadata[
-            "final_answer"
-        ]  # By default there's no final_answer; register it by calling ajet_proxy.update_judge_input_dictionary(final_answer=final_answer) in the workflow
+        final_answer = workflow_output.metadata["final_answer"]  # By default there's no final_answer; register it by calling ajet_proxy.update_judge_input_dictionary(final_answer=final_answer) in the workflow
         reference_answer = workflow_task.task.metadata["answer"]
         reference_answer = reference_answer.split("####")[-1].strip()
 

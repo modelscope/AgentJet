@@ -19,9 +19,7 @@ def set_loguru_default_color():
     if not colorize:
         os.environ["RAY_COLOR_PREFIX"] = "0"
 
-    logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser").setLevel(
-        logging.CRITICAL
-    )
+    logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser").setLevel(logging.CRITICAL)
     return
 
 
@@ -80,9 +78,7 @@ def start_ray_service(args, env, cluster=False):
         MASTER_PORT = os.getenv("MASTER_PORT")
         if HOSTNAME == MASTER_ADDR:
             companion = LaunchCommandWhenAbsent(
-                full_argument_list=[
-                    f"{ray_path} start --head --node-ip-address={MASTER_ADDR} --port={MASTER_PORT} --disable-usage-stats --block"
-                ],
+                full_argument_list=[f"{ray_path} start --head --node-ip-address={MASTER_ADDR} --port={MASTER_PORT} --disable-usage-stats --block"],
                 dir="./",
                 tag="ray_service_head",
                 use_pty=True,
@@ -91,9 +87,7 @@ def start_ray_service(args, env, cluster=False):
             success_std_string = "Ray runtime started"
         else:
             companion = LaunchCommandWhenAbsent(
-                full_argument_list=[
-                    f"{ray_path} start --address={MASTER_ADDR}:{MASTER_PORT} --disable-usage-stats --block"
-                ],
+                full_argument_list=[f"{ray_path} start --address={MASTER_ADDR}:{MASTER_PORT} --disable-usage-stats --block"],
                 dir="./",
                 tag="ray_service_worker",
                 use_pty=True,
@@ -130,6 +124,7 @@ def verify_python_env(args, exp_config):
             raise ImportError(cause + " " + solution)
 
     import verl
+
     if args.backbone == "trinity":
         if any([v in verl.__version__ for v in ["0.5.0.post", "0.7.0.post"]]):
             cause = "Python environment does not match current backbone 'trinity'."
@@ -181,15 +176,11 @@ def execute_training_process(
 
     # Fixed config asset locations
     TRINITY_BOOT_YAML = "ajet/default_config/trinity/trinity_launch.yaml"  # THIS FILE IS READ ONLY, and ALWAYS FIXED
-    TRINITY_CONFIG_AUTO_CONVERSION = (
-        "ajet/default_config/trinity/config_auto_convertion_trinity.jsonc"
-    )
-    VERL_CONFIG_AUTO_CONVERSION = (
-        "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
-    )
+    TRINITY_CONFIG_AUTO_CONVERSION = "ajet/default_config/trinity/config_auto_convertion_trinity.jsonc"
+    VERL_CONFIG_AUTO_CONVERSION = "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
 
-    os.makedirs('/tmp/ajet', exist_ok=True)
-    assert os.path.exists('/tmp/ajet'), "Temporary directory /tmp/ajet cannot be create."
+    os.makedirs("/tmp/ajet", exist_ok=True)
+    assert os.path.exists("/tmp/ajet"), "Temporary directory /tmp/ajet cannot be create."
 
     # let's begin the training process
     if args.backbone == "trinity":
@@ -228,13 +219,7 @@ def execute_training_process(
         ]
 
     if args.with_logview:
-        env.update(
-            {
-                "BEST_LOGGER_WEB_SERVICE_URL": os.environ.get(
-                    "BEST_LOGGER_WEB_SERVICE_URL", "http://127.0.0.1:8181/"
-                )
-            }
-        )
+        env.update({"BEST_LOGGER_WEB_SERVICE_URL": os.environ.get("BEST_LOGGER_WEB_SERVICE_URL", "http://127.0.0.1:8181/")})
 
     try:
         logger.info(f"Running command: {' '.join(cmd)}")

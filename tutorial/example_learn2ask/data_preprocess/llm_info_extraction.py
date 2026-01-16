@@ -64,9 +64,7 @@ def _call_online_api(messages, **kwargs):
     max_tokens = kwargs.get("max_tokens", 500)
 
     client = openai.OpenAI(api_key=api_key, base_url=api_base)
-    response = client.chat.completions.create(
-        model=model, messages=messages, temperature=temperature, max_tokens=max_tokens
-    )
+    response = client.chat.completions.create(model=model, messages=messages, temperature=temperature, max_tokens=max_tokens)
 
     return response.choices[0].message.content
 

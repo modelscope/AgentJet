@@ -32,9 +32,7 @@ class HuggingFaceTaskReader(BaseTaskReader):
         try:
             dataset = datasets.load_dataset(dataset_name, split=split)
         except Exception as e:
-            raise ValueError(
-                f"Failed to load dataset '{dataset_name}' with split '{split}': {str(e)}"
-            )
+            raise ValueError(f"Failed to load dataset '{dataset_name}' with split '{split}': {str(e)}")
 
         # if len(dataset) == 0:
         #     raise ValueError(f"No examples found in dataset '{dataset_name}' with split '{split}'")

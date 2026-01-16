@@ -66,16 +66,10 @@ def run_ppo(config) -> None:
 
     # Create a remote instance of the TaskRunner class, and
     # Execute the `run` method of the TaskRunner instance remotely and wait for it to complete
-    if (
-        is_cuda_available
-        and config.trainer.get("profile_steps") is not None
-        and len(config.trainer.get("profile_steps", [])) > 0
-    ):
+    if is_cuda_available and config.trainer.get("profile_steps") is not None and len(config.trainer.get("profile_steps", [])) > 0:
         from verl.utils.import_utils import is_nvtx_available
 
-        assert (
-            is_nvtx_available()
-        ), "nvtx is not available in CUDA platform. Please 'pip3 install nvtx'"
+        assert is_nvtx_available(), "nvtx is not available in CUDA platform. Please 'pip3 install nvtx'"
         nsight_options = OmegaConf.to_container(config.trainer.controller_nsight_options)
         runner = TaskRunner.options(runtime_env={"nsight": nsight_options}).remote()
     else:
@@ -223,9 +217,7 @@ class TaskRunner:
             num_examine=1,
             **config.reward_model.get("reward_kwargs", {}),
         )
-        resource_pool_manager = ResourcePoolManager(
-            resource_pool_spec=resource_pool_spec, mapping=mapping
-        )
+        resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
 
         from verl.utils.dataset.rl_dataset import collate_fn
 
@@ -248,6 +240,7 @@ class TaskRunner:
 
         if config.ajet.enable_experimental_interchange_server:
             from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+
             start_interchange_server(config)
 
         # Initialize the PPO trainer.

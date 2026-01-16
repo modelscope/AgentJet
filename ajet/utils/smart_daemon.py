@@ -226,9 +226,7 @@ class LaunchWhenAbsent:
                 logger.warning("Force restarting")
                 self._kill_existing_process_group(pgid)
             else:
-                logger.success(
-                    f"Script is already running, skipping launch. pgid: {pgid}. Command [{' '.join(self.cmd)}]"
-                )
+                logger.success(f"Script is already running, skipping launch. pgid: {pgid}. Command [{' '.join(self.cmd)}]")
                 return ""
         try:
             # Set up process creation flags and environment
@@ -241,9 +239,7 @@ class LaunchWhenAbsent:
 
             if os.name == "nt":  # Windows
                 # DETACHED_PROCESS flag
-                raise NotImplementedError(
-                    "Windows support is not implemented yet. Please open a feature request."
-                )
+                raise NotImplementedError("Windows support is not implemented yet. Please open a feature request.")
 
             else:
                 # Unix-like systems
@@ -259,7 +255,7 @@ class LaunchWhenAbsent:
                             "Command": " ".join(self.cmd),
                             "LogFile": str(log_file),
                         },
-                        header = "Smart Daemon Launch",
+                        header="Smart Daemon Launch",
                     )
                     f = open(log_file, "a")
 
@@ -307,7 +303,7 @@ class LaunchWhenAbsent:
                             "LogFile": str(log_file),
                             "Converted": " ".join(converted_cmd),
                         },
-                        header = "Smart Daemon Launch - PTY",
+                        header="Smart Daemon Launch - PTY",
                     )
                     proc = subprocess.Popen(
                         converted_cmd,
@@ -342,16 +338,12 @@ class LaunchWhenAbsent:
                                 if success_std_string in f_read:
                                     hit_success_string = True
                                     hit_success_string_content = success_std_string
-                                    print(
-                                        f"Found success string '{hit_success_string_content}' in output"
-                                    )
+                                    print(f"Found success string '{hit_success_string_content}' in output")
                                     break
                             # if we have reached finish line, then break
                             if hit_success_string:
                                 f_read_trim = inc_read  # .replace("\n", " ")
-                                print(
-                                    f"Waiting for process launch [PGID {pgid}, PID {proc.pid}] ({f_read_trim})"
-                                )
+                                print(f"Waiting for process launch [PGID {pgid}, PID {proc.pid}] ({f_read_trim})")
                                 break
 
                         # let hold for one second
@@ -363,9 +355,7 @@ class LaunchWhenAbsent:
                         if f_read_trim:
                             if previous_r_print:
                                 print("")
-                            print(
-                                f"Waiting for process launch [PGID {pgid}, PID {proc.pid}]... {remaining}s remaining ({f_read_trim})"
-                            )
+                            print(f"Waiting for process launch [PGID {pgid}, PID {proc.pid}]... {remaining}s remaining ({f_read_trim})")
                             previous_r_print = False
                         else:
                             print(
@@ -378,19 +368,13 @@ class LaunchWhenAbsent:
                         if remaining % 10 == 0:
                             is_running, proc = self.is_pgid_running(pgid)
                             if not is_running:
-                                raise RuntimeError(
-                                    f"Process with PGID {pgid} is not running, cannot confirm launch"
-                                )
+                                raise RuntimeError(f"Process with PGID {pgid} is not running, cannot confirm launch")
 
                     else:
                         if success_std_string:
-                            raise TimeoutError(
-                                f"Process did not output success string '{success_std_string}' within {launch_wait_time} seconds"
-                            )
+                            raise TimeoutError(f"Process did not output success string '{success_std_string}' within {launch_wait_time} seconds")
 
-                logger.success(
-                    f"Successfully launched {self.cmd} with PID {proc.pid} (Discovered {hit_success_string_content})"
-                )
+                logger.success(f"Successfully launched {self.cmd} with PID {proc.pid} (Discovered {hit_success_string_content})")
                 print_dict(
                     {
                         "Result": "Successfully launched",

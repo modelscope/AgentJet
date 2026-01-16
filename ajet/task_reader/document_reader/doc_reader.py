@@ -89,9 +89,7 @@ class DocReader(DocReaderBase):
         if self.chunk_size:
             chunk_suffix = f"_chunk{self.chunk_size}_{self.split_by}"
 
-        cache_filename = (
-            f"{source_path.stem}.{file_hash[:16]}{lang_suffix}{chunk_suffix}.cache.json"
-        )
+        cache_filename = f"{source_path.stem}.{file_hash[:16]}{lang_suffix}{chunk_suffix}.cache.json"
         return str(source_path.parent / cache_filename)
 
     def _load_from_cache(self, cache_path: str) -> Union[str, None]:
@@ -252,9 +250,7 @@ class DocReader(DocReaderBase):
         all_documents = []
 
         for file_path in file_paths:
-            raw_doc = self.load_document(
-                file_path, languages=list(self.config.data_generation.document_reader.languages)
-            )
+            raw_doc = self.load_document(file_path, languages=list(self.config.data_generation.document_reader.languages))
             # _parser_document now returns a list of documents (chunks) with group_id
             documents = self._parser_document(raw_doc, source_path=file_path)
             all_documents.extend(documents)

@@ -14,9 +14,7 @@ class EnvServiceTaskReader(BaseTaskReader):
         env_service_client = EnvClient(base_url=env_url)
         task_id_array = env_service_client.get_env_profile(env_type, split=split)
         if len(task_id_array) == 0:
-            raise ValueError(
-                f"No task_id found for env_type: {env_type}, split: {split}, Please check connection to {env_url}"
-            )
+            raise ValueError(f"No task_id found for env_type: {env_type}, split: {split}, Please check connection to {env_url}")
         tasks = [
             Task(
                 main_query="[not defined]",

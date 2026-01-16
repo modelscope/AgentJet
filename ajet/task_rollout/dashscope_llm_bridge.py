@@ -13,10 +13,7 @@ def create_external_llm_fn(alien_llm_model, alien_llm_response_length):
         alien_model_name = alien_llm_model
         alien_model_response_length = alien_llm_response_length
 
-        if (
-            os.environ.get("DASHSCOPE_API_KEY") is None
-            or os.environ.get("DASHSCOPE_API_KEY_BACKUP") is None
-        ):
+        if os.environ.get("DASHSCOPE_API_KEY") is None or os.environ.get("DASHSCOPE_API_KEY_BACKUP") is None:
             raise RuntimeError(
                 dedent(
                     """
@@ -63,9 +60,7 @@ def create_external_llm_fn(alien_llm_model, alien_llm_response_length):
                     messages=messages,
                     extra_body=sampling_params,
                 )
-                message = completion.choices[0].message.model_dump(
-                    exclude_unset=True, exclude_none=True
-                )
+                message = completion.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
                 if "content" not in message:
                     message["content"] = ""
                 return {"role": message["role"], "content": message["content"]}

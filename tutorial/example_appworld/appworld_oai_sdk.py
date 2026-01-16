@@ -7,9 +7,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 
 class ExampleAgentScopeWorkflow(Workflow):
-
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-
         init_messages = workflow_task.task.init_messages
         if len(init_messages) >= 2:
             first_msg, init_messages = init_messages[0], init_messages[1:]
@@ -32,9 +30,7 @@ class ExampleAgentScopeWorkflow(Workflow):
             # agentscope deal with interaction message
             reply_message: ChatCompletion = await client.chat.completions.create(interaction_message)
             # env service protocol
-            obs, _, terminate, _ = env.step(
-                action={"content": reply_message.choices[0].message.content, "role": "assistant"}
-            )
+            obs, _, terminate, _ = env.step(action={"content": reply_message.choices[0].message.content, "role": "assistant"})
             # generate new message from env output
             interaction_message = Msg(name="env", content=obs, role="user")
             # is terminated?

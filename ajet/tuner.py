@@ -7,13 +7,14 @@ from ajet.context_tracker.multiagent_tracking import (
 from ajet.tuner_lib.weight_tuner import AgentScopeModelTuner
 from ajet.tuner_lib.weight_tuner import OpenaiClientModelTuner
 from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiClientBaseUrlTuner
+
 if TYPE_CHECKING:
     from ajet import Workflow
 
 TunerTypeUnion = Union[AgentScopeModelTuner, OpenaiClientModelTuner]
 
-class AjetTuner(object):
 
+class AjetTuner(object):
     def __init__(
         self,
         config,
@@ -25,23 +26,16 @@ class AjetTuner(object):
         self.trainable_targets = self._get_trainable_targets(workflow_cls)
         self.context_tracker = context_tracker
         self.llm_inference_fn = llm_inference_fn
-        self.target2proxy_registry: dict[str, dict[str,TunerTypeUnion]] = {}
+        self.target2proxy_registry: dict[str, dict[str, TunerTypeUnion]] = {}
         self.enable_interchange_server = config.ajet.enable_experimental_interchange_server
         if self.enable_interchange_server:
             self.proxy_client_started = False
-
 
     def _get_trainable_targets(self, workflow_cls: Type["Workflow"]):
         workflow_instance = workflow_cls(name="ajet-workflow")
         return workflow_instance.trainable_targets
 
-
-    def as_agentscope_model(
-        self,
-        agent_name="default_agent_name",
-        target_tag="default_target_tag",
-        debug_model=None
-    ) -> "AgentScopeModelTuner":
+    def as_agentscope_model(self, agent_name="default_agent_name", target_tag="default_target_tag", debug_model=None) -> "AgentScopeModelTuner":
         """Convert to ModelTuner instance for Agentscope workflow.
         Returns:
             ModelTuner:
@@ -58,12 +52,11 @@ class AjetTuner(object):
         self._register(target_tag, agent_name, explicit_tuner_as_modelscope_model)
         return explicit_tuner_as_modelscope_model
 
-
     def as_raw_openai_sdk_client(
         self,
         agent_name="default_agent_name",
         target_tag="default_target_tag",
-        debug_model='gpt-4o',
+        debug_model="gpt-4o",
     ) -> OpenaiClientModelTuner:
         """Convert to raw OpenAI SDK client for advanced usage.
         Returns:
@@ -80,7 +73,6 @@ class AjetTuner(object):
         )
         self._register(target_tag, agent_name, explicit_tuner_as_oai_client)
         return explicit_tuner_as_oai_client
-
 
     def as_oai_baseurl_apikey(
         self,
@@ -125,7 +117,6 @@ class AjetTuner(object):
         """
         raise RuntimeError("This method is deprecated. Please use `as_agentscope_model` / `as_raw_openai_sdk_client` first.")
 
-
     # ------------------------------------------------------------------------
     # other helper methods
     # ------------------------------------------------------------------------
@@ -147,8 +138,7 @@ class AjetTuner(object):
         return explicit_tuner
 
     def _is_target_trainable(self, target_name) -> bool:
-        """Determine whether user have used `trainable_targets` to explicitly control training targets.
-        """
+        """Determine whether user have used `trainable_targets` to explicitly control training targets."""
         if self.trainable_targets is None:
             # always assume trainable when user has never changed trainable_targets
             return True
@@ -160,7 +150,6 @@ class AjetTuner(object):
         else:
             return False
 
-
     def get_context_tracker(self) -> MultiAgentContextTracker:
         """Get the context tracker instance.
         Returns:
@@ -169,11 +158,11 @@ class AjetTuner(object):
         """
         return self.context_tracker
 
-
     def _enable_experimental_interchange_server(self, llm_inference_fn):
         # experimental reverse proxy start
         if self.enable_interchange_server:
             from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_client import InterchangeClient
+
             self.interchange_client = InterchangeClient(
                 episode_uuid=self.context_tracker.episode_uuid,
                 context_tracker=self.context_tracker,
@@ -181,7 +170,6 @@ class AjetTuner(object):
                 llm_inference_fn=llm_inference_fn,
             )
             return self.interchange_client.begin_service()
-
 
     def terminate_episode(self):
         # experimental reverse proxy cleanup

@@ -94,9 +94,7 @@ class FrozenLakeWorkflow(Workflow):
             try:
                 action = await self.agent.step(current_observation=observation_str)
             except Exception:
-                logger.error(
-                    f"Agent failed to produce action due to error:\n{traceback.format_exc()}"
-                )
+                logger.error(f"Agent failed to produce action due to error:\n{traceback.format_exc()}")
                 terminate_reason = "agent_error"
                 break
             observation, reward, done, _ = self.env.step(action)
@@ -137,20 +135,13 @@ class FrozenLakeAgent:
         self.max_steps = max_steps
 
     def get_prompt(self, observation: str) -> str:
-        prompt = (
-            f"Current Observation ({self.current_step}): \n"
-            + observation
-            + "\n"
-            + "You have not achieved the goal, P has not reached G yet. Please give the next action."
-        )
+        prompt = f"Current Observation ({self.current_step}): \n" + observation + "\n" + "You have not achieved the goal, P has not reached G yet. Please give the next action."
         if self.current_step > 0 and self.last_action is not None:
             if self.last_observation == observation:
                 prompt += "\nYour last response is invalid. Your position didn't change at all. You may need to recheck your thinking process, action outputted, and the format of response. Remember, you should only output the NEXT ACTION at each interation in the ``` ```. For example, if you want to move up, you should output ```Up```."
 
         if self.max_steps is not None and self.max_steps - self.current_step > 0:
-            prompt += (
-                f"\nThe maximum number of steps remaining is {self.max_steps - self.current_step}."
-            )
+            prompt += f"\nThe maximum number of steps remaining is {self.max_steps - self.current_step}."
 
         return prompt
 
@@ -228,16 +219,11 @@ class FrozenLakeEnv(GymFrozenLakeEnv):
                 FrozenLakeEnv as GymFrozenLakeEnv,
             )
         except ImportError as e:
-            error_message = (
-                f"Gymnasium is not installed. Please install gymnasium first before "
-                f"running the frozen_lake workflow. Error: {str(e)}"
-            )
+            error_message = f"Gymnasium is not installed. Please install gymnasium first before " f"running the frozen_lake workflow. Error: {str(e)}"
             logger.error(error_message)
             raise ImportError(error_message)
 
-        random_map, goal_position = generate_random_map(
-            size=self.size, p=self.p, seed=self.seed, max_steps=self.max_steps
-        )
+        random_map, goal_position = generate_random_map(size=self.size, p=self.p, seed=self.seed, max_steps=self.max_steps)
 
         self.goal_position = goal_position
 
@@ -406,9 +392,7 @@ def is_valid(board: list[list[str]], max_size: int, max_steps: int) -> bool:
     return False
 
 
-def generate_random_map(
-    size: int = 8, p: float = 0.8, seed: int = 0, max_steps: int = 5
-) -> Tuple[list[str], Tuple[int, int]]:
+def generate_random_map(size: int = 8, p: float = 0.8, seed: int = 0, max_steps: int = 5) -> Tuple[list[str], Tuple[int, int]]:
     """Generates a random valid map (one that has a path from start to goal).
 
     Args:
@@ -428,9 +412,7 @@ def generate_random_map(
 
         np_random, _ = seeding.np_random(seed)
     except ImportError:
-        raise ImportError(
-            "Gymnasium is not installed. Please install gymnasium first before running the frozen_lake workflow."
-        )
+        raise ImportError("Gymnasium is not installed. Please install gymnasium first before running the frozen_lake workflow.")
 
     # generate random start and end points
     while not valid:

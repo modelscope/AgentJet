@@ -8,9 +8,7 @@ from beast_logger import NestedJsonItem, SeqItem, print_dict, print_nested
 from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from ajet.context_tracker.timeline_merging.timeline_merging import (
-    merge_tracker_timelines, is_timeline_mergeable
-)
+from ajet.context_tracker.timeline_merging.timeline_merging import merge_tracker_timelines, is_timeline_mergeable
 from ajet.context_tracker.basic_tracker import (
     BaseContextTracker,
     ExtendedMessage,
@@ -21,6 +19,7 @@ from ajet.utils.color_hsl import adjust_color_hsl
 from ajet.utils.compute_madness import compute_string_madness
 from ajet.utils.tokenizer import ajet_apply_chat_template
 
+
 @dataclass
 class TimelineMergingPolicyConfig:
     timeline_compare_level: str = "text"
@@ -29,13 +28,9 @@ class TimelineMergingPolicyConfig:
 
 @dataclass
 class ContextTrackerConfig:
-    timeline_merging_policy: TimelineMergingPolicyConfig = field(
-        default_factory=TimelineMergingPolicyConfig
-    )
+    timeline_merging_policy: TimelineMergingPolicyConfig = field(default_factory=TimelineMergingPolicyConfig)
     fix_retokenization_drift: bool = True
     detect_timeline_snap: bool = False
-
-
 
 
 class MultiAgentContextTracker(BaseContextTracker):
@@ -60,7 +55,6 @@ class MultiAgentContextTracker(BaseContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
         self.timeline_cache = {}
-
 
     def preprocess_tools_field(self, tools: List[dict] = [], disable_toolcalls: bool = False):
         if disable_toolcalls:
@@ -92,10 +86,8 @@ class MultiAgentContextTracker(BaseContextTracker):
 
             assert isinstance(item, dict), f"Unsupported non-dict item in message content: {item}. Full message: {msg}"
 
-            if ("text" not in item):
-                logger.warning(
-                    f"Non-text content in message content detected: {item}. Ignoring."
-                )
+            if "text" not in item:
+                logger.warning(f"Non-text content in message content detected: {item}. Ignoring.")
                 should_skip_message = True
                 return str_content, should_skip_message
 
@@ -106,7 +98,6 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         should_skip_message = False
         return str_content, should_skip_message
-
 
     def step_spawn_timeline(self, messages: List[dict], tools: List = [], disable_toolcalls: bool = False) -> List[ExtendedMessage]:
         """Spawn a timeline from messages.
@@ -126,7 +117,6 @@ class MultiAgentContextTracker(BaseContextTracker):
             consider_roles.remove("tool")
 
         for i, msg in enumerate(messages):
-
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
                 continue
 
@@ -171,13 +161,12 @@ class MultiAgentContextTracker(BaseContextTracker):
                     tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
                     tool_call_id=(msg["tool_call_id"] if "tool_call_id" in msg else ""),
                     token_generator="auto",
-                    name = (msg["name"] if "name" in msg else ""),
+                    name=(msg["name"] if "name" in msg else ""),
                     first_message=(i == 0),
                 )
             ]
 
         return timeline
-
 
     def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):
         disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
@@ -186,20 +175,14 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         # check token overflow
         converted_message = self.to_role_content(timeline)
-        timeline = ExtendedMessage.check_and_merge_chained_tool_response(
-            timeline, self.tokenizer
-        )
-        context_safe, token_overflow, info = self.check_context_token_num_safe(
-            converted_message, tools
-        )
+        timeline = ExtendedMessage.check_and_merge_chained_tool_response(timeline, self.tokenizer)
+        context_safe, token_overflow, info = self.check_context_token_num_safe(converted_message, tools)
         custom_sampling_params = {}
         if not context_safe:
             self.context_overflow = True
 
         self.timeline_cache[timeline_uuid] = timeline
         return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
-
-
 
     def step_track(
         self,
@@ -243,19 +226,14 @@ class MultiAgentContextTracker(BaseContextTracker):
         llm_ext_msg.lack_normal_eos = lack_normal_eos
         llm_ext_msg.manual_loss_mask_override = loss_mask
 
-        assert (
-            len(precise_manual_token)
-            <= self.config.ajet.rollout.max_response_length_in_one_turn
-        ), f"Generated token length {len(precise_manual_token)} exceeds max_response_length_in_one_turn {self.config.ajet.rollout.max_response_length_in_one_turn}"
+        assert len(precise_manual_token) <= self.config.ajet.rollout.max_response_length_in_one_turn, f"Generated token length {len(precise_manual_token)} exceeds max_response_length_in_one_turn {self.config.ajet.rollout.max_response_length_in_one_turn}"
 
         # run generated token callback, usually to monitor token output rate ( e.g. 164 tokens/sec )
         self.generated_token_callback_fn(llm_ext_msg.token_arr)
 
         # take snapshot of current timeline
         if context_safe:
-            if (
-                "prompt_text" in llm_output and "prompt_token_ids" in llm_output
-            ):
+            if "prompt_text" in llm_output and "prompt_token_ids" in llm_output:
                 # currently we make this patch to better compat with Trinity training backend
                 # fix Retokenization Drift
                 timeline = self.patch_prompt_tokens(
@@ -267,17 +245,12 @@ class MultiAgentContextTracker(BaseContextTracker):
             self.save_llm_interaction_timeline(tools, llm_ext_msg, timeline)
         return None
 
-
-
     def save_llm_interaction_timeline(self, tools, llm_ext_msg, timeline):
-        """Save the LLM interaction timeline by adding the LLM response to `self.saved_timelines`
-        """
+        """Save the LLM interaction timeline by adding the LLM response to `self.saved_timelines`"""
         timeline += [llm_ext_msg]
         _, length = self.get_context_token_num_and_safety(timeline, tools)
         if length > self.config.ajet.rollout.max_model_len:
-            raise RuntimeError(
-                    f"Unexpected token overflow after adding LLM response. Full context length {length}, generated token length {len(llm_ext_msg.token_arr)}"
-                )
+            raise RuntimeError(f"Unexpected token overflow after adding LLM response. Full context length {length}, generated token length {len(llm_ext_msg.token_arr)}")
 
         assert timeline[0].first_message, "First message should be marked as first_message"
 
@@ -290,24 +263,12 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         # DEBUG = True   # warn when merge fails
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
-        if (
-            self.config.ajet.context_tracker.detect_timeline_snap
-            and len(self.saved_timelines) >= 2
-            and (
-                not is_timeline_mergeable(
-                    self.saved_timelines[-1],
-                    self.saved_timelines[-2],
-                    timeline_merging_policy
-                )
-            )
-        ):
+        if self.config.ajet.context_tracker.detect_timeline_snap and len(self.saved_timelines) >= 2 and (not is_timeline_mergeable(self.saved_timelines[-1], self.saved_timelines[-2], timeline_merging_policy)):
             logger.bind(exception=True).info(f"General Warning: merge failure discovered.\n")
         return
 
-
     def detect_tool_call_madness(self, llm_output):
-        """Detect whether the tool call format from LLM output is correct or not.
-        """
+        """Detect whether the tool call format from LLM output is correct or not."""
         log_tool = self.config.ajet.context_tracker.log_tool_format_check
         detailed_log = self.config.ajet.context_tracker.log_tool_format_error_detail
 
@@ -319,9 +280,7 @@ class MultiAgentContextTracker(BaseContextTracker):
                 copy_tool_calls = copy.deepcopy(tool_calls)
                 wrong_toolcall = False
                 for i in range(len(copy_tool_calls)):
-                    if ("function" in copy_tool_calls[i]) and (
-                        "arguments" in copy_tool_calls[i]["function"]
-                    ):
+                    if ("function" in copy_tool_calls[i]) and ("arguments" in copy_tool_calls[i]["function"]):
                         try:
                             expect_dict = json.loads(copy_tool_calls[i]["function"]["arguments"])
                             if not isinstance(expect_dict, dict):
@@ -335,13 +294,9 @@ class MultiAgentContextTracker(BaseContextTracker):
                         err_type = "no function or no arguments"
                 if wrong_toolcall:
                     if detailed_log:
-                        logger.bind(exception=True).warning(
-                            f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n"
-                        )
+                        logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM output: \n---*({err_type})*---\n{llm_output['tool_calls']}\n---*-*---\n")
                     if log_tool:
-                        logger.bind(exception=True).warning(
-                            f"Detected wrong toolcall format from LLM content"
-                        )
+                        logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM content")
                     self.already_mad_flag = True
                 else:
                     if log_tool:
@@ -349,21 +304,15 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         elif "<tool_call>" in llm_output["content"]:
             if detailed_log:
-                logger.bind(exception=True).warning(
-                    f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n"
-                )
+                logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM content: \n---*-*---\n{llm_output['content']}\n---*-*---\n")
             if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
                 if log_tool:
-                    logger.bind(exception=True).warning(
-                        f"Detected wrong toolcall format from LLM content"
-                    )
+                    logger.bind(exception=True).warning(f"Detected wrong toolcall format from LLM content")
                 self.already_mad_flag = True
             tool_calls = []
         else:
             tool_calls = []
         return tool_calls
-
-
 
     def patch_prompt_tokens(
         self,
@@ -371,7 +320,6 @@ class MultiAgentContextTracker(BaseContextTracker):
         prompt_token_ids: List[int],
         previous_ext_context: List[ExtendedMessage],
     ) -> List[ExtendedMessage]:
-
         # remove tailing
         if prompt_text.endswith(self.generation_prompt):
             prompt_text = prompt_text[: -len(self.generation_prompt)]
@@ -402,9 +350,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             current_prompt_text += [self.tokenizer.decode(previous_ext_context[j].token_arr)]
 
         if len(previous_ext_context) != len(prompt_text_split):
-            logger.bind(exception=True).error(
-                f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens."
-            )
+            logger.bind(exception=True).error(f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens.")
 
         # try to recover tokens
         if self.config.ajet.context_tracker.fix_retokenization_drift:
@@ -415,7 +361,6 @@ class MultiAgentContextTracker(BaseContextTracker):
             previous_ext_context = previous_ext_context[: len(prompt_text_split)]
 
         return previous_ext_context
-
 
     def ensure_retokenization_perfect_match(self, previous_ext_context, split_prompt_token_ids, prompt_text_split, current_prompt_text):
         for j in range(len(previous_ext_context)):
@@ -429,9 +374,7 @@ class MultiAgentContextTracker(BaseContextTracker):
                     mod="exception",
                     header="Prompt text mismatch, Please report a github issue",
                 )
-                previous_ext_context[j].token_arr = self.tokenizer(
-                    prompt_text_split[j], return_tensors="pt", padding=False
-                )
+                previous_ext_context[j].token_arr = self.tokenizer(prompt_text_split[j], return_tensors="pt", padding=False)
             else:
                 # if prompt text match
                 # we further check whether all token ids matches
@@ -451,7 +394,6 @@ class MultiAgentContextTracker(BaseContextTracker):
                         header="Prompt token ids mismatch, Please report a github issue",
                     )
 
-
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure
         # TODO: support multi-step reward
@@ -464,7 +406,6 @@ class MultiAgentContextTracker(BaseContextTracker):
             )
             for i in range(len(self.saved_timelines))
         ]
-
 
     def generate_log(self, task_id=None, global_step="NA"):
         task_id = self.task_id
@@ -480,22 +421,10 @@ class MultiAgentContextTracker(BaseContextTracker):
             text_arr = [self.tokenizer.decode(t) for t in tracker_tokenized["input_ids"]]
             input_id_arr = [str(t) for t in tracker_tokenized["input_ids"]]
             # loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in tracker_tokenized["loss_mask"]]
-            logprobs = [INVALID_LOG_PROB_VALUE] * len(
-                tracker_tokenized["prompt_ids"]
-            ) + tracker_tokenized["response_logprobs"]
+            logprobs = [INVALID_LOG_PROB_VALUE] * len(tracker_tokenized["prompt_ids"]) + tracker_tokenized["response_logprobs"]
             # Create adjusted color array
-            loss_mask_color_abl_arr = [
-                (
-                    adjust_color_hsl("#09ABCF", logprob)
-                    if mask == 1
-                    else adjust_color_hsl("#D98510", logprob)
-                )
-                for mask, logprob in zip(tracker_tokenized["loss_mask"], logprobs)
-            ]
-            logprob_text_arr = [
-                (f"{logprob:.4f}" if logprob != INVALID_LOG_PROB_VALUE else "N/A")
-                for logprob in logprobs
-            ]
+            loss_mask_color_abl_arr = [(adjust_color_hsl("#09ABCF", logprob) if mask == 1 else adjust_color_hsl("#D98510", logprob)) for mask, logprob in zip(tracker_tokenized["loss_mask"], logprobs)]
+            logprob_text_arr = [(f"{logprob:.4f}" if logprob != INVALID_LOG_PROB_VALUE else "N/A") for logprob in logprobs]
 
             buffer = {
                 "text_arr": text_arr,
@@ -516,9 +445,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             len_prompt_ids = len(tracker_tokenized["prompt_ids"])
             len_response_ids = len(tracker_tokenized["response_ids"])
             len_input_ids = len(tracker_tokenized["input_ids"])
-            assert (
-                len_prompt_ids + len_response_ids == len_input_ids
-            ), "len_prompt_ids + len_response_ids should equal to len_input_ids"
+            assert len_prompt_ids + len_response_ids == len_input_ids, "len_prompt_ids + len_response_ids should equal to len_input_ids"
             nested_items_print_buffer[".".join(selectors)] = NestedJsonItem(
                 item_id="item",  # type: ignore
                 outcome=task_outcome,  # type: ignore
@@ -546,16 +473,13 @@ class MultiAgentContextTracker(BaseContextTracker):
             attach="copy this",  # type: ignore
         )
 
-
     def group_merge(self) -> List[List[ExtendedMessage]]:
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         self.saved_timelines = merge_tracker_timelines(self.saved_timelines, timeline_merging_policy)
         return self.saved_timelines
 
-
     def group_tokenize(self):
         return self.group_tokenize_multi_group()
-
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore
         dict_messages = self.to_role_content(ext_messages)
@@ -576,10 +500,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         else:
             return False, length
 
-
-    def check_context_token_num_safe(
-        self, messages: List, tools: List = []
-    ) -> Tuple[bool, bool, str]:
+    def check_context_token_num_safe(self, messages: List, tools: List = []) -> Tuple[bool, bool, str]:
         prompt_text = ajet_apply_chat_template(
             tokenizer=self.tokenizer,
             conversation=messages,

@@ -41,7 +41,7 @@ class AgentJetJob:
         model: str = "Qwen/Qwen2___5-7B-Instruct",
         n_gpu: int = 8,
         algorithm: str = "grpo",
-        n_gpu_for_infer: int | None = None, # only for trinity backbone
+        n_gpu_for_infer: int | None = None,  # only for trinity backbone
         *kwargs,
     ) -> None:
         self.backbone = backbone
@@ -84,9 +84,7 @@ class AgentJetJob:
         logger.info(f"Saved training config to {yaml_path}")
         return yaml_path
 
-    def set_workflow(
-        self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False
-    ) -> "AgentJetJob":
+    def set_workflow(self, workflow: Union[str, Callable[..., Any]], ensure_reward_in_workflow: bool = False) -> "AgentJetJob":
         self.config.ajet.rollout.user_workflow = cls_to_path(workflow)
         # TODO: validate workflow outputs contain reward
         # ensure_reward_in_workflow
@@ -112,9 +110,7 @@ class AgentJetJob:
         elif type in {"random_dummy", "dummy"}:
             self.config.ajet.task_reader.type = "random_dummy"
         else:
-            raise NotImplementedError(
-                f"Please edit yaml to directly set up task reader of type {type}."
-            )
+            raise NotImplementedError(f"Please edit yaml to directly set up task reader of type {type}.")
 
         return self
 
@@ -144,9 +140,7 @@ class AgentJetJob:
                 check_avail_gpu(min_free_ratio=0.95)
 
             # finalize experiment config
-            main_yaml_fp, exe_exp_base, exp_name, exp_config = prepare_experiment_config(
-                yaml_path, exp_dir, backbone
-            )
+            main_yaml_fp, exe_exp_base, exp_name, exp_config = prepare_experiment_config(yaml_path, exp_dir, backbone)
 
         # setup environment variables for ray
         env = setup_environment_vars(args, exp_config, main_yaml_fp)
@@ -157,9 +151,7 @@ class AgentJetJob:
 
             start_ray_service(args, env)
         else:
-            raise RuntimeError(
-                "Ray is already initialized. Please shutdown existing Ray instance before starting a new tuning job."
-            )
+            raise RuntimeError("Ray is already initialized. Please shutdown existing Ray instance before starting a new tuning job.")
 
         # start training process
         if args.conf and main_yaml_fp and exe_exp_base and exp_config:

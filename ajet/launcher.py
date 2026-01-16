@@ -106,20 +106,12 @@ def check_debugpy_version():
     try:
         import debugpy
     except ImportError:
-        raise RuntimeError(
-            "Module 'debugpy>=1.8.0' cannot be loaded. "
-            "Ray Debugpy Debugger will not work without 'debugpy>=1.8.0' installed. "
-            "Install this module using 'pip install debugpy>=1.8.0'"
-        )
+        raise RuntimeError("Module 'debugpy>=1.8.0' cannot be loaded. " "Ray Debugpy Debugger will not work without 'debugpy>=1.8.0' installed. " "Install this module using 'pip install debugpy>=1.8.0'")
     version = getattr(debugpy, "__version__", "0.0.0")
     from packaging import version as packaging_version
 
     if packaging_version.parse(version) < packaging_version.parse("1.8.0"):
-        raise RuntimeError(
-            f"debugpy version {version} is too old. "
-            "Ray Debugpy Debugger requires 'debugpy>=1.8.0'. "
-            "Upgrade using 'pip install debugpy>=1.8.0'"
-        )
+        raise RuntimeError(f"debugpy version {version} is too old. " "Ray Debugpy Debugger requires 'debugpy>=1.8.0'. " "Upgrade using 'pip install debugpy>=1.8.0'")
     logger.info(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
 
 
@@ -169,21 +161,14 @@ def check_avail_gpu(min_free_ratio: float = 0.95):
             continue
         free = max(total - used, 0.0)
         free_ratio = free / total if total > 0 else 0.0
-        logger.info(
-            f"GPU {idx} ({name}): total={total:.0f} MiB, used={used:.0f} MiB, free_ratio={free_ratio:.3f}"
-        )
+        logger.info(f"GPU {idx} ({name}): total={total:.0f} MiB, used={used:.0f} MiB, free_ratio={free_ratio:.3f}")
         if free_ratio < min_free_ratio:
             violations.append((idx, name, f"free_ratio={free_ratio:.3f} < {min_free_ratio:.3f}"))
 
     if violations:
         details = "; ".join([f"GPU {i} ({n}): {msg}" for i, n, msg in violations])
-        raise RuntimeError(
-            "GPU memory check failed: all GPUs must have >= "
-            f"{int(min_free_ratio*100)}% free. Violations: {details}"
-        )
-    logger.info(
-        f"✓ GPU check passed: {len(lines)} GPUs, all >= {int(min_free_ratio*100)}% free memory"
-    )
+        raise RuntimeError("GPU memory check failed: all GPUs must have >= " f"{int(min_free_ratio*100)}% free. Violations: {details}")
+    logger.info(f"✓ GPU check passed: {len(lines)} GPUs, all >= {int(min_free_ratio*100)}% free memory")
 
 
 def get_backbone_target(backbone):
@@ -226,9 +211,7 @@ def setup_environment_vars(args, exp_config, main_yaml_fp):
         # assert exp_config["ajet"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
         if exp_config["ajet"]["rollout"]["max_env_worker"] > 1:  # type: ignore
             exp_config["ajet"]["rollout"]["max_env_worker"] = 1
-            logger.warning(
-                "For debugging mode, max_env_worker is set to 1 to facilitate debugging."
-            )
+            logger.warning("For debugging mode, max_env_worker is set to 1 to facilitate debugging.")
         logger.warning("Debug mode is ON")
     else:
         logger.warning("Debug mode is OFF")
@@ -245,9 +228,7 @@ def check_model_file_exists(exp_config):
     model_path = exp_config["ajet"]["model"]["path"]
     # if model_path has more than 2 '/', we consider it as a dir path
     if model_path.count("/") > 2:
-        assert os.path.exists(
-            model_path
-        ), f"Model path {model_path} does not exist. Please check your configuration."
+        assert os.path.exists(model_path), f"Model path {model_path} does not exist. Please check your configuration."
 
 
 def main():
@@ -295,9 +276,7 @@ def main():
 
     env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
     if args.with_ray:
-        assert (
-            not args.with_ray_cluster
-        ), "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        assert not args.with_ray_cluster, "Cannot use both --with-ray and --with-ray-cluster simultaneously."
         start_ray_service(args, env)
 
     if args.with_appworld:
@@ -319,9 +298,7 @@ def main():
         launch_logview(exp_name)
 
     if args.with_ray_cluster:
-        assert (
-            not args.with_ray
-        ), "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        assert not args.with_ray, "Cannot use both --with-ray and --with-ray-cluster simultaneously."
         start_ray_service(args, env, cluster=True)
 
     if args.conf and main_yaml_fp and exe_exp_base and exp_config:

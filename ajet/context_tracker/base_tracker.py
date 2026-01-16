@@ -89,31 +89,16 @@ def replace_token_ids(
     if precise_token[: len(begin_ids)] == begin_ids:  # remove begin_ids token
         # precise_token = precise_token[len(begin_ids) :]
         # precise_logprob_center = precise_logprob[len(begin_ids) :]
-        raise ValueError(
-            "Unexpected situation, wrong llm output (unexpected BOS): please post an github issue."
-        )
+        raise ValueError("Unexpected situation, wrong llm output (unexpected BOS): please post an github issue.")
 
-    final_token_ids = (
-        token_container[:_begin_index] + precise_token_center + token_container[_end_index:]
-    )
-    final_logprob = (
-        [INVALID_LOG_PROB_VALUE] * _begin_index
-        + precise_logprob_center
-        + logprob_eos_tail
-        + [INVALID_LOG_PROB_VALUE] * (len(token_container) - _end_index - len(logprob_eos_tail))
-    )
-    loss_mask = (
-        [0] * _begin_index
-        + [1] * len(precise_logprob_center)
-        + [1] * len(logprob_eos_tail)
-        + [0] * (len(token_container) - _end_index - len(logprob_eos_tail))
-    )
+    final_token_ids = token_container[:_begin_index] + precise_token_center + token_container[_end_index:]
+    final_logprob = [INVALID_LOG_PROB_VALUE] * _begin_index + precise_logprob_center + logprob_eos_tail + [INVALID_LOG_PROB_VALUE] * (len(token_container) - _end_index - len(logprob_eos_tail))
+    loss_mask = [0] * _begin_index + [1] * len(precise_logprob_center) + [1] * len(logprob_eos_tail) + [0] * (len(token_container) - _end_index - len(logprob_eos_tail))
     return final_token_ids, final_logprob, loss_mask, lack_normal_eos
 
 
 class BaseTracker(object):
     def __init__(self, config, tokenizer, workflow_task: WorkflowTask, **kwargs):
-
         self.workflow_task = workflow_task
         self.task_batch_index = self.workflow_task.task_batch_index
         self.task_tag = self.workflow_task.task_tag
@@ -143,11 +128,7 @@ class BaseTracker(object):
         self.generation_prompt_token = None
         self.log_metrics: Optional[Dict[str, Union[float, List[float]]]] = None  # Initialize workflow_metadata to store tool statistics
 
-        assert (
-            self.config.ajet.data.max_prompt_length
-            + self.config.ajet.data.max_response_length
-            <= max_model_len
-        )
+        assert self.config.ajet.data.max_prompt_length + self.config.ajet.data.max_response_length <= max_model_len
 
     def group_tokenize(self):
         raise NotImplementedError
@@ -158,7 +139,5 @@ class BaseTracker(object):
     def group_tokenize_single_group(self, timeline):
         raise NotImplementedError
 
-    def tokenize_steps(
-        self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
-    ) -> dict:
+    def tokenize_steps(self, ext_steps: List[ExtendedMessage], index: int, total_steps: int) -> dict:
         raise NotImplementedError

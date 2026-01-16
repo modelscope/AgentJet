@@ -13,7 +13,6 @@ from ajet.utils.dynamic_import import dynamic_import
 
 
 class GeneralRunner(BaseAgentRunner):
-
     def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
         observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
@@ -30,7 +29,7 @@ class GeneralRunner(BaseAgentRunner):
             llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,
             config=self.config,
-            workflow_task = workflow_task,
+            workflow_task=workflow_task,
             **hooks,
         )
         tuner = AjetTuner(
@@ -58,9 +57,7 @@ class GeneralRunner(BaseAgentRunner):
 
         workflow_task.gym_env = None  # clear gym env client reference to avoid serialization issue
 
-        assert not isinstance(
-            raw_reward, list
-        ), "AgentJet will support step reward in future versions."
+        assert not isinstance(raw_reward, list), "AgentJet will support step reward in future versions."
 
         # register reward
         # TODO: support multi-step reward

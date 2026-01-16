@@ -37,9 +37,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
         os.makedirs(dataset_dir, exist_ok=True)
 
         # Build a cache key based on generation-related config to avoid rigid filenames
-        document_path = getattr(
-            reader_config.data_generation.document_reader, "document_path", None
-        )
+        document_path = getattr(reader_config.data_generation.document_reader, "document_path", None)
         # Convert document_path to a hashable string representation
         if isinstance(document_path, (list, tuple)):
             document_path_str = ",".join(sorted(str(p) for p in document_path))
@@ -59,23 +57,15 @@ class DataGeneratorTaskReader(BaseTaskReader):
                     "similarity_threshold",
                     None,
                 ),
-                "db_path": getattr(
-                    reader_config.data_generation.deduplication_filter.params, "db_path", None
-                ),
-                "model": getattr(
-                    reader_config.data_generation.deduplication_filter.params, "model", None
-                ),
+                "db_path": getattr(reader_config.data_generation.deduplication_filter.params, "db_path", None),
+                "model": getattr(reader_config.data_generation.deduplication_filter.params, "model", None),
             },
         }
         cache_key_str = json.dumps(cache_config, sort_keys=True, ensure_ascii=False)
         cache_key = hashlib.md5(cache_key_str.encode("utf-8")).hexdigest()[:8]
 
-        self.generated_train_file = os.path.join(
-            dataset_dir, f"generated_train_tasks_{cache_key}.jsonl"
-        )
-        self.generated_valid_file = os.path.join(
-            dataset_dir, f"generated_valid_tasks_{cache_key}.jsonl"
-        )
+        self.generated_train_file = os.path.join(dataset_dir, f"generated_train_tasks_{cache_key}.jsonl")
+        self.generated_valid_file = os.path.join(dataset_dir, f"generated_valid_tasks_{cache_key}.jsonl")
 
         # Get number of workers from config, default to 32
         self.num_workers = getattr(reader_config.data_generation, "num_workers", 32)
@@ -190,9 +180,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
             # Calculate batches using ceiling division
             N = 10  # 10 is the hyperparameter we found that produces relatively stable outputs, same with knowledge_augmentation
             doc_task_rounds = math.ceil(task_num / N)
-            logger.info(
-                f"Generating {doc_task_rounds} document-based task batches (ceil({task_num}/10))"
-            )
+            logger.info(f"Generating {doc_task_rounds} document-based task batches (ceil({task_num}/10))")
 
             self.doc_tasks = []
 
@@ -205,10 +193,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
             # Execute document task generation with progress bar
             with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
                 # Submit all tasks
-                future_to_batch = {
-                    executor.submit(self._generate_document_tasks_worker, args): args[0]
-                    for args in doc_worker_args
-                }
+                future_to_batch = {executor.submit(self._generate_document_tasks_worker, args): args[0] for args in doc_worker_args}
 
                 # Process results with progress bar
                 with tqdm(total=doc_task_rounds, desc="Document tasks", unit="batch") as pbar:
@@ -228,14 +213,10 @@ class DataGeneratorTaskReader(BaseTaskReader):
 
             # Save doc_tasks as validation tasks cache
             if self.doc_tasks:
-                logger.info(
-                    f"Saving {len(self.doc_tasks)} validation tasks to cache: {self.generated_valid_file}"
-                )
+                logger.info(f"Saving {len(self.doc_tasks)} validation tasks to cache: {self.generated_valid_file}")
                 self._save_tasks_to_jsonl(self.doc_tasks, self.generated_valid_file)
         else:
-            logger.info(
-                "Phase 1: Skipping document task generation (using cached validation tasks)"
-            )
+            logger.info("Phase 1: Skipping document task generation (using cached validation tasks)")
 
         # Phase 2: Generate augmented tasks only if not cached
         if self.new_tasks is None:
@@ -251,9 +232,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
             if not self.doc_tasks:
                 self.doc_tasks = []
             combined_source_tasks = self.original_tasks + self.doc_tasks
-            logger.info(
-                f"Using {len(combined_source_tasks)} source tasks ({len(self.original_tasks)} original + {len(self.doc_tasks)} document-based)"
-            )
+            logger.info(f"Using {len(combined_source_tasks)} source tasks ({len(self.original_tasks)} original + {len(self.doc_tasks)} document-based)")
 
             # Prepare arguments for workers
             aug_worker_args = []
@@ -266,10 +245,7 @@ class DataGeneratorTaskReader(BaseTaskReader):
             # Execute augmented task generation with progress bar
             with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
                 # Submit all tasks
-                future_to_task = {
-                    executor.submit(self._generate_augmented_tasks_worker, args): args[0]
-                    for args in aug_worker_args
-                }
+                future_to_task = {executor.submit(self._generate_augmented_tasks_worker, args): args[0] for args in aug_worker_args}
 
                 # Process results with progress bar
                 with tqdm(total=task_num, desc="Augmented tasks", unit="task") as pbar:
@@ -289,18 +265,14 @@ class DataGeneratorTaskReader(BaseTaskReader):
 
             # Save training tasks
             if self.new_tasks:
-                logger.info(
-                    f"Saving {len(self.new_tasks)} training tasks to cache: {self.generated_train_file}"
-                )
+                logger.info(f"Saving {len(self.new_tasks)} training tasks to cache: {self.generated_train_file}")
                 self._save_tasks_to_jsonl(self.new_tasks, self.generated_train_file)
             else:
                 logger.warning("No training tasks generated successfully")
         else:
             logger.info("Phase 2: Skipping training task generation (using cached training tasks)")
 
-        logger.info(
-            f"Task generation complete: {len(self.new_tasks)} training tasks, {len(self.doc_tasks)} validation tasks"
-        )
+        logger.info(f"Task generation complete: {len(self.new_tasks)} training tasks, {len(self.doc_tasks)} validation tasks")
 
     def _read_jsonl_file(self, file_path):
         """
@@ -404,6 +376,5 @@ class DataGeneratorTaskReader(BaseTaskReader):
             "augmented_tasks_generated": len(getattr(self, "new_tasks", [])),
             "original_tasks_count": len(self.original_tasks),
             "validation_tasks_count": len(getattr(self, "doc_tasks", [])),
-            "combined_source_tasks_count": len(self.original_tasks)
-            + len(getattr(self, "doc_tasks", [])),
+            "combined_source_tasks_count": len(self.original_tasks) + len(getattr(self, "doc_tasks", [])),
         }

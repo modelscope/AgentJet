@@ -21,38 +21,15 @@ class TaskAugmentor(BaseDataGenerator):
         Build system prompt for task augmentation.
         The prompt adapts based on whether a document is provided.
         """
-        base_prompt = (
-            "You are a professional expert in query generation.\n"
-            "Your goal is to generate ONE new user query that:\n"
-            "- Is semantically related to the reference query (similar topic/domain/intent),\n"
-            "- Preserves the original query's style, language, task type, and approximate length,\n"
-            "- Is natural, diverse, and fluent,\n"
-            "- Is NOT a direct copy or minor edit of the original query.\n"
-        )
+        base_prompt = "You are a professional expert in query generation.\n" "Your goal is to generate ONE new user query that:\n" "- Is semantically related to the reference query (similar topic/domain/intent),\n" "- Preserves the original query's style, language, task type, and approximate length,\n" "- Is natural, diverse, and fluent,\n" "- Is NOT a direct copy or minor edit of the original query.\n"
 
         # Conditional instructions based on document availability
         document_instructions = ""
         if document is not None and document.content:
-            document_instructions = (
-                "\n"
-                "Document context is provided for reference:\n"
-                "- Infer the document's overall topic or domain (do NOT assume the query is tied to a specific paragraph),\n"
-                "- Ensure the new query is compatible with that overall topic/domain,\n"
-                "- The new query should feel naturally related to the document's theme.\n"
-                "\n"
-            )
+            document_instructions = "\n" "Document context is provided for reference:\n" "- Infer the document's overall topic or domain (do NOT assume the query is tied to a specific paragraph),\n" "- Ensure the new query is compatible with that overall topic/domain,\n" "- The new query should feel naturally related to the document's theme.\n" "\n"
 
         # Output format requirements to ensure structured response
-        output_requirements = (
-            "You MUST:\n"
-            "- Avoid copying the original text verbatim,\n"
-            "- Avoid minimal edits such as just changing a few words or reordering phrases,\n"
-            "- Avoid adding explanations or commentary,\n"
-            "- Output ONLY a valid JSON object with a single field 'query'.\n"
-            "\n"
-            "Example output format:\n"
-            '{"query": "<new query text>"}\n'
-        )
+        output_requirements = "You MUST:\n" "- Avoid copying the original text verbatim,\n" "- Avoid minimal edits such as just changing a few words or reordering phrases,\n" "- Avoid adding explanations or commentary,\n" "- Output ONLY a valid JSON object with a single field 'query'.\n" "\n" "Example output format:\n" '{"query": "<new query text>"}\n'
 
         return base_prompt + document_instructions + output_requirements
 
@@ -78,25 +55,9 @@ class TaskAugmentor(BaseDataGenerator):
         if document is not None and document.content:
             # Only add document-related content if a document is actually provided
             reference_info += "[Document]:\n"
-            doc_part = (
-                "Here is the reference document content:\n"
-                f"{document.content}\n"
-                "\n"
-                "Use this document as background knowledge while generating a new query.\n"
-            )
+            doc_part = "Here is the reference document content:\n" f"{document.content}\n" "\n" "Use this document as background knowledge while generating a new query.\n"
 
-        user_prompt = (
-            f"{reference_info}"
-            f"{doc_part}"
-            "\n"
-            "Now, generate ONE new user query that is suitable for the same context.\n"
-            "\n"
-            "Important rules:\n"
-            "- Do NOT directly copy or minimally edit the original query.\n"
-            "- Do NOT output explanations, comments, or any extra text.\n"
-            "- Output ONLY a JSON object with the following structure:\n"
-            '{"query": "<new query text>"}\n'
-        )
+        user_prompt = f"{reference_info}" f"{doc_part}" "\n" "Now, generate ONE new user query that is suitable for the same context.\n" "\n" "Important rules:\n" "- Do NOT directly copy or minimally edit the original query.\n" "- Do NOT output explanations, comments, or any extra text.\n" "- Output ONLY a JSON object with the following structure:\n" '{"query": "<new query text>"}\n'
 
         return user_prompt
 

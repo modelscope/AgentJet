@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 from typing import Any
 
+
 def run_async_coroutine_with_timeout(coro, timeout: int = 3600) -> Any:
     """
     Run an async coroutine with a timeout, supporting both inside and outside event loops.

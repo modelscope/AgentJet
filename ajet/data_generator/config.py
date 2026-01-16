@@ -6,24 +6,16 @@ from pydantic import BaseModel, Field, field_validator
 class SamplingParamsConfig(BaseModel):
     """Sampling parameters configuration"""
 
-    temperature: float = Field(
-        default=0.0, description="Sampling temperature, 0 means greedy decoding"
-    )
+    temperature: float = Field(default=0.0, description="Sampling temperature, 0 means greedy decoding")
 
 
 class DeduplicationFilterParamsConfig(BaseModel):
     """Deduplication filter parameters configuration"""
 
-    similarity_threshold: float = Field(
-        default=0.8, description="Similarity threshold. Tasks above this value will be filtered."
-    )
-    db_path: str = Field(
-        default="./.similarity_db", description="Storage path for the similarity database"
-    )
+    similarity_threshold: float = Field(default=0.8, description="Similarity threshold. Tasks above this value will be filtered.")
+    db_path: str = Field(default="./.similarity_db", description="Storage path for the similarity database")
     model: str = Field(default="text-embedding-v4", description="Embedding model name")
-    api_key: Optional[str] = Field(
-        default=None, description="API Key. If None, it is loaded from environment variables."
-    )
+    api_key: Optional[str] = Field(default=None, description="API Key. If None, it is loaded from environment variables.")
     base_url: str = Field(
         default="https://dashscope.aliyuncs.com/compatible-mode/v1",
         description="Embedding API base URL",
@@ -49,9 +41,7 @@ class DocumentReaderConfig(BaseModel):
     document_path: List[str] = Field(default=[], description="List of document file paths")
     languages: List[str] = Field(default=["eng"], description="List of document languages")
     chunk_size: int = Field(default=5120, description="Chunk size")
-    split_by: str = Field(
-        default="sentence", description="Split method: sentence, paragraph, character"
-    )
+    split_by: str = Field(default="sentence", description="Split method: sentence, paragraph, character")
     cache_enabled: bool = Field(default=True, description="Whether to enable caching")
 
     @field_validator("split_by")
@@ -94,9 +84,7 @@ class DataGenerationConfig(BaseModel):
     llm_response_length: int = Field(default=8192, description="LLM maximum response length")
     num_workers: int = Field(default=32, description="Number of parallel worker threads")
     sampling_params: SamplingParamsConfig = Field(default_factory=SamplingParamsConfig)
-    deduplication_filter: DeduplicationFilterConfig = Field(
-        default_factory=DeduplicationFilterConfig
-    )
+    deduplication_filter: DeduplicationFilterConfig = Field(default_factory=DeduplicationFilterConfig)
 
 
 class TaskReaderConfig(BaseModel):

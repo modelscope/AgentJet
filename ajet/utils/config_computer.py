@@ -85,9 +85,7 @@ class AstStructureExtractor(ast.NodeVisitor):
         return len(parts) > 1 and parts[0] in builtin_modules
 
 
-def split_keys_and_operators(
-    operation_str: str, preserved_field: List[str] = []
-) -> Tuple[List[str], Callable[[Dict[str, Any]], Any]]:
+def split_keys_and_operators(operation_str: str, preserved_field: List[str] = []) -> Tuple[List[str], Callable[[Dict[str, Any]], Any]]:
     """
     Parse expression string using AST and extract keys and operators
 

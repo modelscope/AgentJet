@@ -56,6 +56,7 @@ from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.metric_helper import save_trajectory_as_json_file, update_metrics
 
+
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
     """
     Compute reward for a batch of data.
@@ -83,9 +84,7 @@ def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | to
 
     # Get reward scores
     reward_scores_list = [item for item in data.non_tensor_batch["reward_scores"]]
-    reward_scores = torch.tensor(
-        reward_scores_list, device=reward_tensor.device, dtype=torch.float32
-    )  # (bs, )
+    reward_scores = torch.tensor(reward_scores_list, device=reward_tensor.device, dtype=torch.float32)  # (bs, )
 
     # Use advanced indexing to assign rewards (placing reward at the last token position)
     reward_tensor[torch.arange(len(data)), response_lengths - 1] = reward_scores
@@ -211,13 +210,8 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         minimal_bsz = n_gpus
 
         # 1. Check total batch size for data correctness
-        real_train_batch_size = (
-            config.ajet.data.train_batch_size * config.ajet.rollout.num_repeat
-        )
-        assert real_train_batch_size % minimal_bsz == 0, (
-            f"real_train_batch_size ({real_train_batch_size}) must be divisible by minimal possible batch size "
-            f"({minimal_bsz})"
-        )
+        real_train_batch_size = config.ajet.data.train_batch_size * config.ajet.rollout.num_repeat
+        assert real_train_batch_size % minimal_bsz == 0, f"real_train_batch_size ({real_train_batch_size}) must be divisible by minimal possible batch size " f"({minimal_bsz})"
 
         # A helper function to check "micro_batch_size" vs "micro_batch_size_per_gpu"
         # We throw an error if the user sets both. The new convention is "..._micro_batch_size_per_gpu".
@@ -246,15 +240,10 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 param_per_gpu = f"{param}_per_gpu"
 
                 if mbs is None and mbs_per_gpu is None:
-                    raise ValueError(
-                        f"[{name}] Please set at least one of '{name}.{param}' or '{name}.{param_per_gpu}'."
-                    )
+                    raise ValueError(f"[{name}] Please set at least one of '{name}.{param}' or '{name}.{param_per_gpu}'.")
 
                 if mbs is not None and mbs_per_gpu is not None:
-                    raise ValueError(
-                        f"[{name}] You have set both '{name}.{param}' AND '{name}.{param_per_gpu}'. Please remove "
-                        f"'{name}.{param}' because only '*_{param_per_gpu}' is supported (the former is deprecated)."
-                    )
+                    raise ValueError(f"[{name}] You have set both '{name}.{param}' AND '{name}.{param_per_gpu}'. Please remove " f"'{name}.{param}' because only '*_{param_per_gpu}' is supported (the former is deprecated).")
 
         # Actor validation done in ActorConfig.__post_init__ and validate()
         try:
@@ -265,9 +254,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 config.actor_rollout_ref.model,
             )
         except hydra.errors.InstantiationException:
-            raise ValueError(
-                "You are using an unsupported VERL version. Please read `documents/backbones.md`"
-            )
+            raise ValueError("You are using an unsupported VERL version. Please read `documents/backbones.md`")
         if not config.actor_rollout_ref.actor.use_dynamic_bsz:
             if self.use_reference_policy:
                 # reference: log_prob_micro_batch_size vs. log_prob_micro_batch_size_per_gpu
@@ -301,17 +288,11 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             critic_config.validate(n_gpus, config.ajet.data.train_batch_size)
 
         if config.data.get("val_batch_size", None) is not None:
-            logger.warning(
-                "WARNING: val_batch_size is deprecated."
-                + " Validation datasets are sent to inference engines as a whole batch,"
-                + " which will schedule the memory themselves."
-            )
+            logger.warning("WARNING: val_batch_size is deprecated." + " Validation datasets are sent to inference engines as a whole batch," + " which will schedule the memory themselves.")
 
         # check eval config
         if config.ajet.rollout.val_kwargs.do_sample:
-            assert (
-                config.ajet.rollout.temperature > 0
-            ), "validation gen temperature should be greater than 0 when enabling do_sample"
+            assert config.ajet.rollout.temperature > 0, "validation gen temperature should be greater than 0 when enabling do_sample"
 
         logger.success("[validate_config] All configuration checks passed successfully!")
 
@@ -324,9 +305,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         """
         self.resource_pool_manager.create_resource_pool()
 
-        self.resource_pool_to_cls = {
-            pool: {} for pool in self.resource_pool_manager.resource_pool_dict.values()
-        }
+        self.resource_pool_to_cls = {pool: {} for pool in self.resource_pool_manager.resource_pool_dict.values()}
 
         # create actor and rollout
         if self.hybrid_engine:
@@ -345,9 +324,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         if self.use_critic:
             resource_pool = self.resource_pool_manager.get_resource_pool(Role.Critic)
             critic_cfg = omega_conf_to_dataclass(self.config.critic)
-            critic_cls = RayClassWithInitArgs(
-                cls=self.role_worker_mapping[Role.Critic], config=critic_cfg
-            )
+            critic_cls = RayClassWithInitArgs(cls=self.role_worker_mapping[Role.Critic], config=critic_cfg)
             self.resource_pool_to_cls[resource_pool]["critic"] = critic_cls
 
         # create reference policy if needed
@@ -379,17 +356,11 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         all_wg = {}
         wg_kwargs = {}  # Setting up kwargs for RayWorkerGroup
         if OmegaConf.select(self.config.trainer, "ray_wait_register_center_timeout") is not None:
-            wg_kwargs[
-                "ray_wait_register_center_timeout"
-            ] = self.config.trainer.ray_wait_register_center_timeout
+            wg_kwargs["ray_wait_register_center_timeout"] = self.config.trainer.ray_wait_register_center_timeout
         if OmegaConf.select(self.config.trainer, "profile_steps") is not None:
             wg_kwargs["profile_steps"] = OmegaConf.select(self.config.trainer, "profile_steps")
-            assert (
-                OmegaConf.select(self.config.trainer, "worker_nsight_options") is not None
-            ), "worker_nsight_options must be set when profile_steps is set"
-            wg_kwargs["worker_nsight_options"] = OmegaConf.to_container(
-                OmegaConf.select(self.config.trainer, "worker_nsight_options")
-            )
+            assert OmegaConf.select(self.config.trainer, "worker_nsight_options") is not None, "worker_nsight_options must be set when profile_steps is set"
+            wg_kwargs["worker_nsight_options"] = OmegaConf.to_container(OmegaConf.select(self.config.trainer, "worker_nsight_options"))
         wg_kwargs["device_name"] = self.device_name
 
         for resource_pool, class_dict in self.resource_pool_to_cls.items():
@@ -495,11 +466,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         self.max_steps_duration = 0
 
         prev_step_profile = False
-        curr_step_profile = (
-            self.global_steps in self.config.trainer.profile_steps
-            if self.config.trainer.profile_steps is not None
-            else False
-        )
+        curr_step_profile = self.global_steps in self.config.trainer.profile_steps if self.config.trainer.profile_steps is not None else False
         next_step_profile = False
 
         for epoch in range(self.config.trainer.total_epochs):
@@ -508,11 +475,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 timing_raw = {}
 
                 with marked_timer("start_profile", timing_raw):
-                    self._start_profiling(
-                        not prev_step_profile and curr_step_profile
-                        if self.config.trainer.profile_continuous_steps
-                        else curr_step_profile
-                    )
+                    self._start_profiling(not prev_step_profile and curr_step_profile if self.config.trainer.profile_continuous_steps else curr_step_profile)
 
                 batch_dict["index"] = torch.tensor(
                     [i for i in range(len(batch_dict["task_id"]))],
@@ -554,39 +517,28 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         self.async_rollout_manager.wake_up()
                         logger.info("=== wake up end ===")
                         tasks: List[Task] = [
-                            dict_to_ajet_task(dict(
-                                task_id=gen_batch.non_tensor_batch["task_id"][i],
-                                main_query=gen_batch.non_tensor_batch["main_query"][i],
-                                env_type=gen_batch.non_tensor_batch["env_type"][i],
-                                metadata=gen_batch.non_tensor_batch["metadata"][i],
-                                init_messages=gen_batch.non_tensor_batch["init_messages"][i],
-                            ))
+                            dict_to_ajet_task(
+                                dict(
+                                    task_id=gen_batch.non_tensor_batch["task_id"][i],
+                                    main_query=gen_batch.non_tensor_batch["main_query"][i],
+                                    env_type=gen_batch.non_tensor_batch["env_type"][i],
+                                    metadata=gen_batch.non_tensor_batch["metadata"][i],
+                                    init_messages=gen_batch.non_tensor_batch["init_messages"][i],
+                                )
+                            )
                             for i in range(len(gen_batch))
                         ]
-                        logger.info(
-                            str(
-                                [
-                                    gen_batch.non_tensor_batch["task_id"][i]
-                                    for i in range(len(gen_batch))
-                                ]
-                            )
-                        )
+                        logger.info(str([gen_batch.non_tensor_batch["task_id"][i] for i in range(len(gen_batch))]))
                         logger.info("=" * 10 + "start fit rollout" + "=" * 10)
                         self.parallel_env.current_global_steps = self.global_steps
-                        context_tracker_arr: List[BaseContextTracker] = self.parallel_env.rollout(
-                            tasks, mode="sample", epoch=f"train.{epoch}"
-                        )
+                        context_tracker_arr: List[BaseContextTracker] = self.parallel_env.rollout(tasks, mode="sample", epoch=f"train.{epoch}")
                         logger.info("=" * 10 + "end fit rollout" + "=" * 10)
                         logger.info("begin to convert context_tracker_arr to dataproto")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
                         logger.info("end convertion")
 
-                        success_rate = [
-                            traj.reward_structure.success_rate for traj in context_tracker_arr
-                        ]
-                        madness_rate = [
-                            traj.reward_structure.madness for traj in context_tracker_arr
-                        ]
+                        success_rate = [traj.reward_structure.success_rate for traj in context_tracker_arr]
+                        madness_rate = [traj.reward_structure.madness for traj in context_tracker_arr]
                         # reward = [traj.reward_structure.raw_reward for traj in context_tracker_arr]
                         round_cnt = [traj.round_cnt for traj in context_tracker_arr]
                         metrics.update(
@@ -594,12 +546,8 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                                 "critic/round_cnt": np.mean(round_cnt),
                                 "critic/madness_rate": np.mean(madness_rate),
                                 "critic/success_rate": np.mean(success_rate),
-                                "critic/real_success_rate": np.mean(
-                                    context_tracker_arr[0].current_batch_success_rate
-                                ),
-                                "critic/real_reward": np.mean(
-                                    context_tracker_arr[0].current_batch_reward
-                                ),
+                                "critic/real_success_rate": np.mean(context_tracker_arr[0].current_batch_success_rate),
+                                "critic/real_reward": np.mean(context_tracker_arr[0].current_batch_reward),
                             }
                         )
                         save_trajectory_as_json_file(context_tracker_arr, self.global_steps, self.config, prefix="train")
@@ -619,9 +567,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             }
                             _test_if_test_mode(key="reward_probe", value=data, config=self.config)
 
-                        logger.info(
-                            f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}"
-                        )
+                        logger.info(f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}")
                         self.async_rollout_manager.sleep()
                     logger.info("=== - rollout step end ===")
 
@@ -646,9 +592,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         self._balance_batch(batch, metrics=metrics)
 
                     # compute global_valid tokens
-                    batch.meta_info["global_token_num"] = torch.sum(
-                        batch.batch["attention_mask"], dim=-1
-                    ).tolist()
+                    batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()
 
                     with marked_timer("reward", timing_raw, color="yellow"):
                         # compute reward model score
@@ -657,13 +601,9 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             batch = batch.union(reward_tensor)
 
                         if self.config.reward_model.launch_reward_fn_async:
-                            raise NotImplementedError(
-                                "launch_reward_fn_async is not supported in GRPO yet."
-                            )
+                            raise NotImplementedError("launch_reward_fn_async is not supported in GRPO yet.")
                         else:
-                            reward_tensor, reward_extra_infos_dict = compute_reward(
-                                batch, self.reward_fn
-                            )
+                            reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn)
 
                     # recompute old_log_probs
                     logger.info("=== + compute log_probs begin ===")
@@ -677,9 +617,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             loss_mask=response_masks,
                             loss_agg_mode=loss_agg_mode,
                         )
-                        assert not torch.isnan(
-                            entropy_loss
-                        ).item(), "Entropy loss should not be NaN, something must have gone terribly wrong."
+                        assert not torch.isnan(entropy_loss).item(), "Entropy loss should not be NaN, something must have gone terribly wrong."
                         old_log_prob_metrics = {"actor/entropy": entropy_loss.detach().item()}
                         metrics.update(old_log_prob_metrics)
                         old_log_prob.batch.pop("entropys")
@@ -712,9 +650,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         batch.batch["token_level_scores"] = reward_tensor
 
                         if reward_extra_infos_dict:
-                            batch.non_tensor_batch.update(
-                                {k: np.array(v) for k, v in reward_extra_infos_dict.items()}
-                            )
+                            batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
@@ -729,9 +665,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                         # compute advantages, executed on the driver process
 
-                        norm_adv_by_std_in_grpo = self.config.algorithm.get(
-                            "norm_adv_by_std_in_grpo", True
-                        )  # GRPO adv normalization factor
+                        norm_adv_by_std_in_grpo = self.config.algorithm.get("norm_adv_by_std_in_grpo", True)  # GRPO adv normalization factor
 
                         batch = compute_advantage(
                             batch,
@@ -760,11 +694,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         metrics.update(actor_output_metrics)
 
                     # validate
-                    if (
-                        self.val_reward_fn is not None
-                        and self.config.trainer.test_freq > 0
-                        and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0)
-                    ):
+                    if self.val_reward_fn is not None and self.config.trainer.test_freq > 0 and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0):
                         with marked_timer("testing", timing_raw, color="green"):
                             val_metrics: dict = self._validate()
                             if is_last_step:
@@ -783,27 +713,15 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     # 2. It's the last training step.
                     # 3. The current step number is a multiple of the save frequency.
                     # 4. The ESI(Elastic Server Instance)/training plan is close to expiration.
-                    if self.config.trainer.save_freq > 0 and (
-                        is_last_step
-                        or self.global_steps % self.config.trainer.save_freq == 0
-                        or esi_close_to_expiration
-                    ):
+                    if self.config.trainer.save_freq > 0 and (is_last_step or self.global_steps % self.config.trainer.save_freq == 0 or esi_close_to_expiration):
                         if esi_close_to_expiration:
                             logger.info("Force saving checkpoint: ESI instance expiration approaching.")
                         with marked_timer("save_checkpoint", timing_raw, color="green"):
                             self._save_checkpoint()
 
                 with marked_timer("stop_profile", timing_raw):
-                    next_step_profile = (
-                        self.global_steps + 1 in self.config.trainer.profile_steps
-                        if self.config.trainer.profile_steps is not None
-                        else False
-                    )
-                    self._stop_profiling(
-                        curr_step_profile and not next_step_profile
-                        if self.config.trainer.profile_continuous_steps
-                        else curr_step_profile
-                    )
+                    next_step_profile = self.global_steps + 1 in self.config.trainer.profile_steps if self.config.trainer.profile_steps is not None else False
+                    self._stop_profiling(curr_step_profile and not next_step_profile if self.config.trainer.profile_continuous_steps else curr_step_profile)
                     prev_step_profile = curr_step_profile
                     curr_step_profile = next_step_profile
 
@@ -822,9 +740,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 metrics.update(compute_timing_metrics(batch=batch, timing_raw=timing_raw))
                 # TODO: implement actual tflpo and theoretical tflpo
                 n_gpus = self.resource_pool_manager.get_n_gpus()
-                metrics.update(
-                    compute_throughout_metrics(batch=batch, timing_raw=timing_raw, n_gpus=n_gpus)
-                )
+                metrics.update(compute_throughout_metrics(batch=batch, timing_raw=timing_raw, n_gpus=n_gpus))
 
                 # this is experimental and may be changed/removed in the future in favor of a general-purpose one
                 if isinstance(self.train_dataloader.sampler, AbstractCurriculumSampler):
@@ -857,9 +773,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         sample_turns = []
 
         for test_data in self.val_dataloader:
-            test_data["index"] = torch.tensor(
-                [i for i in range(len(test_data["task_id"]))], dtype=torch.long
-            )
+            test_data["index"] = torch.tensor([i for i in range(len(test_data["task_id"]))], dtype=torch.long)
             test_batch = DataProto.from_single_dict(test_data)
 
             # repeat test batch
@@ -869,10 +783,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             )
 
             # we only do validation on rule-based rm
-            if (
-                self.config.reward_model.enable
-                and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model"
-            ):
+            if self.config.reward_model.enable and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model":
                 return {}
 
             batch_keys_to_pop = ["index"]
@@ -928,9 +839,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
-            output_texts = [
-                self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids
-            ]
+            output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
             sample_outputs.extend(output_texts)
 
             test_batch.non_tensor_batch["uid"] = np.array(
@@ -951,23 +860,17 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             sample_scores.extend(scores)
 
             reward_extra_infos_dict["reward"].extend(scores)
-            logger.info(
-                f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}"
-            )
+            logger.info(f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}")
             if "reward_extra_info" in result:
                 for key, lst in result["reward_extra_info"].items():
                     reward_extra_infos_dict[key].extend(lst)
-                    logger.info(
-                        f"len reward_extra_infos_dict['{key}']: {len(reward_extra_infos_dict[key])}"
-                    )
+                    logger.info(f"len reward_extra_infos_dict['{key}']: {len(reward_extra_infos_dict[key])}")
 
             # collect num_turns of each prompt
             if "__num_turns__" in test_batch.non_tensor_batch:
                 sample_turns.append(test_batch.non_tensor_batch["__num_turns__"])
 
-            data_source_lst.append(
-                test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0])
-            )
+            data_source_lst.append(test_batch.non_tensor_batch.get("data_source", ["unknown"] * reward_tensor.shape[0]))
             break  # hack to escape the loop after one batch
 
         metric_dict = val_metrics
@@ -993,9 +896,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         for _ in range(pass_n):
             tasks += [task for task in target_dataset]
 
-        ctx_trackers = self.parallel_env.rollout(
-            tasks=tasks, mode=mode, epoch=epoch
-        )  # "sample" or "validate"
+        ctx_trackers = self.parallel_env.rollout(tasks=tasks, mode=mode, epoch=epoch)  # "sample" or "validate"
         task_results = {}
         for ctx_tracker in ctx_trackers:
             reward = ctx_tracker.reward_structure.raw_reward

@@ -11,9 +11,7 @@ class TestDynamicImport(unittest.TestCase):
 
     def test_successful_import2(self):
         cls = dynamic_import("tutorial.example_math_agent.math_agent->ExampleMathLearn")
-        self.assertEqual(
-            str(cls), "<class 'tutorial.example_math_agent.math_agent.ExampleMathLearn'>"
-        )
+        self.assertEqual(str(cls), "<class 'tutorial.example_math_agent.math_agent.ExampleMathLearn'>")
 
     def test_successful_import3(self):
         cls = dynamic_import("tutorial/example_math_agent/math_agent.py->ExampleMathLearn")

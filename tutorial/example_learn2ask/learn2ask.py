@@ -1,4 +1,3 @@
-
 import re
 import time
 import asyncio
@@ -147,8 +146,8 @@ async def reward_fn(init_messages: list[Msg], response: str, truth_action: str, 
 
 _reward_semaphore = threading.Semaphore(16)
 
-async def reward_fn_with_semaphore(*args, **kwargs):
 
+async def reward_fn_with_semaphore(*args, **kwargs):
     get_sem_ok = False
     while not get_sem_ok:
         get_sem_ok = _reward_semaphore.acquire(blocking=False)

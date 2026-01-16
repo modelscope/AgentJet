@@ -7,9 +7,7 @@ def get_sample_params(mode, config):
     Returns:
         dict: Sampling parameters for the model.
     """
-    response_length_eps = (
-        16  # Reserve a few tokens for later handling of special tokens like lm_start.
-    )
+    response_length_eps = 16  # Reserve a few tokens for later handling of special tokens like lm_start.
     if config.ajet.rollout.name == "vllm":
         # VLLM uses max_tokens instead of max_new_tokens
         sampling_params = dict(

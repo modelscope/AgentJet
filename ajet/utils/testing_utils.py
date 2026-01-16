@@ -118,21 +118,13 @@ def populate_test_env_metadata(workspace_dir: str) -> tuple[str, str]:
     """Capture git hash and pip freeze output, store them in env, return both."""
     git_hash = "unknown"
     try:
-        git_hash = (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=workspace_dir)
-            .decode()
-            .strip()
-        )
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=workspace_dir).decode().strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
     req_txt = ""
     try:
-        req_txt = (
-            subprocess.check_output([sys.executable, "-m", "pip", "freeze"], cwd=workspace_dir)
-            .decode()
-            .strip()
-        )
+        req_txt = subprocess.check_output([sys.executable, "-m", "pip", "freeze"], cwd=workspace_dir).decode().strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
@@ -197,9 +189,7 @@ class BenchmarkProbe(BaseProbe):
             step = log_dict["step"]
 
             if time.time() - self.begin_time > self.expected_train_time:
-                msg = (
-                    f"Training time exceeded expected limit of {self.expected_train_time} seconds."
-                )
+                msg = f"Training time exceeded expected limit of {self.expected_train_time} seconds."
                 update_benchmark_status(
                     status="fail",
                     status_detail=msg,
@@ -233,9 +223,7 @@ class BenchmarkProbe(BaseProbe):
                     )
                     raise TestFailException(err)
                 # compute local average reward over last self.reward_expectation_avg_window steps
-                local_avg_reward = sum(
-                    self.reward_array[-self.reward_expectation_avg_window :]
-                ) / min(self.reward_expectation_avg_window, len(self.reward_array))
+                local_avg_reward = sum(self.reward_array[-self.reward_expectation_avg_window :]) / min(self.reward_expectation_avg_window, len(self.reward_array))
                 # get expected range
                 low, high = self.reward_expectation[step]
                 # log

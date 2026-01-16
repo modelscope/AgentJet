@@ -13,6 +13,7 @@ from ajet.utils.testing_utils import BenchmarkProbe, singleton
 # [TestProbe] Step 100: local average reward over last self.reward_expectation_avg_window steps: 3.4732, expected range: [0.0, 99999.0]
 # [TestProbe] Step 200: local average reward over last self.reward_expectation_avg_window steps: 3.5645, expected range: [0.0, 99999.0]
 
+
 @singleton
 class TestProbe(BenchmarkProbe):
     def __init__(self):

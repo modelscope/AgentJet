@@ -1,4 +1,3 @@
-
 import asyncio
 import atexit
 import json
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
 DEBUG = False
 # DEBUG = True
 
+
 def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     """
     Generate a Base64-encoded auth_token from the given agent_name, target_tag, and episode_uuid.
@@ -50,17 +50,16 @@ def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     json_string = json.dumps(auth_data)
 
     # Step 3: Encode the JSON string into Base64
-    base64_encoded = base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
+    base64_encoded = base64.b64encode(json_string.encode("utf-8")).decode("utf-8")
 
     # Step 4: Prepend "Bearer " to the Base64-encoded string
-    auth_token = f"{API_KEY_PREFIX}{base64_encoded}"    # API_KEY_PREFIX: Literal['sk-ajet-']
+    auth_token = f"{API_KEY_PREFIX}{base64_encoded}"  # API_KEY_PREFIX: Literal['sk-ajet-']
 
     return auth_token
 
 
 class InterchangeClient:
-    """ InterchangeClient is re-created in each episode
-    """
+    """InterchangeClient is re-created in each episode"""
 
     def __init__(self, episode_uuid: str, context_tracker: "MultiAgentContextTracker", llm_inference_fn, config):
         self.episode_uuid = episode_uuid
@@ -70,23 +69,22 @@ class InterchangeClient:
         self._should_terminate = False
 
         self.interchange_method = config.ajet.interchange_server.interchange_method
-        if self.interchange_method == 'tcp':
+        if self.interchange_method == "tcp":
             master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
             self.episode_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
-        elif self.interchange_method == 'ipc':
+        elif self.interchange_method == "ipc":
             self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
             self.episode_contect_address = f"ipc://{self.ipc_path}"
         self.max_inference_tracker_threads = config.ajet.interchange_server.max_inference_tracker_threads
 
-
     async def llm_infer(
-            self,
-            req: ChatCompletionRequest,
-            timeline_uuid: str,
-            agent_name: str,
-            target_tag: str,
-            episode_uuid: str,
-        ) -> ChatCompletion:
+        self,
+        req: ChatCompletionRequest,
+        timeline_uuid: str,
+        agent_name: str,
+        target_tag: str,
+        episode_uuid: str,
+    ) -> ChatCompletion:
         from ajet.task_rollout.async_llm_bridge import OpenaiLlmProxyWithTracker
 
         req_as_dict = req.model_dump()
@@ -108,53 +106,56 @@ class InterchangeClient:
         assert isinstance(response, ChatCompletion)
         return response
 
-
     @property
     def should_terminate(self) -> bool:
         return self._should_terminate
-
 
     def begin_service(self):
         """
         Starts the zmq communication loop.
         """
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
+        if DEBUG:
+            logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"{self.episode_contect_address}")
-        self.socket.setsockopt(zmq.RCVTIMEO, 3*1000)  # 3 second timeout for REP
+        self.socket.setsockopt(zmq.RCVTIMEO, 3 * 1000)  # 3 second timeout for REP
 
         self.executor = SharedInterchangeThreadExecutor(self.max_inference_tracker_threads).get_shared_executor()
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Submitting _begin_service_threading to executor...")
+        if DEBUG:
+            logger.info(f"[client] {self.episode_uuid} | Submitting _begin_service_threading to executor...")
         future = self.executor.submit(self._begin_service_threading)
 
         # wait till service begin running
         time.sleep(0.5)
         w_time = 1
-        while future._state == 'PENDING':
+        while future._state == "PENDING":
             time.sleep(min(w_time * 2, 10))
             w_time += 1
 
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Future ready...")
+        if DEBUG:
+            logger.info(f"[client] {self.episode_uuid} | Future ready...")
         return self.episode_contect_address
 
-
     def _begin_service_threading(self):
-        """begin listening for service requests in a threading model
-        """
+        """begin listening for service requests in a threading model"""
 
         begin_time = time.time()
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting ZMQ socket bind complete")
+        if DEBUG:
+            logger.info(f"[client] {self.episode_uuid} | Starting ZMQ socket bind complete")
 
         try:
             while not self.should_terminate:
                 # listen for next request from remote
                 try:
-                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun")
+                    if DEBUG:
+                        logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun")
                     message = self.socket.recv_string()
-                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() is done")
+                    if DEBUG:
+                        logger.info(f"[client] {self.episode_uuid} | socket.recv_string() is done")
                 except zmq.Again as e:
                     if self.should_terminate:
-                        if DEBUG: logger.info(f"[client] {self.episode_uuid} | episode over")
+                        if DEBUG:
+                            logger.info(f"[client] {self.episode_uuid} | episode over")
                         break
                     timepassed = time.time() - begin_time
                     if timepassed > 60:
@@ -162,13 +163,15 @@ class InterchangeClient:
                     continue
 
                 # parse the incoming request
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before json.loads(message)")
+                if DEBUG:
+                    logger.info(f"[client] {self.episode_uuid} | before json.loads(message)")
                 data_as_json = json.loads(message)
                 parsed_msg = InterchangeCompletionRequest(**data_as_json)
 
                 # begin to run the llm request, monitored by context tracker
                 # we re-use previously created thread for best performance
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before asyncio run self.llm_infer")
+                if DEBUG:
+                    logger.info(f"[client] {self.episode_uuid} | before asyncio run self.llm_infer")
                 try:
                     loop = asyncio.get_running_loop()
                 except:
@@ -183,19 +186,22 @@ class InterchangeClient:
                         agent_name=parsed_msg.agent_name,
                         target_tag=parsed_msg.target_tag,
                         episode_uuid=parsed_msg.episode_uuid,
-                    )
+                    ),
                 )
                 result = loop.run_until_complete(future).model_dump_json()  # type: ignore
 
                 # great, let's send back the result
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string")
+                if DEBUG:
+                    logger.info(f"[client] {self.episode_uuid} | before send_string")
                 self.socket.send_string(result)
         except:
             logger.exception(f"[client] {self.episode_uuid} | Exception occurred in service loop.")
         finally:
             self.socket.close()
-            if DEBUG: logger.info(f"[client] {self.episode_uuid} | ZMQ socket closed, service loop terminated.")
-            if self.interchange_method == 'ipc':
+            if DEBUG:
+                logger.info(f"[client] {self.episode_uuid} | ZMQ socket closed, service loop terminated.")
+            if self.interchange_method == "ipc":
                 if os.path.exists(self.ipc_path):
                     os.remove(self.ipc_path)
-                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")
+                    if DEBUG:
+                        logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")

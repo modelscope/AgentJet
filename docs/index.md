@@ -77,10 +77,9 @@
 
 ## ✈️ Quick Start
 
-<div class="card-grid">
-<a href="en/installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Click Here for the Full Installation Document</h3></div></a>
+<div class="card-grid" style="width: 70%; margin: 0 auto; padding-top: 30px; display: flex; justify-content: center; align-items: center;">
+<a href="en/installation/" class="feature-card"><div class="card-header"><h3>Click Here for the Full Installation Document</h3></div></a>
 </div>
-
 
 We recommend using `uv` for dependency management. [Click here](en/installation.md) for details and other training backbone (e.g. Trinity-RFT) options.
 

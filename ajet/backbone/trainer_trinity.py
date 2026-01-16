@@ -66,6 +66,7 @@ class TrinityRolloutManager(DynamicRolloutManager):
 
     def convert_task(self, task: TrinityTask):
         from ajet.schema.task import Task
+
         assert isinstance(task.raw_task, dict)
         return dict_to_ajet_task(task.raw_task)
 
@@ -150,16 +151,10 @@ class AjetWorkflowWrap(Workflow):
                 "madness": tracker.reward_structure.madness,
             }
 
-            if (
-                len(response_ids) + len(prompt_ids) == len(input_ids)
-                and len(logprobs) == len(response_ids)
-                and len(logprobs) > 0
-            ):
+            if len(response_ids) + len(prompt_ids) == len(input_ids) and len(logprobs) == len(response_ids) and len(logprobs) > 0:
                 exp = Experience(
                     tokens=input_ids,  # [seq_length] prompt + response
-                    prompt_length=len(
-                        prompt_ids
-                    ),  # Length of the prompt in tokens, used for generating attention masks
+                    prompt_length=len(prompt_ids),  # Length of the prompt in tokens, used for generating attention masks
                     logprobs=logprobs,  # [resp_length]
                     reward=reward,  #
                     # advantages=None,
@@ -211,19 +206,11 @@ try:
             if "train" in self.split:
                 dataset_segments.append(task_to_standard_dataset(task_reader.get_training_tasks()))
             if "val" in self.split:
-                dataset_segments.append(
-                    task_to_standard_dataset(task_reader.get_validation_tasks())
-                )
+                dataset_segments.append(task_to_standard_dataset(task_reader.get_validation_tasks()))
             if not dataset_segments:
-                raise ValueError(
-                    f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'."
-                )
+                raise ValueError(f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'.")
 
-            concatenated_dataset = (
-                dataset_segments[0]
-                if len(dataset_segments) == 1
-                else datasets.concatenate_datasets(dataset_segments)
-            )
+            concatenated_dataset = dataset_segments[0] if len(dataset_segments) == 1 else datasets.concatenate_datasets(dataset_segments)
 
             self.dataset = _HFBatchReader(
                 concatenated_dataset,
@@ -271,15 +258,9 @@ class SwanlabMonitor(Monitor):
     """
 
     def __init__(self, project: str, group: str, name: str, role: str, config) -> None:
-        assert (
-            swanlab is not None
-        ), "swanlab is not installed. Please install it to use SwanlabMonitor."
+        assert swanlab is not None, "swanlab is not installed. Please install it to use SwanlabMonitor."
 
-        monitor_args = (
-            (config.monitor.monitor_args or {})
-            if config and getattr(config, "monitor", None)
-            else {}
-        )
+        monitor_args = (config.monitor.monitor_args or {}) if config and getattr(config, "monitor", None) else {}
 
         # Optional API login via code if provided; otherwise try environment, then rely on prior `swanlab login`.
         api_key = os.environ.get("SWANLAB_API_KEY")
@@ -331,9 +312,7 @@ class SwanlabMonitor(Monitor):
         self.data_dashboard_url = run_info["cloud"]["experiment_url"]
 
     def log_table(self, table_name: str, experiences_table, step: int):
-        assert (
-            swanlab is not None
-        ), "swanlab is not installed. Please install it to use SwanlabMonitor."
+        assert swanlab is not None, "swanlab is not installed. Please install it to use SwanlabMonitor."
 
         # Convert pandas DataFrame to SwanLab ECharts Table
         headers: List[str] = list(experiences_table.columns)
@@ -351,9 +330,7 @@ class SwanlabMonitor(Monitor):
     def log(self, data: dict, step: int, commit: bool = False) -> None:
         """Log metrics."""
         # SwanLab doesn't use commit flag; keep signature for compatibility
-        assert (
-            swanlab is not None
-        ), "swanlab is not installed. Please install it to use SwanlabMonitor."
+        assert swanlab is not None, "swanlab is not installed. Please install it to use SwanlabMonitor."
         swanlab.log(data, step=step)
         self.console_logger.info(f"Step {step}: {data}")
 
@@ -372,9 +349,7 @@ class SwanlabMonitor(Monitor):
             test_robot_data = {}
             test_robot_data["step"] = step
             test_robot_data["data_dashboard_url"] = self.data_dashboard_url
-            test_robot_data["reward_for_test_robot"] = data[
-                "experience_pipeline/group_advantages/reward_mean/mean"
-            ]
+            test_robot_data["reward_for_test_robot"] = data["experience_pipeline/group_advantages/reward_mean/mean"]
             _test_if_test_mode(key="reward_probe", value=test_robot_data, config=ajet_config)
 
     def close(self) -> None:

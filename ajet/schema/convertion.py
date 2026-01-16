@@ -1,4 +1,3 @@
-
 import time
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
@@ -12,7 +11,6 @@ from agentscope.model import ChatResponse
 
 
 def convert_llm_proxy_response_to_oai_response(llm_proxy_response):
-
     # Create the chat completion message
     message = ChatCompletionMessage(
         role=llm_proxy_response.get("role", "assistant"),
@@ -47,12 +45,11 @@ def convert_llm_proxy_response_to_oai_response(llm_proxy_response):
     )
 
 
-
 # modified from AgentScope's DashScopeChatModule
 def convert_llm_proxy_response_to_agentscope_response(
     message,
     structured_model: Type[BaseModel] | None = None,
-) -> AgentScopeChatResponse:    # type: ignore
+) -> AgentScopeChatResponse:  # type: ignore
     content_blocks: List[TextBlock | ToolUseBlock] = []
     content = message.get("content")
     metadata: dict | None = None

@@ -47,9 +47,7 @@ class BaseContextTracker(BaseTracker):
 
         tokenizer_output = self.tokenizer(text_frag_to, return_tensors="pt", padding=False)
         input_ids = tokenizer_output["input_ids"][0].tolist()  # type: ignore
-        input_id_increment = input_ids[
-            len(token_ids_acc) :
-        ]  # get the new tokens added in this step
+        input_id_increment = input_ids[len(token_ids_acc) :]  # get the new tokens added in this step
         overlap_length = 0
         for i in range(len(token_ids_acc)):
             if i < len(token_ids_acc) and input_ids[i] == token_ids_acc[i]:
@@ -60,9 +58,7 @@ class BaseContextTracker(BaseTracker):
         return input_id_increment, msg
 
     # generate token
-    def get_token_inc_from_llm_response(
-        self, input_msg_ref, llm_output, tools: List[dict] = []
-    ) -> Tuple[List[int], List[int], List[int], bool]:
+    def get_token_inc_from_llm_response(self, input_msg_ref, llm_output, tools: List[dict] = []) -> Tuple[List[int], List[int], List[int], bool]:
         llm_output_role_content = {
             "role": llm_output["role"],
             "content": llm_output["content"],
@@ -107,9 +103,7 @@ class BaseContextTracker(BaseTracker):
     def filter_context_via_authors(self, timeline, authors: List[str]) -> List[ExtendedMessage]:
         return copy.deepcopy([c for c in timeline if c.author in authors])
 
-    def filter_context_via_authors_with_limit(
-        self, timeline, authors: List[str], limit: dict
-    ) -> List[ExtendedMessage]:
+    def filter_context_via_authors_with_limit(self, timeline, authors: List[str], limit: dict) -> List[ExtendedMessage]:
         """
         limit = {
             "llm": "keep_last@2"
@@ -122,10 +116,7 @@ class BaseContextTracker(BaseTracker):
             if limit_item_command == "keep_last":
                 limit_item_value = int(limit_item_value)
                 # remove all message whose author is `llm_author` except the last `limit_item_value` messages
-                num_need_rm = (
-                    len([c for c in filtered_via_authors if c.author == limit_author])
-                    - limit_item_value
-                )
+                num_need_rm = len([c for c in filtered_via_authors if c.author == limit_author]) - limit_item_value
                 if num_need_rm > 0:
                     num_already_rm = 0
                     filtered_via_authors_new = []
@@ -140,10 +131,7 @@ class BaseContextTracker(BaseTracker):
             elif limit_item_command == "keep_first":
                 limit_item_value = int(limit_item_value)
                 # remove all message whose author is `llm_author` except the first `limit_item_value` messages
-                num_need_keep = (
-                    len([c for c in filtered_via_authors if c.author == limit_author])
-                    - limit_item_value
-                )
+                num_need_keep = len([c for c in filtered_via_authors if c.author == limit_author]) - limit_item_value
                 if num_need_keep > 0:
                     num_already_keep = 0
                     filtered_via_authors_new = []
@@ -156,14 +144,10 @@ class BaseContextTracker(BaseTracker):
                     filtered_via_authors = filtered_via_authors_new
 
             else:
-                raise ValueError(
-                    f"Unknown limit_item_command {limit_item_command} in filter_context_via_authors_with_limit"
-                )
+                raise ValueError(f"Unknown limit_item_command {limit_item_command} in filter_context_via_authors_with_limit")
         return filtered_via_authors
 
-    def compute_step_level_reward(
-        self, index: int, total_steps: int
-    ) -> float:
+    def compute_step_level_reward(self, index: int, total_steps: int) -> float:
         # TODO: support multi-step reward
         assert self.reward_structure is not None
 
@@ -171,9 +155,7 @@ class BaseContextTracker(BaseTracker):
         global_reward = self.reward_structure.raw_reward
         gamma = self.config.ajet.rollout.gamma
         step_reward_base = global_reward * (gamma ** (total_steps - index - 1))
-        assert (
-            gamma == 1.0
-        ), "Currently only support gamma == 1.0, we'll support multi-step reward in the future"
+        assert gamma == 1.0, "Currently only support gamma == 1.0, we'll support multi-step reward in the future"
 
         # --------------- compute step level reward ---------------
         step_reward = step_reward_base  # reward scalar
@@ -240,9 +222,7 @@ class BaseContextTracker(BaseTracker):
 
         return sample_arr
 
-    def tokenize_steps(
-        self, ext_steps: List[ExtendedMessage], index: int, total_steps: int
-    ) -> dict:
+    def tokenize_steps(self, ext_steps: List[ExtendedMessage], index: int, total_steps: int) -> dict:
         """
         Create an Experience object from the current conversation context.
 
@@ -262,9 +242,7 @@ class BaseContextTracker(BaseTracker):
 
         # check reward structure
         self.reward_structure: Reward  # type: ignore
-        assert (
-            self.reward_structure.step_reward_arr is not None
-        ), "must call `process_reward` before tokenize_steps"
+        assert self.reward_structure.step_reward_arr is not None, "must call `process_reward` before tokenize_steps"
         assert len(self.reward_structure.step_reward_arr) == total_steps
 
         # mapping
@@ -282,13 +260,9 @@ class BaseContextTracker(BaseTracker):
             if (split_prompt_reponse_index == -1) and (ext_msg.need_training):
                 split_prompt_reponse_index = len(input_ids)
                 split_point_message_left_index = i - 1
-                assert (
-                    split_point_message_left_index >= 0
-                ), "There should be at least one message before the first training message"
+                assert split_point_message_left_index >= 0, "There should be at least one message before the first training message"
                 assert split_prompt_reponse_index == input_ids_len[split_point_message_left_index]
-                assert (
-                    ext_msg.author == "llm"
-                ), "The first message after initialization should be from LLM, not from env or user"
+                assert ext_msg.author == "llm", "The first message after initialization should be from LLM, not from env or user"
 
             # cat all tokens
             input_ids += ext_msg.token_arr
@@ -315,12 +289,8 @@ class BaseContextTracker(BaseTracker):
             split_prompt_reponse_index = self.config.ajet.data.max_prompt_length
 
         # check
-        assert len(ext_steps) == len(
-            input_ids_len
-        ), "length of ext_steps and input_ids_len should be equal"
-        assert (
-            split_prompt_reponse_index != -1
-        ), "split_prompt_reponse_index should not be -1, at least one message should be in the context"
+        assert len(ext_steps) == len(input_ids_len), "length of ext_steps and input_ids_len should be equal"
+        assert split_prompt_reponse_index != -1, "split_prompt_reponse_index should not be -1, at least one message should be in the context"
         position_ids = compute_position_id_with_mask(torch.tensor(attention_mask)).tolist()
 
         # sperate prompt and response
@@ -391,10 +361,7 @@ class BaseContextTracker(BaseTracker):
             for tracker in tracker_list:
                 tracker.reward_structure.step_advantage = []
                 for i in range(len(tracker.reward_structure.step_reward_arr)):
-                    tracker.reward_structure.step_advantage += [
-                        (tracker.reward_structure.step_reward_arr[i] - reward_mean)
-                        / (reward_std + 1e-6)
-                    ]
+                    tracker.reward_structure.step_advantage += [(tracker.reward_structure.step_reward_arr[i] - reward_mean) / (reward_std + 1e-6)]
 
         # compute simple advantage (uneven rollout sample count) (just for logging purpose)
         for task_id, tracker_list in task2tracker.items():
@@ -410,10 +377,7 @@ class BaseContextTracker(BaseTracker):
             for tracker in tracker_list:
                 tracker.reward_structure.step_advantage_simple = []
                 for i in range(len(tracker.reward_structure.step_reward_arr)):
-                    tracker.reward_structure.step_advantage_simple += [
-                        (tracker.reward_structure.step_reward_arr[i] - reward_mean)
-                        / (reward_std + 1e-6)
-                    ]
+                    tracker.reward_structure.step_advantage_simple += [(tracker.reward_structure.step_reward_arr[i] - reward_mean) / (reward_std + 1e-6)]
         return
 
     def get_generation_prompt_token(self):

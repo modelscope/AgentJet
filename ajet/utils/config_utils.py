@@ -14,9 +14,7 @@ from ajet.utils.config_computer import split_keys_and_operators
 
 def read_ajet_config(yaml_fp):
     """Load a Hydra configuration relative to this module."""
-    yaml_fp = os.path.relpath(
-        yaml_fp, os.path.dirname(__file__)
-    )  # do not try to understand this line, hydra is too weird
+    yaml_fp = os.path.relpath(yaml_fp, os.path.dirname(__file__))  # do not try to understand this line, hydra is too weird
 
     def load_hydra_config(config_path: str, config_name: str) -> DictConfig:
         with initialize(config_path=config_path, version_base=None):
@@ -124,9 +122,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
         # set and override config value
         for to_key in to_keys:
             _dive_to_set_value(to_config, to_key, value)
-            logger.success(
-                f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]"
-            )
+            logger.success(f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]")
 
     # backbone specific safe guard
     to_config = config_safe_guard(to_config, backbone)
@@ -148,10 +144,7 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
     if backbone == "trinity":
         train_batch_size = config["buffer"]["train_batch_size"]
         world_size = config["cluster"]["gpu_per_node"] * config["cluster"]["node_num"]
-        vllm_world_size = (
-            config["explorer"]["rollout_model"]["tensor_parallel_size"]
-            * config["explorer"]["rollout_model"]["engine_num"]
-        )
+        vllm_world_size = config["explorer"]["rollout_model"]["tensor_parallel_size"] * config["explorer"]["rollout_model"]["engine_num"]
         fsdp_world_size = world_size - vllm_world_size
 
         # if train_batch_size % fsdp_world_size != 0, train_batch_size + until divisible
@@ -159,17 +152,13 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
             new_train_batch_size = train_batch_size
             while new_train_batch_size % fsdp_world_size != 0:
                 new_train_batch_size += 1
-            logger.warning(
-                f"[Warning]: trinity backbone detected, but train_batch_size {train_batch_size} is not divisible by fsdp_world_size {fsdp_world_size}. Automatically adjust train_batch_size to {new_train_batch_size}."
-            )
+            logger.warning(f"[Warning]: trinity backbone detected, but train_batch_size {train_batch_size} is not divisible by fsdp_world_size {fsdp_world_size}. Automatically adjust train_batch_size to {new_train_batch_size}.")
             config["buffer"]["train_batch_size"] = new_train_batch_size
 
     return config
 
 
-def read_ajet_hierarchical_config(
-    yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments"
-):
+def read_ajet_hierarchical_config(yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments"):
     if yaml_fp is None:
         config = {
             "ajet": {},
@@ -292,9 +281,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     else:
         total_seconds = 5
         for i in range(total_seconds):
-            logger.warning(
-                f"Warning: backup directory already exists, we will automatically ignore this after {total_seconds - i} seconds..."
-            )
+            logger.warning(f"Warning: backup directory already exists, we will automatically ignore this after {total_seconds - i} seconds...")
             time.sleep(1)
 
     ## 2. copy files to backup
@@ -302,9 +289,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     BACK_TARGETS = [p for p in BACK_TARGETS if os.path.exists(p)]
 
     for backup_target in BACK_TARGETS:
-        logger.info(
-            f"Copying {backup_target} to {os.path.join(backup_dir, os.path.basename(backup_target))}"
-        )
+        logger.info(f"Copying {backup_target} to {os.path.join(backup_dir, os.path.basename(backup_target))}")
         shutil.copytree(
             backup_target,
             os.path.join(backup_dir, os.path.basename(backup_target)),
@@ -316,9 +301,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
     shutil.copyfile(yaml_backup_src, yaml_backup_dst)
 
     ## 4. edit new yaml
-    config = read_ajet_hierarchical_config(
-        yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir
-    )
+    config = read_ajet_hierarchical_config(yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir)
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final
