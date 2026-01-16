@@ -55,7 +55,7 @@ def run_ppo(config) -> None:
     # Check if Ray is not initialized
     if not ray.is_initialized():
         # this is for local ray cluster
-        runtime_env = get_runtime_env()
+        runtime_env = get_runtime_env(config)
         print_dict(runtime_env["env_vars"], "runtime_env")
         ray.init(
             runtime_env=runtime_env,
@@ -246,9 +246,9 @@ class TaskRunner:
 
         from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
-        if config.ajet.enable_experimental_reverse_proxy:
+        if config.ajet.enable_experimental_interchange_server:
             from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
-            start_interchange_server(config.ajet.experiment_dir)
+            start_interchange_server(config)
 
         # Initialize the PPO trainer.
         trainer = AjetRayPPOTrainer(

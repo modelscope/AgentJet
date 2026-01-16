@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Literal, Callable, Union
+from typing import TYPE_CHECKING, Any, Literal, Callable, Union, Type
 
 from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
@@ -18,16 +18,22 @@ class AjetTuner(object):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        user_workflow: "Workflow",
+        workflow_cls: Type["Workflow"],
         llm_inference_fn: Callable,
     ) -> None:
         self.config = config
-        self.workflow = user_workflow
+        self.trainable_targets = self._get_trainable_targets(workflow_cls)
         self.context_tracker = context_tracker
         self.llm_inference_fn = llm_inference_fn
         self.target2proxy_registry: dict[str, dict[str,TunerTypeUnion]] = {}
-        if config.ajet.enable_experimental_reverse_proxy:
+        self.enable_interchange_server = config.ajet.enable_experimental_interchange_server
+        if self.enable_interchange_server:
             self.proxy_client_started = False
+
+
+    def _get_trainable_targets(self, workflow_cls: Type["Workflow"]):
+        workflow_instance = workflow_cls(name="ajet-workflow")
+        return workflow_instance.trainable_targets
 
 
     def as_agentscope_model(
@@ -44,7 +50,6 @@ class AjetTuner(object):
         explicit_tuner_as_modelscope_model = AgentScopeModelTuner(
             config=self.config,
             context_tracker=self.context_tracker,
-            user_workflow=self.workflow,
             agent_name=agent_name,
             debug_model=debug_model,
             use_debug_model=(not self._is_target_trainable(target_tag)),
@@ -68,7 +73,6 @@ class AjetTuner(object):
         explicit_tuner_as_oai_client = OpenaiClientModelTuner(
             config=self.config,
             context_tracker=self.context_tracker,
-            workflow=self.workflow,
             agent_name=agent_name,
             debug_model=debug_model,
             use_debug_model=(not self._is_target_trainable(target_tag)),
@@ -101,17 +105,17 @@ class AjetTuner(object):
             ```
         """
 
-        assert self.config.ajet.enable_experimental_reverse_proxy, "Please enable `ajet.enable_experimental_reverse_proxy` in yaml config to use `as_oai_baseurl_apikey` feature."
+        assert self.enable_interchange_server, "Please enable `ajet.enable_experimental_interchange_server` in yaml config to use `as_oai_baseurl_apikey` feature."
         if self.proxy_client_started is False:
-            self._enable_experimental_interchange_server(self.llm_inference_fn)
             self.proxy_client_started = True
+            self._enable_experimental_interchange_server(self.llm_inference_fn)
         baseurl_apikey_model = OpenaiClientBaseUrlTuner(
             config=self.config,
             context_tracker=self.context_tracker,
-            workflow=self.workflow,
             agent_name=agent_name,
             target_tag=target_tag,
             episode_uuid=self.context_tracker.episode_uuid,
+            episode_contect_address=self.interchange_client.episode_contect_address,
         )
         return baseurl_apikey_model
 
@@ -145,13 +149,13 @@ class AjetTuner(object):
     def _is_target_trainable(self, target_name) -> bool:
         """Determine whether user have used `trainable_targets` to explicitly control training targets.
         """
-        if self.workflow.trainable_targets is None:
+        if self.trainable_targets is None:
             # always assume trainable when user has never changed trainable_targets
             return True
-        if not self.workflow.trainable_targets:
+        if not self.trainable_targets:
             # always assume trainable when trainable_targets is []
             return True
-        if target_name in self.workflow.trainable_targets:
+        if target_name in self.trainable_targets:
             return True
         else:
             return False
@@ -168,7 +172,7 @@ class AjetTuner(object):
 
     def _enable_experimental_interchange_server(self, llm_inference_fn):
         # experimental reverse proxy start
-        if self.config.ajet.enable_experimental_reverse_proxy:
+        if self.enable_interchange_server:
             from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_client import InterchangeClient
             self.interchange_client = InterchangeClient(
                 episode_uuid=self.context_tracker.episode_uuid,
@@ -176,10 +180,11 @@ class AjetTuner(object):
                 config=self.config,
                 llm_inference_fn=llm_inference_fn,
             )
+            return self.interchange_client.begin_service()
 
 
     def terminate_episode(self):
         # experimental reverse proxy cleanup
-        if self.config.ajet.enable_experimental_reverse_proxy:
+        if self.enable_interchange_server:
             if (self.proxy_client_started is True) and hasattr(self, "interchange_client"):
                 self.interchange_client._should_terminate = True

@@ -1,12 +1,12 @@
 # AgentJet (Beta)
 
 [![Benchmarking](https://img.shields.io/badge/Benchmarking-0078D4?style=for-the-badge&logo=github)](https://benchmark.agent-matrix.com/)
-[![Docs](https://img.shields.io/badge/Docs-Read%20the%20Documents-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://doc.agentjet.top/AgentJet)
+[![Docs](https://img.shields.io/badge/Docs-Read%20the%20Documents-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://modelscope.github.io/AgentJet)
 [![License](https://img.shields.io/badge/License-Apache--2.0-4c1?style=for-the-badge)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://doc.agentjet.top/AgentJet/en/installation#requirements)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://modelscope.github.io/AgentJet/en/installation#requirements)
 
 <div align="center">
-  <a href="https://doc.agentjet.top/AgentJet" target="_blank">
+  <a href="https://modelscope.github.io/AgentJet" target="_blank">
     <img width="500" alt="AgentJet" src="docs/agentjet.jpg"/>
   </a>
 </div>
@@ -18,11 +18,11 @@ Simply provide your agent **workflow**, training **dataset**, and **reward** fun
 
 
 
-## 🛩️ Minimum Example
+## ✈️ Minimum Example
 
 Let's begin with the simplest example: a math agent with a tool call.
 
-- First, please check out the [installation guide](https://doc.agentjet.top/AgentJet/en/installation/) to set up the training environment.
+- First, please check out the [installation guide](https://modelscope.github.io/AgentJet/en/installation/) to set up the training environment.
 - Then, tune your first model using the minimum example.
   ```python
   ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
@@ -32,14 +32,14 @@ Let's begin with the simplest example: a math agent with a tool call.
   ```
 
 
-## 🛩️ Features
+## ✈️ Features
 
 We aim to build a easy-to-learn Agent tuner that unlock more possibilities for agent developers:
 
 - **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
 - **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support [trinity](https://github.com/modelscope/Trinity-RFT/) as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
-- **Flexible and Fast**. AgentJet supports [multi-agent workflows](https://doc.agentjet.top/AgentJet/en/workflow.md) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
+- **Flexible and Fast**. AgentJet supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, coming soon).
 
 For advanced researchers, AgentJet also provides high-resolution logging and debugging solutions:
@@ -50,15 +50,15 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 
 ---
 
-### 🛩️ Quick Start
+### ✈️ Quick Start
 
 #### Installation
 
-- **Click here to read the** [**installation guide**](https://doc.agentjet.top/AgentJet/en/installation/).
+- **Click here to read the** [**installation guide**](https://modelscope.github.io/AgentJet/en/installation/).
 
 #### Run Training
 
-- You can start training your first agent with a single command using a pre-configured YAML file. Take the [Math agent](https://doc.agentjet.top/AgentJet/en/example_math_agent/) as an example:
+- You can start training your first agent with a single command using a pre-configured YAML file. Take the [Math agent](https://modelscope.github.io/AgentJet/en/example_math_agent/) as an example:
 
   ```bash
   ajet --conf tutorial/example_math_agent/math_agent.yaml
@@ -68,17 +68,17 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 
 Explore our rich library of examples to kickstart your journey:
 
-- 🔢 [**Training a math agent that can write python code**](https://doc.agentjet.top/AgentJet/en/example_math_agent).
-- 📱 [**Creating an AppWorld agent using AgentScope and training it**](https://doc.agentjet.top/AgentJet/en/example_app_world).
-- 🐺 [**Developing Werewolves RPG agents and training them**](https://doc.agentjet.top/AgentJet/en/example_werewolves).
-- 👩🏻‍⚕️ [**Learning to ask questions like a doctor**](https://doc.agentjet.top/AgentJet/en/example_learning_to_ask).
-- 🎴 [**Writing a countdown game using AgentScope and solving it**](https://doc.agentjet.top/AgentJet/en/example_countdown).
-- 🚶 [**Solving a frozen lake walking puzzle using AgentJet**](https://doc.agentjet.top/AgentJet/en/example_frozenlake).
+- 🔢 [**Training a math agent that can write python code**](https://modelscope.github.io/AgentJet/en/example_math_agent).
+- 📱 [**Creating an AppWorld agent using AgentScope and training it**](https://modelscope.github.io/AgentJet/en/example_app_world).
+- 🐺 [**Developing Werewolves RPG agents and training them**](https://modelscope.github.io/AgentJet/en/example_werewolves).
+- 👩🏻‍⚕️ [**Learning to ask questions like a doctor**](https://modelscope.github.io/AgentJet/en/example_learning_to_ask).
+- 🎴 [**Writing a countdown game using AgentScope and solving it**](https://modelscope.github.io/AgentJet/en/example_countdown).
+- 🚶 [**Solving a frozen lake walking puzzle using AgentJet**](https://modelscope.github.io/AgentJet/en/example_frozenlake).
 
 
 ---
 
-### 🛩️ Core Concepts
+### ✈️ Core Concepts
 
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
@@ -91,9 +91,9 @@ AgentJet makes agent fine-tuning straightforward by separating the developer int
 
 To optimize an agent, you provide three core inputs:
 
-* [**Trainable Workflow**](https://doc.agentjet.top/AgentJet/en/workflow): Define your agent logic by inheriting the Workflow class, supporting both simple agent setups and advanced multi-agent collaborations.
-* [**Task Reader**](https://doc.agentjet.top/AgentJet/en/data_pipeline): Load training tasks from JSONL files, HuggingFace datasets, interactive environments, or auto-generate them from documents.
-* [**Task Judger**](https://doc.agentjet.top/AgentJet/en/task_judger): Evaluates agent outputs and assigns rewards to guide training.
+* [**Trainable Workflow**](https://modelscope.github.io/AgentJet/en/workflow): Define your agent logic by inheriting the Workflow class, supporting both simple agent setups and advanced multi-agent collaborations.
+* [**Task Reader**](https://modelscope.github.io/AgentJet/en/data_pipeline): Load training tasks from JSONL files, HuggingFace datasets, interactive environments, or auto-generate them from documents.
+* [**Task Judger**](https://modelscope.github.io/AgentJet/en/task_judger): Evaluates agent outputs and assigns rewards to guide training.
 
 #### 2. Internal System Architecture
 
@@ -109,14 +109,14 @@ The internal system orchestrates several specialized modules to handle the compl
 
 
 
-### 🛩️ Navigation
+### ✈️ Navigation
 
-* **Tutorials**: From [Installation](https://doc.agentjet.top/AgentJet/en/installation) to [Tuning your first agent](https://doc.agentjet.top/AgentJet/en/tune_your_first_agent) — the essential path for beginners.
-* **Core Components**: Define your [Trainable Workflow](https://doc.agentjet.top/AgentJet/en/workflow) and manage [Data](https://doc.agentjet.top/AgentJet/en/data_pipeline) and [Reward](https://doc.agentjet.top/AgentJet/en/task_judger).
-* **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](https://doc.agentjet.top/AgentJet/en/example_math_agent), [Werewolves game](https://doc.agentjet.top/AgentJet/en/example_werewolves) and  [Learning to ask task](https://doc.agentjet.top/AgentJet/en/example_learning_to_ask).
-* **Deep Dive**: Master advanced [Configuration](https://doc.agentjet.top/AgentJet/en/configuration).
+* **Tutorials**: From [Installation](https://modelscope.github.io/AgentJet/en/installation) to [Tuning your first agent](https://modelscope.github.io/AgentJet/en/tune_your_first_agent) — the essential path for beginners.
+* **Core Components**: Define your [Trainable Workflow](https://modelscope.github.io/AgentJet/en/workflow) and manage [Data](https://modelscope.github.io/AgentJet/en/data_pipeline) and [Reward](https://modelscope.github.io/AgentJet/en/task_judger).
+* **Example**: Check the [Example Library](https://modelscope.github.io/AgentJet/#example-library) above for real-world cases like [Math](https://modelscope.github.io/AgentJet/en/example_math_agent), [Werewolves game](https://modelscope.github.io/AgentJet/en/example_werewolves) and  [Learning to ask task](https://modelscope.github.io/AgentJet/en/example_learning_to_ask).
+* **Deep Dive**: Master advanced [Configuration](https://modelscope.github.io/AgentJet/en/configuration).
 
-## 🛩️ Roadmap
+## ✈️ Roadmap
 
 AgentJet is a constantly evolving project. We are planning to add the following features in the near future.
 
@@ -130,3 +130,26 @@ AgentJet is a constantly evolving project. We are planning to add the following 
 | **Capability** | Multi-modal training support | Todo |
 | **Capability** | MARL Credit assignment | Todo |
 | **Capability** | Training dataset generation from few-shot samples | Done & Verifying |
+
+
+## ✈️ Citation
+
+If you use AgentJet in your research, please cite:
+
+```bibtex
+@software{
+  title  = {AgentJet: A Cutting-Edge Multi-Agent Training Platform for Large Language Models.},
+  author = {The AgentJet Team},
+  url    = {https://modelscope.github.io/AgentJet/},
+  month  = {01},
+  year   = {2026}
+}
+```
+
+<br/>
+
+---
+<div align="center">
+
+[⭐ Star Us](https://github.com/modelscope/AgentJet) · [Report Bug](https://github.com/modelscope/AgentJet/issues) · [Request Feature](https://github.com/modelscope/AgentJet/issues)
+</div>

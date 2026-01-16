@@ -4,7 +4,7 @@ Explore our rich library of examples to kickstart your journey.
 
 - Example Documentation:
 
-    https://doc.agentjet.top/AgentJet/#example-library
+    https://modelscope.github.io/AgentJet/#example-library
 
 - Example Benchmark Tracking System:
 

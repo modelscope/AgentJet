@@ -40,7 +40,7 @@ The very first step is to create a class as a container to wrap your code:
     from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
     class MyWorkflow(Workflow):
         async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
-            # ... your ReActAgent workflow here 🛩️ ...
+            # ... your ReActAgent workflow here ✈️ ...
             return WorkflowOutput(reward=..., metadata={...})
 
     ```
@@ -51,7 +51,7 @@ Next, use the `tuner` argument, call its `tuner.as_agentscope_model()` method:
 === "Before"
 
     ```python
-    model = DashScopeChatModel(model_name="qwen-max", stream=False)  # 🛩️ change here
+    model = DashScopeChatModel(model_name="qwen-max", stream=False)  # ✈️ change here
     agent_instance = ReActAgent(
        name=f"Friday",
        sys_prompt="You are a helpful assistant",
@@ -63,7 +63,7 @@ Next, use the `tuner` argument, call its `tuner.as_agentscope_model()` method:
 === "After"
 
     ```python
-    model = tuner.as_agentscope_model() # 🛩️ change here
+    model = tuner.as_agentscope_model() # ✈️ change here
     agent_instance = ReActAgent(
        name=f"Friday",
        sys_prompt="You are a helpful assistant",

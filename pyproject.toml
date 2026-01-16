@@ -39,7 +39,7 @@ verl = [
 ]
 
 trinity = [
-    "trinity-rft==0.4.0"
+    "trinity-rft[vllm]==0.4.0"
 ]
 
 dev = [
@@ -59,7 +59,7 @@ reward = [
 ]
 
 flash_attn = [
-    "flash-attn==2.8.1"
+    "flash-attn==2.8.3"
 ]
 
 docs = [

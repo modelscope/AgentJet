@@ -6,9 +6,6 @@ ajet:
   backbone: debug # `debug` or `trinity` or `verl`
 
 
-  # the experimental reverse proxy feature that allows `tuner.as_oai_baseurl_apikey` feature
-  enable_experimental_reverse_proxy: False
-
   model:
     # which model should be trained
     path: /path/to/model/such/as/Qwen/Qwen2___5-14B-Instruct
@@ -32,7 +29,7 @@ ajet:
     force_disable_toolcalls: False
 
     # maximum number of parallel environments / simulate workers
-    max_env_worker: 128
+    max_env_worker: 64
 
     # step reward gamma (experimental, do not change)
     gamma: 1.0
@@ -195,7 +192,7 @@ ajet:
     fix_retokenization_drift: True
 
     # log tool format check results
-    log_tool_format_check: True
+    log_tool_format_check: False
 
     # log tool format check results
     log_tool_format_error_detail: False
@@ -283,7 +280,28 @@ ajet:
     save_trajectory_as_json_file: False
 
 
+  # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
+  enable_experimental_interchange_server: True
+  interchange_server:
+    interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
+    interchange_server_port: 'auto'
+    num_fastapi_process: 2  # 1, 2 or 4 is fine
+    max_fastapi_threads: 128  # 64 or 128 is fine
+    max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
 
+
+  task_runner:
+    # submit llm infer submit method
+    llm_infer_submit_method: "async" # options: "sync", "async"
+
+    # how to wrap the user-defined workflow
+    wrapper_type: "asyncio-with-gc"
+    # - wrapper_type: "asyncio-with-gc":  safe, with periodic garbage collection to prevent event loop leaks (recommended)
+    # - wrapper_type: "asyncio":          fast, but may cause event loop leak in long run
+    # - wrapper_type: "multi-processing": safe, but resource consuming
+
+    # when `wrapper_type` is `multi-processing`, the timeout for each task
+    wrapper_multiprocessing_timeout: 3600  # in seconds
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
   execute_test: False        # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.

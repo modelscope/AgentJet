@@ -450,11 +450,11 @@ class DynamicRolloutManager(BaseRolloutManager):
 
             logger.info(print_buffer)
 
-            for tracker in tracker_array:
-                # average of gourp success rate
-                tracker.current_batch_success_rate = np.mean(task_success_rate)
-                # average of gourp average reward
-                tracker.current_batch_reward = np.mean(task_group_reward)
+            # for tracker in tracker_array:
+            #     # average of gourp success rate
+            #     tracker.current_batch_success_rate = np.mean(task_success_rate)
+            #     # average of gourp average reward
+            #     tracker.current_batch_reward = np.mean(task_group_reward)
 
             return tracker_array
 

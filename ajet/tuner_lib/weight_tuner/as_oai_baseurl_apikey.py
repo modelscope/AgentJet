@@ -12,6 +12,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.resources.chat.chat import Chat, AsyncChat
 from openai.resources.completions import AsyncCompletions
 from openai import OpenAI, AsyncOpenAI
+from ajet.utils.networking import find_free_port
 from .experimental.as_oai_model_client import generate_auth_token
 
 if TYPE_CHECKING:
@@ -40,19 +41,23 @@ class OpenaiClientBaseUrlTuner(BaseModel):
         self,
         config,
         context_tracker: MultiAgentContextTracker,
-        workflow: "Workflow",
         target_tag: str,
         agent_name: str,
         episode_uuid: str,
+        episode_contect_address: str,
         **kwargs,
     ):
+
         port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
-        base_url = f"http://localhost:{port}/v1"
+        master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+
+        base_url = f"http://{master_node_ip}:{port}/v1"
         api_key = generate_auth_token(
             agent_name=agent_name,
             target_tag=target_tag,
             episode_uuid=episode_uuid,
+            episode_address=episode_contect_address,
         )
         model = "reserved_field"
 

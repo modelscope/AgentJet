@@ -84,7 +84,7 @@ This article introduce the way to convert different types of ways to convert you
 
         ajet:
             ...
-            enable_experimental_reverse_proxy: True
+            enable_experimental_interchange_server: True
             ...
 
         ```

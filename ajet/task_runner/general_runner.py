@@ -1,4 +1,3 @@
-import asyncio
 from venv import logger
 
 from ajet import AjetTuner
@@ -14,13 +13,13 @@ from ajet.utils.dynamic_import import dynamic_import
 
 
 class GeneralRunner(BaseAgentRunner):
+
     def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
         observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
 
         workflow_import = self.config.ajet.rollout.user_workflow
         workflow_cls = dynamic_import(workflow_import)
-        user_workflow: Workflow = workflow_cls(name="ajet-trinity")
 
         hooks = self.runner_hooks(
             observation_window=observation_window,
@@ -37,12 +36,18 @@ class GeneralRunner(BaseAgentRunner):
         tuner = AjetTuner(
             context_tracker=context_tracker,
             llm_inference_fn=self.llm_inference_fn,
-            user_workflow=user_workflow,
+            workflow_cls=workflow_cls,
             config=self.config,
         )
-        workflow_output: WorkflowOutput = asyncio.run(
-            user_workflow.execute(workflow_task, tuner)
+
+        # run workflow
+        # user_workflow: Workflow = workflow_cls(name="ajet-workflow")
+        workflow_output: WorkflowOutput = self.run_user_workflow(
+            workflow_cls,
+            workflow_task,
+            tuner,
         )
+
         if workflow_output.reward is not None:
             raw_reward, is_success = (
                 workflow_output.reward,

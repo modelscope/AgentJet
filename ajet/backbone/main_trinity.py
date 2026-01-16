@@ -23,7 +23,9 @@ def get_ajet_config_from_trinity_side():
 
 def patch_runtime_env_to_get_actor():
     """Patch the classmethod of Explorer and Trainer to pass in the runtime env."""
-    runtime_env = get_runtime_env(is_trinity=True)
+    ajet_config = get_ajet_config_from_trinity_side()
+    runtime_env = get_runtime_env(ajet_config, is_trinity=True)
+    os.environ.update(runtime_env["env_vars"])
 
     def patched_explorer_get_actor(cls, config: Config):
         return (
@@ -50,10 +52,9 @@ def patch_runtime_env_to_get_actor():
     Explorer.get_actor = classmethod(patched_explorer_get_actor)
     Trainer.get_actor = classmethod(patched_trainer_get_actor)
 
-    ajet_config = get_ajet_config_from_trinity_side()
-    if ajet_config.ajet.enable_experimental_reverse_proxy:
+    if ajet_config.ajet.enable_experimental_interchange_server:
         from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
-        start_interchange_server(ajet_config.ajet.experiment_dir)
+        start_interchange_server(ajet_config)
 
 
 if __name__ == "__main__":

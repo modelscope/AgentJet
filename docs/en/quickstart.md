@@ -17,7 +17,7 @@ Let's begin with the simplest example: a math agent with a tool call.
 ```python title="train_math_agent.py"
 from ajet import AgentJetJob
 
-# refer to `https://doc.agentjet.top/AgentJet/en/tune_your_first_agent/` on how to write your own workflow
+# refer to `https://modelscope.github.io/AgentJet/en/tune_your_first_agent/` on how to write your own workflow
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "YOUR_MODEL_PATH"
