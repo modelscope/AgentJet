@@ -33,12 +33,11 @@ jobs:
 
     - name: Build Cookbook
       run: |
-        cd docs
-        ./build.sh
+        mkdocs build
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: docs/_build/preview/_build/html
-        cname: tuner.agentscope.io
+        cname: doc.agentjet.github.io
