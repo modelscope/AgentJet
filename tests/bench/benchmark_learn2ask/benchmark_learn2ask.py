@@ -1,7 +1,8 @@
 # flake8: noqa
 import time
 
-from ajet.utils.testing_utils import BenchmarkProbe, singleton
+from ajet.utils.testing_utils import BenchmarkProbe
+from ajet.utils.sington import singleton
 
 # trinity b.b. expectation
 # [TestProbe] Step 50: local average reward over last self.reward_expectation_avg_window steps: 2.6618, expected range: [0.0, 99999.0]
