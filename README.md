@@ -130,3 +130,26 @@ AgentJet is a constantly evolving project. We are planning to add the following 
 | **Capability** | Multi-modal training support | Todo |
 | **Capability** | MARL Credit assignment | Todo |
 | **Capability** | Training dataset generation from few-shot samples | Done & Verifying |
+
+
+## ✈️ Citation
+
+If you use AgentJet in your research, please cite:
+
+```bibtex
+@software{
+  title  = {AgentJet: A Cutting-Edge Multi-Agent Training Platform for Large Language Models.},
+  author = {The AgentJet Team},
+  url    = {https://modelscope.github.io/AgentJet/},
+  month  = {01},
+  year   = {2026}
+}
+```
+
+<br/>
+
+---
+<div align="center">
+
+[⭐ Star Us](https://github.com/modelscope/AgentJet) · [🐛 Report Bug](https://github.com/modelscope/AgentJet/issues) · [💡 Request Feature](https://github.com/modelscope/AgentJet/issues)
+</div>
