@@ -30,7 +30,7 @@ class ExampleMathLearn(Workflow):
         url_and_apikey = tuner.as_oai_baseurl_apikey()
         base_url = url_and_apikey.base_url
         api_key = url_and_apikey.api_key
-        
+
         from langchain_openai import ChatOpenAI
         llm=ChatOpenAI(
             base_url=base_url,
@@ -40,10 +40,10 @@ class ExampleMathLearn(Workflow):
             model=llm,
             system_prompt=self.system_prompt,
         )
-        
+
         # take out query
         query = workflow_task.task.main_query
-        
+
         response = agent.invoke({
             "messages": [
                 {
@@ -52,6 +52,6 @@ class ExampleMathLearn(Workflow):
                 }
             ],
         })
-        
+
         final_answer = response['messages'][-1].content
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})

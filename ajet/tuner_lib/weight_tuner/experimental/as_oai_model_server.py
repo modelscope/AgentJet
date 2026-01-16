@@ -239,5 +239,3 @@ def start_interchange_server(config) -> int:
 
     # return port
     return port
-
-

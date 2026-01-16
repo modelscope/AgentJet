@@ -170,4 +170,3 @@ The internal system orchestrates several specialized modules to handle the compl
 
 <div class="card-grid">
 <a href="zh/intro/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:translate.svg" class="card-icon card-icon-multimodal" alt=""><h3>查看中文文档</h3></div><p class="card-desc">完整的中文教程和指南。</p></a></div> -->
-

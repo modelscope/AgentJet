@@ -28,14 +28,14 @@ def process_jsonl_file(
         str: Success message or error information
     """
     progress_file = output_file + ".progress"
-    
+
     def load_progress():
         """Load progress from progress file. Returns set of completed line numbers."""
         if os.path.exists(progress_file):
             with open(progress_file, "r", encoding="utf-8") as f:
                 return set(int(line.strip()) for line in f if line.strip())
         return set()
-    
+
     def process_single_session(args):
         """Worker function to process a single session."""
         line_num, line = args
@@ -54,41 +54,41 @@ def process_jsonl_file(
             return line_num, None, f"Warning: Skipping invalid JSON at line {line_num}: {e}"
         except Exception as e:
             return line_num, None, f"Warning: Error processing session at line {line_num}: {e}"
-    
+
     try:
         # Load previous progress
         completed_lines = load_progress()
         if completed_lines:
             print(f"Resuming from previous progress. {len(completed_lines)} lines already completed.")
-        
+
         # Read all lines first
         with open(input_file, "r", encoding="utf-8") as infile:
             all_lines = list(enumerate(infile, 1))
-        
+
         total_lines = len(all_lines)
         # Filter out already completed lines
         lines_to_process = [(num, line) for num, line in all_lines if num not in completed_lines]
-        
+
         if not lines_to_process:
             print("All lines already processed.")
             # Clean up progress file
             if os.path.exists(progress_file):
                 os.remove(progress_file)
             return f"All lines already processed. Results in {output_file}"
-        
+
         print(f"Processing {len(lines_to_process)} remaining lines out of {total_lines} total.")
-        
+
         # State for ordered writing
         results_buffer = {}  # line_num -> processed_lines
         next_line_to_write = min(num for num, _ in lines_to_process)
         write_lock = threading.Lock()
         progress_lock = threading.Lock()
-        
+
         # Open output file in append mode if resuming, otherwise write mode
         file_mode = "a" if completed_lines else "w"
         outfile = open(output_file, file_mode, encoding="utf-8")
         progress_out = open(progress_file, "a", encoding="utf-8")
-        
+
         def flush_buffer():
             """Write all consecutive completed results from buffer to file."""
             nonlocal next_line_to_write
@@ -106,28 +106,28 @@ def process_jsonl_file(
                 # Skip lines that were already completed or empty
                 while next_line_to_write <= total_lines and next_line_to_write not in dict(lines_to_process):
                     next_line_to_write += 1
-        
+
         try:
             # Process sessions in parallel using ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {executor.submit(process_single_session, item): item[0] for item in lines_to_process}
-                
+
                 for future in as_completed(futures):
                     line_num, processed_lines, error = future.result()
                     if error:
                         print(error)
-                    
+
                     with write_lock:
                         results_buffer[line_num] = processed_lines
                         flush_buffer()
         finally:
             outfile.close()
             progress_out.close()
-        
+
         # Clean up progress file on successful completion
         if os.path.exists(progress_file):
             os.remove(progress_file)
-        
+
         return f"Successfully processed. Results saved to {output_file}"
 
     except Exception as e:
@@ -177,7 +177,7 @@ def process_session(session, model_call_mode="online_api", max_retries=3, **kwar
                 print(f"Attempt {attempt + 1} failed with exception: {str(e)}")
                 if attempt < max_retries - 1:
                     time.sleep(24)  # Shorter wait for testing
-        
+
         if info_set is None:
             raise Exception(f"failed to generate {session}")
         data["info_set"] = info_set

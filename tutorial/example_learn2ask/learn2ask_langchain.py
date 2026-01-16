@@ -174,26 +174,26 @@ class ExampleLearn2Ask(Workflow):
         assert isinstance(messages, list)
         truth_action = workflow_task.task.metadata["decision_truth"] or "continue"
         truth_info = workflow_task.task.metadata["info_truth"]
-        
+
         llm_info=tuner.as_oai_baseurl_apikey()
-        
+
         llm=ChatOpenAI(
             base_url=llm_info.base_url,
             api_key=lambda:llm_info.api_key,
         )
-        
+
         agent=create_agent(
             model=llm,
             system_prompt=system_prompt,
         )
-        
+
         msg=[
             {"role": x["role"], "content": x["content"]} for x in messages
         ]
         result = agent.invoke({
             "messages": msg, # type: ignore
         })
-        
+
         response = result["messages"][-1].content
         reward = await reward_fn_with_semaphore(msg, response, truth_action, truth_info)
         return WorkflowOutput(reward=reward)
