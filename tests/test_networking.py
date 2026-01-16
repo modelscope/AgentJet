@@ -1,6 +1,5 @@
 import socket
 import unittest
-import sys
 import os
 import importlib.util
 

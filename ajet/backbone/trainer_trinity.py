@@ -65,7 +65,6 @@ class TrinityRolloutManager(DynamicRolloutManager):
         )
 
     def convert_task(self, task: TrinityTask):
-        from ajet.schema.task import Task
         assert isinstance(task.raw_task, dict)
         return dict_to_ajet_task(task.raw_task)
 

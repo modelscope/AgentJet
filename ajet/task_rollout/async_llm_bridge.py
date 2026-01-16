@@ -3,14 +3,13 @@ import copy
 import json
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Literal, Type, Union
+from typing import Any, Callable, Dict, List, Literal, Union
 
 
 
 from loguru import logger
 from omegaconf import DictConfig
 from pydantic import BaseModel
-from transformers.tokenization_utils import PreTrainedTokenizer
 from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 from vllm.outputs import RequestOutput as VerlVllmRequestOutput
 

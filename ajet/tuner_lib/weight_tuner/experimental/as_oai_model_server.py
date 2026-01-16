@@ -24,7 +24,7 @@ import httpx
 
 from loguru import logger
 from pydantic import BaseModel
-from fastapi import FastAPI, Header, HTTPException, Request, Body
+from fastapi import FastAPI, Header, HTTPException, Request
 from contextlib import asynccontextmanager
 from multiprocessing import Process
 from concurrent.futures import ThreadPoolExecutor

@@ -1,5 +1,4 @@
 # flake8: noqa
-import os
 import time
 
 from ajet.utils.testing_utils import BenchmarkProbe, singleton

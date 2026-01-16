@@ -4,11 +4,10 @@ from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from agentscope.model import ChatResponse as AgentScopeChatResponse
 from openai.types.completion_usage import CompletionUsage
-from typing import Any, Callable, Dict, List, Literal, Type, Union
+from typing import List, Type
 from agentscope.message import TextBlock, ToolUseBlock
 from agentscope._utils._common import _json_loads_with_repair
 from pydantic import BaseModel
-from agentscope.model import ChatResponse
 
 
 def convert_llm_proxy_response_to_oai_response(llm_proxy_response):

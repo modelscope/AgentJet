@@ -11,7 +11,7 @@ SwanLab metrics directory structure:
 - judge_time/                 Judge time consumption statistics
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import numpy as np
 
 

@@ -1,7 +1,7 @@
-from typing import TYPE_CHECKING, Any, Literal, Type
+from typing import Any, Literal, Type
 
 from agentscope._utils._common import _create_tool_from_base_model
-from agentscope.model import ChatModelBase, ChatResponse, DashScopeChatModel
+from agentscope.model import ChatResponse, DashScopeChatModel
 from loguru import logger
 from pydantic import BaseModel
 
@@ -9,9 +9,6 @@ from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
 from ajet.task_rollout.async_llm_bridge import AgentScopeLlmProxyWithTracker
-
-if TYPE_CHECKING:
-    from ajet import Workflow
 
 
 class AgentScopeModelTuner(DashScopeChatModel):

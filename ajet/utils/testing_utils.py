@@ -11,7 +11,6 @@ from beast_logger import print_dict
 from loguru import logger
 
 from ajet.utils.dynamic_import import dynamic_import
-from ajet.utils.sington import singleton
 
 
 class TestSuccessException(Exception):
@@ -19,7 +18,6 @@ class TestSuccessException(Exception):
     All test is done, end the program early with exception.
     """
 
-    pass
 
 
 class TestFailException(Exception):
@@ -27,7 +25,6 @@ class TestFailException(Exception):
     Test has failed, end the program early with exception.
     """
 
-    pass
 
 
 class BaseProbe(object):

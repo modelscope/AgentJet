@@ -1,4 +1,3 @@
-from loguru import logger
 from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat import ChatCompletionMessageToolCall

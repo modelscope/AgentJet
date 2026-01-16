@@ -4,7 +4,6 @@ import time
 import asyncio
 import threading
 
-from agentscope.message import Msg
 from loguru import logger
 
 from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
