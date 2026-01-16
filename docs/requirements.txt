@@ -11,4 +11,3 @@ pymdown-extensions==10.16.1
 
 # Syntax highlighting
 Pygments>=2.18.0
-

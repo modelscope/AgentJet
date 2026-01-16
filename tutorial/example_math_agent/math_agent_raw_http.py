@@ -57,8 +57,3 @@ class ExampleMathLearn(Workflow):
         )
         final_answer = response.json()['choices'][0]['message']['content']
         return WorkflowOutput(reward=None, metadata={"final_answer": final_answer})
-
-
-
-
-

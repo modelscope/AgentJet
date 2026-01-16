@@ -80,5 +80,3 @@ class OpenaiClientModelTuner(AsyncOpenAI):
         )
         assert isinstance(response_gen, ChatCompletion)
         return response_gen
-
-
