@@ -14,7 +14,7 @@ This article introduce the way to convert different types of ways to convert you
 === "Before Convertion"
 
     ```python
-    model = DashScopeChatModel(model_name="qwen-max", stream=False)  # 🛩️ change here
+    model = DashScopeChatModel(model_name="qwen-max", stream=False)  # ✈️ change here
     agent_instance = ReActAgent(
        name=f"Friday",
        sys_prompt="You are a helpful assistant",
@@ -26,7 +26,7 @@ This article introduce the way to convert different types of ways to convert you
 === "After Convertion (`as_agentscope_model()`)"
 
     ```python
-    model = tuner.as_agentscope_model() # 🛩️ change here
+    model = tuner.as_agentscope_model() # ✈️ change here
     agent_instance = ReActAgent(
        name=f"Friday",
        sys_prompt="You are a helpful assistant",

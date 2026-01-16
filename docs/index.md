@@ -8,7 +8,7 @@
 **AgentJet (AJet)** is a cutting-edge, user-friendly agent tuning framework designed to optimize LLM models and agent workflows.
 
 
-## 🛩️ Key Features
+## ✈️ Key Features
 
 <div class="card-grid">
     <a href="en/tune_your_first_agent/" class="feature-card">
@@ -75,7 +75,7 @@
 
 
 
-## 🛩️ Quick Start
+## ✈️ Quick Start
 
 <div class="card-grid">
 <a href="en/installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Click Here for the Full Installation Document</h3></div></a>
@@ -109,7 +109,7 @@ We recommend using `uv` for dependency management. [Click here](en/installation.
 
 
 
-## 🛩️ Example Library {#example-library}
+## ✈️ Example Library {#example-library}
 
 Explore our rich library of examples to kickstart your journey:
 
@@ -123,11 +123,11 @@ Explore our rich library of examples to kickstart your journey:
 </div>
 
 
-## 🛩️ Core Concepts
+## ✈️ Core Concepts
 
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
-**🛩️ The User-Centric Interface**
+**✈️ The User-Centric Interface**
 
 To optimize an agent, you provide three core inputs:
 
@@ -141,7 +141,7 @@ To optimize an agent, you provide three core inputs:
 <img width="840" alt="AgentJet Architecture" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
 </div>
 
-**🛩️ Internal System Architecture**
+**✈️ Internal System Architecture**
 
 The internal system orchestrates several specialized modules to handle the complexities of RL training and agent interactions.
 
@@ -156,7 +156,7 @@ The internal system orchestrates several specialized modules to handle the compl
 
 
 
-## 🛩️ Next Steps
+## ✈️ Next Steps
 
 <div class="card-grid">
 <a href="en/installation/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:download.svg" class="card-icon card-icon-tool" alt=""><h3>Installation</h3></div><p class="card-desc">Set up AgentJet environment and dependencies.</p></a>
