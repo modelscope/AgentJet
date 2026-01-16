@@ -56,6 +56,7 @@ nav:
       - Beast Logger: en/beast_logger.md
       - Data Generation: en/data_generation.md
       - Tracing Feedback: en/example_tracing_feedback_loop.md
+      - Platform Comparison: en/platform_comparison.md
 
   # - 中文文档:
   #     - 简介: zh/intro.md
