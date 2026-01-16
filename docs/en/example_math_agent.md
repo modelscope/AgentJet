@@ -185,6 +185,14 @@ Most wiring happens in `tutorial/example_math_agent/math_agent.yaml`:
     ```
 
 
+!!! warning "user_workflow assignment"
+    - As you have noticed, `user_workflow: tutorial.example_math_agent.math_agent_langchain->ExampleMathLearn` means, AgentJet will try to import `ExampleMathLearn` from `${WorkingDir}/tutorial/example_math_agent/math_agent_langchain.py`. (**Dot import**)
+    - If you prefer absolute path, or you workflow is not in python search path, you can also use the alternative way to import your workflow `user_workflow: /path/to/ajet/tutorial/example_math_agent/math_agent_langchain.py->ExampleMathLearn`. (**Path import**)
+    - Both **dot import** (dot-to-module) and **path import** (path-to-source-code) is good. But **dot import** is recommended as it is more pythonic.
+
+
+
+
 | Field | Description |
 |-------|-------------|
 | `task_reader` | Where tasks come from |

@@ -28,7 +28,7 @@ cd AgentJet
 
 ### Step 2: Install Dependencies
 
-AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (recommended).
+AgentJet supports multiple backbones, you can choose any of them depending on your requirements, or choose all of them to compare the performance. Currently we have `verl` and `trinity`.
 
 !!! info "Package Manager"
     We recommend using `uv` to manage your Python environment as it is incredibly fast. See also [`uv` installation document](https://docs.astral.sh/uv/getting-started/installation/).
@@ -49,7 +49,8 @@ AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (re
     ```
 
     !!! warning "flash-attn Installation"
-        `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
+        - `flash-attn` must be installed **after** other dependencies.
+        - If you find your machine spend a long time installing flash-attn, ensure a healthy connection to GitHub.
 
 === "VERL (conda)"
 
@@ -64,8 +65,10 @@ AgentJet supports multiple backbones. Currently we have `verl` and `trinity` (re
     pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
 
+
     !!! warning "flash-attn Installation"
-        `flash-attn` must be installed after other dependencies. To build faster, export `MAX_JOBS=${N_CPU}`, or ensure a healthy connection to GitHub to install pre-compiled wheels.
+        - `flash-attn` must be installed **after** other dependencies.
+        - If you find your machine spend a long time installing flash-attn, ensure a healthy connection to GitHub.
 
 
 === "VERL (aliyun)"
