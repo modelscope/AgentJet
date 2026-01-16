@@ -39,7 +39,7 @@ verl = [
 ]
 
 trinity = [
-    "trinity-rft==0.4.0"
+    "trinity-rft[vllm]==0.4.0"
 ]
 
 dev = [
