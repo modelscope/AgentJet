@@ -1,12 +1,12 @@
-import asyncio
 import os
-from typing import Dict, List, Literal, Optional, cast
-
+import asyncio
 import datasets
 import openai
 import swanlab
+
 from loguru import logger
 from transformers import AutoTokenizer
+from typing import Dict, List, Literal, Optional, cast
 from trinity.buffer.reader import READER
 from trinity.buffer.reader.file_reader import TaskFileReader, _HFBatchReader
 from trinity.buffer.schema import FORMATTER
@@ -19,9 +19,7 @@ from trinity.utils.log import get_logger
 from trinity.utils.monitor import MONITOR, Monitor
 
 from ajet.backbone.warm_up import warm_up_process
-from ajet.context_tracker.multiagent_tracking import (
-    MultiAgentContextTracker,
-)
+from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 from ajet.schema.trajectory import Sample
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import DynamicRolloutManager

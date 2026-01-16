@@ -22,3 +22,21 @@ repos:
           --remove-all-unused-imports,
           --ignore-init-module-imports
         ]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.0
+    hooks:
+      - id: mypy
+        args: [
+          --ignore-missing-imports,
+          --disable-error-code=var-annotated,
+          --disable-error-code=union-attr,
+          --disable-error-code=no-redef,
+          --disable-error-code=assignment,
+          --disable-error-code=has-type,
+          --disable-error-code=attr-defined,
+          --disable-error-code=import-untyped,
+          --disable-error-code=truthy-function,
+          --follow-imports=skip,
+          --explicit-package-bases,
+        ]
