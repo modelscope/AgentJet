@@ -11,12 +11,11 @@ from loguru import logger
 # 创建信号量，允许同时12个线程运行
 sem = threading.Semaphore(30)
 
-class ExampleAgentScopeLearnProtocol(Workflow):
+class ExampleDeepResearchProtocol(Workflow):
 
-    trainer: str = Field(default="astune-trinity")
 
-    async def agentscope_execute(
-        self, workflow_task: WorkflowTask, model_tuner: AjetTuner
+    async def execute(
+        self, workflow_task: WorkflowTask, tuner: AjetTuner  
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
@@ -43,7 +42,7 @@ class ExampleAgentScopeLearnProtocol(Workflow):
         agent = ReActAgent(
             name="Qwen",
             sys_prompt=first_msg["content"], # Agent 内部会自动管理 System Prompt
-            model=model_tuner,
+            model=tuner.as_agentscope_model(),
             formatter=DashScopeChatFormatter(),
             memory=InMemoryMemory(),
             toolkit=None,
@@ -69,10 +68,10 @@ class ExampleAgentScopeLearnProtocol(Workflow):
         cumulative_tool_call_time = 0.0  # 累计工具调用时间
         cumulative_tool_time = {}  # 按工具区分的累计耗时: {tool_name: [time1, time2, ...]}
         
-        logger.info(f"开始执行多轮交互，最大步数: {model_tuner.config.astune.rollout.multi_turn.max_steps}")
+        logger.info(f"开始执行多轮交互，最大步数: {tuner.config.ajet.rollout.multi_turn.max_steps}")
         
         step = 0
-        for step in range(model_tuner.config.astune.rollout.multi_turn.max_steps):
+        for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
             logger.info(f"=== 步骤 {step + 1} ===")
             
             # === Agent 推理 ===
@@ -92,7 +91,7 @@ class ExampleAgentScopeLearnProtocol(Workflow):
             
             # === 早期终止检查：在调用 env.step() 前检查 context_overflow ===
             # 修复问题：避免 token_overflow 后还继续调用工具导致阻塞
-            if model_tuner.get_context_tracker().context_overflow:
+            if tuner.get_context_tracker().context_overflow:
                 logger.warning(f"上下文溢出，跳过 env.step()，在第 {step + 1} 步立即结束")
                 # 构造一个默认的结束响应
                 conversation_history.append({
@@ -200,7 +199,7 @@ class ExampleAgentScopeLearnProtocol(Workflow):
                 logger.info(f"环境返回终止信号，在第 {step + 1} 步结束")
                 break
                 
-            if model_tuner.get_context_tracker().context_overflow:
+            if tuner.get_context_tracker().context_overflow:
                 logger.warning(f"上下文溢出，在第 {step + 1} 步结束")
                 break
 

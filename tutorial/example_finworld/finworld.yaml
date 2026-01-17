@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
-astune:
-  project_name: astune_finprompt
+ajet:
+  project_name: ajet
   experiment_name: "cc_rm4_res2cit2fai2_30b"
   judge_llm: qwen-flash
   judge_concurrency: 10
@@ -10,11 +10,12 @@ astune:
   citation_audit_weight: 0.2               # 引用审计评估 (覆盖率 + 真实性)
   rm_weight: 0.4                                       # RM Gallery 权重
   task_judge:
-    # 使用本地 FinWorldJudge 进行评估（解耦远程 env_service）
-    judge_protocol: tutorial.example_finworld.finworld_judge_by_openjudge->FinWorldJudgeByOpenJudge
+    judge_type: customized_protocol
+    judge_protocol: tutorial.example_finworld.finworld_judge->FinWorldJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-30B-A3B-Instruct-2507
+    # path: /mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-8B
   trainer_common:
     nnodes: 8
     n_gpus_per_node: 8
@@ -25,9 +26,8 @@ astune:
     total_epochs: 200
   rollout:
     # ✨✨✨✨ 编写并选择Agent
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_finworld.finworld->ExampleAgentScopeLearnProtocol
-    agentscope_disable_toolcalls: True
+    user_workflow: tutorial.example_finworld.finworld->ExampleDeepResearchProtocol
+    force_disable_toolcalls: True
     enable_oversample: False
     tensor_model_parallel_size: 8
     num_repeat: 4
@@ -39,6 +39,8 @@ astune:
     agent_madness_reward: 0.0
     multi_turn:
       max_steps: 6
+  interchange_server:
+    interchange_method: 'tcp' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
   debug:
     debug_max_parallel: 64  # 增加并行任务数，充分利用GPU
     debug_first_n_tasks: 100  # 增加处理的任务数
@@ -56,24 +58,23 @@ astune:
       training_split: train
       validation_split: val
 trainer:
-  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/astune/checkpoints/example_finworld//localths/cc_rm4_res2cit2fai2_30b"
+  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//localths/cc_rm4_res2cit2fai2_30b"
   # resume_mode: disable  # 禁用自动恢复，从头开始训练 
 actor_rollout_ref:
   rollout:
     tensor_model_parallel_size: 8
-    gpu_memory_utilization: 0.8
+    gpu_memory_utilization: 0.95
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
-    - file://astune/default_config
-    - file://astune/default_config/verl         # verl only
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
     - file://external/verl/verl/trainer/config  # verl only
-    - file://astune/default_config/trinity      # trinity only
+    - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
-  - ppo_trainer # verl inherit 1/2
   - verl_default # verl inherit 2/2
   - trinity_default # trinity inherit 1/1
-  - astune_default
+  - ajet_default
   - _self_

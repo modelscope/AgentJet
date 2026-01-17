@@ -12,8 +12,6 @@ from typing import Dict, Any, Optional, Tuple, List
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.workflow import WorkflowOutput, WorkflowTask
 # RewardStats 不再使用，OpenJudge 版本直接使用字典存储
-# from tutorial.example_finworld.reward.reward_schema import RewardStats
-
 # 环境变量配置 (RM Gallery)
 TRAIN_REF_ANS_PATH = os.environ.get("FINWORLD_TRAIN_REF_ANS_PATH", "")
 VAL_REF_ANS_PATH = os.environ.get("FINWORLD_VAL_REF_ANS_PATH", "")
@@ -176,7 +174,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
             logging.getLogger("rm_gallery").setLevel(logging.WARNING)
             api_key = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("API_KEY")
             base_url = os.environ.get("BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
-            llm_name = os.environ.get("RM_LLM")
+            llm_name = os.environ.get("RM_LLM", "qwen-flash")
             
             rm_params = {"is_parallel": True, "enable_thinking": False, "base_url": base_url}  # is_parallel=True 让子评估器并行调用LLM
             if api_key: rm_params["api_key"] = api_key
@@ -640,7 +638,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
                 "timestamp": datetime.now().isoformat(),
                 "scores": result.metadata.get("dimension_scores", {})
             }
-            save_dir = "/mnt/data_cpfs/taoshuchang.tsc/deepresearch/ajet/outputs/rm_evaluation_logs"
+            save_dir = "./outputs/rm_evaluation_logs"
             os.makedirs(save_dir, exist_ok=True)
             with open(os.path.join(save_dir, f"rmeval_{datetime.now().strftime('%Y%m%d')}.json"), "a") as f:
                 f.write(json.dumps(log, ensure_ascii=False) + "\n")
@@ -754,7 +752,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
                             "reason": score.reason[:200] if hasattr(score, "reason") else "",
                         })
             
-            save_dir = "/mnt/data_cpfs/taoshuchang.tsc/deepresearch/ajet/outputs/openjudge_logs"
+            save_dir = "./outputs/openjudge_logs"
             os.makedirs(save_dir, exist_ok=True)
             
             log_file = os.path.join(save_dir, f"openjudge_{datetime.now().strftime('%Y%m%d')}.json")

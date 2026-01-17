@@ -47,7 +47,7 @@ class ExampleMaDeepResearch(Workflow):
             init_messages=init_messages,
             task_id=workflow_task.task.task_id,
             main_query=workflow_task.task.main_query,
-            max_steps=tuner.config.astune.rollout.multi_turn.max_steps,
+            max_steps=tuner.config.ajet.rollout.multi_turn.max_steps,
             env_service_url=workflow_task.gym_env.service_url,
         )
 
