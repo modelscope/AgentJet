@@ -10,16 +10,18 @@ PREFIX="open"                        # 实验前缀，影响日志和实验所�
 MODEL_PATH="/mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-30B-A3B-Instruct-2507"
 CONFIG_TEMPLATE="tutorial/example_finworld/yaml_template/finworld_template.yaml"
 
-# 新增：奖励权重与 Judge 配置
-JUDGE_LLM='qwen-flash'
-judge_concurrency=10
+# 新增：Judge 模型配置
+OPENJUDGE_LLM='qwen-flash'        # OpenJudge 评分模型
+RM_LLM='qwen-max'                 # RM Gallery 评分模型
+JUDGE_CONCURRENCY=10
+
+# 新增：奖励权重配置
 RM_WEIGHT=0.4
 CITATION_AUDIT_WEIGHT=0.2
-report_resolution_weight=0.2
-trajectory_faithfulness_weight=0.2
+REPORT_RESOLUTION_WEIGHT=0.2
+TRAJECTORY_FAITHFULNESS_WEIGHT=0.2
 
-DASHSCOPE_API_KEY="***REMOVED***" # yutai
-RM_LLM='qwen-max'
+# API密钥配置（从 .env 文件加载，不要硬编码）
 # 配置
 NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
 TRAIN_BATCH_SIZE=32 
@@ -145,9 +147,11 @@ export FINWORLD_MCP_CONFIG  FINWORLD_TOOL_RESULT_MAX_CHARS
 export HF_ENDPOINT ES_HOSTS 
 export PYTHONPATH="${AJET_ROOT}:${PYTHONPATH}"
 export RAY_CLUSTER_MODE="multi_node"
+# Directory paths
+export ENV_SERVICE_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/mongodb/BeyondAgent_env"
 
-export FINWORLD_PATH="${AJET_ROOT}" # AgentJet 内部可能使用此路径
-export FINWORLD_SCRIPT="source .venv/bin/activate && cd ${AJET_ROOT} && FINWORLD_TOOL_RESULT_MAX_CHARS=${FINWORLD_TOOL_RESULT_MAX_CHARS} FINWORLD_MCP_CONFIG=${FINWORLD_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
+export FINWORLD_PATH="${ENV_SERVICE_ROOT}" # AgentJet 内部可能使用此路径
+export FINWORLD_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profile.d/conda.sh && conda activate finworld_1209  && cd ${ENV_SERVICE_ROOT} && FINWORLD_TOOL_RESULT_MAX_CHARS=${FINWORLD_TOOL_RESULT_MAX_CHARS} FINWORLD_MCP_CONFIG=${FINWORLD_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
 
 #===============================================================================
 # 主流程
@@ -173,14 +177,18 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
         -e "s|{{NNODES}}|${NNODES}|g" \
         -e "s|{{RM_WEIGHT}}|${RM_WEIGHT}|g" \
         -e "s|{{CITATION_AUDIT_WEIGHT}}|${CITATION_AUDIT_WEIGHT}|g" \
-        -e "s|{{JUDGE_LLM}}|${JUDGE_LLM}|g" \
-        -e "s|{{JUDGE_CONCURRENCY}}|${judge_concurrency}|g" \
-        -e "s|{{REPORT_RESOLUTION_WEIGHT}}|${report_resolution_weight}|g" \
-        -e "s|{{TRAJECTORY_FAITHFULNESS_WEIGHT}}|${trajectory_faithfulness_weight}|g" \
+        -e "s|{{OPENJUDGE_LLM}}|${OPENJUDGE_LLM}|g" \
+        -e "s|{{RM_LLM}}|${RM_LLM}|g" \
+        -e "s|{{JUDGE_CONCURRENCY}}|${JUDGE_CONCURRENCY}|g" \
+        -e "s|{{REPORT_RESOLUTION_WEIGHT}}|${REPORT_RESOLUTION_WEIGHT}|g" \
+        -e "s|{{TRAJECTORY_FAITHFULNESS_WEIGHT}}|${TRAJECTORY_FAITHFULNESS_WEIGHT}|g" \
+        -e "s|{{NUM_REPEAT}}|${NUM_REPEAT}|g" \
+        -e "s|{{NUM_STEPS}}|${NUM_STEPS}|g" \
+        -e "s|{{TRAIN_BATCH_SIZE}}|${TRAIN_BATCH_SIZE}|g" \
         ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
     
     print_green "配置文件已生成: ${CONFIG_FILE}"
-    print_green "参数确认: RM=${RM_WEIGHT}, Citation=${CITATION_AUDIT_WEIGHT}, Judge=${JUDGE_LLM}"
+    print_green "参数确认: RM=${RM_WEIGHT}, Citation=${CITATION_AUDIT_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
 
     #---------------------------------------------------------------------------
     # 2. 清理和初始化 Ray
@@ -219,13 +227,12 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
     print_green "Log: ${TRAIN_LOG}"
     print_green "==================================="
 
-    # 修改：同步 cc_rm4 的启动参数，增加 debug 和 log-suffix
+    # 启动训练任务
     python ajet/launcher.py \
         --with-finworld \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
         --debug="TAG_A" \
-        --log-suffix="${SUFFIX}" \
         2>&1 | tee ${TRAIN_LOG}
     
     # 保留原脚本末尾的 CLI 调用

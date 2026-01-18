@@ -6,17 +6,13 @@ import os
 import json
 import asyncio
 import time
+import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple, List
 
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.workflow import WorkflowOutput, WorkflowTask
-# RewardStats 不再使用，OpenJudge 版本直接使用字典存储
-# 环境变量配置 (RM Gallery)
-TRAIN_REF_ANS_PATH = os.environ.get("FINWORLD_TRAIN_REF_ANS_PATH", "")
-VAL_REF_ANS_PATH = os.environ.get("FINWORLD_VAL_REF_ANS_PATH", "")
 
-# OpenJudge imports
 from openjudge.graders.agent.action.action_loop import ActionLoopDetectionGrader
 from openjudge.graders.agent.observation.observation_information_gain import (
     ObservationInformationGainGrader,
@@ -41,6 +37,12 @@ from openjudge.scenarios.deep_research.graders.financial_report_citation_audit i
 )
 
 
+# RewardStats 不再使用，OpenJudge 版本直接使用字典存储
+# 环境变量配置 (RM Gallery)
+TRAIN_REF_ANS_PATH = os.environ.get("FINWORLD_TRAIN_REF_ANS_PATH", "")
+VAL_REF_ANS_PATH = os.environ.get("FINWORLD_VAL_REF_ANS_PATH", "")
+
+# OpenJudge imports
 # =============================================================================
 # 全局辅助函数
 # =============================================================================
@@ -107,7 +109,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
     def __init__(self, config):
         super().__init__(config)
         self._setup_weights()
-        self._init_model()  # 只初始化 model，runner 在每次调用时创建
+        self._init_openjudge_model()  # 只初始化 model，runner 在每次调用时创建
         self._init_rm_components()  # 初始化 RM Gallery 组件
         self._init_reference_answers()  # 初始化参考答案
         
@@ -146,6 +148,27 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
                 self.w[k] = self.w[k] / total
                 
     
+    def _init_openjudge_model(self):
+        """初始化 OpenJudge LLM Model"""
+        # --- model name from config.ajet.judge.* ---
+        openjudge_model_name = self.config.ajet.judge.openjudge_llm
+        openjudge_base_url = os.environ.get("OPENJUDGE_BASE_URL")
+        openjudge_api_key = os.environ.get("OPENJUDGE_API_KEY")
+
+        self._model_instance = OpenAIChatModel(
+            model=openjudge_model_name,
+            base_url=openjudge_base_url,
+            api_key=openjudge_api_key,
+        )
+        # 设置实例变量供 _create_runner_in_loop 使用
+        self.model = self._model_instance
+        self.max_concurrency = getattr(self.config.ajet.judge, "concurrency", 6)
+        
+        print(
+            f"[Init OpenJudge Model] model={openjudge_model_name}, base_url={openjudge_base_url}, "
+            f"api_key={'SET' if openjudge_api_key else 'NONE'}, max_concurrency={self.max_concurrency}"
+        )
+
     def _init_rm_components(self):
         """初始化 RM Gallery Evaluator（仅当 rm_weight > 0 时）"""
         self._rm_enabled = (self.w.get("rm", 0) > 0)
@@ -172,19 +195,24 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
             from rm_gallery.core.reward.registry import RewardRegistry
             import logging
             logging.getLogger("rm_gallery").setLevel(logging.WARNING)
-            api_key = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("API_KEY")
-            base_url = os.environ.get("BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
-            llm_name = os.environ.get("RM_LLM", "qwen-flash")
             
-            rm_params = {"is_parallel": True, "enable_thinking": False, "base_url": base_url}  # is_parallel=True 让子评估器并行调用LLM
-            if api_key: rm_params["api_key"] = api_key
+            # 从 config 读取 rm_llm，环境变量作为 fallback
+            rm_llm_name = self.config.ajet.judge.rm_llm
+            rm_api_key = os.environ.get("RM_API_KEY")
+            rm_base_url = os.environ.get("RM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+            
+            rm_params = {"is_parallel": True, "enable_thinking": False, "base_url": rm_base_url}
+            if rm_api_key:
+                rm_params["api_key"] = rm_api_key
             
             self.rm_evaluator = RewardRegistry.get("finance_composition")(
-                llm=llm_name, name="finance_composition", params=rm_params
+                llm=rm_llm_name, name="finance_composition", params=rm_params
             )
-            print(f"✓ RM evaluator initialized: {llm_name} {base_url} (timeout=600s)")
+            print(f"[Init RM Evaluator] llm={rm_llm_name}, base_url={rm_base_url}, api_key={'SET' if rm_api_key else 'NONE'} (timeout=600s)")
         except Exception as e:
             print(f"✗ Failed to initialize RM evaluator: {e}")
+            import traceback
+            traceback.print_exc()
             self.rm_evaluator = None
     
     def _init_reference_answers(self):
@@ -206,29 +234,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
         dom = FinWorldJudgeByOpenJudge._ref_domains_cache.get(cache_key, {}).get(task_id)
         return ans, dom
     
-    def _init_model(self):
-        """初始化 OpenJudge LLM Model（单例模式，可复用）"""
-        if FinWorldJudgeByOpenJudge._model_instance is None:
-            try:
-                model_name = getattr(self.config.ajet, "judge_llm", "qwen-flash") if hasattr(self.config, "ajet") else "qwen-flash"
-                base_url = os.environ.get("JUDGE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-                api_key = os.environ.get("JUDGE_API_KEY", os.environ.get("DASHSCOPE_API_KEY", None))
-                FinWorldJudgeByOpenJudge._model_instance = OpenAIChatModel(
-                    model=model_name,
-                    temperature=0.0,
-                    base_url=base_url,
-                    api_key=api_key
-                )
-                print(f"✓ OpenJudge Model initialized: {model_name} @ {base_url}: {api_key}")
-            except Exception as e:
-                print(f"✗ Failed to initialize OpenJudge Model: {e}")
-                import traceback
-                traceback.print_exc()
-                raise
-        
-        self.model = FinWorldJudgeByOpenJudge._model_instance
-        self.max_concurrency = getattr(self.config.ajet, "judge_concurrency", 6) if hasattr(self.config, "ajet") else 6
-    
+
     def _create_runner_in_loop(self) -> GradingRunner:
         """
         在当前事件循环中创建 GradingRunner
