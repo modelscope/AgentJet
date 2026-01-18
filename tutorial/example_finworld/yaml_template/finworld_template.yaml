@@ -1,0 +1,79 @@
+# ------------------ 主要配置 ------------------
+astune:
+  project_name: astune_finprompt
+  experiment_name: "{{SUFFIX}}"
+  judge_llm: {{JUDGE_LLM}}
+  judge_concurrency: {{JUDGE_CONCURRENCY}}
+  # OpenJudge 权重配置
+  report_resolution_weight: {{REPORT_RESOLUTION_WEIGHT}}         # 报告质量评估
+  trajectory_faithfulness_weight: {{TRAJECTORY_FAITHFULNESS_WEIGHT}}   # 事实准确性评估
+  citation_audit_weight: {{CITATION_AUDIT_WEIGHT}}               # 引用审计评估 (覆盖率 + 真实性)
+  rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
+  task_judge:
+    # 使用本地 FinWorldJudge 进行评估（解耦远程 env_service）
+    judge_protocol: tutorial.example_finworld.finworld_judge_by_openjudge->FinWorldJudgeByOpenJudge
+  model:
+    # ✨✨✨✨ 设置待训练的模型
+    path: {{MODEL_PATH}}
+  trainer_common:
+    nnodes: {{NNODES}}
+    n_gpus_per_node: 8
+    val_before_train: True
+    val_pass_n: 8
+    save_freq: 10
+    test_freq: 2
+    total_epochs: 200
+  rollout:
+    # ✨✨✨✨ 编写并选择Agent
+    use_agentscope_protocol: True
+    agentscope_learn_protocol: tutorial.example_finworld.finworld->ExampleAgentScopeLearnProtocol
+    agentscope_disable_toolcalls: True
+    enable_oversample: False
+    tensor_model_parallel_size: 8
+    num_repeat: {{NUM_REPEAT}}
+    max_env_worker: 64  # 增加环境并行数
+    max_num_seqs: 64    # 增加VLLM并发序列数
+    max_env_len: 10000
+    max_response_length_in_one_turn: 8000
+    max_model_len: 50000
+    agent_madness_reward: 0.0
+    multi_turn:
+      max_steps: {{NUM_STEPS}}
+  debug:
+    debug_max_parallel: 64  # 增加并行任务数，充分利用GPU
+    debug_first_n_tasks: 100  # 增加处理的任务数
+  data:
+    train_batch_size: {{TRAIN_BATCH_SIZE}}
+    max_prompt_length: 8000
+    max_response_length: 41000
+  
+  task_reader:
+    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`
+    env_service:
+      env_type: "finworld"
+      env_url: "http://127.0.0.1:8080"
+      env_action_preference: code # code, text, box
+      training_split: train
+      validation_split: val
+trainer:
+  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/astune/checkpoints/example_finworld//{{PREFIX}}/{{SUFFIX}}"
+  # resume_mode: disable  # 禁用自动恢复，从头开始训练 
+actor_rollout_ref:
+  rollout:
+    tensor_model_parallel_size: 8
+    gpu_memory_utilization: 0.8
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://astune/default_config
+    - file://astune/default_config/verl         # verl only
+    - file://external/verl/verl/trainer/config  # verl only
+    - file://astune/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - ppo_trainer # verl inherit 1/2
+  - verl_default # verl inherit 2/2
+  - trinity_default # trinity inherit 1/1
+  - astune_default
+  - _self_
