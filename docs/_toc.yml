@@ -8,7 +8,7 @@ parts:
       - file: en/installation.md
       - file: en/quickstart.md
       - file: en/tune_your_first_agent.md
-  
+
   - caption: Example
     chapters:
       - file: en/example_math_agent.md
@@ -17,13 +17,13 @@ parts:
       - file: en/example_learning_to_ask.md
       - file: en/example_frozenlake.md
       - file: en/example_countdown.md
-      
+
   - caption: Component
     chapters:
       - file: en/workflow.md
       - file: en/data_pipeline.md
       - file: en/task_judger.md
-      
+
   - caption: Deep Dive
     chapters:
       - file: en/configuration.md
@@ -31,7 +31,7 @@ parts:
       - file: en/beast_logger.md
       - file: en/data_generation.md
       - file: en/example_tracing_feedback_loop.md
-     
+
 
   # --- 中文部分 ---
   - caption: 教程
@@ -40,7 +40,7 @@ parts:
       - file: zh/installation.md
       - file: zh/quickstart.md
       - file: zh/tune_your_first_agent.md
-  
+
   - caption: 示例
     chapters:
       - file: zh/example_math_agent.md
@@ -49,13 +49,13 @@ parts:
       - file: zh/example_learning_to_ask.md
       - file: zh/example_frozenlake.md
       - file: zh/example_countdown.md
-      
+
   - caption: 组件
     chapters:
       - file: zh/workflow.md
       - file: zh/data_pipeline.md
       - file: zh/task_judger.md
-      
+
   - caption: 深入探索
     chapters:
       - file: zh/configuration.md
@@ -63,4 +63,3 @@ parts:
       - file: zh/beast_logger.md
       - file: zh/data_generation.md
       - file: zh/example_tracing_feedback_loop.md
-

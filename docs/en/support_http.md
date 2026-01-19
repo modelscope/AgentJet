@@ -93,5 +93,3 @@ in this AI era, you can always start from scratch and build your own "high-scrap
         ...
 
     ```
-
-

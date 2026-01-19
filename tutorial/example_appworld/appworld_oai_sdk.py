@@ -1,5 +1,4 @@
 from agentscope.message import Msg
-from pydantic import Field
 
 from ajet import Workflow, WorkflowOutput, WorkflowTask
 from ajet import AjetTuner

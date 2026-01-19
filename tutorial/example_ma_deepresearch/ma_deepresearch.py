@@ -2,13 +2,8 @@ from typing import List
 from loguru import logger
 from pydantic import BaseModel, Field
 from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
-from openai.types.chat.chat_completion import ChatCompletion
-from openai.types.chat import ChatCompletionMessageToolCall
-from textwrap import dedent
 
-import json
 import os
-import asyncio
 import requests
 
 

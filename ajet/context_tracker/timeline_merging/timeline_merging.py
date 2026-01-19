@@ -1,6 +1,5 @@
 from typing import List
 
-from beast_logger import print_listofdict
 
 from ajet.context_tracker.basic_tracker import ExtendedMessage
 

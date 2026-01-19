@@ -1,10 +1,5 @@
 import argparse
-import glob
-import os
-import time
 
-from beast_logger import print_list
-from huggingface_hub import snapshot_download
 
 parser = argparse.ArgumentParser(description="download Hugging Face dataset")
 parser.add_argument("--target", default="openai/gsm8k", type=str, help="HuggingFace dataset name")

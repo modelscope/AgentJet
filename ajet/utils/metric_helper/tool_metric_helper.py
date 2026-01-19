@@ -33,23 +33,6 @@ def extract_tool_stats_from_trajectories(trajectories: List[Any]) -> List[Dict[s
     return tool_stats_list
 
 
-def extract_tool_stats_from_cmts(cmts: List[Any]) -> List[Dict[str, Any]]:
-    """
-    Extract tool_stats from cmts list.
-
-    Args:
-        cmts: List of cmt objects containing workflow_metadata
-
-    Returns:
-        List of tool_stats dictionaries
-    """
-    tool_stats_list = []
-    for traj in trajs:
-        if hasattr(traj, 'workflow_metadata') and traj.workflow_metadata:
-            if 'tool_stats' in traj.workflow_metadata:
-                tool_stats_list.append(traj.workflow_metadata['tool_stats'])
-    return tool_stats_list
-
 
 def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = "") -> Dict[str, float]:
     """
@@ -159,9 +142,3 @@ def compute_tool_metrics_from_trajectories(trajectories: List[Any]) -> Dict[str,
     return compute_tool_metrics(tool_stats_list, prefix="train_")
 
 
-def compute_tool_metrics_from_cmts(cmts: List[Any]) -> Dict[str, float]:
-    """
-    Validation phase: Extract tool_stats from cmts and compute metrics.
-    """
-    tool_stats_list = extract_tool_stats_from_cmts(cmts)
-    return compute_tool_metrics(tool_stats_list, prefix="val_")
