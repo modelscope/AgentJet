@@ -17,7 +17,27 @@ Unlike traditional setups where the user code must run inside the training clust
 > Relationship between **TinkerScript** and **Tinker**:
 >
 > **No relationship at all** (just like **JavaScript** and **Java**). **TinkerScript** is open-source and free. **Tinker** is close-source and not free.
->
+
+
+## Tinker 与 AgentJet-TinkerScript 对比表
+
+| 特征 | Tinker | AgentJet-TinkerScript |
+|------|--------|--------------|
+| **开源性质** | ❌ 闭源 | **✅ 开源免费** |
+| **收费模式** | 付费服务 | **✅ 完全免费** |
+| **目标用户** | 研究人员和开发者 | 研究人员和开发者 |
+| **任务** | 各种 LLM 训练 | 专精 LLM Agent RL训练 |
+| **核心功能** | LLM 微调训练 API | **✅ LLM 微调训练整套解决方案** |
+| **架构模式** | 托管服务 + 单点客户端 API | **✅ 服务器和客户端都可按需拓展** |
+| **多客户端共同参与训练** | ❌ 不支持 | **✅ 支持** |
+| **远程算力部署方式** | Thinking Machines Lab 公司提供定价 | **✅ 自建 GPU 服务器端 或 使用阿里云灵骏** |
+| **训练方式** | ❌ LoRA 微调 | **✅ 全量 LLM 模型训练** |
+| **支持的模型** | ❌ 少部分 LLM 模型 | **✅ 大多数新旧 LLM 模型** |
+| **最大模型规模** | Llama 70B、Qwen 235B | **✅ 取决于用户 GPU 集群配置** |
+| **通信协议** | 专有 API | **✅ 专有API + OpenAI兼容API** |
+| **推理引擎后端** | 内置未知推理服务 | **✅ vLLM/SGLang任选** |
+
+
 
 ### 2. Core Architecture
 
