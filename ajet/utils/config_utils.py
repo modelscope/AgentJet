@@ -253,7 +253,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
         tuple: (yaml_backup_dst, exe_exp_base, exp_name, config_final)
     """
     assert yaml_path.endswith(".yaml"), "Configuration file must be a YAML file"
-    exp_base = os.path.dirname(yaml_path)
+    exp_base = os.path.exists(os.path.dirname(yaml_path))
 
     if not os.path.exists(exp_base):
         raise FileNotFoundError(f"Configuration file not found: {exp_base}")

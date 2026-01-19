@@ -12,6 +12,7 @@ from ajet.schema.task import Task, WorkflowTask
 from ajet.task_rollout.async_llm_bridge import AsyncLlmBridge
 from ajet.task_rollout.resource_keeper import ResourceKeeper
 from ajet.task_runner.general_runner import GeneralRunner
+from ajet.task_runner.tinkerscript_runner import TinkerScriptRunner
 from ajet.utils.retry import retry_with_backoff
 from ajet.utils.sample import get_sample_params
 from ajet.utils.testing_utils import TestFailException, TestSuccessException
@@ -59,6 +60,7 @@ class BaseRolloutManager:
         assert isinstance(self.pad_token_id, int), "pad_token_id must be an integer"
         self.current_token = 0
         self.current_global_steps: int | str = "NA"
+        self.enable_tinkerscript_mode = config.ajet.enable_tinkerscript_mode
         self.async_llm_bridge = AsyncLlmBridge(
             config=config,
             async_rollout_manager=async_rollout_manager,
@@ -110,9 +112,14 @@ class BaseRolloutManager:
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
-                agent_runner = GeneralRunner(
-                    llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
-                )
+                if self.enable_tinkerscript_mode:
+                    agent_runner = TinkerScriptRunner(
+                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
+                    )
+                else:
+                    agent_runner = GeneralRunner(
+                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
+                    )
                 tracker = agent_runner.execute(
                     workflow_task=workflow_task,
                 )

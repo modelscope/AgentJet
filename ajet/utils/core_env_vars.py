@@ -18,6 +18,11 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
             if config.ajet.interchange_server.interchange_method == "ipc":
                 raise ValueError("IPC interchange method is not supported for multi-node setup. Please set `ajet.interchange_server.interchange_method: tcp` ")
 
+    if config.ajet.interchange_server.interchange_server_port != 'auto':
+        data_interchange_port = str(int(config.ajet.interchange_server.interchange_server_port))
+    else:
+        data_interchange_port = str(find_free_port())
+
     runtime_env = {
         "env_vars": {
             "VLLM_USE_V1": "1",
@@ -29,7 +34,8 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
             # "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
             "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
             "AJET_CONFIG_REDIRECT": os.getenv("AJET_CONFIG_REDIRECT", ""),
-            "AJET_DAT_INTERCHANGE_PORT": str(find_free_port()),
+            "AJET_DAT_INTERCHANGE_PORT": data_interchange_port,
+            "AJET_DAT_INTERCHANGE_ZMQ_PORT": str(find_free_port()),
             "MASTER_NODE_IP": master_node_ip,
         }
     }

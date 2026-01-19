@@ -282,6 +282,9 @@ ajet:
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_experimental_interchange_server: True
+  # train in cloud, run episode locally
+  enable_tinkerscript_mode: False
+  # both tinkerscript / oai share the same interchange server
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
     interchange_server_port: 'auto'

@@ -16,7 +16,6 @@ from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import Interch
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
 from ajet.utils.networking import find_free_port
 
-
 context = zmq.Context()
 atexit.register(context.term)
 
@@ -158,7 +157,7 @@ class InterchangeClient:
                         break
                     timepassed = time.time() - begin_time
                     if timepassed > 60:
-                        logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
+                        if DEBUG: logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
                 # parse the incoming request

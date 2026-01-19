@@ -144,6 +144,7 @@ def run(config):
     max_parallel = config.ajet.debug.debug_max_parallel
     n_task = config.ajet.debug.debug_first_n_tasks
     vllm_port = config.ajet.debug.debug_vllm_port
+    enable_tinkerscript_mode = config.ajet.enable_tinkerscript_mode
 
     # --------- init ---------
     async_rollout_manager = ChatCompletionScheduler(
@@ -166,8 +167,10 @@ def run(config):
     tasks = task_reader.get_validation_tasks()
     logger.info(tasks[:n_task])
     ctx_tracker = parallel_env.rollout(
-        tasks=tasks[:n_task], mode="sample", epoch="1"
-    )  # "sample" or "validate"
+        tasks=tasks[:n_task],
+        mode="sample" if not enable_tinkerscript_mode else "sample-ts",  # type: ignore
+        epoch="1"
+    )
     _ = parallel_env.to_dataproto(ctx_tracker)
 
 

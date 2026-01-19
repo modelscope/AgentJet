@@ -1,0 +1,49 @@
+# ------------------ main configuration ------------------
+ajet:
+  project_name: "ajet_default_project"
+  experiment_name: "read_yaml_name"
+  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
+  backbone: debug # `debug` or `trinity` or `verl`
+
+  model:
+    # which model should be trained
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    # the path to the workflow class
+    user_workflow: null
+
+  task_reader:
+    type: random_dummy # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
+
+  task_judge:
+    judge_type: customized_protocol  # Options: 'customized_protocol', 'rubrics_auto_grader'
+    judge_protocol: null
+
+  # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
+  enable_experimental_interchange_server: True
+  # train in cloud, run episode locally
+  enable_tinkerscript_mode: True
+  # both tinkerscript / oai share the same interchange server
+  interchange_server:
+    interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
+    interchange_server_port: 10086
+    num_fastapi_process: 2  # 1, 2 or 4 is fine
+    max_fastapi_threads: 128  # 64 or 128 is fine
+    max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
+
+
+
+# ------------------ 不需要修改 ------------------
+hydra:
+  searchpath:
+    - file://ajet/default_config
+    - file://ajet/default_config/verl         # verl only
+    - file://ajet/default_config/trinity      # trinity only
+
+# ------------------ 不需要修改 ------------------
+defaults:
+  - verl_default # verl inherit 1/1
+  - trinity_default # trinity inherit 1/1
+  - ajet_default
+  - _self_

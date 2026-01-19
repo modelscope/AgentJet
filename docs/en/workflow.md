@@ -241,7 +241,7 @@ Here's a complete example with multiple agent roles (Werewolves game):
     - You can flexibly switch training targets by modifying `trainable_targets`
 
 
-## TinkerJet
+## TinkerScript
 
 Wrapping and training your agent on a machine without GPU.
 

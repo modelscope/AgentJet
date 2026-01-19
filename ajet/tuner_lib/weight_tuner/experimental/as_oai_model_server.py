@@ -26,8 +26,9 @@ from loguru import logger
 from pydantic import BaseModel
 from fastapi import FastAPI, Header, HTTPException, Request
 from contextlib import asynccontextmanager
-from multiprocessing import Process
+from multiprocessing import Manager, Process
 from concurrent.futures import ThreadPoolExecutor
+from typing import Coroutine, Optional, Tuple
 
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
@@ -53,12 +54,19 @@ SERVER_SHUTDOWN_EVENT = threading.Event()
 DEBUG = False
 # DEBUG = True
 
-
 context = zmq.Context()
 atexit.register(context.term)
 
 
-def get_app(max_fastapi_threads: int = 512) -> FastAPI:
+
+
+
+
+
+
+
+def get_app(max_fastapi_threads: int = 512, enable_tinkerscript_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
+
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -69,6 +77,7 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
         # Shutdown
         SERVER_SHUTDOWN_EVENT.set()
         app.state.executor.shutdown(wait=False, cancel_futures=True)
+
 
     app = FastAPI(title="AJet Interchange Endpoint", lifespan=lifespan)
 
@@ -158,24 +167,58 @@ def get_app(max_fastapi_threads: int = 512) -> FastAPI:
         finally:
             client_offline.set()
 
+
     @app.post("/reset")
     async def reset():
         return {"status": "reset_complete"}
 
-    return app
+
+    if enable_tinkerscript_mode:
+        from ajet.tuner_lib.weight_tuner.experimental.as_tinkerscript_server import register_enable_tinkerscript_mode_routes
+        assert shared_mem_dict is not None, "shared_mem_dict must not be None when enable_tinkerscript_mode is True."
+        assert shared_mem_dict_lock is not None, "shared_mem_dict_lock must not be None when enable_tinkerscript_mode is True."
+        app, additional_coro = register_enable_tinkerscript_mode_routes(app, zmq_context=context, shared_mem_dict=shared_mem_dict, shared_mem_dict_lock=shared_mem_dict_lock)
+    else:
+        additional_coro = None
+
+
+    return app, additional_coro
+
+
+
+
+
+
+
+
+
+
+
+
 
 class InterchangeServer(Process):
-    def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 2, max_fastapi_threads: int = 512):
+    def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 2, max_fastapi_threads: int = 512, enable_tinkerscript_mode=False):
         super().__init__()
         self.experiment_dir = experiment_dir
         self.port = port
         self.num_fastapi_process = num_fastapi_process
         self.max_fastapi_threads = max_fastapi_threads
+        self.enable_tinkerscript_mode = enable_tinkerscript_mode
 
     def run(self):
         logger.info(f"Starting Interchange Server on port {self.port} with {self.num_fastapi_process} processes and {self.max_fastapi_threads} threads per process.")
-        app = get_app(self.max_fastapi_threads)
-        async def serve_with_monitor():
+
+        if self.enable_tinkerscript_mode:
+            manager = Manager()
+            shared_mem_dict = manager.dict()
+            shared_mem_dict_lock = manager.Lock()
+        else:
+            shared_mem_dict = None
+            shared_mem_dict_lock = None
+
+        app, additional_coro = get_app(self.max_fastapi_threads, self.enable_tinkerscript_mode, shared_mem_dict, shared_mem_dict_lock)
+
+        async def serve_with_monitor(additional_coro):
             # Start the server
             config = uvicorn.Config(
                 app=app,
@@ -185,12 +228,29 @@ class InterchangeServer(Process):
                 workers=self.num_fastapi_process
             )
             server = uvicorn.Server(config)
-            await server.serve()
+            if additional_coro:
+                coro_task_1 = asyncio.create_task(additional_coro)
+                coro_task_2 = asyncio.create_task(server.serve())
+                await asyncio.gather(coro_task_1, coro_task_2)
+            else:
+                await server.serve()
         try:
-            asyncio.run(serve_with_monitor())
+            asyncio.run(serve_with_monitor(additional_coro))
         except KeyboardInterrupt as e:
             SERVER_SHUTDOWN_EVENT.set()
             raise e
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Convenience function for quick server startup
@@ -198,6 +258,7 @@ def start_interchange_server(config) -> int:
     experiment_dir = config.ajet.experiment_dir
     num_fastapi_process = config.ajet.interchange_server.num_fastapi_process
     max_fastapi_threads = config.ajet.interchange_server.max_fastapi_threads
+    enable_tinkerscript_mode = config.ajet.enable_tinkerscript_mode
     # Find a free port if not specified or invalid
     port = int(os.environ.get("AJET_DAT_INTERCHANGE_PORT", -1))
 
@@ -211,7 +272,13 @@ def start_interchange_server(config) -> int:
             port = s.getsockname()[1]
         os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
 
-    interchange_server = InterchangeServer(experiment_dir, port, num_fastapi_process, max_fastapi_threads)
+    interchange_server = InterchangeServer(
+        experiment_dir,
+        port,
+        num_fastapi_process,
+        max_fastapi_threads,
+        enable_tinkerscript_mode,
+    )
     interchange_server.start()
 
     # Wait for server to be ready
