@@ -3,11 +3,11 @@ set -e
 #===============================================================================
 # 配置区域 - 用户只需修改这里
 #===============================================================================
-SUFFIX="ajet_finworld_loadjsonl_7b"     # 实验后缀，影响所有日志和实验名称
+SUFFIX="ajet_finworld_loadjsonl_8b"     # 实验后缀，影响所有日志和实验名称
 PREFIX="open"                        # 实验前缀，影响日志和实验所在文件夹
 
 # 新增：模型与模板配置
-MODEL_PATH="/mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-30B-A3B-Instruct-2507"
+MODEL_PATH="/mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-8B"
 CONFIG_TEMPLATE="tutorial/example_finworld/yaml_template/finworld_template.yaml"
 
 # 新增：数据文件路径配置
