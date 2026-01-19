@@ -14,7 +14,7 @@ from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
-from ajet.utils.networking import find_free_port
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import get_zmq_socket
 
 context = zmq.Context()
 atexit.register(context.term)
@@ -67,16 +67,10 @@ class InterchangeClient:
         self.llm_inference_fn = llm_inference_fn
         self.config = config
         self._should_terminate = False
-
+        self.episode_contect_address, ipc_path = get_zmq_socket(config, episode_uuid, tag="llm")
+        self.ipc_path = ipc_path
         self.interchange_method = config.ajet.interchange_server.interchange_method
-        if self.interchange_method == 'tcp':
-            master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
-            self.episode_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
-        elif self.interchange_method == 'ipc':
-            self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
-            self.episode_contect_address = f"ipc://{self.ipc_path}"
         self.max_inference_tracker_threads = config.ajet.interchange_server.max_inference_tracker_threads
-
 
     async def llm_infer(
             self,

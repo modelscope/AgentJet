@@ -33,6 +33,8 @@ from typing import Coroutine, Optional, Tuple
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import EpisodeStatus
+
 API_KEY_PREFIX = "sk-ajet-"
 
 class InterchangeCompletionRequest(BaseModel):
@@ -150,6 +152,21 @@ def get_app(max_fastapi_threads: int = 512, enable_tinkerscript_mode=False, shar
             return HTTPException(status_code=400, detail="Streaming responses not supported in current AgentJet version, please set `stream=false` for now.")
         # Create timeline UUID
         timeline_uuid = uuid.uuid4().hex
+
+        # enable_tinkerscript_mode
+        if enable_tinkerscript_mode:
+            assert shared_mem_dict is not None
+            assert shared_mem_dict_lock is not None
+            if shared_mem_dict['engine_status'] != "ROLLING":
+                logger.error(f"The server is not in ROLLING status (current status: [{shared_mem_dict['engine_status']}]), cannot accept new requests.")
+                raise HTTPException(status_code=503, detail="The server is not in ROLLING status, cannot accept new requests.")
+            if (f"episodes-{episode_uuid}") not in shared_mem_dict:
+                raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
+            # update activate timestamp
+            with shared_mem_dict_lock:
+                es:EpisodeStatus = shared_mem_dict[f"episodes-{episode_uuid}"]
+                es.latest_activity_timestamp = time.time()
+                shared_mem_dict[f"episodes-{episode_uuid}"] = es
 
         # Add to received queue
         int_req = InterchangeCompletionRequest(

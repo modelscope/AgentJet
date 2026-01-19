@@ -7,12 +7,13 @@ from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiBaseUrlAndAp
 from ajet import WorkflowOutput
 from ajet.task_reader import RouterTaskReader
 from ajet.utils.retry import retry_with_backoff
+from concurrent.futures import ThreadPoolExecutor
 
 
-TINKERJET_URL = "http://localhost:10086" # Change to your tinkerjet remote url
+TINKERJET_URL = "http://localhost:10086" # Change to your tinkerscript remote url
 NUM_EPOCH = 100
 GRPO_N = 4  # grpo group size
-
+MAX_PARALLEL = 2
 
 class WeightUpdatedHalfway(Exception):
     """Raised when the remote side starts updating model weights halfway through an episode."""
@@ -20,8 +21,7 @@ class WeightUpdatedHalfway(Exception):
 
 def main():
 
-    # Handshake with tinkerjet remote, then send training param to tinkerjet remote (such as model to be trained, algorithm, etc)
-    tinkerjet_remote = TinkerScriptClient(TINKERJET_URL)
+    # Handshake with tinkerscript remote, then send training param to tinkerscript remote (such as model to be trained, algorithm, etc)
     dataset = RouterTaskReader(
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
@@ -30,29 +30,31 @@ def main():
             )
         )
     )
+    tinkerscript_remote = TinkerScriptClient(TINKERJET_URL)
 
     # Define rollout
     def rollout(task):
-        # Q: Can I run episodes in parallel?
-        # A: Yes, wrap `rollout` in a thread or process pool.
-        api_baseurl_key = tinkerjet_remote.begin_episode()
-        workflow_output = execute_agent(task, api_baseurl_key)
-        tinkerjet_remote.end_episode(workflow_output)
-        return workflow_output.reward
+        group_reward = []
+        for i in range(GRPO_N):
+            # begin episode
+            episode_uuid, api_baseurl_key = tinkerscript_remote.begin_episode()
+            # execute agent
+            workflow_output = execute_agent(task, api_baseurl_key)
+            # report output back to tinkerscript remote
+            tinkerscript_remote.end_episode(episode_uuid, workflow_output)
+            # collect reward
+            group_reward.append(workflow_output.reward)
+        print(f"Group reward mean & std: {sum(group_reward)/len(group_reward)} +/- { (max(group_reward)-min(group_reward))/2 }")
+
 
     # Main Training loop
-    for epoch in range(NUM_EPOCH):
-        for task in dataset.get_training_tasks():
-            try:
-                for i in range(GRPO_N):
-                    reward = rollout(task)
-                    print(f"{epoch}-{task}-run:{i}-{reward}")
-            except WeightUpdatedHalfway as e:
-                print(f"The remote side has gone into the LLM model weight update phrase halfway through an episode."
-                      f"This is **normal**."
-                      f"The remote no longer need this task anymore, so let's go to next task.")
+    with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as executor:
+        for epoch in range(NUM_EPOCH):
+            for task in dataset.get_training_tasks():
+                print(f"Submitting task for epoch {epoch}")
+                executor.submit(rollout, task)
 
-    # Get tuned model from tinkerjet remote
+    # Get tuned model from tinkerscript remote
     return None
 
 
@@ -73,8 +75,8 @@ def execute_agent(task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
     # Use raw http requests (non-streaming) to get response
     response = requests.post( f"{base_url}/chat/completions", json = { "model": "fill_whatever_model", "messages": messages, },
                                headers = { "Authorization": f"Bearer {api_key}" } )
-    # print(response.json())
     final_answer = response.json()['choices'][0]['message']['content']
+    print(final_answer)
     # Compute reward
     reference_answer = reference_answer.split("####")[-1].strip()
     pattern = r"\\boxed\{([^}]*)\}"
@@ -84,6 +86,8 @@ def execute_agent(task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
     raw_reward = 1.0 if is_success else 0.0
     # Return
     return WorkflowOutput(reward=raw_reward, metadata={"final_answer": final_answer})
+
+
 
 
 if __name__ == "__main__":

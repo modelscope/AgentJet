@@ -443,6 +443,13 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             tokenizer=self.tokenizer,
         )
 
+    def _update_interchange_server_status_flag(self, status: str):
+        # if interchange server is enabled, change engine status to ROLLING
+        if self.config.ajet.enable_experimental_interchange_server:
+            if self.config.ajet.enable_tinkerscript_mode:
+                from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
+                http_change_engine_status(self.config, status)
+
     # #######################################
     # training loop
     # #######################################
@@ -552,6 +559,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         assert self.async_rollout_mode
                         logger.info("=== wake up begin ===")
                         self.async_rollout_manager.wake_up()
+                        self._update_interchange_server_status_flag("ROLLING")
                         logger.info("=== wake up end ===")
                         tasks: List[Task] = [
                             dict_to_ajet_task(dict(
@@ -577,6 +585,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
                         logger.info("=" * 10 + "end fit rollout" + "=" * 10)
+                        self._update_interchange_server_status_flag("UPDATE_WEIGHT")
                         logger.info("begin to convert context_tracker_arr to dataproto")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
                         logger.info("end convertion")

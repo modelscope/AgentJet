@@ -27,6 +27,7 @@ class OpenaiBaseUrlAndApiKey(BaseModel):
     base_url: str = Field(default="http://localhost:27788/v1", description="The base URL for the Ajet's fake OpenAI API")
     api_key: str = Field(default="invalid_apikey", description="The Ajet's fake key, which is not a real key, it is a encoded string contain episode_uuid and other stuff.")
     model: str = Field(default="reserved_field", description="reserved field.")
+    episode_uuid: str = Field(default="episode_id", description="reserved field.")
 
 
 class OpenaiClientBaseUrlTuner(BaseModel):

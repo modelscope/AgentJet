@@ -2,47 +2,32 @@ import uuid
 import time
 import httpx
 import yaml
+from typing import List, Tuple
 from loguru import logger
-from pydantic import BaseModel
 from ajet.schema.task import WorkflowOutput
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
+    SyncTrainConfigRequest,
+    ClaimEpisodeRequest,
+    ClaimEpisodeResponse,
+    CanContinueEpisodeRequest,
+    CanContinueEpisodeResponse,
+    EndEpisodeRequest,
+    EndEpisodeResponse,
+    EpisodeStatus,
+    EpisodeBufferResponse,
+)
 
-# --- Schema Definitions ---
-
-class SyncTrainConfigRequest(BaseModel):
-    yaml_as_string: str
-
-class ClaimEpisodeRequest(BaseModel):
-    client_uuid: str
-    episode_type: str
-
-class ClaimEpisodeResponse(BaseModel):
-    success: bool
-    client_uuid: str
-    episode_uuid: str
-    openai_base_url: str = ""
-    openai_api_key: str = ""
-    fail_cause: str = ""
-
-class EndEpisodeRequest(BaseModel):
-    client_uuid: str
-    episode_uuid: str
-    workflow_output: WorkflowOutput
-
-class EndEpisodeResponse(BaseModel):
-    success: bool
 
 class TinkerScriptClient(object):
 
     def __init__(self, server_url: str):
         self.server_url = server_url
         self.client_uuid = str(uuid.uuid4())
-        self.episode_uuid = None
-        self.openai_base_url = None
-        self.openai_api_key = None
 
-    def begin_episode(self) -> OpenaiBaseUrlAndApiKey:
+
+    def begin_episode(self, allow_discard_timeout=60) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
         Return (episode_uuid, openai_base_url, openai_api_key)
@@ -51,7 +36,8 @@ class TinkerScriptClient(object):
             try:
                 req_obj = ClaimEpisodeRequest(
                     client_uuid=self.client_uuid,
-                    episode_type="default"
+                    episode_type="default",
+                    allow_discard_timeout=allow_discard_timeout,
                 )
                 resp = httpx.post(
                     f"{self.server_url}/claim_episode",
@@ -60,15 +46,17 @@ class TinkerScriptClient(object):
                 )
                 resp.raise_for_status()
                 data = ClaimEpisodeResponse.model_validate(resp.json())
+                episode_uuid = data.episode_uuid
 
                 if data.success:
-                    self.episode_uuid = data.episode_uuid
-                    self.openai_base_url = data.openai_base_url
-                    self.openai_api_key = data.openai_api_key
-                    logger.info(f"Claimed episode {self.episode_uuid}")
-                    return OpenaiBaseUrlAndApiKey(
-                        base_url=self.openai_base_url,
-                        api_key=self.openai_api_key,
+                    episode_uuid = data.episode_uuid
+                    openai_base_url = data.openai_base_url
+                    openai_api_key = data.openai_api_key
+                    logger.info(f"Claimed episode {episode_uuid}")
+                    return episode_uuid, OpenaiBaseUrlAndApiKey(
+                        base_url=openai_base_url,
+                        api_key=openai_api_key,
+                        episode_uuid=episode_uuid
                     )
                 else:
                     logger.info(f"Failed to claim episode: {data.fail_cause}. Retrying in 5s...")
@@ -77,15 +65,15 @@ class TinkerScriptClient(object):
                 logger.error(f"Error claiming episode: {e}. Retrying in 5s...")
                 time.sleep(5)
 
-    def end_episode(self, workflow_output: WorkflowOutput):
-        if not self.episode_uuid:
+    def end_episode(self, episode_uuid: str, workflow_output: WorkflowOutput):
+        if not episode_uuid:
             logger.error("No episode to end.")
             return
 
         try:
             req_obj = EndEpisodeRequest(
                 client_uuid=self.client_uuid,
-                episode_uuid=self.episode_uuid,
+                episode_uuid=episode_uuid,
                 workflow_output=workflow_output
             )
 
@@ -98,10 +86,9 @@ class TinkerScriptClient(object):
             data = EndEpisodeResponse.model_validate(resp.json())
 
             if data.success:
-                logger.info(f"Ended episode {self.episode_uuid}")
-                self.episode_uuid = None
+                logger.info(f"Ended episode {episode_uuid}")
             else:
-                 logger.error(f"Failed to end episode {self.episode_uuid}")
+                logger.error(f"Failed to end episode {episode_uuid}")
 
         except Exception as e:
             logger.error(f"Error ending episode: {e}")
@@ -122,3 +109,50 @@ class TinkerScriptClient(object):
             logger.info("Synced train config")
         except Exception as e:
             logger.error(f"Error syncing train config: {e}")
+
+    def get_engine_status(self) -> str:
+        try:
+            resp = httpx.get(
+                f"{self.server_url}/get_engine_status",
+                timeout=10
+            )
+            resp.raise_for_status()
+            return resp.json().get("engine_status", "unknown")
+        except Exception as e:
+            logger.error(f"Error getting engine status: {e}")
+            return "unknown"
+
+    def can_continue_episode(self, episode_uuid: str) -> bool:
+        if not episode_uuid:
+            return False
+
+        try:
+            req_obj = CanContinueEpisodeRequest(
+                client_uuid=self.client_uuid,
+                episode_uuid=episode_uuid
+            )
+            resp = httpx.post(
+                f"{self.server_url}/can_continue_episode",
+                json=req_obj.model_dump(),
+                timeout=10
+            )
+            resp.raise_for_status()
+            data = CanContinueEpisodeResponse.model_validate(resp.json())
+            return data.can_continue
+        except Exception as e:
+            logger.error(f"Error checking can_continue_episode: {e}")
+            return False
+
+    def get_episode_buffer(self) -> List[EpisodeStatus]:
+        try:
+            resp = httpx.post(
+                f"{self.server_url}/get_episode_buffer",
+                json={},
+                timeout=10
+            )
+            resp.raise_for_status()
+            data = EpisodeBufferResponse.model_validate(resp.json())
+            return data.buffer
+        except Exception as e:
+            logger.error(f"Error getting episode buffer: {e}")
+            return []

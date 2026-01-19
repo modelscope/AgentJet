@@ -1,77 +1,38 @@
+import time
 from multiprocessing.managers import DictProxy
 import threading
 
 import zmq
 
 from loguru import logger
-from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from typing import List
 
 from typing import Coroutine, Optional, Tuple
-from ajet.schema.task import WorkflowOutput
-
-
-class SyncTrainConfigRequest(BaseModel):
-    yaml_as_string: str
-
-class ClaimEpisodeRequest(BaseModel):
-    client_uuid: str
-    episode_type: str
-
-class ClaimEpisodeResponse(BaseModel):
-    success: bool
-    client_uuid: str
-    episode_uuid: str
-    openai_base_url: str = ""
-    openai_api_key: str = ""
-    fail_cause: str = ""
-
-class CanContinueEpisodeRequest(BaseModel):
-    client_uuid: str
-    episode_uuid: str
-
-class CanContinueEpisodeResponse(BaseModel):
-    can_continue: bool
-
-class EndEpisodeRequest(BaseModel):
-    client_uuid: str
-    episode_uuid: str
-    workflow_output: WorkflowOutput
-
-class EndEpisodeResponse(BaseModel):
-    success: bool
-
-
-class EpisodeStatus(BaseModel):
-    episode_uuid: str
-    episode_status: str = "rolling"
-    openai_base_url: str = ""
-    openai_api_key: str = ""
-    client_uuid: str = ""
-    zmq_listen_result_addr: str = ""
-
-class EpisodeBufferResponse(BaseModel):
-    buffer: List[EpisodeStatus]
-
-
-class BoolResponse(BaseModel):
-    success: bool
-
-class RegisterEpisodeRequest(BaseModel):
-    episode_uuid: str
-    openai_base_url: str = ""
-    openai_api_key: str = ""
-    zmq_listen_result_addr: str = ""
-
-
-class UpdateEngineStatusRequest(BaseModel):
-    engine_status: str = ""
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
+    SyncTrainConfigRequest,
+    ClaimEpisodeRequest,
+    ClaimEpisodeResponse,
+    CanContinueEpisodeRequest,
+    CanContinueEpisodeResponse,
+    EndEpisodeRequest,
+    EndEpisodeResponse,
+    EpisodeStatus,
+    EpisodeBufferResponse,
+    BoolResponse,
+    RegisterEpisodeRequest,
+    UpdateEngineStatusRequest,
+)
 
 
 DEBUG = True
 
-def register_enable_tinkerscript_mode_routes(app, zmq_context, shared_mem_dict:DictProxy, shared_mem_dict_lock:threading.Lock) -> Tuple[FastAPI, Optional[Coroutine]]:
+def register_enable_tinkerscript_mode_routes(
+        app,
+        zmq_context,
+        shared_mem_dict:DictProxy,
+        shared_mem_dict_lock:threading.Lock,
+    ) -> Tuple[FastAPI, Optional[Coroutine]]:
 
     if 'episodes' not in shared_mem_dict:
         shared_mem_dict["episodes"] = {}
@@ -114,7 +75,9 @@ def register_enable_tinkerscript_mode_routes(app, zmq_context, shared_mem_dict:D
             openai_api_key=req.openai_api_key,
             episode_status="registered",
             zmq_listen_result_addr=req.zmq_listen_result_addr,
+            allow_discard_timeout=-1,
         )
+        es.latest_activity_timestamp = time.time()
 
         with shared_mem_dict_lock:
             shared_mem_dict[f"episodes-{episode_uuid}"] = es
@@ -127,7 +90,7 @@ def register_enable_tinkerscript_mode_routes(app, zmq_context, shared_mem_dict:D
 
     @app.post("/claim_episode", response_model=ClaimEpisodeResponse)
     async def claim_episode(req: ClaimEpisodeRequest):
-        # placeholder implementation — real logic should check episode_semaphore
+        find_claimed_episodes_that_need_to_be_unclaimed()
 
         with shared_mem_dict_lock:
             if len(shared_mem_dict['unclaimed_episodes']) <= 0:
@@ -148,10 +111,12 @@ def register_enable_tinkerscript_mode_routes(app, zmq_context, shared_mem_dict:D
             es:EpisodeStatus = shared_mem_dict[f"episodes-{episode_uuid}"]
             es.episode_status = "claimed"
             es.client_uuid = req.client_uuid
+            es.latest_activity_timestamp = time.time()
+            es.allow_discard_timeout = req.allow_discard_timeout
+
             shared_mem_dict[f"episodes-{episode_uuid}"] = es
             openai_base_url = es.openai_base_url
             openai_api_key = es.openai_api_key
-
 
         return ClaimEpisodeResponse(
             success=True,
@@ -163,6 +128,40 @@ def register_enable_tinkerscript_mode_routes(app, zmq_context, shared_mem_dict:D
         )
 
 
+    def find_claimed_episodes_that_need_to_be_unclaimed() -> List[str]:
+        result = []
+        current_time = time.time()
+
+        for k, v in shared_mem_dict.items():
+            if k.startswith("episodes-"):
+                es:EpisodeStatus = v
+                if es.episode_status == "claimed":
+                    if (current_time - es.latest_activity_timestamp) > es.allow_discard_timeout:
+                        result.append(es.episode_uuid)
+
+        for episode_uuid in result:
+            _revert_episode_to_unclaimed(episode_uuid)
+
+        return result
+
+
+    def _revert_episode_to_unclaimed(episode_uuid: str):
+        with shared_mem_dict_lock:
+            # check status again, because other thread may have changed it
+            if shared_mem_dict[f"episodes-{episode_uuid}"].episode_status != "claimed":
+                return
+
+            # revert
+            logger.info(f"Reverting episode {episode_uuid} to unclaimed due to client timeout.")
+            if f"episodes-{episode_uuid}" in shared_mem_dict:
+                es:EpisodeStatus = shared_mem_dict[f"episodes-{episode_uuid}"]
+                es.episode_status = "registered"
+                es.client_uuid = ""
+                es.latest_activity_timestamp = time.time()
+                es.allow_discard_timeout = -1
+                shared_mem_dict[f"episodes-{episode_uuid}"] = es
+                shared_mem_dict['unclaimed_episodes'] += [episode_uuid]
+
 
     @app.post("/end_episode", response_model=EndEpisodeResponse)
     async def end_episode(req: EndEpisodeRequest):
@@ -172,8 +171,10 @@ def register_enable_tinkerscript_mode_routes(app, zmq_context, shared_mem_dict:D
         workflow_output = req.workflow_output
 
         if 'episodes' not in shared_mem_dict:
+            logger.error(f"[server] No episodes registered yet.")
             raise HTTPException(status_code=400, detail=f"No episodes registered yet.")
         if (f"episodes-{episode_uuid}") not in shared_mem_dict:
+            logger.error(f"[server] Episode {episode_uuid} not found.")
             raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} not found.")
 
         # send workflow_output to zmq

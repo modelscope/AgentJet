@@ -1,10 +1,8 @@
 
 import atexit
 import json
-import requests
 import zmq
 import os
-import time
 from ajet import AjetTuner
 from ajet import WorkflowOutput
 from ajet.context_tracker.multiagent_tracking import (
@@ -14,70 +12,28 @@ from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import WorkflowTask
 from ajet.schema.trajectory import Reward
 from ajet.task_runner.base_runner import BaseAgentRunner
-from ajet.utils.networking import find_free_port
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_register_episode, get_zmq_socket
 from loguru import logger
 from ajet import Workflow
 
 context = zmq.Context()
 atexit.register(context.term)
+DEBUG = True
 
 class TinkerScriptRunner(BaseAgentRunner):
 
-    def get_zmq_socket(self, episode_uuid: str):
-        interchange_method = self.config.ajet.interchange_server.interchange_method
-        if interchange_method == 'tcp':
-            master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
-            episode_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
-        elif interchange_method == 'ipc':
-            ipc_path = f"/tmp/ajet/{episode_uuid}-workflow.sock"
-            episode_contect_address = f"ipc://{ipc_path}"
-        else:
-            raise RuntimeError(f"Unknown interchange_method: {interchange_method}")
-        return episode_contect_address
-
-
-    def get_interchange_server_url(self):
-        port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
-        if self.config.ajet.interchange_server.interchange_server_port != 'auto':
-            port = str(int(self.config.ajet.interchange_server.interchange_server_port))
-        assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
-        master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
-        base_url = f"http://{master_node_ip}:{port}"
-        return base_url
-
-
     def register_episode_and_wait_output(self, episode_uuid: str, openai_base_url: str, openai_api_key: str) -> WorkflowOutput:
         """Register the episode as ready in the TinkerScript data interchange center."""
-        from ajet.tuner_lib.weight_tuner.experimental.as_tinkerscript_server import RegisterEpisodeRequest
-
         # parse episode_uuid, openai_base_url, openai_api_key
-        zmq_listen_result_addr = self.get_zmq_socket(episode_uuid)
-        interchange_http_addr = self.get_interchange_server_url()
-        rer = RegisterEpisodeRequest(
+        zmq_listen_result_addr, ipc_path = get_zmq_socket(self.config, episode_uuid, tag="workflow")
+        http_register_episode(
+            self.config,
             episode_uuid=episode_uuid,
             openai_base_url=openai_base_url,
             openai_api_key=openai_api_key,
             zmq_listen_result_addr=zmq_listen_result_addr,
         )
-        logger.info(f"zmq_listen_result_addr: {zmq_listen_result_addr}, interchange_http_addr: {interchange_http_addr}")
-
-        # send http request to tinkerscript server to register episode
-        while True:
-            try:
-                response = requests.post(
-                    f"{interchange_http_addr}/register_episode",
-                    json=rer.model_dump(),  # 或者 rer.model_dump() 如果使用 Pydantic v2
-                    timeout=30
-                )
-                response.raise_for_status()
-                result = response.json()
-                if not result.get('success'):
-                    raise RuntimeError(f"Failed to register episode {episode_uuid}")
-                logger.info(f"Successfully registered episode {episode_uuid}")
-                break
-            except requests.RequestException as e:
-                logger.error(f"Error registering episode {episode_uuid}: {e}. Retrying...")
-                time.sleep(5)
+        logger.info(f"zmq_listen_result_addr: {zmq_listen_result_addr}")
 
         # begin wait for result
         zmq_socket = zmq.Context().socket(zmq.REP)
@@ -85,6 +41,9 @@ class TinkerScriptRunner(BaseAgentRunner):
         message = zmq_socket.recv_string()
         logger.success(f"Received workflow output for episode {episode_uuid}")
         zmq_socket.send_string("ack")
+        zmq_socket.close()
+        if ipc_path and os.path.exists(ipc_path): os.remove(ipc_path)
+
         return WorkflowOutput(**json.loads(message))
 
 
