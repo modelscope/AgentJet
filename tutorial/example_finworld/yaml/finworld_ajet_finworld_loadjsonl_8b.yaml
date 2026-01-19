@@ -1,25 +1,27 @@
 # ------------------ 主要配置 ------------------
 ajet:
   project_name: ajet_finworld
-  experiment_name: "{{SUFFIX}}"
+  experiment_name: "ajet_finworld_loadjsonl_8b"
   # Judge 配置（嵌套结构，对应 self.config.ajet.judge.*）
   judge:
-    openjudge_llm: {{OPENJUDGE_LLM}}     # OpenJudge 模型
-    rm_llm: {{RM_LLM}}                   # RM Gallery 模型
-    concurrency: {{JUDGE_CONCURRENCY}}   # Judge 并发数
+    openjudge_llm: qwen-flash     # OpenJudge 模型
+    rm_llm: qwen-max                   # RM Gallery 模型
+    concurrency: 10   # Judge 并发数
+    train_ref_ans_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/Reference_ans_DR_11171143_cc.json   # 训练集 Reference Answer 路径
+    val_ref_ans_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/Reference_ans_val.json       # 验证集 Reference Answer 路径
   # OpenJudge 权重配置
-  report_resolution_weight: {{REPORT_RESOLUTION_WEIGHT}}         # 报告质量评估
-  trajectory_faithfulness_weight: {{TRAJECTORY_FAITHFULNESS_WEIGHT}}   # 事实准确性评估
-  citation_audit_weight: {{CITATION_AUDIT_WEIGHT}}               # 引用审计评估 (覆盖率 + 真实性)
-  rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
+  report_resolution_weight: 0.2         # 报告质量评估
+  trajectory_faithfulness_weight: 0.2   # 事实准确性评估
+  citation_audit_weight: 0.2               # 引用审计评估 (覆盖率 + 真实性)
+  rm_weight: 0.4                                       # RM Gallery 权重
   task_judge:
     # 使用本地 FinWorldJudge 进行评估（解耦远程 env_service）
     judge_protocol: tutorial.example_finworld.finworld_judge->FinWorldJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: {{MODEL_PATH}}
+    path: /mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-30B-A3B-Instruct-2507
   trainer_common:
-    nnodes: {{NNODES}}
+    nnodes: 2
     n_gpus_per_node: 8
     val_before_train: True
     val_pass_n: 8
@@ -32,7 +34,7 @@ ajet:
     force_disable_toolcalls: True
     enable_oversample: False
     tensor_model_parallel_size: 8
-    num_repeat: {{NUM_REPEAT}}
+    num_repeat: 4
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
     max_response_length_in_one_turn: 8000
@@ -40,32 +42,31 @@ ajet:
     agent_madness_reward: 0.0
     compute_madness_checklist: None
     multi_turn:
-      max_steps: {{NUM_STEPS}}
+      max_steps: 6
   interchange_server:
     interchange_method: 'tcp' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
   debug:
     debug_max_parallel: 64  # 增加并行任务数，充分利用GPU
     debug_first_n_tasks: 100  # 增加处理的任务数
   data:
-    train_batch_size: {{TRAIN_BATCH_SIZE}}
+    train_batch_size: 32
     max_prompt_length: 8000
     max_response_length: 41000
   
   task_reader:
-    type: jsonl_with_env_service  # 数据从 jsonl 加载，工具调用走 env_service
+    type: finworld  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
+    finworld:
+      training:
+        file_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/train_cc423_11171143_tasks.json
+      validation:
+        file_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/val_30_tasks.json
+    # env_service 仍需配置（用于工具调用）
     env_service:
       env_type: "finworld"
       env_url: "http://127.0.0.1:8080"
-      env_action_preference: code # code, text, box
-      training_split: train
-      validation_split: val
-    jsonl_dataset_file:
-      training:
-        file_path: "tutorial/example_finworld/data/train.jsonl"
-      validation:
-        file_path: "tutorial/example_finworld/data/val.jsonl"
+      env_action_preference: code
 trainer:
-  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//{{PREFIX}}/{{SUFFIX}}"
+  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//open/ajet_finworld_loadjsonl_8b"
   # resume_mode: disable  # 禁用自动恢复，从头开始训练 
 actor_rollout_ref:
   rollout:

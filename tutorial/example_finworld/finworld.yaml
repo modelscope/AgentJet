@@ -50,13 +50,27 @@ ajet:
     max_response_length: 41000
   
   task_reader:
-    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`
+    # type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo` or `finworld`
+    # === 方案 A: 传统 env_service 模式 ===
+    # env_service:
+    #   env_type: "finworld"
+    #   env_url: "http://127.0.0.1:8080"
+    #   env_action_preference: code
+    #   training_split: train
+    #   validation_split: val
+    
+    # === 方案 B: FinWorld Reader 模式 (数据从 JSON 加载，工具调用走 env_service) ===
+    type: finworld
+    finworld:
+      training:
+        file_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/finworld_tasks_11171143_cc.json
+      validation:
+        file_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/AgentEvolver_query_val.json
+    # env_service 仍然需要配置（用于工具调用）
     env_service:
       env_type: "finworld"
       env_url: "http://127.0.0.1:8080"
-      env_action_preference: code # code, text, box
-      training_split: train
-      validation_split: val
+      env_action_preference: code
 trainer:
   default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//localths/cc_rm4_res2cit2fai2_30b"
   # resume_mode: disable  # 禁用自动恢复，从头开始训练 

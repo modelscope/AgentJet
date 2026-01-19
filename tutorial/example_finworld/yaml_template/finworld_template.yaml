@@ -7,6 +7,8 @@ ajet:
     openjudge_llm: {{OPENJUDGE_LLM}}     # OpenJudge 模型
     rm_llm: {{RM_LLM}}                   # RM Gallery 模型
     concurrency: {{JUDGE_CONCURRENCY}}   # Judge 并发数
+    train_ref_ans_path: {{TRAIN_REF_ANS_PATH}}   # 训练集 Reference Answer 路径
+    val_ref_ans_path: {{VAL_REF_ANS_PATH}}       # 验证集 Reference Answer 路径
   # OpenJudge 权重配置
   report_resolution_weight: {{REPORT_RESOLUTION_WEIGHT}}         # 报告质量评估
   trajectory_faithfulness_weight: {{TRAJECTORY_FAITHFULNESS_WEIGHT}}   # 事实准确性评估
@@ -52,13 +54,17 @@ ajet:
     max_response_length: 41000
   
   task_reader:
-    type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo`
+    type: finworld  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
+    finworld:
+      training:
+        file_path: {{TRAIN_DATA_PATH}}
+      validation:
+        file_path: {{VAL_DATA_PATH}}
+    # env_service 仍需配置（用于工具调用）
     env_service:
       env_type: "finworld"
       env_url: "http://127.0.0.1:8080"
-      env_action_preference: code # code, text, box
-      training_split: train
-      validation_split: val
+      env_action_preference: code
 trainer:
   default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//{{PREFIX}}/{{SUFFIX}}"
   # resume_mode: disable  # 禁用自动恢复，从头开始训练 
