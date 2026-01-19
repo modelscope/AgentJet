@@ -12,6 +12,13 @@
 
 Unlike traditional setups where the user code must run inside the training cluster, TinkerScript allows you to verify and run your agent logic locally while the heavy lifting (training & inference) happens remotely.
 
+
+>
+> Relationship between **TinkerScript** and **Tinker**:
+>
+> **No relationship at all** (just like **JavaScript** and **Java**). **TinkerScript** is open-source and free. **Tinker** is close-source and not free.
+>
+
 ### 2. Core Architecture
 
 The system involves two main parties: the **TinkerScript Server** (running on the GPU cluster) and the **TinkerScript Client** (running on your local machine).
