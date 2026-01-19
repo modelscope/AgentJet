@@ -19,16 +19,16 @@ The system involves two main parties: the **TinkerScript Server** (running on th
 ```mermaid
 graph TD
     subgraph "GPU Cluster (Server Side)"
-        TrainingLoop[Training Loop (AgentJet/GRPO)]
-        TSS[TinkerScript Server (FastAPI)]
-        ZMQ[ZeroMQ / IPC]
-        SharedMem[(Shared Memory)]
-        LLM[LLM Engine (vLLM/SGLang)]
+        TrainingLoop["Training Loop (AgentJet/GRPO)"]
+        TSS["TinkerScript Server (FastAPI)"]
+        ZMQ["ZeroMQ / IPC"]
+        SharedMem[("Shared Memory")]
+        LLM["LLM Engine (vLLM/SGLang)"]
     end
 
     subgraph "User Laptop / CPU Cluster (Client Side)"
-        UserScript[User Script (python while loop)]
-        AgentLogic[Agent Logic / Tools]
+        UserScript["User Script (python while loop)"]
+        AgentLogic["Agent Logic / Tools"]
     end
 
     TrainingLoop -- "1. Generate Task" --> SharedMem
@@ -143,16 +143,16 @@ def rollout(task):
 ```mermaid
 graph TD
     subgraph "GPU 集群 (Server 端)"
-        TrainingLoop[训练循环 (AgentJet/GRPO)]
-        TSS[TinkerScript Server (FastAPI)]
-        ZMQ[ZeroMQ / IPC 通信]
-        SharedMem[(共享内存)]
-        LLM[LLM 推理引擎 (vLLM/SGLang)]
+        TrainingLoop["训练循环 (AgentJet/GRPO)"]
+        TSS["TinkerScript Server (FastAPI)"]
+        ZMQ["ZeroMQ / IPC 通信"]
+        SharedMem[("共享内存")]
+        LLM["LLM 推理引擎 (vLLM/SGLang)"]
     end
 
     subgraph "用户笔记本 / CPU 集群 (Client 端)"
-        UserScript[用户脚本 (Python While Loop)]
-        AgentLogic[Agent 业务逻辑 / 工具调用]
+        UserScript["用户脚本 (Python While Loop)"]
+        AgentLogic["Agent 业务逻辑 / 工具调用"]
     end
 
     TrainingLoop -- "1. 生成任务 (Task)" --> SharedMem
