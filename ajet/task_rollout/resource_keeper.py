@@ -25,7 +25,7 @@ class ResourceKeeper(object):
         self.tokenizer = self.workflow_task.tokenizer
         self.llm_inference_fn = self.workflow_task.llm_inference_fn
         self.observation_window = self.workflow_task.observation_window
-        if self.config.ajet.task_reader.type in ("env_service", "jsonl_with_env_service"):
+        if self.config.ajet.task_reader.type in ("env_service", "finworld"):
             url = self.config.ajet.task_reader.env_service.env_url
             env_type = self.config.ajet.task_reader.env_service.env_type
             self.env = EnvClientNg(base_url=url)
@@ -97,10 +97,10 @@ class ResourceKeeper(object):
                 if self.env is not None:
                     self.env.release_instance(self.workflow_task.episode_uuid)
                 raise e
-        elif reader_type == "jsonl_with_env_service":
-            # 新逻辑：调用 create_instance 注册实例，但使用 jsonl 中的 init_messages
+        elif reader_type == "finworld":
+            # finworld: 调用 create_instance 注册实例，但使用 reader 组装的 init_messages
             if self.env is None:
-                raise ValueError("Environment client is None but jsonl_with_env_service type is specified")
+                raise ValueError("Environment client is None but finworld type is specified")
             try:
                 # 必须调用 create_instance，让服务端创建实例，后续 step() 才能工作
                 self.env.create_instance(
@@ -109,12 +109,12 @@ class ResourceKeeper(object):
                     instance_id=self.workflow_task.episode_uuid,
                     params=self.env_params,
                 )
-                # 不使用返回的 state，直接用 jsonl 中加载的 init_messages
+                # 不使用返回的 state，直接用 reader 组装的 init_messages
                 task = self.workflow_task.task
                 if task.init_messages:
                     init_messages = task.init_messages
                 else:
-                    assert task.main_query, "jsonl_with_env_service requires init_messages or main_query in jsonl file."
+                    assert task.main_query, "finworld requires init_messages or main_query."
                     init_messages = [{"role": "user", "content": task.main_query}]
             except Exception as e:
                 logger.bind(exception=True).exception(

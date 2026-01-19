@@ -61,9 +61,10 @@ class RouterTaskReader(BaseTaskReader):
             self.task_reader = DataGeneratorTaskReader(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyTaskReader(reader_config)
-        elif task_reader_type == "jsonl_with_env_service":
-            # 数据从 jsonl 加载，工具调用走 env_service
-            self.task_reader = JsonlTaskReader(reader_config)
+        elif task_reader_type == "finworld":
+            # FinWorld 专用: 数据从 JSON 文件加载并组装 init_messages，工具调用走 env_service
+            from tutorial.example_finworld.finworld_reader import FinworldReader
+            self.task_reader = FinworldReader(reader_config)
         else:
             raise ValueError(f"Unsupported task reader type: {task_reader_type}")
 
