@@ -38,9 +38,7 @@ from openjudge.scenarios.deep_research.graders.financial_report_citation_audit i
 
 
 # RewardStats 不再使用，OpenJudge 版本直接使用字典存储
-# 环境变量配置 (RM Gallery)
-TRAIN_REF_ANS_PATH = os.environ.get("FINWORLD_TRAIN_REF_ANS_PATH", "")
-VAL_REF_ANS_PATH = os.environ.get("FINWORLD_VAL_REF_ANS_PATH", "")
+# Reference Answer 路径现在从 config 中读取，见 _init_reference_answers 方法
 
 # OpenJudge imports
 # =============================================================================
@@ -216,7 +214,11 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
             self.rm_evaluator = None
     
     def _init_reference_answers(self):
-        """初始化参考答案缓存"""
+        """初始化参考答案缓存，从 config 中读取路径"""
+        # 从 config 中获取 reference answer 路径
+        train_ref_ans_path = getattr(self.config.ajet.judge, "train_ref_ans_path", "")
+        val_ref_ans_path = getattr(self.config.ajet.judge, "val_ref_ans_path", "")
+        
         def _load(path, key):
             if path and key not in FinWorldJudgeByOpenJudge._ref_answers_cache:
                 try:
@@ -224,8 +226,8 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
                     FinWorldJudgeByOpenJudge._ref_answers_cache[key], FinWorldJudgeByOpenJudge._ref_domains_cache[key] = ans, dom
                 except Exception:
                     FinWorldJudgeByOpenJudge._ref_answers_cache[key], FinWorldJudgeByOpenJudge._ref_domains_cache[key] = {}, {}
-        _load(TRAIN_REF_ANS_PATH, "train")
-        _load(VAL_REF_ANS_PATH, "val")
+        _load(train_ref_ans_path, "train")
+        _load(val_ref_ans_path, "val")
     
     def _get_reference_data(self, task_id: str) -> Tuple[str, str]:
         """获取任务的参考答案和领域"""

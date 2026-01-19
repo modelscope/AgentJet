@@ -1,233 +1,262 @@
-from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
-from agentscope.message import Msg 
-from pydantic import Field
+"""FinWorld Reader
+
+从 JSON 文件加载任务数据，并现场组装 init_messages。
+- 数据来源：训练集/测试集 JSON 文件
+- 消息组装：加载 prompt 模板 + query
+- 工具调用：仍走 env_service
+"""
+import os
+import json
 import logging
-import threading
-import time
-import copy
-from loguru import logger
+from typing import List, Dict, Any
+from datetime import datetime
+
+from ajet.schema.task import Task
+from ajet.task_reader.task_reader_base import BaseTaskReader
+
+# 配置 logger
+logger = logging.getLogger(__name__)
+
+# 控制 debug 输出的开关（可通过环境变量控制）
+DEBUG_ENABLED = os.environ.get("FINWORLD_DEBUG", "0") == "1"
+
+def _debug_log(msg: str):
+    """统一的 debug 日志输出"""
+    if DEBUG_ENABLED:
+        print(f"[DEBUG][FinworldReader] {msg}")
+    logger.debug(msg)
 
 
-# 创建信号量，允许同时12个线程运行
-sem = threading.Semaphore(30)
-
-class ExampleDeepResearchProtocol(Workflow):
-
-
-    async def execute(
-        self, workflow_task: WorkflowTask, tuner: AjetTuner  
-    ) -> WorkflowOutput:
-        from agentscope.agent import ReActAgent
-        from agentscope.formatter import DashScopeChatFormatter
-        from agentscope.memory import InMemoryMemory
-        # 1. 初始化消息
-        # init_messages 通常是 [System, User]
-        init_messages = workflow_task.task.init_messages
+class FinworldReader(BaseTaskReader):
+    """
+    FinWorld 专用的数据加载器
+    
+    特点：
+    1. 从 JSON 文件加载任务数据（支持 list 和 dict 格式）
+    2. 现场组装 init_messages（system_prompt + user_query）
+    3. env_type 固定为 "finworld"，由 env_service 负责工具调用
+    """
+    
+    # 类级别缓存
+    _prompt_template_cache = None
+    _tool_prompt_cache = None
+    
+    def __init__(self, reader_config):
+        super().__init__(reader_config)
+        self.reader_config = reader_config
         
-        # 分离 System Prompt 和 Initial User Input
-        if len(init_messages) >= 2:
-            first_msg, user_msgs = init_messages[0], init_messages[1:]
+        _debug_log(f"Initializing FinworldReader...")
+        _debug_log(f"reader_config type: {type(reader_config).__name__}")
+        
+        # 获取 prompt 目录路径
+        self.local_path = os.path.dirname(os.path.abspath(__file__))
+        _debug_log(f"local_path: {self.local_path}")
+        
+        # 初始化 prompt 缓存
+        self._init_prompt_templates()
+        _debug_log(f"Initialization complete.")
+    
+    def _init_prompt_templates(self):
+        """初始化 prompt 模板缓存"""
+        if FinworldReader._prompt_template_cache is None:
+            prompt_file = os.path.join(self.local_path, 'prompt', 'finance_analyst_prompt.md')
+            _debug_log(f"Loading prompt template from: {prompt_file}")
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                FinworldReader._prompt_template_cache = f.read()
+            _debug_log(f"Prompt template loaded, length: {len(FinworldReader._prompt_template_cache)} chars")
         else:
-            first_msg = {"content": "You're a helpful assistant."}
-            user_msgs = init_messages
-
-        # conversation_history: 维护最原始、最标准的 OpenAI 格式数据 (含 role: tool)
-        # 这是"真值"，用于评测和训练保存
-        conversation_history = [
-            {"role": "system", "content": first_msg["content"]},
+            _debug_log(f"Using cached prompt template, length: {len(FinworldReader._prompt_template_cache)} chars")
+        
+        if FinworldReader._tool_prompt_cache is None:
+            # 使用 tool_prompt_builder.py 中的静态模板
+            _debug_log(f"Loading tool prompt template...")
+            from tutorial.example_finworld.prompt.tool_prompt_builder import get_tool_prompt_template
+            FinworldReader._tool_prompt_cache = get_tool_prompt_template()
+            _debug_log(f"Tool prompt template loaded, length: {len(FinworldReader._tool_prompt_cache)} chars")
+        else:
+            _debug_log(f"Using cached tool prompt template, length: {len(FinworldReader._tool_prompt_cache)} chars")
+    
+    def _build_system_prompt(self) -> str:
+        """构建 system prompt"""
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        _debug_log(f"Building system prompt with date: {current_date}")
+        
+        # 替换日期占位符
+        system_prompt = FinworldReader._prompt_template_cache.replace(
+            '{current_date}', 
+            current_date
+        )
+        # 替换工具列表占位符
+        system_prompt = system_prompt.replace(
+            '{tool_list}', 
+            FinworldReader._tool_prompt_cache
+        )
+        _debug_log(f"System prompt built, final length: {len(system_prompt)} chars")
+        return system_prompt
+    
+    def _build_init_messages(self, query: str) -> List[Dict[str, Any]]:
+        """
+        构建 init_messages
+        
+        Args:
+            query: 用户问题
+            
+        Returns:
+            [{"role": "system", "content": ...}, {"role": "user", "content": ...}]
+        """
+        _debug_log(f"Building init_messages for query (len={len(query)}): {query[:100]}..." if len(query) > 100 else f"Building init_messages for query: {query}")
+        system_prompt = self._build_system_prompt()
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": query}
         ]
-        conversation_history.extend(user_msgs)
-
-        # 2. 初始化 Agent
-        agent = ReActAgent(
-            name="Qwen",
-            sys_prompt=first_msg["content"], # Agent 内部会自动管理 System Prompt
-            model=tuner.as_agentscope_model(),
-            formatter=DashScopeChatFormatter(),
-            memory=InMemoryMemory(),
-            toolkit=None,
-            print_hint_msg=False,
-        )
-        agent.set_console_output_enabled(False)
-        env = workflow_task.gym_env
+        _debug_log(f"init_messages built: {len(messages)} messages, system_prompt_len={len(system_prompt)}")
+        return messages
+    
+    def _read_json_file(self, file_path: str, split: str = "train") -> List[Task]:
+        """
+        从 JSON 文件读取任务列表
         
-        # 3. 构造初始 Agent 输入 (List[Msg])
-        # 注意：这里只包含 User 消息，不含 System，因为 System 已在 agent init 中设置
-        # 必须转换为 Msg 对象
-        agent_input = []
-        for m in user_msgs:
-            agent_input.append(Msg(
-                name=m.get("name", "user"),
-                content=m.get("content", ""),
-                role=m.get("role", "user")
-            ))
-
-        # 统计信息缓存
-        latest_tool_stats = None
-        latest_reward_stats = {}
-        cumulative_tool_call_time = 0.0  # 累计工具调用时间
-        cumulative_tool_time = {}  # 按工具区分的累计耗时: {tool_name: [time1, time2, ...]}
+        支持的数据格式：
+        1. List 格式: [{"task": {"task_id": ..., "query": ...}, ...}, ...]
+        2. Dict 格式: {"task_id_1": {"task": {...}, ...}, "task_id_2": {...}, ...}
         
-        logger.info(f"开始执行多轮交互，最大步数: {tuner.config.ajet.rollout.multi_turn.max_steps}")
+        Args:
+            file_path: JSON 文件路径
+            split: 数据集划分（train/val）
+            
+        Returns:
+            List[Task]: 任务列表
+        """
+        _debug_log(f"Reading JSON file: {file_path}, split={split}")
         
-        step = 0
-        for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
-            logger.info(f"=== 步骤 {step + 1} ===")
-            
-            # === Agent 推理 ===
-            _llm_start = time.time()
-            # 传入增量消息 (agent_input)，Agent 会将其添加到内存并生成回复
-            reply_message = await agent(agent_input)
-            _llm_elapsed = time.time() - _llm_start
-            # 提取纯文本 content（兼容多模态格式）
-            if isinstance(reply_message.content, list):
-                # 多模态格式: [{'type': 'text', 'text': '...'}]
-                content_text = ''.join(item.get('text', '') for item in reply_message.content if isinstance(item, dict) and item.get('type') == 'text')
-            else:
-                content_text = reply_message.content
-            
-            content_preview = content_text[:100].replace('\n', ' ')
-            # logger.info(f"Agent回复 ({_llm_elapsed:.2f}s): {content_preview}...")
-            
-            # === 早期终止检查：在调用 env.step() 前检查 context_overflow ===
-            # 修复问题：避免 token_overflow 后还继续调用工具导致阻塞
-            if tuner.get_context_tracker().context_overflow:
-                logger.warning(f"上下文溢出，跳过 env.step()，在第 {step + 1} 步立即结束")
-                # 构造一个默认的结束响应
-                conversation_history.append({
-                    "role": "assistant",
-                    "content": content_text
-                })
-                break
-            
-            # === Env 执行 ===
-            _env_start = time.time()
-            with sem:
-                obs, reward, terminate, info = env.step(
-                    action={"content": content_text, "role": "assistant"}
-                )
-            _env_elapsed = time.time() - _env_start
-            logger.info(f"环境执行 ({_env_elapsed:.2f}s)")
-            # === 3. 更新 conversation_history (Full History) ===
-            # A. 添加 Assistant 消息 (补全 tool_calls)
-            current_assistant_msg = {
-                "role": "assistant",
-                "content": content_text
-            }
-            if info and 'generated_tool_calls' in info and info['generated_tool_calls']:
-                current_assistant_msg['tool_calls'] = info['generated_tool_calls']
-            conversation_history.append(current_assistant_msg)
-
-            # B. 添加 Tool 消息 (直接使用 obs)
-            # 注意：obs 可能是 [tool_results_msgs] 套了一层，需要解包
-            if isinstance(obs, list):
-                actual_msgs = obs[0] if (len(obs) == 1 and isinstance(obs[0], list)) else obs
-                conversation_history.extend(actual_msgs)
-            else:
-                conversation_history.append({"role": "user", "content": obs})
-
-            # === 4. 更新统计信息 ===
-            if info:
-                if 'tool_stats' in info:
-                    latest_tool_stats = info['tool_stats']
-                    logger.info(f"步骤 {step + 1} 工具统计: 调用={latest_tool_stats.get('total_calls', 0)}, "
-                               f"成功率={latest_tool_stats.get('success_rate', 0):.1f}%")
-                if 'reward_stats' in info:
-                    latest_reward_stats = info['reward_stats']
-                    # 累加工具调用时间
-                    step_tool_call_time = latest_reward_stats.get('tool_call_time', 0.0)
-                    cumulative_tool_call_time += step_tool_call_time
-                    # 累加按工具区分的耗时
-                    step_tool_time = latest_reward_stats.get('tool_time', {})
-                    for tool_name, time_list in step_tool_time.items():
-                        if tool_name not in cumulative_tool_time:
-                            cumulative_tool_time[tool_name] = []
-                        if isinstance(time_list, list):
-                            cumulative_tool_time[tool_name].extend(time_list)
-            
-            # === 5. 准备下一轮 Agent 输入 (Incremental) ===
-            # 将 Env 返回的 obs 转换为 Msg 对象列表，供下一轮 agent() 调用
-            # 关键：这里只放新的 obs，不要放完整的 history
-            agent_input = []
-            
-            if isinstance(obs, list):
-                # Standard Mode: obs 是 tool messages 列表
-                # 注意：finworld_env.step 返回 {"state": [tool_results_msgs]} 套了一层列表
-                # BaseGymEnv.step 直接透传，所以 obs = [tool_results_msgs]
-                # 需要解包获取实际的消息列表
-                actual_msgs = obs[0] if (len(obs) == 1 and isinstance(obs[0], list)) else obs
-                logger.info(f"环境观察 (Standard): 收到 {len(actual_msgs)} 条工具消息")
+        if not os.path.exists(file_path):
+            _debug_log(f"ERROR: File not found: {file_path}")
+            raise FileNotFoundError(f"JSON file not found: {file_path}")
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        _debug_log(f"JSON data loaded, type: {type(data).__name__}, size: {len(data) if isinstance(data, (list, dict)) else 'N/A'}")
+        
+        tasks = []
+        skipped_count = 0
+        split_filtered_count = 0
+        
+        # 解析数据
+        if isinstance(data, list):
+            # List 格式
+            _debug_log(f"Parsing List format data, total items: {len(data)}")
+            for idx, item in enumerate(data):
+                task_info = item.get('task', {})
+                task_id = task_info.get('task_id', '')
+                query = task_info.get('query', '')
                 
-                # 按照 AgentScope 的 ContentBlock 格式转换消息
-                # Agent.memory 会自动保存 assistant 的 tool_call 信息
-                # 这里只需要传入 tool_result 消息即可
-                for idx, m in enumerate(actual_msgs):
-                    origin_role = m.get('role', 'user')
-                    if origin_role == 'tool':
-                        # 使用 ToolResultBlock 格式，作为 user 消息的 content
-                        tool_result_block = {
-                            "type": "tool_result",
-                            "id": m.get('tool_call_id', ''),
-                            "output": m.get('content', ''),
-                            "name": m.get('name', '')
-                        }
-                        new_msg = Msg(
-                            name="tool",
-                            content=[tool_result_block],
-                            role="user"
-                        )
-                        agent_input.append(new_msg)
-                    else:
-                        # 其他消息（如 user 提示）直接添加
-                        content = m.get('content')
-                        if content is None: content = ""
-                        valid_role = origin_role if origin_role in ['user', 'assistant', 'system'] else 'user'
-                        new_msg = Msg(
-                            name=m.get('name', valid_role), 
-                            content=content,
-                            role=valid_role
-                        )
-                        agent_input.append(new_msg)
-            else:
-                # Legacy Mode
-                logger.info(f"环境观察 (Legacy): {str(obs)[:100]}...")
-                agent_input.append(Msg(name="env", content=obs, role="user"))
-
-            # === 6. 终止检查 ===
-            logger.info(f"终止状态: {terminate}")
-            if terminate:
-                logger.info(f"环境返回终止信号，在第 {step + 1} 步结束")
-                break
+                if not task_id or not query:
+                    skipped_count += 1
+                    _debug_log(f"  Item {idx}: SKIPPED (missing task_id or query)")
+                    continue
                 
-            if tuner.get_context_tracker().context_overflow:
-                logger.warning(f"上下文溢出，在第 {step + 1} 步结束")
-                break
-
-        # === 结束处理 ===
-        final_tool_stats = latest_tool_stats or {
-            'total_calls': 0, 'total_errors': 0, 'success_calls': 0, 'success_rate': 0.0,
-            'cache_hits': 0, 'cache_misses': 0
-        }
-        # 将累计的 tool_time 合并到 tool_stats 中
-        final_tool_stats['tool_time'] = cumulative_tool_time
-        final_tool_stats['tool_call_time'] = cumulative_tool_call_time
+                # 过滤 split
+                item_split = task_info.get('metadata', {}).get('split', split)
+                if item_split != split:
+                    split_filtered_count += 1
+                    _debug_log(f"  Item {idx} ({task_id}): FILTERED by split (item_split={item_split}, expected={split})")
+                    continue
+                
+                # 构建 Task
+                _debug_log(f"  Item {idx} ({task_id}): Creating task...")
+                task = self._create_task(task_id, query, item)
+                tasks.append(task)
+                
+        elif isinstance(data, dict):
+            # Dict 格式
+            _debug_log(f"Parsing Dict format data, total keys: {len(data)}")
+            for idx, (task_id, item) in enumerate(data.items()):
+                task_info = item.get('task', {})
+                query = task_info.get('query', '')
+                
+                if not query:
+                    skipped_count += 1
+                    _debug_log(f"  Key {idx} ({task_id}): SKIPPED (missing query)")
+                    continue
+                
+                # 过滤 split
+                item_split = task_info.get('metadata', {}).get('split', split)
+                if item_split != split:
+                    split_filtered_count += 1
+                    _debug_log(f"  Key {idx} ({task_id}): FILTERED by split (item_split={item_split}, expected={split})")
+                    continue
+                
+                # 构建 Task（使用 dict key 作为 task_id）
+                _debug_log(f"  Key {idx} ({task_id}): Creating task...")
+                task = self._create_task(task_id, query, item)
+                tasks.append(task)
         
-        logger.info(f"\n{'='*80}")
-        logger.info(f"任务完成统计 (Task ID: {workflow_task.task.task_id}):")
-        logger.info(f"  总步骤: {step + 1}")
-        logger.info(f"  总调用: {final_tool_stats.get('total_calls', 0)}")
-        logger.info(f"  成功率: {final_tool_stats.get('success_rate', 0):.2f}%")
-        logger.info(f"{'='*80}\n")
+        _debug_log(f"Summary: loaded={len(tasks)}, skipped={skipped_count}, split_filtered={split_filtered_count}")
+        print(f"[FinworldReader] Loaded {len(tasks)} tasks from {file_path} (split={split})")
         
-        return WorkflowOutput(
-            reward=None, 
-            metadata={
-                "total_step": step,
-                "tool_stats": final_tool_stats,
-                "reward_stats": latest_reward_stats,
-                "tool_success_rate": round(final_tool_stats.get('success_rate', 0.0), 2),
-                "conversation_history": conversation_history, 
-                "query": workflow_task.task.main_query,
-                "task_id": workflow_task.task.task_id,
-            }
+        if len(tasks) == 0:
+            raise ValueError(f"No tasks found in file: {file_path} for split={split}")
+        
+        return tasks
+    
+    def _create_task(self, task_id: str, query: str, raw_item: Dict[str, Any]) -> Task:
+        """
+        创建 Task 对象
+        
+        Args:
+            task_id: 任务 ID
+            query: 用户问题
+            raw_item: 原始数据项
+            
+        Returns:
+            Task: 任务对象
+        """
+        _debug_log(f"Creating Task: task_id={task_id}")
+        
+        # 现场组装 init_messages
+        init_messages = self._build_init_messages(query)
+        
+        # 提取 metadata
+        task_info = raw_item.get('task', {})
+        metadata = task_info.get('metadata', {})
+        
+        # 将原始数据存入 metadata，供 env 和 judge 使用
+        # 注意：序列化为 JSON 字符串，避免嵌套字典导致 PyArrow 序列化时递归深度超限
+        metadata['raw_task_data'] = json.dumps(raw_item, ensure_ascii=False)
+        metadata['query'] = query
+        metadata['confidence'] = raw_item.get('confidence', 1.0)
+        metadata['rubrics'] = raw_item.get('rubrics', None)
+        metadata['ground_truth'] = task_info.get('ground_truth', '')
+        
+        _debug_log(f"  Task metadata: confidence={metadata['confidence']}, has_rubrics={metadata['rubrics'] is not None}, has_ground_truth={bool(metadata['ground_truth'])}")
+        _debug_log(f"  Task init_messages: {len(init_messages)} messages")
+        
+        task = Task(
+            main_query=query,
+            init_messages=init_messages,
+            task_id=task_id,
+            env_type="finworld",  # 固定为 finworld，由 env_service 处理
+            metadata=metadata
         )
+        _debug_log(f"  Task created successfully: {task_id}")
+        return task
+    
+    def get_training_tasks(self) -> List[Task]:
+        """获取训练任务"""
+        _debug_log(f"get_training_tasks() called")
+        file_path = self.reader_config.finworld.training.file_path
+        _debug_log(f"Training file path: {file_path}")
+        tasks = self._read_json_file(file_path, split="train")
+        _debug_log(f"get_training_tasks() returning {len(tasks)} tasks")
+        return tasks
+    
+    def get_validation_tasks(self) -> List[Task]:
+        """获取验证任务"""
+        _debug_log(f"get_validation_tasks() called")
+        file_path = self.reader_config.finworld.validation.file_path
+        _debug_log(f"Validation file path: {file_path}")
+        tasks = self._read_json_file(file_path, split="val")
+        _debug_log(f"get_validation_tasks() returning {len(tasks)} tasks")
+        return tasks
