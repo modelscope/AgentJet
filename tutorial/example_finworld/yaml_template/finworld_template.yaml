@@ -28,18 +28,17 @@ ajet:
     total_epochs: 200
   rollout:
     # ✨✨✨✨ 编写并选择Agent
-    use_agentscope_protocol: True
-    agentscope_learn_protocol: tutorial.example_finworld.finworld->ExampleAgentScopeLearnProtocol
-    agentscope_disable_toolcalls: True
+    user_workflow: tutorial.example_finworld.finworld->ExampleDeepResearchProtocol
+    force_disable_toolcalls: True
     enable_oversample: False
     tensor_model_parallel_size: 8
     num_repeat: {{NUM_REPEAT}}
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
-    max_env_len: 10000
     max_response_length_in_one_turn: 8000
     max_model_len: 50000
     agent_madness_reward: 0.0
+    compute_madness_checklist: None
     multi_turn:
       max_steps: {{NUM_STEPS}}
   interchange_server:
