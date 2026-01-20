@@ -99,6 +99,7 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
             if tool_name not in tool_cache_by_name:
                 tool_cache_by_name[tool_name] = {'hits': 0, 'misses': 0}
             tool_cache_by_name[tool_name]['hits'] += cache_info.get('hits', 0)
+            tool_cache_by_name[tool_name]['misses'] += cache_info.get('misses', 0)
 
     for tool_name, cache_info in tool_cache_by_name.items():
         hits = cache_info['hits']
