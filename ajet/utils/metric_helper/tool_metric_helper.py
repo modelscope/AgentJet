@@ -90,7 +90,6 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if time_list:
             metrics[f"{prefix}tool_time/{tool_name}/mean"] = float(np.mean(time_list))
             metrics[f"{prefix}tool_time/{tool_name}/max"] = float(np.max(time_list))
-            metrics[f"{prefix}tool_time/{tool_name}/count"] = len(time_list)
 
     # ========== 3. Cache Hit Rate by Tool ==========
     tool_cache_by_name = {}
@@ -100,7 +99,6 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
             if tool_name not in tool_cache_by_name:
                 tool_cache_by_name[tool_name] = {'hits': 0, 'misses': 0}
             tool_cache_by_name[tool_name]['hits'] += cache_info.get('hits', 0)
-            tool_cache_by_name[tool_name]['misses'] += cache_info.get('misses', 0)
 
     for tool_name, cache_info in tool_cache_by_name.items():
         hits = cache_info['hits']
@@ -109,8 +107,6 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if total > 0:
             hit_rate = hits / total * 100
             metrics[f"{prefix}tool_cache/{tool_name}/hit_rate"] = round(hit_rate, 2)
-            metrics[f"{prefix}tool_cache/{tool_name}/hits"] = hits
-            metrics[f"{prefix}tool_cache/{tool_name}/misses"] = misses
 
     # ========== 4. Error Rate by Tool ==========
     tool_error_by_name = {}
@@ -128,8 +124,7 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if calls > 0:
             error_rate = errors / calls * 100
             metrics[f"{prefix}tool_error/{tool_name}/error_rate"] = round(error_rate, 2)
-            metrics[f"{prefix}tool_error/{tool_name}/calls"] = calls
-            metrics[f"{prefix}tool_error/{tool_name}/errors"] = errors
+
 
     return metrics
 
