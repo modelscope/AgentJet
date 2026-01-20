@@ -22,11 +22,16 @@ NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
 TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
+
 # 主目录
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet"
+
+NNODES=${WORLD_SIZE}
+
 # 涉密的配置（API_KEY以及模型、数据位置）从.env读取
 cd ${AJET_ROOT}
 source .venv/bin/activate
+
 # API密钥配置 - 从 .env 文件加载
 ENV_FILE="${AJET_ROOT}/.env"
 if [ -f "$ENV_FILE" ]; then
@@ -112,12 +117,6 @@ ENV_SERVICE_LOG="${LOG_DIR}/env_service_${SUFFIX}_${CURRENT_TIME}.log"
 TRAIN_LOG="${LOG_DIR}/train_${SUFFIX}_${CURRENT_TIME}.log"
 
 # 多机训练参数配置
-if [ -z "${WORLD_SIZE}" ]; then
-    echo "ERROR: WORLD_SIZE environment variable is not set!"
-    echo "Please ensure this script is run in a multi-node environment (e.g., PAI-DLC, SLURM)"
-    exit 1
-fi
-NNODES=${WORLD_SIZE}
 GPUS_PER_NODE=8
 EXPECTED_WORKERS=$WORLD_SIZE
 
