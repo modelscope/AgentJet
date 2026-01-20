@@ -3,7 +3,7 @@ set -e
 #===============================================================================
 # 1. 配置区域 - 用户只需修改这里
 #===============================================================================
-SUFFIX="ajet_finworld"     # 实验后缀，影响所有日志和实验名称
+SUFFIX="ajet_deep_finance"     # 实验后缀，影响所有日志和实验名称
 PREFIX="open"                        # 实验前缀，影响日志和实验所在文件夹
 
 # OpenJudge 模型配置
@@ -24,8 +24,8 @@ NUM_STEPS=6         # 每个样本step轮数
 FINWORLD_TOOL_RESULT_MAX_CHARS=10000
 # 修改：配置文件生成路径，现在动态生成到 yaml 目录下
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet"
-CONFIG_FILE="${AJET_ROOT}/tutorial/example_finworld/yaml/finworld_${SUFFIX}.yaml"
-CONFIG_TEMPLATE="tutorial/example_finworld/yaml_template/finworld_template.yaml"
+CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/deep_finance_${SUFFIX}.yaml"
+CONFIG_TEMPLATE="tutorial/example_deep_finance/yaml_template/deep_finance_template.yaml"
 
 # 涉密的配置（API_KEY以及模型、数据位置）从.env读取
 cd ${AJET_ROOT}
@@ -80,7 +80,7 @@ MONGO_COLLECTION_NAME="tool_cache"
 export CACHE_TYPE MONGO_URI MONGO_DB_NAME MONGO_COLLECTION_NAME
 
 # FinWorld MCP 配置
-FINWORLD_MCP_CONFIG="${AJET_ROOT}/tutorial/example_finworld/config/mcp_finance_tool_generated.json"
+FINWORLD_MCP_CONFIG="${AJET_ROOT}/tutorial/example_deep_finance/config/mcp_finance_tool_generated.json"
 
 # 动态生成 MCP 配置文件
 mkdir -p $(dirname ${FINWORLD_MCP_CONFIG})
@@ -196,8 +196,6 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
     print_green "Starting training job..."
     source .venv/bin/activate
     export RAY_ADDRESS="ray://localhost:10001"
-    export env_url="http://${MASTER_ADDR}:8080"
-    export env_type="finworld"
 
     print_green "==================================="
     print_green "Training Configuration"
@@ -207,7 +205,7 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
 
     # 启动训练任务（最核心）
     python ajet/launcher.py \
-        --with-finworld \
+        --with-deep_finance \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
         2>&1 | tee ${TRAIN_LOG}

@@ -1,8 +1,8 @@
 """
-FinWorld Reward Metrics Helper
+deep_finance Reward Metrics Helper
 
 Provides standalone utility functions for reward_stats extraction and SwanLab metrics formatting.
-Decouples finworld-specific logic from core code, reducing intrusion into native_compat_trainer.
+Decouples deep_finance-specific logic from core code, reducing intrusion into native_compat_trainer.
 
 SwanLab metrics directory structure:
 - rewards/                    Top-level aggregated scores

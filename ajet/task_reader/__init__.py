@@ -61,10 +61,10 @@ class RouterTaskReader(BaseTaskReader):
             self.task_reader = DataGeneratorTaskReader(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyTaskReader(reader_config)
-        elif task_reader_type == "finworld":
-            # FinWorld 专用: 数据从 JSON 文件加载并组装 init_messages，工具调用走 env_service
-            from tutorial.example_finworld.finworld_reader import FinworldReader
-            self.task_reader = FinworldReader(reader_config)
+        elif task_reader_type == "deep_finance":
+            # deep_finance 专用: 数据从 JSON 文件加载并组装 init_messages，工具调用走 env_service
+            from tutorial.example_deep_finance.deep_finance_reader import deep_financeReader
+            self.task_reader = deep_financeReader(reader_config)
         else:
             raise ValueError(f"Unsupported task reader type: {task_reader_type}")
 

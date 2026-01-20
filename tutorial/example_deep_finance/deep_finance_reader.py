@@ -34,7 +34,7 @@ class FinworldReader(BaseTaskReader):
     特点：
     1. 从 JSON 文件加载任务数据（支持 list 和 dict 格式）
     2. 现场组装 init_messages（system_prompt + user_query）
-    3. env_type 固定为 "finworld"，由 env_service 负责工具调用
+    3. env_type 固定为 "deep_finance"，由 env_service 负责工具调用
     """
     
     # 类级别缓存
@@ -70,7 +70,7 @@ class FinworldReader(BaseTaskReader):
         if FinworldReader._tool_prompt_cache is None:
             # 使用 tool_prompt_builder.py 中的静态模板
             _debug_log(f"Loading tool prompt template...")
-            from tutorial.example_finworld.prompt.tool_prompt_builder import get_tool_prompt_template
+            from tutorial.example_deep_finance.prompt.tool_prompt_builder import get_tool_prompt_template
             FinworldReader._tool_prompt_cache = get_tool_prompt_template()
             _debug_log(f"Tool prompt template loaded, length: {len(FinworldReader._tool_prompt_cache)} chars")
         else:
@@ -237,7 +237,7 @@ class FinworldReader(BaseTaskReader):
             main_query=query,
             init_messages=init_messages,
             task_id=task_id,
-            env_type="finworld",  # 固定为 finworld，由 env_service 处理
+            env_type="deep_finance",  # 固定为 deep_finance，由 env_service 处理
             metadata=metadata
         )
         _debug_log(f"  Task created successfully: {task_id}")
@@ -246,7 +246,7 @@ class FinworldReader(BaseTaskReader):
     def get_training_tasks(self) -> List[Task]:
         """获取训练任务"""
         _debug_log(f"get_training_tasks() called")
-        file_path = self.reader_config.finworld.training.file_path
+        file_path = self.reader_config.deep_finance.training.file_path
         _debug_log(f"Training file path: {file_path}")
         tasks = self._read_json_file(file_path, split="train")
         _debug_log(f"get_training_tasks() returning {len(tasks)} tasks")
@@ -255,7 +255,7 @@ class FinworldReader(BaseTaskReader):
     def get_validation_tasks(self) -> List[Task]:
         """获取验证任务"""
         _debug_log(f"get_validation_tasks() called")
-        file_path = self.reader_config.finworld.validation.file_path
+        file_path = self.reader_config.deep_finance.validation.file_path
         _debug_log(f"Validation file path: {file_path}")
         tasks = self._read_json_file(file_path, split="val")
         _debug_log(f"get_validation_tasks() returning {len(tasks)} tasks")

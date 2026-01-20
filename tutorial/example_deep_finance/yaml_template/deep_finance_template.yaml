@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
 ajet:
-  project_name: ajet_finworld
+  project_name: ajet_deep_finance
   experiment_name: "{{SUFFIX}}"
   # Judge 配置（嵌套结构，对应 self.config.ajet.judge.*）
   judge:
@@ -16,7 +16,7 @@ ajet:
   rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
     # 使用本地 FinWorldJudge 进行评估（解耦远程 env_service）
-    judge_protocol: tutorial.example_finworld.finworld_judge->FinWorldJudgeByOpenJudge
+    judge_protocol: tutorial.example_deep_finance.deep_finance_judge->FinWorldJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: {{MODEL_PATH}}
@@ -30,7 +30,7 @@ ajet:
     total_epochs: 200
   rollout:
     # ✨✨✨✨ 编写并选择Agent
-    user_workflow: tutorial.example_finworld.finworld->ExampleDeepResearchProtocol
+    user_workflow: tutorial.example_deep_finance.deep_finance->ExampleDeepResearchProtocol
     force_disable_toolcalls: True
     enable_oversample: False
     tensor_model_parallel_size: 8
@@ -54,8 +54,8 @@ ajet:
     max_response_length: 41000
   
   task_reader:
-    type: finworld  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
-    finworld:
+    type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
+    deep_finance:
       training:
         file_path: {{TRAIN_DATA_PATH}}
       validation:

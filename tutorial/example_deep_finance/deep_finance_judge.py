@@ -126,7 +126,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
         """
         cfg = getattr(self.config, "ajet", None)
         
-        # 定义各 grader 的权重（可从 config 中读取）- 与 finworld_judge.py 对齐
+        # 定义各 grader 的权重（可从 config 中读取）- 与 deep_finance_judge.py 对齐
         self.w = {
             "rm": getattr(cfg, "rm_weight", 1.0) if cfg else 1.0,  # RM Gallery 权重
             "citation_audit": getattr(cfg, "citation_audit_weight", 0.0) if cfg else 0.0,  # CitationAudit 权重

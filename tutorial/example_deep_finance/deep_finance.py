@@ -152,7 +152,7 @@ class ExampleDeepResearchProtocol(Workflow):
             
             if isinstance(obs, list):
                 # Standard Mode: obs 是 tool messages 列表
-                # 注意：finworld_env.step 返回 {"state": [tool_results_msgs]} 套了一层列表
+                # 注意：deep_finance_env.step 返回 {"state": [tool_results_msgs]} 套了一层列表
                 # BaseGymEnv.step 直接透传，所以 obs = [tool_results_msgs]
                 # 需要解包获取实际的消息列表
                 actual_msgs = obs[0] if (len(obs) == 1 and isinstance(obs[0], list)) else obs
