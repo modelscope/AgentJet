@@ -66,7 +66,7 @@ ajet:
       env_url: "http://127.0.0.1:8080"
       env_action_preference: code
 trainer:
-  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//{{PREFIX}}/{{SUFFIX}}"
+  default_local_dir: "{{CKPT_SAVE_PATH}}/{{PREFIX}}/{{SUFFIX}}"
   # resume_mode: disable  # 禁用自动恢复，从头开始训练 
 actor_rollout_ref:
   rollout:
