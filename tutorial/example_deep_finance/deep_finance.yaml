@@ -1,21 +1,25 @@
 # ------------------ 主要配置 ------------------
 ajet:
-  project_name: ajet
-  experiment_name: "cc_rm4_res2cit2fai2_30b"
-  judge_llm: qwen-flash
-  judge_concurrency: 10
+  project_name: ajet_deep_finance
+  experiment_name: "ajet_deep_finance"
+  # Judge 配置（嵌套结构，对应 self.config.ajet.judge.*）
+  judge:
+    openjudge_llm: qwen-flash     # OpenJudge 模型
+    rm_llm: qwen-max                   # RM Gallery 模型
+    concurrency: 10   # Judge 并发数
+    train_ref_ans_path: {{TRAIN_REF_ANS_PATH}}   # 训练集 Reference Answer 路径
+    val_ref_ans_path: {{VAL_REF_ANS_PATH}}       # 验证集 Reference Answer 路径
   # OpenJudge 权重配置
   report_resolution_weight: 0.2         # 报告质量评估
   trajectory_faithfulness_weight: 0.2   # 事实准确性评估
   citation_audit_weight: 0.2               # 引用审计评估 (覆盖率 + 真实性)
   rm_weight: 0.4                                       # RM Gallery 权重
   task_judge:
-    judge_type: customized_protocol
-    judge_protocol: tutorial.example_finworld.finworld_judge->DeepFinanceJudgeByOpenJudge
+    # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）
+    judge_protocol: tutorial.example_deep_finance.deep_finance_judge->DeepFinanceJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
-    path: /mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-30B-A3B-Instruct-2507
-    # path: /mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-8B
+    path: {{MODEL_PATH}}
   trainer_common:
     nnodes: 8
     n_gpus_per_node: 8
@@ -24,19 +28,20 @@ ajet:
     save_freq: 10
     test_freq: 2
     total_epochs: 200
+    save_trajectory_as_json_file: True
   rollout:
     # ✨✨✨✨ 编写并选择Agent
-    user_workflow: tutorial.example_finworld.finworld->ExampleDeepResearchProtocol
+    user_workflow: tutorial.example_deep_finance.deep_finance->ExampleDeepResearchProtocol
     force_disable_toolcalls: True
     enable_oversample: False
     tensor_model_parallel_size: 8
     num_repeat: 4
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
-    max_env_len: 10000
     max_response_length_in_one_turn: 8000
     max_model_len: 50000
     agent_madness_reward: 0.0
+    compute_madness_checklist: None
     multi_turn:
       max_steps: 6
   interchange_server:
@@ -45,50 +50,39 @@ ajet:
     debug_max_parallel: 64  # 增加并行任务数，充分利用GPU
     debug_first_n_tasks: 100  # 增加处理的任务数
   data:
-    train_batch_size: 32  # 增加批次大小，适配8卡并行
+    train_batch_size: 32
     max_prompt_length: 8000
     max_response_length: 41000
   
   task_reader:
-    # type: env_service # `env_service` or `dataset_file` or `huggingface_dat_repo` or `finworld`
-    # === 方案 A: 传统 env_service 模式 ===
-    # env_service:
-    #   env_type: "finworld"
-    #   env_url: "http://127.0.0.1:8080"
-    #   env_action_preference: code
-    #   training_split: train
-    #   validation_split: val
-    
-    # === 方案 B: DeepFinance Reader 模式 (数据从 JSON 加载，工具调用走 env_service) ===
-    type: finworld
-    finworld:
+    type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
+    deep_finance:
       training:
-        file_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/finworld_tasks_11171143_cc.json
+        file_path: {{TRAIN_PATH}}
       validation:
-        file_path: /mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet/tutorial/example_finworld/data/AgentEvolver_query_val.json
-    # env_service 仍然需要配置（用于工具调用）
+        file_path: {{VAL_PATH}}
+    # env_service 仍需配置（用于工具调用）
     env_service:
       env_type: "finworld"
       env_url: "http://127.0.0.1:8080"
       env_action_preference: code
 trainer:
-  default_local_dir: "/mnt/data/taoshuchang.tsc/deepresearch/ajet/checkpoints/example_finworld//localths/cc_rm4_res2cit2fai2_30b"
+  default_local_dir: {{CKPT_SAVE_PATH}}
   # resume_mode: disable  # 禁用自动恢复，从头开始训练 
 actor_rollout_ref:
   rollout:
     tensor_model_parallel_size: 8
-    gpu_memory_utilization: 0.95
+    gpu_memory_utilization: 0.8
 # ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
-    - file://external/verl/verl/trainer/config  # verl only
     - file://ajet/default_config/trinity      # trinity only
 
 # ------------------ 不需要修改 ------------------
 defaults:
-  - verl_default # verl inherit 2/2
+  - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1
   - ajet_default
   - _self_
