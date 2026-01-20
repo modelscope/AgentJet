@@ -22,11 +22,8 @@ NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
 TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
-# 修改：配置文件生成路径，现在动态生成到 yaml 目录下
+# 主目录
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet"
-CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/deep_finance_${SUFFIX}.yaml"
-CONFIG_TEMPLATE="tutorial/example_deep_finance/yaml_template/deep_finance_template.yaml"
-
 # 涉密的配置（API_KEY以及模型、数据位置）从.env读取
 cd ${AJET_ROOT}
 source .venv/bin/activate
@@ -44,6 +41,10 @@ fi
 #===============================================================================
 # 2. 动态生成配置文件 (从yaml template生成yaml)
 #===============================================================================
+# 修改：配置文件生成路径，现在动态生成到 yaml 目录下
+CONFIG_TEMPLATE="tutorial/example_deep_finance/yaml_template/deep_finance_template.yaml"
+CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/${SUFFIX}.yaml"
+mkdir -p $(dirname ${CONFIG_FILE})
 
 sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{PREFIX}}|${PREFIX}|g" \
