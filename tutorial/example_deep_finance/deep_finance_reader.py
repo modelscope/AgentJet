@@ -1,4 +1,4 @@
-"""FinWorld Reader
+"""DeepFinance Reader
 
 从 JSON 文件加载任务数据，并现场组装 init_messages。
 - 数据来源：训练集/测试集 JSON 文件
@@ -18,18 +18,18 @@ from ajet.task_reader.task_reader_base import BaseTaskReader
 logger = logging.getLogger(__name__)
 
 # 控制 debug 输出的开关（可通过环境变量控制）
-DEBUG_ENABLED = os.environ.get("FINWORLD_DEBUG", "0") == "1"
+DEBUG_ENABLED = os.environ.get("DEEPFINANCE_DEBUG", "0") == "1"
 
 def _debug_log(msg: str):
     """统一的 debug 日志输出"""
     if DEBUG_ENABLED:
-        print(f"[DEBUG][FinworldReader] {msg}")
+        print(f"[DEBUG][DeepFinanceReader] {msg}")
     logger.debug(msg)
 
 
-class FinworldReader(BaseTaskReader):
+class DeepFinanceReader(BaseTaskReader):
     """
-    FinWorld 专用的数据加载器
+    DeepFinance 专用的数据加载器
     
     特点：
     1. 从 JSON 文件加载任务数据（支持 list 和 dict 格式）
@@ -45,7 +45,7 @@ class FinworldReader(BaseTaskReader):
         super().__init__(reader_config)
         self.reader_config = reader_config
         
-        _debug_log(f"Initializing FinworldReader...")
+        _debug_log(f"Initializing DeepFinanceReader...")
         _debug_log(f"reader_config type: {type(reader_config).__name__}")
         
         # 获取 prompt 目录路径
@@ -58,23 +58,23 @@ class FinworldReader(BaseTaskReader):
     
     def _init_prompt_templates(self):
         """初始化 prompt 模板缓存"""
-        if FinworldReader._prompt_template_cache is None:
+        if DeepFinanceReader._prompt_template_cache is None:
             prompt_file = os.path.join(self.local_path, 'prompt', 'finance_analyst_prompt.md')
             _debug_log(f"Loading prompt template from: {prompt_file}")
             with open(prompt_file, 'r', encoding='utf-8') as f:
-                FinworldReader._prompt_template_cache = f.read()
-            _debug_log(f"Prompt template loaded, length: {len(FinworldReader._prompt_template_cache)} chars")
+                DeepFinanceReader._prompt_template_cache = f.read()
+            _debug_log(f"Prompt template loaded, length: {len(DeepFinanceReader._prompt_template_cache)} chars")
         else:
-            _debug_log(f"Using cached prompt template, length: {len(FinworldReader._prompt_template_cache)} chars")
+            _debug_log(f"Using cached prompt template, length: {len(DeepFinanceReader._prompt_template_cache)} chars")
         
-        if FinworldReader._tool_prompt_cache is None:
+        if DeepFinanceReader._tool_prompt_cache is None:
             # 使用 tool_prompt_builder.py 中的静态模板
             _debug_log(f"Loading tool prompt template...")
             from tutorial.example_deep_finance.prompt.tool_prompt_builder import get_tool_prompt_template
-            FinworldReader._tool_prompt_cache = get_tool_prompt_template()
-            _debug_log(f"Tool prompt template loaded, length: {len(FinworldReader._tool_prompt_cache)} chars")
+            DeepFinanceReader._tool_prompt_cache = get_tool_prompt_template()
+            _debug_log(f"Tool prompt template loaded, length: {len(DeepFinanceReader._tool_prompt_cache)} chars")
         else:
-            _debug_log(f"Using cached tool prompt template, length: {len(FinworldReader._tool_prompt_cache)} chars")
+            _debug_log(f"Using cached tool prompt template, length: {len(DeepFinanceReader._tool_prompt_cache)} chars")
     
     def _build_system_prompt(self) -> str:
         """构建 system prompt"""
@@ -82,14 +82,14 @@ class FinworldReader(BaseTaskReader):
         _debug_log(f"Building system prompt with date: {current_date}")
         
         # 替换日期占位符
-        system_prompt = FinworldReader._prompt_template_cache.replace(
+        system_prompt = DeepFinanceReader._prompt_template_cache.replace(
             '{current_date}', 
             current_date
         )
         # 替换工具列表占位符
         system_prompt = system_prompt.replace(
             '{tool_list}', 
-            FinworldReader._tool_prompt_cache
+            DeepFinanceReader._tool_prompt_cache
         )
         _debug_log(f"System prompt built, final length: {len(system_prompt)} chars")
         return system_prompt
@@ -194,7 +194,7 @@ class FinworldReader(BaseTaskReader):
                 tasks.append(task)
         
         _debug_log(f"Summary: loaded={len(tasks)}, skipped={skipped_count}, split_filtered={split_filtered_count}")
-        print(f"[FinworldReader] Loaded {len(tasks)} tasks from {file_path} (split={split})")
+        print(f"[DeepFinanceReader] Loaded {len(tasks)} tasks from {file_path} (split={split})")
         
         if len(tasks) == 0:
             raise ValueError(f"No tasks found in file: {file_path} for split={split}")

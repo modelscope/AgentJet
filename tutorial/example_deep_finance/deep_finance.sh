@@ -21,7 +21,7 @@ TRAJECTORY_FAITHFULNESS_WEIGHT=0.2
 NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
 TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
-FINWORLD_TOOL_RESULT_MAX_CHARS=10000
+DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
 # 修改：配置文件生成路径，现在动态生成到 yaml 目录下
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet"
 CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/deep_finance_${SUFFIX}.yaml"
@@ -79,12 +79,12 @@ MONGO_DB_NAME="finworld_cache"
 MONGO_COLLECTION_NAME="tool_cache"
 export CACHE_TYPE MONGO_URI MONGO_DB_NAME MONGO_COLLECTION_NAME
 
-# FinWorld MCP 配置
-FINWORLD_MCP_CONFIG="${AJET_ROOT}/tutorial/example_deep_finance/config/mcp_finance_tool_generated.json"
+# DeepFinance MCP 配置
+DEEPFINANCE_MCP_CONFIG="${AJET_ROOT}/tutorial/example_deep_finance/config/mcp_finance_tool_generated.json"
 
 # 动态生成 MCP 配置文件
-mkdir -p $(dirname ${FINWORLD_MCP_CONFIG})
-cat > ${FINWORLD_MCP_CONFIG} << EOF
+mkdir -p $(dirname ${DEEPFINANCE_MCP_CONFIG})
+cat > ${DEEPFINANCE_MCP_CONFIG} << EOF
 {
     "mcpServers": {
       "flowllm": {
@@ -96,7 +96,7 @@ cat > ${FINWORLD_MCP_CONFIG} << EOF
     }
 }
 EOF
-export FINWORLD_MCP_CONFIG  FINWORLD_TOOL_RESULT_MAX_CHARS
+export DEEPFINANCE_MCP_CONFIG  DEEPFINANCE_TOOL_RESULT_MAX_CHARS
 
 # 其他服务配置
 HF_ENDPOINT="https://hf-mirror.com"
@@ -157,8 +157,8 @@ export NCCL_ASYNC_ERROR_HANDLING=1
 
 export PYTHONPATH="${AJET_ROOT}:${PYTHONPATH}"
 export RAY_CLUSTER_MODE="multi_node"
-export FINWORLD_PATH="${ENV_SERVICE_ROOT}" # AgentJet 内部可能使用此路径
-export FINWORLD_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profile.d/conda.sh && conda activate finworld_1209  && cd ${ENV_SERVICE_ROOT} && FINWORLD_TOOL_RESULT_MAX_CHARS=${FINWORLD_TOOL_RESULT_MAX_CHARS} FINWORLD_MCP_CONFIG=${FINWORLD_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
+export DEEPFINANCE_PATH="${ENV_SERVICE_ROOT}" # AgentJet 内部可能使用此路径
+export DEEPFINANCE_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profile.d/conda.sh && conda activate finworld_1209  && cd ${ENV_SERVICE_ROOT} && DEEPFINANCE_TOOL_RESULT_MAX_CHARS=${DEEPFINANCE_TOOL_RESULT_MAX_CHARS} DEEPFINANCE_MCP_CONFIG=${DEEPFINANCE_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
 
 
 #===============================================================================

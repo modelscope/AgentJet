@@ -15,8 +15,8 @@ ajet:
   citation_audit_weight: {{CITATION_AUDIT_WEIGHT}}               # 引用审计评估 (覆盖率 + 真实性)
   rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
-    # 使用本地 FinWorldJudge 进行评估（解耦远程 env_service）
-    judge_protocol: tutorial.example_deep_finance.deep_finance_judge->FinWorldJudgeByOpenJudge
+    # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）
+    judge_protocol: tutorial.example_deep_finance.deep_finance_judge->DeepFinanceJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: {{MODEL_PATH}}

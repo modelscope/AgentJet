@@ -60,10 +60,10 @@ def parse_args():
         help="Launch appworld",
     )
     parser.add_argument(
-        "--with-deep_finance",
+        "--with-deepfinance",
         action="store_true",
         default=False,
-        help="Launch deep_finance",
+        help="Launch deepfinance",
     )
     parser.add_argument(
         "--with-webshop",
@@ -303,8 +303,8 @@ def main():
     if args.with_appworld:
         pty_launch("appworld")
 
-    if args.with_deep_finance:
-        pty_launch("deep_finance")
+    if args.with_deepfinance:
+        pty_launch("deepfinance")
 
     if args.with_crafters:
         pty_launch("crafters")

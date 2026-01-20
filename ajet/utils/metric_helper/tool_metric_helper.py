@@ -1,5 +1,5 @@
 """
-FinWorld Tool Metrics Helper
+DeepFinance Tool Metrics Helper
 
 Specialized module for extracting tool-related statistics and formatting SwanLab reports.
 Extracts data from log_metrics['tool_stats'].

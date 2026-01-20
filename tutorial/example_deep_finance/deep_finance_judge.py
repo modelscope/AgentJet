@@ -1,4 +1,4 @@
-"""FinWorld Task Judge - OpenJudge 版本
+"""DeepFinance Task Judge - OpenJudge 版本
 集成: RM Gallery, OpenJudge Graders (含 CitationAudit)
 """
 
@@ -82,12 +82,12 @@ def load_reference_answers_from_file(file_path: str) -> Tuple[Dict[str, str], Di
 
 
 # =============================================================================
-# FinWorldJudgeByOpenJudge 类
+# DeepFinanceJudgeByOpenJudge 类
 # =============================================================================
 
-class FinWorldJudgeByOpenJudge(BaseJudge):
+class DeepFinanceJudgeByOpenJudge(BaseJudge):
     """
-    使用 OpenJudge 框架的 FinWorld Judge
+    使用 OpenJudge 框架的 DeepFinance Judge
     集成: RM Gallery, OpenJudge Graders (含 CitationAudit)
     
     分析：
@@ -171,11 +171,11 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
         """初始化 RM Gallery Evaluator（仅当 rm_weight > 0 时）"""
         self._rm_enabled = (self.w.get("rm", 0) > 0)
         if self._rm_enabled:
-            if FinWorldJudgeByOpenJudge._rm_evaluator_instance is None:
+            if DeepFinanceJudgeByOpenJudge._rm_evaluator_instance is None:
                 self._init_rm_evaluator()
-                FinWorldJudgeByOpenJudge._rm_evaluator_instance = self.rm_evaluator
+                DeepFinanceJudgeByOpenJudge._rm_evaluator_instance = self.rm_evaluator
             else:
-                self.rm_evaluator = FinWorldJudgeByOpenJudge._rm_evaluator_instance
+                self.rm_evaluator = DeepFinanceJudgeByOpenJudge._rm_evaluator_instance
         else:
             self.rm_evaluator = None
     
@@ -220,20 +220,20 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
         val_ref_ans_path = getattr(self.config.ajet.judge, "val_ref_ans_path", "")
         
         def _load(path, key):
-            if path and key not in FinWorldJudgeByOpenJudge._ref_answers_cache:
+            if path and key not in DeepFinanceJudgeByOpenJudge._ref_answers_cache:
                 try:
                     ans, dom = load_reference_answers_from_file(path)
-                    FinWorldJudgeByOpenJudge._ref_answers_cache[key], FinWorldJudgeByOpenJudge._ref_domains_cache[key] = ans, dom
+                    DeepFinanceJudgeByOpenJudge._ref_answers_cache[key], DeepFinanceJudgeByOpenJudge._ref_domains_cache[key] = ans, dom
                 except Exception:
-                    FinWorldJudgeByOpenJudge._ref_answers_cache[key], FinWorldJudgeByOpenJudge._ref_domains_cache[key] = {}, {}
+                    DeepFinanceJudgeByOpenJudge._ref_answers_cache[key], DeepFinanceJudgeByOpenJudge._ref_domains_cache[key] = {}, {}
         _load(train_ref_ans_path, "train")
         _load(val_ref_ans_path, "val")
     
     def _get_reference_data(self, task_id: str) -> Tuple[str, str]:
         """获取任务的参考答案和领域"""
         cache_key = "val" if task_id.startswith("val_") else "train"
-        ans = FinWorldJudgeByOpenJudge._ref_answers_cache.get(cache_key, {}).get(task_id, "")
-        dom = FinWorldJudgeByOpenJudge._ref_domains_cache.get(cache_key, {}).get(task_id)
+        ans = DeepFinanceJudgeByOpenJudge._ref_answers_cache.get(cache_key, {}).get(task_id, "")
+        dom = DeepFinanceJudgeByOpenJudge._ref_domains_cache.get(cache_key, {}).get(task_id)
         return ans, dom
     
 
@@ -400,7 +400,7 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
                 quota_exceeded_flags=quota_exceeded_flags
             )
             
-            print(f"FinWorldJudgeByOpenJudge: task_id={task_id}, fused={fused_reward:.4f}, final={final_reward:.4f}, rm_time={rm_time:.2f}s, grading_time={grading_time:.2f}s, total={judge_total_time:.2f}s")
+            print(f"DeepFinanceJudgeByOpenJudge: task_id={task_id}, fused={fused_reward:.4f}, final={final_reward:.4f}, rm_time={rm_time:.2f}s, grading_time={grading_time:.2f}s, total={judge_total_time:.2f}s")
             
             # 9. 判断是否成功（可根据实际需求调整阈值）
             is_success = final_reward >= 0.7

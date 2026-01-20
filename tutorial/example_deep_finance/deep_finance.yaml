@@ -11,7 +11,7 @@ ajet:
   rm_weight: 0.4                                       # RM Gallery 权重
   task_judge:
     judge_type: customized_protocol
-    judge_protocol: tutorial.example_finworld.finworld_judge->FinWorldJudgeByOpenJudge
+    judge_protocol: tutorial.example_finworld.finworld_judge->DeepFinanceJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-30B-A3B-Instruct-2507
@@ -59,7 +59,7 @@ ajet:
     #   training_split: train
     #   validation_split: val
     
-    # === 方案 B: FinWorld Reader 模式 (数据从 JSON 加载，工具调用走 env_service) ===
+    # === 方案 B: DeepFinance Reader 模式 (数据从 JSON 加载，工具调用走 env_service) ===
     type: finworld
     finworld:
       training:
