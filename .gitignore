@@ -152,3 +152,6 @@ datasets
 tutorial2
 site
 dump.rdb
+
+
+tutorial/example_finworld/yaml/*
