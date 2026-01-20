@@ -77,7 +77,6 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
 
     if openjudge_enabled_count > 0:
         # ========== OpenJudge Metrics ==========
-        metrics[f"{prefix}rewards/openjudge_enabled_rate"] = openjudge_enabled_count / n * 100
 
         # Dynamically extract OpenJudge grader fields
         # Currently supported graders: report_resolution, trajectory_faithfulness,
@@ -116,48 +115,19 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
     rm_raw_list = [rs.get('rm_raw', 0.0) for rs in reward_stats_list]
     rm_contribution_list = [rs.get('rm_contribution', 0.0) for rs in reward_stats_list]
 
-    # RefJudge
-    ref_final_raw_list = [rs.get('ref_final_raw', 0.0) for rs in reward_stats_list]
-    ref_citation_raw_list = [rs.get('ref_citation_raw', 0.0) for rs in reward_stats_list]
-    ref_grounding_raw_list = [rs.get('ref_grounding_raw', 0.0) for rs in reward_stats_list]
-    ref_contribution_list = [rs.get('ref_contribution', 0.0) for rs in reward_stats_list]
-
-    # StructureJudge
-    structure_raw_list = [rs.get('structure_raw', 0.0) for rs in reward_stats_list]
-    structure_contribution_list = [rs.get('structure_contribution', 0.0) for rs in reward_stats_list]
-
     # dimensions/ raw scores
     metrics[f"{prefix}rewards/dimensions/rm_raw_mean"] = float(np.mean(rm_raw_list))
-    metrics[f"{prefix}rewards/dimensions/ref_final_raw_mean"] = float(np.mean(ref_final_raw_list))
-    metrics[f"{prefix}rewards/dimensions/ref_citation_raw_mean"] = float(np.mean(ref_citation_raw_list))
-    metrics[f"{prefix}rewards/dimensions/ref_grounding_raw_mean"] = float(np.mean(ref_grounding_raw_list))
-    metrics[f"{prefix}rewards/dimensions/structure_raw_mean"] = float(np.mean(structure_raw_list))
 
     # contribution/ weighted contributions
     metrics[f"{prefix}rewards/contribution/rm_contribution_mean"] = float(np.mean(rm_contribution_list))
-    metrics[f"{prefix}rewards/contribution/ref_contribution_mean"] = float(np.mean(ref_contribution_list))
-    metrics[f"{prefix}rewards/contribution/structure_contribution_mean"] = float(np.mean(structure_contribution_list))
 
-    # Enabled state statistics
-    ref_judge_enabled_count = sum(1 for rs in reward_stats_list if rs.get('ref_judge_enabled', False))
-    if ref_judge_enabled_count > 0:
-        metrics[f"{prefix}rewards/ref_judge_enabled_rate"] = ref_judge_enabled_count / n * 100
-
-    structure_judge_enabled_count = sum(1 for rs in reward_stats_list if rs.get('structure_judge_enabled', False))
-    if structure_judge_enabled_count > 0:
-        metrics[f"{prefix}rewards/structure_judge_enabled_rate"] = structure_judge_enabled_count / n * 100
 
     # Time consumption statistics
     rm_time_list = [rs.get('rm_time', 0.0) for rs in reward_stats_list]
-    refstruc_time_list = [rs.get('refstruc_time', 0.0) for rs in reward_stats_list]
-
     metrics[f"{prefix}judge_time/rm_time_mean"] = float(np.mean(rm_time_list))
-    metrics[f"{prefix}judge_time/refstruc_time_mean"] = float(np.mean(refstruc_time_list))
 
     if rm_time_list:
         metrics[f"{prefix}judge_time/rm_time_max"] = float(np.max(rm_time_list))
-    if refstruc_time_list:
-        metrics[f"{prefix}judge_time/refstruc_time_max"] = float(np.max(refstruc_time_list))
 
     # ========== General Time Consumption Statistics ==========
     judge_total_time_list = [rs.get('judge_total_time', 0.0) for rs in reward_stats_list]
