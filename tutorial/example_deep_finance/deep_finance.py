@@ -67,12 +67,8 @@ class ExampleDeepResearchProtocol(Workflow):
         latest_reward_stats = {}
         cumulative_tool_call_time = 0.0  # 累计工具调用时间
         cumulative_tool_time = {}  # 按工具区分的累计耗时: {tool_name: [time1, time2, ...]}
-        
-        logger.info(f"开始执行多轮交互，最大步数: {tuner.config.ajet.rollout.multi_turn.max_steps}")
-        
         step = 0
         for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
-            logger.info(f"=== 步骤 {step + 1} ===")
             
             # === Agent 推理 ===
             _llm_start = time.time()
@@ -87,7 +83,6 @@ class ExampleDeepResearchProtocol(Workflow):
                 content_text = reply_message.content
             
             content_preview = content_text[:100].replace('\n', ' ')
-            # logger.info(f"Agent回复 ({_llm_elapsed:.2f}s): {content_preview}...")
             
             # === 早期终止检查：在调用 env.step() 前检查 context_overflow ===
             # 修复问题：避免 token_overflow 后还继续调用工具导致阻塞
@@ -130,8 +125,9 @@ class ExampleDeepResearchProtocol(Workflow):
             if info:
                 if 'tool_stats' in info:
                     latest_tool_stats = info['tool_stats']
-                    logger.info(f"步骤 {step + 1} 工具统计: 调用={latest_tool_stats.get('total_calls', 0)}, "
-                               f"成功率={latest_tool_stats.get('success_rate', 0):.1f}%")
+                    if latest_tool_stats.get('total_calls', 0) == 0:
+                        logger.info(f"步骤 {step + 1} 工具统计: 调用={}, "
+                                f"成功率={latest_tool_stats.get('success_rate', 0):.1f}%")
                 if 'reward_stats' in info:
                     latest_reward_stats = info['reward_stats']
                     # 累加工具调用时间
@@ -156,7 +152,6 @@ class ExampleDeepResearchProtocol(Workflow):
                 # BaseGymEnv.step 直接透传，所以 obs = [tool_results_msgs]
                 # 需要解包获取实际的消息列表
                 actual_msgs = obs[0] if (len(obs) == 1 and isinstance(obs[0], list)) else obs
-                logger.info(f"环境观察 (Standard): 收到 {len(actual_msgs)} 条工具消息")
                 
                 # 按照 AgentScope 的 ContentBlock 格式转换消息
                 # Agent.memory 会自动保存 assistant 的 tool_call 信息
@@ -190,13 +185,10 @@ class ExampleDeepResearchProtocol(Workflow):
                         agent_input.append(new_msg)
             else:
                 # Legacy Mode
-                logger.info(f"环境观察 (Legacy): {str(obs)[:100]}...")
                 agent_input.append(Msg(name="env", content=obs, role="user"))
 
             # === 6. 终止检查 ===
-            logger.info(f"终止状态: {terminate}")
             if terminate:
-                logger.info(f"环境返回终止信号，在第 {step + 1} 步结束")
                 break
                 
             if tuner.get_context_tracker().context_overflow:
@@ -212,12 +204,10 @@ class ExampleDeepResearchProtocol(Workflow):
         final_tool_stats['tool_time'] = cumulative_tool_time
         final_tool_stats['tool_call_time'] = cumulative_tool_call_time
         
-        logger.info(f"\n{'='*80}")
         logger.info(f"任务完成统计 (Task ID: {workflow_task.task.task_id}):")
         logger.info(f"  总步骤: {step + 1}")
         logger.info(f"  总调用: {final_tool_stats.get('total_calls', 0)}")
         logger.info(f"  成功率: {final_tool_stats.get('success_rate', 0):.2f}%")
-        logger.info(f"{'='*80}\n")
         
         return WorkflowOutput(
             reward=None, 
