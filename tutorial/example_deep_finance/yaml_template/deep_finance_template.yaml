@@ -28,6 +28,7 @@ ajet:
     save_freq: 10
     test_freq: 2
     total_epochs: 200
+    save_trajectory_as_json_file: True
   rollout:
     # ✨✨✨✨ 编写并选择Agent
     user_workflow: tutorial.example_deep_finance.deep_finance->ExampleDeepResearchProtocol

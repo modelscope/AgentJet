@@ -107,7 +107,7 @@ class ExampleDeepResearchProtocol(Workflow):
                     action={"content": content_text, "role": "assistant"}
                 )
             _env_elapsed = time.time() - _env_start
-            logger.info(f"环境执行 ({_env_elapsed:.2f}s)")
+
             # === 3. 更新 conversation_history (Full History) ===
             # A. 添加 Assistant 消息 (补全 tool_calls)
             current_assistant_msg = {

@@ -51,6 +51,5 @@ def save_trajectory_as_json(ctx_trackers, global_steps, prefix="train"):
         with open(traj_file_path, "w", encoding="utf-8") as f:
             json.dump(traj_data, f, ensure_ascii=False, indent=2)
 
-        # Print confirmation for evaluation trajectories
-        if prefix != "train":
-            print(f"Saved trajectory to {traj_file_path}")
+
+        print(f"Saved trajectory to {traj_file_path}")
