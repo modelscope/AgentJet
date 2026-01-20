@@ -603,7 +603,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             }
                         )
                         save_trajectory_as_json_file(context_tracker_arr, self.global_steps, self.config, prefix="train")
-                        update_metrics(context_tracker_arr, metrics)
+                        update_metrics(context_tracker_arr, metrics, prefix="train_")
                         if self.config.ajet.execute_test:  # apply a test probe
                             from swanlab.data.run.main import get_run
 
@@ -1047,7 +1047,14 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,
         }
         save_trajectory_as_json_file(ctx_trackers, self.global_steps, self.config, prefix="eval")
-        update_metrics(ctx_trackers, val_metrics)
+        print(f"[DEBUG trainer_verl] Before update_metrics: num_ctx_trackers={len(ctx_trackers)}")
+        for i, ct in enumerate(ctx_trackers[:3]):
+            has_lm = hasattr(ct, 'log_metrics') and ct.log_metrics
+            print(f"[DEBUG trainer_verl] ctx_trackers[{i}].log_metrics exists: {has_lm}")
+            if has_lm:
+                print(f"[DEBUG trainer_verl] ctx_trackers[{i}].log_metrics keys: {list(ct.log_metrics.keys())}")
+        update_metrics(ctx_trackers, val_metrics, prefix="eval_")
+        print(f"[DEBUG trainer_verl] After update_metrics: val_metrics keys containing 'tool_' or 'reward': {[k for k in val_metrics.keys() if 'tool_' in k or 'reward' in k][:10]}")
         print_dict(
             val_metrics,
             narrow=True,

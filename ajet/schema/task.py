@@ -43,4 +43,4 @@ class WorkflowOutput(BaseModel):
     reward: Union[float, List[float], None] = Field(default=None)
     is_success: Union[bool, None] = Field(default=None)
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    log_metrics: Dict[str, Union[float, List[float]]] = Field(default_factory=dict)
+    log_metrics: Dict[str, Union[float, List[float], Dict[str, Any]]] = Field(default_factory=dict)

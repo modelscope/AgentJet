@@ -219,15 +219,22 @@ class ExampleDeepResearchProtocol(Workflow):
         logger.info(f"  成功率: {final_tool_stats.get('success_rate', 0):.2f}%")
         logger.info(f"{'='*80}\n")
         
+        # Debug: print log_metrics before return
+        print(f"[DEBUG finworld.py] Returning WorkflowOutput with log_metrics keys: {list({'tool_stats': final_tool_stats, 'reward_stats': latest_reward_stats}.keys())}")
+        print(f"[DEBUG finworld.py] tool_stats keys: {list(final_tool_stats.keys()) if final_tool_stats else 'None'}")
+        print(f"[DEBUG finworld.py] reward_stats keys: {list(latest_reward_stats.keys()) if latest_reward_stats else 'None'}")
+        
         return WorkflowOutput(
             reward=None, 
             metadata={
                 "total_step": step,
-                "tool_stats": final_tool_stats,
-                "reward_stats": latest_reward_stats,
                 "tool_success_rate": round(final_tool_stats.get('success_rate', 0.0), 2),
                 "conversation_history": conversation_history, 
                 "query": workflow_task.task.main_query,
                 "task_id": workflow_task.task.task_id,
+            },
+            log_metrics={
+                "tool_stats": final_tool_stats,
+                "reward_stats": latest_reward_stats,
             }
         )
