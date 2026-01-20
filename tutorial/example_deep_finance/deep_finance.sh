@@ -206,7 +206,7 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
 
     # 启动训练任务（最核心）
     python ajet/launcher.py \
-        --with-deep_finance \
+        --with-deepfinance \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
         2>&1 | tee ${TRAIN_LOG}
