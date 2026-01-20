@@ -387,9 +387,6 @@ class FinWorldJudgeByOpenJudge(BaseJudge):
                 "grading_time": grading_time,
                 "judge_total_time": judge_total_time,
             }
-            print(f"[DEBUG finworld_judge] Before _update_metadata_stats: task_id={task_id}, final_reward={final_reward:.4f}")
-            print(f"[DEBUG finworld_judge] grader_scores: {grader_scores}")
-            print(f"[DEBUG finworld_judge] contributions: {contributions}")
             self._update_metadata_stats(
                 metadata=metadata,
                 final_reward=final_reward,

@@ -54,6 +54,12 @@ class GeneralRunner(BaseAgentRunner):
             )
         else:
             raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
+            # Sync reward_stats from metadata to log_metrics after judge computation
+            print(f"[DEBUG general_runner] After judge: metadata has 'reward_stats': {'reward_stats' in workflow_output.metadata}")
+            if "reward_stats" in workflow_output.metadata:
+                print(f"[DEBUG general_runner] metadata['reward_stats'] keys: {list(workflow_output.metadata['reward_stats'].keys())[:5]}")
+                workflow_output.log_metrics["reward_stats"] = workflow_output.metadata["reward_stats"]
+                print(f"[DEBUG general_runner] Synced to log_metrics successfully")
 
         workflow_task.gym_env = None  # clear gym env client reference to avoid serialization issue
 
