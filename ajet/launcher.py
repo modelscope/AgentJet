@@ -99,6 +99,7 @@ def parse_args():
         default=False,
         help="Kill system processes (ray + vllm + python) that may block the current experiment",
     )
+    parser.add_argument("--prefix", type=str, default="", required=False, help="Prefix for service names")
     return parser.parse_args()
 
 
@@ -304,7 +305,7 @@ def main():
         pty_launch("appworld")
 
     if args.with_deepfinance:
-        pty_launch("deepfinance")
+        pty_launch("deepfinance", prefix=args.prefix)
 
     if args.with_crafters:
         pty_launch("crafters")
