@@ -146,3 +146,10 @@ def rollout(task):
     tinkerjet_remote.end_episode(workflow_output)
     return workflow_output.reward
 ```
+
+
+<div align="center">
+  <a href="https://modelscope.github.io/AgentJet" target="_blank">
+    <img width="500" alt="AgentJet" src="https://img.alicdn.com/imgextra/i1/O1CN01ZlvvYo1fXNiegdPLT_!!6000000004016-0-tps-1376-768.jpg"/>
+  </a>
+</div>
