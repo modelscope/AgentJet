@@ -125,9 +125,9 @@ class ExampleDeepResearchProtocol(Workflow):
             if info:
                 if 'tool_stats' in info:
                     latest_tool_stats = info['tool_stats']
-                    if latest_tool_stats.get('total_calls', 0) == 0:
-                        logger.info(f"步骤 {step + 1} 工具统计: 调用={}, "
-                                f"成功率={latest_tool_stats.get('success_rate', 0):.1f}%")
+                    if latest_tool_stats.get('total_calls', 0) > 0:
+                        logger.info(f"步骤 {step + 1} 工具统计: 调用={latest_tool_stats.get('total_calls', 0)}, "
+                                    f"成功率={latest_tool_stats.get('success_rate', 0):.1f}%")
                 if 'reward_stats' in info:
                     latest_reward_stats = info['reward_stats']
                     # 累加工具调用时间
