@@ -1,6 +1,7 @@
 import re
 import requests
 from textwrap import dedent
+from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.weight_tuner.experimental.as_tinkerscript_client import TinkerScriptClient
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
@@ -32,6 +33,15 @@ def main():
     )
     tinkerscript_remote = TinkerScriptClient(TINKERJET_URL)
 
+    tinkerscript_remote.sync_config(
+        AgentJetJob(
+            n_gpu=2,
+            algorithm="grpo",
+            model='qwen/Qwen2.5-1.5B-instruct'
+        )
+    )
+    tinkerscript_remote.begin_engine()
+
     # Define rollout
     def rollout(task):
         group_reward = []
@@ -53,6 +63,9 @@ def main():
             for task in dataset.get_training_tasks():
                 print(f"Submitting task for epoch {epoch}")
                 executor.submit(rollout, task)
+
+
+    model_path = tinkerscript_remote.download_latest_model(path='./tinkerscript_saved_model')
 
     # Get tuned model from tinkerscript remote
     return None

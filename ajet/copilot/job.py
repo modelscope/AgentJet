@@ -37,7 +37,7 @@ class AgentJetJob:
 
     def __init__(
         self,
-        backbone: str = "trinity",
+        backbone: str = "verl",
         model: str = "Qwen/Qwen2___5-7B-Instruct",
         n_gpu: int = 8,
         algorithm: str = "grpo",

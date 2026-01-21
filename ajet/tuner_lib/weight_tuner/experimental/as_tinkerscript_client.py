@@ -93,7 +93,7 @@ class TinkerScriptClient(object):
         except Exception as e:
             logger.error(f"Error ending episode: {e}")
 
-    def sync_train_config(self, agent_jet_job: AgentJetJob):
+    def sync_config(self, agent_jet_job: AgentJetJob):
         try:
             config_dict = agent_jet_job.config.to_dict()
             yaml_str = yaml.safe_dump(config_dict, sort_keys=False)
