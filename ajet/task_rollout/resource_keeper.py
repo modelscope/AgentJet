@@ -98,18 +98,18 @@ class ResourceKeeper(object):
                     self.env.release_instance(self.workflow_task.episode_uuid)
                 raise e
         elif reader_type == "deep_finance":
-            # deep_finance: 调用 create_instance 注册实例，但使用 reader 组装的 init_messages
+            # deep_finance: call create_instance to register instance, but use init_messages assembled by the reader
             if self.env is None:
                 raise ValueError("Environment client is None but deep_finance type is specified")
             try:
-                # 必须调用 create_instance，让服务端创建实例，后续 step() 才能工作
+                # call create_instance, let the server create an instance, so that subsequent step() can work
                 self.env.create_instance(
                     env_type=self.env_type,
                     task_id=self.task_id,
                     instance_id=self.workflow_task.episode_uuid,
                     params=self.env_params,
                 )
-                # 不使用返回的 state，直接用 reader 组装的 init_messages
+                # Do not use the returned state, directly use the init_messages assembled by the reader
                 task = self.workflow_task.task
                 if task.init_messages:
                     init_messages = task.init_messages
