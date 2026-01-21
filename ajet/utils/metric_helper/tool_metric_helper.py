@@ -1,8 +1,8 @@
 """
-FinWorld Tool Metrics Helper
+DeepFinance Tool Metrics Helper
 
 Specialized module for extracting tool-related statistics and formatting SwanLab reports.
-Extracts data from workflow_metadata['tool_stats'].
+Extracts data from log_metrics['tool_stats'].
 
 SwanLab metrics directory structure:
 - tool_stats/           Overall statistics (success rate, cache hit rate, etc.)
@@ -20,16 +20,16 @@ def extract_tool_stats_from_trajectories(trajectories: List[Any]) -> List[Dict[s
     Extract tool_stats from trajectories list.
 
     Args:
-        trajectories: List of trajectory objects containing workflow_metadata
+        trajectories: List of trajectory objects containing log_metrics
 
     Returns:
         List of tool_stats dictionaries
     """
     tool_stats_list = []
     for traj in trajectories:
-        if hasattr(traj, 'workflow_metadata') and traj.workflow_metadata:
-            if 'tool_stats' in traj.workflow_metadata:
-                tool_stats_list.append(traj.workflow_metadata['tool_stats'])
+        if hasattr(traj, 'log_metrics') and traj.log_metrics:
+            if 'tool_stats' in traj.log_metrics:
+                tool_stats_list.append(traj.log_metrics['tool_stats'])
     return tool_stats_list
 
 
@@ -90,7 +90,6 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if time_list:
             metrics[f"{prefix}tool_time/{tool_name}/mean"] = float(np.mean(time_list))
             metrics[f"{prefix}tool_time/{tool_name}/max"] = float(np.max(time_list))
-            metrics[f"{prefix}tool_time/{tool_name}/count"] = len(time_list)
 
     # ========== 3. Cache Hit Rate by Tool ==========
     tool_cache_by_name = {}
@@ -109,8 +108,6 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if total > 0:
             hit_rate = hits / total * 100
             metrics[f"{prefix}tool_cache/{tool_name}/hit_rate"] = round(hit_rate, 2)
-            metrics[f"{prefix}tool_cache/{tool_name}/hits"] = hits
-            metrics[f"{prefix}tool_cache/{tool_name}/misses"] = misses
 
     # ========== 4. Error Rate by Tool ==========
     tool_error_by_name = {}
@@ -128,17 +125,16 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if calls > 0:
             error_rate = errors / calls * 100
             metrics[f"{prefix}tool_error/{tool_name}/error_rate"] = round(error_rate, 2)
-            metrics[f"{prefix}tool_error/{tool_name}/calls"] = calls
-            metrics[f"{prefix}tool_error/{tool_name}/errors"] = errors
+
 
     return metrics
 
 
-def compute_tool_metrics_from_trajectories(trajectories: List[Any]) -> Dict[str, float]:
+def compute_tool_metrics_from_trajectories(trajectories: List[Any], prefix: str = "") -> Dict[str, float]:
     """
     Training phase: Extract tool_stats from trajectories and compute metrics.
     """
     tool_stats_list = extract_tool_stats_from_trajectories(trajectories)
-    return compute_tool_metrics(tool_stats_list, prefix="train_")
+    return compute_tool_metrics(tool_stats_list, prefix=prefix)
 
 

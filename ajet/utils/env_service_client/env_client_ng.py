@@ -49,7 +49,7 @@ def retry_call(
 class EnvClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url.rstrip("/")
-        self.timeout = 30.0
+        self.timeout = 300.0
 
     def _make_request(
         self,

@@ -1,8 +1,8 @@
 """
-FinWorld Reward Metrics Helper
+deep_finance Reward Metrics Helper
 
 Provides standalone utility functions for reward_stats extraction and SwanLab metrics formatting.
-Decouples finworld-specific logic from core code, reducing intrusion into native_compat_trainer.
+Decouples deep_finance-specific logic from core code, reducing intrusion into native_compat_trainer.
 
 SwanLab metrics directory structure:
 - rewards/                    Top-level aggregated scores
@@ -20,44 +20,18 @@ def extract_reward_stats_from_trajectories(trajectories: List[Any]) -> List[Dict
     Extract reward_stats from trajectories list.
 
     Args:
-        trajectories: List of trajectory objects containing workflow_metadata
+        trajectories: List of trajectory objects containing log_metrics
 
     Returns:
         List of reward_stats dictionaries
     """
     reward_stats_list = []
     for traj in trajectories:
-        if hasattr(traj, 'workflow_metadata') and traj.workflow_metadata:
-            if 'reward_stats' in traj.workflow_metadata:
-                reward_stats_list.append(traj.workflow_metadata['reward_stats'])
+        if hasattr(traj, 'log_metrics') and traj.log_metrics:
+            if 'reward_stats' in traj.log_metrics:
+                reward_stats_list.append(traj.log_metrics['reward_stats'])
     return reward_stats_list
 
-
-def extract_reward_stats_from_cmts(cmts: List[Any]) -> tuple[List[Dict[str, Any]], Dict[str, int]]:
-    """
-    Extract reward_stats from cmts list and return debug statistics.
-
-    Args:
-        cmts: List of cmt objects containing workflow_metadata
-
-    Returns:
-        Tuple of (reward_stats_list, debug_stats)
-    """
-    reward_stats_list = []
-    debug_stats = {
-        'total_cmts': len(cmts),
-        'has_workflow_metadata': 0,
-        'has_reward_stats': 0,
-    }
-
-    for _cmt in cmts:
-        if hasattr(_cmt, 'workflow_metadata') and _cmt.workflow_metadata:
-            debug_stats['has_workflow_metadata'] += 1
-            if 'reward_stats' in _cmt.workflow_metadata:
-                debug_stats['has_reward_stats'] += 1
-                reward_stats_list.append(_cmt.workflow_metadata['reward_stats'])
-
-    return reward_stats_list, debug_stats
 
 
 def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str = "") -> Dict[str, float]:
@@ -103,7 +77,6 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
 
     if openjudge_enabled_count > 0:
         # ========== OpenJudge Metrics ==========
-        metrics[f"{prefix}rewards/openjudge_enabled_rate"] = openjudge_enabled_count / n * 100
 
         # Dynamically extract OpenJudge grader fields
         # Currently supported graders: report_resolution, trajectory_faithfulness,
@@ -142,48 +115,19 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
     rm_raw_list = [rs.get('rm_raw', 0.0) for rs in reward_stats_list]
     rm_contribution_list = [rs.get('rm_contribution', 0.0) for rs in reward_stats_list]
 
-    # RefJudge
-    ref_final_raw_list = [rs.get('ref_final_raw', 0.0) for rs in reward_stats_list]
-    ref_citation_raw_list = [rs.get('ref_citation_raw', 0.0) for rs in reward_stats_list]
-    ref_grounding_raw_list = [rs.get('ref_grounding_raw', 0.0) for rs in reward_stats_list]
-    ref_contribution_list = [rs.get('ref_contribution', 0.0) for rs in reward_stats_list]
-
-    # StructureJudge
-    structure_raw_list = [rs.get('structure_raw', 0.0) for rs in reward_stats_list]
-    structure_contribution_list = [rs.get('structure_contribution', 0.0) for rs in reward_stats_list]
-
     # dimensions/ raw scores
     metrics[f"{prefix}rewards/dimensions/rm_raw_mean"] = float(np.mean(rm_raw_list))
-    metrics[f"{prefix}rewards/dimensions/ref_final_raw_mean"] = float(np.mean(ref_final_raw_list))
-    metrics[f"{prefix}rewards/dimensions/ref_citation_raw_mean"] = float(np.mean(ref_citation_raw_list))
-    metrics[f"{prefix}rewards/dimensions/ref_grounding_raw_mean"] = float(np.mean(ref_grounding_raw_list))
-    metrics[f"{prefix}rewards/dimensions/structure_raw_mean"] = float(np.mean(structure_raw_list))
 
     # contribution/ weighted contributions
     metrics[f"{prefix}rewards/contribution/rm_contribution_mean"] = float(np.mean(rm_contribution_list))
-    metrics[f"{prefix}rewards/contribution/ref_contribution_mean"] = float(np.mean(ref_contribution_list))
-    metrics[f"{prefix}rewards/contribution/structure_contribution_mean"] = float(np.mean(structure_contribution_list))
 
-    # Enabled state statistics
-    ref_judge_enabled_count = sum(1 for rs in reward_stats_list if rs.get('ref_judge_enabled', False))
-    if ref_judge_enabled_count > 0:
-        metrics[f"{prefix}rewards/ref_judge_enabled_rate"] = ref_judge_enabled_count / n * 100
-
-    structure_judge_enabled_count = sum(1 for rs in reward_stats_list if rs.get('structure_judge_enabled', False))
-    if structure_judge_enabled_count > 0:
-        metrics[f"{prefix}rewards/structure_judge_enabled_rate"] = structure_judge_enabled_count / n * 100
 
     # Time consumption statistics
     rm_time_list = [rs.get('rm_time', 0.0) for rs in reward_stats_list]
-    refstruc_time_list = [rs.get('refstruc_time', 0.0) for rs in reward_stats_list]
-
     metrics[f"{prefix}judge_time/rm_time_mean"] = float(np.mean(rm_time_list))
-    metrics[f"{prefix}judge_time/refstruc_time_mean"] = float(np.mean(refstruc_time_list))
 
     if rm_time_list:
         metrics[f"{prefix}judge_time/rm_time_max"] = float(np.max(rm_time_list))
-    if refstruc_time_list:
-        metrics[f"{prefix}judge_time/refstruc_time_max"] = float(np.max(refstruc_time_list))
 
     # ========== General Time Consumption Statistics ==========
     judge_total_time_list = [rs.get('judge_total_time', 0.0) for rs in reward_stats_list]
@@ -194,7 +138,7 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
     return metrics
 
 
-def compute_reward_metrics_from_trajectories(trajectories: List[Any]) -> Dict[str, float]:
+def compute_reward_metrics_from_trajectories(trajectories: List[Any], prefix: str = "") -> Dict[str, float]:
     """
     Training phase: Extract reward_stats from trajectories and compute metrics.
 
@@ -205,27 +149,5 @@ def compute_reward_metrics_from_trajectories(trajectories: List[Any]) -> Dict[st
         Formatted metrics dictionary
     """
     reward_stats_list = extract_reward_stats_from_trajectories(trajectories)
-    return compute_reward_metrics(reward_stats_list, prefix="train_")
+    return compute_reward_metrics(reward_stats_list, prefix=prefix)
 
-
-def compute_reward_metrics_from_cmts(cmts: List[Any], print_debug: bool = True) -> Dict[str, float]:
-    """
-    Validation phase: Extract reward_stats from cmts and compute metrics.
-
-    Args:
-        cmts: List of cmt objects
-        print_debug: Whether to print debug information
-
-    Returns:
-        Formatted metrics dictionary (with "val_reward/" prefix)
-    """
-    reward_stats_list, debug_stats = extract_reward_stats_from_cmts(cmts)
-
-    if print_debug:
-        print(f"\n[DEBUG eval_dataset()] reward_stats statistics:")
-        print(f"  - Total cmts count: {debug_stats['total_cmts']}")
-        print(f"  - Has workflow_metadata: {debug_stats['has_workflow_metadata']}")
-        print(f"  - Has reward_stats: {debug_stats['has_reward_stats']}")
-        print(f"  - Extracted samples count: {len(reward_stats_list)}")
-
-    return compute_reward_metrics(reward_stats_list, prefix="val_")
