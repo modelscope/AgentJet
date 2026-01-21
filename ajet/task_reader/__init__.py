@@ -61,6 +61,10 @@ class RouterTaskReader(BaseTaskReader):
             self.task_reader = DataGeneratorTaskReader(reader_config)
         elif task_reader_type == "random_dummy":
             self.task_reader = RandomDummyTaskReader(reader_config)
+        elif task_reader_type == "deep_finance":
+            # deep_finance: load message from JSON file and assemble init_messages, tool calls go through env_service
+            from tutorial.example_deep_finance.deep_finance_reader import DeepFinanceReader
+            self.task_reader = DeepFinanceReader(reader_config)
         else:
             raise ValueError(f"Unsupported task reader type: {task_reader_type}")
 

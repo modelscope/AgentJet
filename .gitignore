@@ -152,3 +152,8 @@ datasets
 tutorial2
 site
 dump.rdb
+
+
+tutorial/example_deep_finance/yaml/*
+tutorial/example_deep_finance/config/*
+tutorial/example_deep_finance/scripts/*

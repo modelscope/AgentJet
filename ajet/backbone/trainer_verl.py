@@ -603,7 +603,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             }
                         )
                         save_trajectory_as_json_file(context_tracker_arr, self.global_steps, self.config, prefix="train")
-                        update_metrics(context_tracker_arr, metrics)
+                        update_metrics(context_tracker_arr, metrics, prefix="train_")
                         if self.config.ajet.execute_test:  # apply a test probe
                             from swanlab.data.run.main import get_run
 
@@ -1047,7 +1047,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,
         }
         save_trajectory_as_json_file(ctx_trackers, self.global_steps, self.config, prefix="eval")
-        update_metrics(ctx_trackers, val_metrics)
+        update_metrics(ctx_trackers, val_metrics, prefix="eval_")
         print_dict(
             val_metrics,
             narrow=True,

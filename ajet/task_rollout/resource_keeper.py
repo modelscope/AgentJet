@@ -25,7 +25,7 @@ class ResourceKeeper(object):
         self.tokenizer = self.workflow_task.tokenizer
         self.llm_inference_fn = self.workflow_task.llm_inference_fn
         self.observation_window = self.workflow_task.observation_window
-        if self.config.ajet.task_reader.type == "env_service":
+        if self.config.ajet.task_reader.type in ("env_service", "deep_finance"):
             url = self.config.ajet.task_reader.env_service.env_url
             env_type = self.config.ajet.task_reader.env_service.env_type
             self.env = EnvClientNg(base_url=url)
@@ -74,7 +74,9 @@ class ResourceKeeper(object):
             Exception: If environment creation fails or required task data is missing
         """
 
-        if self.config.ajet.task_reader.type == "env_service":
+        reader_type = self.config.ajet.task_reader.type
+
+        if reader_type == "env_service":
             if self.env is None:
                 raise ValueError("Environment client is None but env_service type is specified")
             try:
@@ -88,6 +90,32 @@ class ResourceKeeper(object):
                 query, init_messages = self._get_init_messages(state_message)
                 # Update main_query with actual query from environment
                 self.workflow_task.task.main_query = query
+            except Exception as e:
+                logger.bind(exception=True).exception(
+                    f"encounter exception in env_worker.create_instance~ error={e.args}"
+                )
+                if self.env is not None:
+                    self.env.release_instance(self.workflow_task.episode_uuid)
+                raise e
+        elif reader_type == "deep_finance":
+            # deep_finance: call create_instance to register instance, but use init_messages assembled by the reader
+            if self.env is None:
+                raise ValueError("Environment client is None but deep_finance type is specified")
+            try:
+                # call create_instance, let the server create an instance, so that subsequent step() can work
+                self.env.create_instance(
+                    env_type=self.env_type,
+                    task_id=self.task_id,
+                    instance_id=self.workflow_task.episode_uuid,
+                    params=self.env_params,
+                )
+                # Do not use the returned state, directly use the init_messages assembled by the reader
+                task = self.workflow_task.task
+                if task.init_messages:
+                    init_messages = task.init_messages
+                else:
+                    assert task.main_query, "deep_finance requires init_messages or main_query."
+                    init_messages = [{"role": "user", "content": task.main_query}]
             except Exception as e:
                 logger.bind(exception=True).exception(
                     f"encounter exception in env_worker.create_instance~ error={e.args}"
@@ -177,11 +205,15 @@ class BaseGymEnv(object):
             action=action,
         )
         obs = ""
+        reward = 0
+        info = {}
         assert isinstance(env_output, dict)
 
         if isinstance(env_output["state"], list):
             # 1. If state is a list (new standard format), pass through directly
             obs = env_output["state"]
+            reward = env_output["reward"]
+            info = env_output["info"]
         else:
             # 2. If state is a dict (old format or error)
             if ("content" not in env_output["state"]) and ("error" in env_output["state"]):
@@ -191,8 +223,6 @@ class BaseGymEnv(object):
             else:
                 obs = env_output["state"]["content"]
 
-        reward = 0
-        info = {}
         terminate = env_output["is_terminated"]
         return obs, reward, terminate, info # type: ignore
 
