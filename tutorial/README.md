@@ -8,4 +8,4 @@ Explore our rich library of examples to kickstart your journey.
 
 - Example Benchmark Tracking System:
 
-    https://benchmark.agent-matrix.com/examples
+    https://benchmark.agentjet.top/examples
