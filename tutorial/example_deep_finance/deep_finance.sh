@@ -208,6 +208,7 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
         --with-deepfinance \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
+        --prefix=${SUFFIX} \
         2>&1 | tee ${TRAIN_LOG}
     
 
