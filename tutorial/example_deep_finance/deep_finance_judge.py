@@ -373,8 +373,12 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             fused_reward, contributions = self._fuse_grader_scores(grader_scores, rm_raw)
             
             # 6. 计算惩罚项（保留原有的 tool_calls 惩罚逻辑）
-            tool_calls = metadata.get("tool_stats", {}).get("total_calls", 0)
+            # 从 log_metrics 中提取 tool_stats（deep_finance.py 将其放在 log_metrics 而非 metadata）
+            tool_stats = workflow_output.log_metrics.get("tool_stats", {})
+            tool_calls = tool_stats.get("total_calls", 0)
             penalty = self._compute_penalty(tool_calls)
+            if penalty < 0:
+                print(f"⚠️ Penalty applied: penalty={penalty}, tool_calls={tool_stats}")
             
             # 7. 汇总
             final_reward = fused_reward + step_reward + penalty

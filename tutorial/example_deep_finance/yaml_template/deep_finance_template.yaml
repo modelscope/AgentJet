@@ -32,7 +32,7 @@ ajet:
   rollout:
     # ✨✨✨✨ 编写并选择Agent
     user_workflow: tutorial.example_deep_finance.deep_finance->ExampleDeepResearchProtocol
-    force_disable_toolcalls: True
+    force_disable_toolcalls: False
     enable_oversample: False
     tensor_model_parallel_size: 8
     num_repeat: {{NUM_REPEAT}}
