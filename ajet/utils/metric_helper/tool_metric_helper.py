@@ -125,6 +125,7 @@ def compute_tool_metrics(tool_stats_list: List[Dict[str, Any]], prefix: str = ""
         if calls > 0:
             error_rate = errors / calls * 100
             metrics[f"{prefix}tool_error/{tool_name}/error_rate"] = round(error_rate, 2)
+            metrics[f"{prefix}tool_error/{tool_name}/calls"] = calls
 
 
     return metrics
