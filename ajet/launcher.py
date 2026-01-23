@@ -99,7 +99,7 @@ def parse_args():
         default=False,
         help="Kill system processes (ray + vllm + python) that may block the current experiment",
     )
-    parser.add_argument("--prefix", type=str, default="", required=False, help="Prefix for service names")
+    parser.add_argument("--prefix", type=str, default="", required=False, help="Prefix for deepfinance service names")
     return parser.parse_args()
 
 
