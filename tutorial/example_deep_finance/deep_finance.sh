@@ -3,7 +3,7 @@ set -e
 #===============================================================================
 # 1. 配置区域 - 用户只需修改这里
 #===============================================================================
-SUFFIX="ajet_deep_finance"     # 实验后缀，影响所有日志和实验名称
+SUFFIX="deep_finance"     # 实验后缀，影响所有日志和实验名称
 PREFIX="open"                        # 实验前缀，影响日志和实验所在文件夹
 
 # OpenJudge 模型配置
@@ -208,6 +208,7 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
         --with-deepfinance \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
+        --prefix=${SUFFIX} \
         2>&1 | tee ${TRAIN_LOG}
     
 
