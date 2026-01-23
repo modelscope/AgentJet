@@ -5,7 +5,7 @@ ajet:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     # effective when `type: huggingface_dat_repo`
     huggingface_dat_repo:
-      dataset_path: '/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main'
+      dataset_path: '/mnt/data_cpfs/model_cache/modelscope/dataset/openai/gsm8k/main'
       training_split: "train"
       validation_split: "test"
 
