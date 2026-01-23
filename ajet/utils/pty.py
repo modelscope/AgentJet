@@ -96,13 +96,15 @@ def pty_wrapper_final(human_cmd, dir, env_dict):
     pty_wrapper(["/bin/bash", "-c", human_cmd], dir, env_dict)
 
 
-def pty_launch(service_name: str, success_std_string="Starting server on"):
+def pty_launch(service_name: str, success_std_string="Starting server on", prefix: str=""):
     from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
 
     service_path = os.environ.get(f"{service_name.upper()}_PATH")
     service_script = os.environ.get(f"{service_name.upper()}_SCRIPT")
     if service_path is None or service_script is None:
         raise ValueError(f"Environment variables for {service_name} not properly set.")
+    if prefix != "":
+        service_name = prefix + "_" + service_name  
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[service_script],
         dir=service_path,

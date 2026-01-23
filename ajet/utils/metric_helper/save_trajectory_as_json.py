@@ -40,7 +40,7 @@ def save_trajectory_as_json(ctx_trackers, global_steps, prefix="train"):
         # Define save directory and file path
         traj_save_dir = os.path.join(
             os.environ.get("BEST_LOGGER_PATH", "launcher_record"),
-            "ctx_trackers",
+            "trajectory",
             prefix,
             f"step_{global_steps}"
         )
