@@ -82,7 +82,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         #        },
         #    ],
         # }
-        # or tool_result format:
+        # or tool_result format?? not observed yet:
         # msg = {
         #    "role": "tool",
         #    "content": [
@@ -97,31 +97,27 @@ class MultiAgentContextTracker(BaseContextTracker):
 
         str_content = ""
         for item in msg["content"]:
+            # item = {
+            #   "type": "text",
+            #   "text": "some text"
+            # },
+            item_type = item.get("type", "")
+            assert not item_type == "tool_use", f"never observed such protocal yet"
+            assert not item_type == "tool_result", f"never observed such protocal yet"
+
             assert isinstance(item, dict), f"Unsupported non-dict item in message content: {item}. Full message: {msg}"
 
-            item_type = item.get("type", "")
-
-            # Handle text content block
-            if "text" in item:
-                if isinstance(item["text"], str):
-                    str_content += item["text"]
-            # Handle tool_result content block (AgentScope format)
-            elif item_type == "tool_result" and "output" in item:
-                output = item["output"]
-                if isinstance(output, str):
-                    str_content += output
-                else:
-                    str_content += str(output)
-            # Handle tool_use content block (for completeness)
-            elif item_type == "tool_use":
-                # tool_use blocks are handled via tool_calls field, skip content extraction
-                continue
-            else:
+            if ("text" not in item):
                 logger.warning(
-                    f"Non-text content in message content detected: {item}. Ignoring this item."
+                    f"Non-text content in message content detected: {item}. Ignoring."
                 )
-                # Continue processing other items instead of skipping the entire message
-                continue
+                should_skip_message = True
+                return str_content, should_skip_message
+
+            if isinstance(item["text"], str):
+                str_content += str(item["text"])
+            else:
+                str_content = ""
 
         should_skip_message = False
         return str_content, should_skip_message
