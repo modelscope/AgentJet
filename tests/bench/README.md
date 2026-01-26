@@ -29,5 +29,5 @@ VERL_PYTHON="./.verl/bin/python" python -m pytest -s tests/bench/benchmark_froze
 export APPWORLD_PATH="/dev/shm/pack_all_in_one"
 export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld.yaml --with-appworld --backbone=debug --autokill
-python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld.yaml --with-appworld --autokill --db="EXT"
+python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld_oai_sdk.yaml --with-appworld --autokill --db="EXT"
 ```
