@@ -312,10 +312,21 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 chat_date=chat_date
             )
             
+            # DEBUG: 记录转换后的样本结构
+            print(f"  [DEBUG] task_id={task_id}, messages_count={len(openjudge_sample.get('messages', []))}")
+            if openjudge_sample.get('messages'):
+                last_msg = openjudge_sample['messages'][-1]
+                print(f"  [DEBUG] last_msg role={last_msg.get('role')}, content_len={len(last_msg.get('content', ''))}")
+            
             # 3. 调用 OpenJudge Runner.arun（异步）
             grading_start_time = time.time()
             grader_results = self._run_openjudge_evaluation([openjudge_sample])
             grading_time = time.time() - grading_start_time
+            
+            # DEBUG: 记录原始 grader 结果
+            print(f"  [DEBUG] grader_results keys: {list(grader_results.keys())}")
+            for gname, glist in grader_results.items():
+                print(f"  [DEBUG] {gname}: count={len(glist)}, type={type(glist[0]) if glist else 'empty'}")
             
             # 4. 提取各 grader 分数（arun 返回 Dict[str, List[GraderScore]]，这里取第一条）
             grader_scores, quota_exceeded_flags = self._extract_grader_scores(grader_results)
@@ -520,6 +531,11 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             if score_list and len(score_list) > 0:
                 # 取第一条采样的分数（因为每次只评估一条）
                 grader_score = score_list[0]
+                
+                # DEBUG: 记录详细信息
+                reason_str = getattr(grader_score, 'reason', None)
+                print(f"  [DEBUG] {grader_name}: score={getattr(grader_score, 'score', 'N/A')}, reason={str(reason_str)[:300] if reason_str else 'N/A'}")
+                
                 if hasattr(grader_score, "score"):
                     scores[grader_name] = grader_score.score
                     # 检测错误类型：分数为0且有错误信息
@@ -531,8 +547,10 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 else:
                     # 如果出错，设为 0
                     scores[grader_name] = 0.0
+                    print(f"  [DEBUG] {grader_name}: no 'score' attr, grader_score={grader_score}")
             else:
                 scores[grader_name] = 0.0
+                print(f"  [DEBUG] {grader_name}: empty score_list")
         
         print(f"  [OpenJudge Scores] {scores}")
         if any(quota_exceeded_flags.values()):
