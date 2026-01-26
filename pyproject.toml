@@ -23,6 +23,7 @@ dependencies = [
     "tenacity",
     "loguru",
     "debugpy",
+    "gymnasium[toy_text]",
     "swanlab",
     "modelscope>=1.18.1",
     "pydantic",
