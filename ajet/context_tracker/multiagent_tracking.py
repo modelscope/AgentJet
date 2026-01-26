@@ -82,18 +82,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         #        },
         #    ],
         # }
-        # or tool_result format?? not observed yet:
-        # msg = {
-        #    "role": "tool",
-        #    "content": [
-        #        {
-        #           "type": "tool_result",
-        #           "id": "call_xxx",
-        #           "output": "tool output content",
-        #           "name": "tool_name"
-        #        },
-        #    ],
-        # }
+
 
         str_content = ""
         for item in msg["content"]:
