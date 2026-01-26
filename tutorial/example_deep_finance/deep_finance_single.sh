@@ -3,7 +3,7 @@ set -e
 #===============================================================================
 # 1. 配置区域 - 用户只需修改这里
 #===============================================================================
-SUFFIX="deep_finance"     # 实验后缀，影响所有日志和实验名称
+SUFFIX="ajet_deep_finance"     # 实验后缀，影响所有日志和实验名称
 PREFIX="open"                        # 实验前缀，影响日志和实验所在文件夹
 
 # OpenJudge 模型配置
@@ -66,6 +66,7 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{TRAIN_BATCH_SIZE}}|${TRAIN_BATCH_SIZE}|g" \
     -e "s|{{TRAIN_DATA_PATH}}|${TRAIN_DATA_PATH}|g" \
     -e "s|{{VAL_DATA_PATH}}|${VAL_DATA_PATH}|g" \
+    -e "s|{{ENV_SERVICE_URL}}|${ENV_SERVICE_URL}|g" \
     -e "s|{{TRAIN_REF_ANS_PATH}}|${TRAIN_REF_ANS_PATH}|g" \
     -e "s|{{VAL_REF_ANS_PATH}}|${VAL_REF_ANS_PATH}|g" \
     -e "s|{{CKPT_SAVE_PATH}}|${CKPT_SAVE_PATH}|g" \
@@ -169,53 +170,8 @@ mkdir -p $(dirname ${CONFIG_FILE})
 #===============================================================================
 #  6.1 Master 节点启动流程
 #===============================================================================
-if [[ $HOSTNAME == *"-master-"* ]]; then
-    print_green "==> This is MASTER node: $HOSTNAME"
-
-    #---------------------------------------------------------------------------
-    # 6.1.1 清理和初始化 Ray
-    #---------------------------------------------------------------------------
-    rm -f "$MASTER_IP_FILE"
-    ray stop --force || true
-    sleep 3
-
-    #---------------------------------------------------------------------------
-    # 6.1.2 启动 Ray Head
-    #---------------------------------------------------------------------------
-    print_green "Starting Ray head node at $MASTER_ADDR"
-    ray start --head --node-ip-address $MASTER_ADDR --num-gpus 8
-    sleep 10
-    echo $MASTER_ADDR > $MASTER_IP_FILE
-
-    #---------------------------------------------------------------------------
-    # 6.1.3 启动训练任务
-    #---------------------------------------------------------------------------
-    print_green "Starting training job..."
-    source .venv/bin/activate
-    export RAY_ADDRESS="ray://localhost:10001"
-
-    print_green "==================================="
-    print_green "Training Configuration"
-    print_green "Total GPUs: $((NNODES * GPUS_PER_NODE))"
-    print_green "Log: ${TRAIN_LOG}"
-    print_green "==================================="
-
-    # 启动训练任务（最核心）
-    python ajet/launcher.py \
-        --conf ${CONFIG_FILE} \
-        --backbone="verl" \
-        --prefix=${SUFFIX} \
-        2>&1 | tee ${TRAIN_LOG}
-
-
-#===============================================================================
-# 6.2 Worker 节点启动流程
-#===============================================================================
-else
-    print_green "==> This is WORKER node: $HOSTNAME"
-    while [ ! -f $MASTER_IP_FILE ]; do sleep 5; done
-    MASTER_ADDR=$(cat $MASTER_IP_FILE)
-    ray stop || true
-    ray start --address $MASTER_ADDR:6379 --num-gpus 8
-    while true; do sleep 60; done
-fi
+# 启动训练任务（最核心）
+python ajet/launcher.py \
+    --conf ${CONFIG_FILE} \
+    --backbone="debug" \
+    2>&1 | tee ${TRAIN_LOG}
