@@ -46,7 +46,7 @@ fi
 # 2. 动态生成配置文件 (从yaml template生成yaml)
 #===============================================================================
 # 修改：配置文件生成路径，现在动态生成到 yaml 目录下
-CONFIG_TEMPLATE="tutorial/example_deep_finance/yaml_template/deep_finance_template.yaml"
+CONFIG_TEMPLATE="tutorial/example_deep_finance/deep_finance.yaml"
 CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/${SUFFIX}.yaml"
 mkdir -p $(dirname ${CONFIG_FILE})
 
