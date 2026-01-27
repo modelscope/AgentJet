@@ -1,4 +1,3 @@
-from agentscope.message import Msg
 
 from ajet import Workflow, WorkflowOutput, WorkflowTask
 from ajet import AjetTuner
@@ -14,14 +13,18 @@ class ExampleAgentScopeWorkflow(Workflow):
             first_msg, init_messages = init_messages[0], init_messages[1:]
         else:
             first_msg = {"content": "You're a helpful assistant."}
-        interaction_message = []
+        interaction_message = [
+            {
+                "content": first_msg.get("content", "You're a helpful assistant."),
+                "role": "system",
+            }
+        ]
         for msg in init_messages:
             interaction_message.append(
-                Msg(
-                    name=msg.get("name", "user"),
-                    content=msg.get("content", ""),
-                    role=msg.get("role", "user"),
-                )
+                {
+                    "content": msg.get("content", ""),
+                    "role": msg.get("role", "user"),
+                }
             )
 
         client = tuner.as_raw_openai_sdk_client()
@@ -35,7 +38,18 @@ class ExampleAgentScopeWorkflow(Workflow):
                 action={"content": reply_message.choices[0].message.content, "role": "assistant"}
             )
             # generate new message from env output
-            interaction_message = Msg(name="env", content=obs, role="user")
+            interaction_message.extend(
+                [
+                    {
+                        "content": reply_message.choices[0].message.content,
+                        "role": "assistant",
+                    },
+                    {
+                        "content": obs,
+                        "role": "user",
+                    }
+                ]
+            )
             # is terminated?
             if terminate:
                 break

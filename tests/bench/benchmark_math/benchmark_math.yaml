@@ -4,7 +4,7 @@ ajet:
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     huggingface_dat_repo:
-      dataset_path: '/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main'
+      dataset_path: '/mnt/data_cpfs/model_cache/modelscope/dataset/openai/gsm8k/main'
       training_split: "train"
       validation_split: "test"
 
@@ -47,6 +47,9 @@ ajet:
     test_freq: 999999
     total_epochs: 100
     logger: swanlab
+    nnodes: 1
+    n_gpus_per_node: 4
+
 
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT

@@ -95,6 +95,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         #    ],
         # }
 
+
         str_content = ""
         for item in msg["content"]:
             # item = {

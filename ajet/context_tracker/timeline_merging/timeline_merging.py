@@ -74,8 +74,8 @@ def is_timeline_mergeable(
 
 
 def toggle_author_and_mask(
-    source_timeline: List[ExtendedMessage],
-    target_timeline: List[ExtendedMessage],
+    source_timeline: List[ExtendedMessage], # the longer timeline
+    target_timeline: List[ExtendedMessage], # the shorter timeline
 ) -> List[ExtendedMessage]:
     # if any message in `target_timeline` is author == 'llm',
     # but same-index message in `source_timeline` is author != 'llm'

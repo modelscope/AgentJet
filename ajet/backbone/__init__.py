@@ -13,4 +13,4 @@ try:
         "AjetTaskReader",
     ]
 except ImportError:
-    logger.warning("trinity is not available.")
+    logger.info("trinity is not available.")

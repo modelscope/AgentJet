@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name =  "AgentJet"
-version = "0.0.1"
+version = "0.0.0"
 readme = "README.md"
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,7 +23,6 @@ dependencies = [
     "tenacity",
     "loguru",
     "debugpy",
-    "gymnasium[toy_text]",
     "swanlab",
     "modelscope>=1.18.1",
     "pydantic",
