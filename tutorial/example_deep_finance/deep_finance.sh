@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -e  
 #===============================================================================
 # 1. 配置区域 - 用户只需修改这里
 #===============================================================================
@@ -22,7 +22,7 @@ TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
 
-# 主目录 (按需更改)
+# 主目录（需要更改）
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
 
 NNODES=${WORLD_SIZE}
@@ -105,7 +105,7 @@ export DEEPFINANCE_MCP_CONFIG  DEEPFINANCE_TOOL_RESULT_MAX_CHARS
 # 其他服务配置
 HF_ENDPOINT="https://hf-mirror.com"
 ES_HOSTS="http://11.160.132.46:8200"
-export HF_ENDPOINT ES_HOSTS
+export HF_ENDPOINT ES_HOSTS 
 
 # log 文件位置
 CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
@@ -155,6 +155,8 @@ export NCCL_ASYNC_ERROR_HANDLING=1
 
 export PYTHONPATH="${AJET_ROOT}:${PYTHONPATH}"
 export RAY_CLUSTER_MODE="multi_node"
+export DEEPFINANCE_PATH="${ENV_SERVICE_ROOT}" # AgentJet 内部可能使用此路径
+export DEEPFINANCE_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profile.d/conda.sh && conda activate finworld_1209  && cd ${ENV_SERVICE_ROOT} && DEEPFINANCE_TOOL_RESULT_MAX_CHARS=${DEEPFINANCE_TOOL_RESULT_MAX_CHARS} DEEPFINANCE_MCP_CONFIG=${DEEPFINANCE_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
 
 
 #===============================================================================
@@ -201,11 +203,12 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
 
     # 启动训练任务（最核心）
     python ajet/launcher.py \
+        --with-deepfinance \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
         --prefix=${env_log_prefix} \
         2>&1 | tee ${TRAIN_LOG}
-
+    
 
 #===============================================================================
 # 6.2 Worker 节点启动流程
