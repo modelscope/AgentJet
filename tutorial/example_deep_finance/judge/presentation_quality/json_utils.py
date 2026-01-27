@@ -51,6 +51,28 @@ def get_bool_pass(item: Any) -> bool:
     return False
 
 
+def get_score(item: Any) -> int:
+    """
+    Extract numeric score (1, 3, 5) from item.
+    Returns 1 as default if invalid.
+    """
+    if isinstance(item, dict):
+        v = item.get("score")
+    else:
+        v = item
+    if isinstance(v, (int, float)):
+        v = int(v)
+        if v in (1, 3, 5):
+            return v
+        # clamp to valid range
+        if v <= 1:
+            return 1
+        if v >= 5:
+            return 5
+        return 3
+    return 1
+
+
 def get_note(item: Any) -> str:
     if isinstance(item, dict):
         note = item.get("note", "")

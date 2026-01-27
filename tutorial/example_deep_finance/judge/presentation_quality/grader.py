@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Dict, List, Tuple
 
 from openjudge.graders.base_grader import BaseGrader
@@ -20,14 +21,14 @@ from .prompt import (
     B_KEYS,
     C_KEYS,
 )
-from .json_utils import strict_load_json, validate_shape, get_bool_pass, get_note
+from .json_utils import strict_load_json, validate_shape, get_score, get_note
 
 
 class PresentationQualityGrader(BaseGrader):
     """
     - 输入：report_content（研究报告文本）
     - 输出：GraderScore(name, score, reason)
-    - score：8项(pass)均分，范围[0,1]
+    - score：8项按1/3/5分制评分，总分归一化到[0,1]（总分/40）
     - determinism：建议用 temperature=0 + disable thinking 等（见 create_default_model）
     - 解析失败：score=0，并在 reason 显示报错
     """
@@ -92,7 +93,13 @@ class PresentationQualityGrader(BaseGrader):
         入口：直接喂 report_content（研究报告文本）
         - user_query 可选：用于填充 prompt；不提供则用 "(unknown)"
         """
+
+        
         report = (report_content or "").strip()
+        
+        # 清理 markdown 代码块标记
+        report = self._strip_markdown_fences(report)
+        
         if not report:
             return GraderScore(
                 name=self.name,
@@ -143,6 +150,7 @@ class PresentationQualityGrader(BaseGrader):
             )
 
         score, reason = self._score_and_reason(obj)
+        
         return GraderScore(name=self.name, score=score, reason=reason)
 
     def _score_and_reason(self, obj: Dict[str, Any]) -> Tuple[float, str]:
@@ -151,13 +159,13 @@ class PresentationQualityGrader(BaseGrader):
         editorial = obj["editorial"]
         top_fixes = obj.get("top_fixes", [])
 
-        # 8项均分（强确定性：完全由Python算）
-        pass_map: Dict[str, bool] = {}
+        # 8项按1/3/5分制计分（强确定性：完全由Python算）
+        score_map: Dict[str, int] = {}
         note_map: Dict[str, str] = {}
 
         def take(section: Dict[str, Any], key: str):
             item = section.get(key)
-            pass_map[key] = get_bool_pass(item)
+            score_map[key] = get_score(item)
             note_map[key] = get_note(item)
 
         for k in A_KEYS:
@@ -167,21 +175,37 @@ class PresentationQualityGrader(BaseGrader):
         for k in C_KEYS:
             take(editorial, k)
 
-        passed = sum(1 for k in ALL_KEYS if pass_map.get(k) is True)
-        total = len(ALL_KEYS)  # 8
-        score = passed / float(total)
+        # 总分 = 各项得分之和 / 最高可能分 (8*5=40)，归一化到[0,1]
+        total_score = sum(score_map.get(k, 1) for k in ALL_KEYS)
+        max_score = len(ALL_KEYS) * 5  # 8 * 5 = 40
+        score = total_score / float(max_score)
 
-        # reason：不加额外字段，只给紧凑总结
-        failed_items = [k for k in ALL_KEYS if not pass_map.get(k, False)]
-        failed_str = ", ".join(f"{k}({note_map.get(k,'')})" for k in failed_items[:4])
+        # reason：按分数排序，列出低分项
+        low_items = [(k, score_map.get(k, 1)) for k in ALL_KEYS if score_map.get(k, 1) < 5]
+        low_items.sort(key=lambda x: x[1])  # 从低到高
+        low_str = ", ".join(f"{k}={s}({note_map.get(k,'')})" for k, s in low_items[:4])
         fixes_str = " | ".join(str(x) for x in (top_fixes or [])[:3])
 
         parts: List[str] = []
-        parts.append(f"Pass {passed}/{total}")
-        if failed_items:
-            parts.append(f"Fail: {failed_str}")
+        parts.append(f"Score {total_score}/{max_score}")
+        if low_items:
+            parts.append(f"Low: {low_str}")
         if fixes_str:
             parts.append(f"TopFixes: {fixes_str}")
 
         reason = " ; ".join(parts)
         return round(score, 6), reason[:800]
+
+    @staticmethod
+    def _strip_markdown_fences(text: str) -> str:
+        """
+        清理 markdown 代码块标记
+        - 移除开头的 ```markdown / ```md / ``` 等
+        - 移除结尾的 ```
+        """
+        text = text.strip()
+        # 移除开头的 ```xxx
+        text = re.sub(r'^```(?:markdown|md)?\s*\n?', '', text, flags=re.IGNORECASE)
+        # 移除结尾的 ```
+        text = re.sub(r'\n?```\s*$', '', text)
+        return text.strip()

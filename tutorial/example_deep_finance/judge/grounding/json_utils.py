@@ -145,6 +145,20 @@ def _strip_think(text: str) -> str:
     return re.sub(r"<think>.*?</think>\s*", "", text, flags=re.S).strip()
 
 
+def _strip_markdown_fences(text: str) -> str:
+    """
+    清理 markdown 代码块标记
+    - 移除开头的 ```markdown / ```md / ``` 等
+    - 移除结尾的 ```
+    """
+    text = text.strip()
+    # 移除开头的 ```xxx
+    text = re.sub(r'^```(?:markdown|md)?\s*\n?', '', text, flags=re.IGNORECASE)
+    # 移除结尾的 ```
+    text = re.sub(r'\n?```\s*$', '', text)
+    return text.strip()
+
+
 def _normalize_traj(trajectory):
     """兼容 [[...]] 格式"""
     if isinstance(trajectory, list) and trajectory and isinstance(trajectory[0], list):
@@ -215,6 +229,9 @@ def construct_reward_prompt(trajectory: List[Dict[str, Any]], user_prompt_templa
             if traj[i].get("role") == "assistant":
                 final_report = _strip_think(_extract_text_content(traj[i].get("content")))
                 break
+
+    # 清理 markdown 代码块标记
+    final_report = _strip_markdown_fences(final_report)
 
     # 遍历提取 user_query, tool_calls, evidence
     for idx, step in enumerate(traj):
