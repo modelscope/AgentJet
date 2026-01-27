@@ -11,8 +11,11 @@ SwanLab metrics directory structure:
 - judge_time/                 Judge time consumption statistics
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, TYPE_CHECKING
 import numpy as np
+
+if TYPE_CHECKING:
+    from ajet.schema.trajectory import Reward
 
 
 def extract_reward_stats_from_trajectories(trajectories: List[Any]) -> List[Dict[str, Any]]:
@@ -72,19 +75,15 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
     metrics[f"{prefix}rewards/penalty_count"] = len(non_zero_penalties)
     metrics[f"{prefix}rewards/penalty_rate"] = len(non_zero_penalties) / n * 100 if n > 0 else 0.0
 
-    # ========== Detect OpenJudge Usage ==========
+    # ========== OpenJudge Metrics (PresentationQualityGrader, GroundingGrader) ==========
     openjudge_enabled_count = sum(1 for rs in reward_stats_list if rs.get('openjudge_enabled', False))
 
     if openjudge_enabled_count > 0:
-        # ========== OpenJudge Metrics ==========
-
-        # Dynamically extract OpenJudge grader fields
-        # Currently supported graders: report_resolution, trajectory_faithfulness,
-        # rubrics_performance, trajectory_comprehensive, information_gain, action_loop
+        # OpenJudge graders: presentation_quality, grounding
         openjudge_graders = [
-            "report_resolution",
-            "trajectory_faithfulness",
-            "citation_audit",
+            "presentation_quality",
+            "grounding",
+            "planning"
         ]
 
         for grader_name in openjudge_graders:
@@ -147,4 +146,19 @@ def compute_reward_metrics_from_trajectories(trajectories: List[Any], prefix: st
     """
     reward_stats_list = extract_reward_stats_from_trajectories(trajectories)
     return compute_reward_metrics(reward_stats_list, prefix=prefix)
+
+
+def populate_reward_metadata_from_stats(reward: "Reward", reward_stats: Dict[str, Any]) -> None:
+    """
+    Populate Reward.metadata with all reward statistics.
+    
+    Args:
+        reward: The Reward object to populate
+        reward_stats: The reward_stats dictionary from judge
+    """
+    if not reward_stats:
+        return
+    
+    # Directly copy all reward_stats into metadata
+    reward.metadata.update(reward_stats)
 
