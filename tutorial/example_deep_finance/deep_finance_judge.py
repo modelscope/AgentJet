@@ -15,12 +15,9 @@ from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-from tutorial.example_deep_finance.judge import PresentationQualityGrader
-from tutorial.example_deep_finance.judge.grounding import GroundingGrader
+from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader
 
 
-# RewardStats 不再使用，OpenJudge 版本直接使用字典存储
-# Reference Answer 路径现在从 config 中读取，见 _init_reference_answers 方法
 
 # OpenJudge imports
 # =============================================================================
@@ -312,24 +309,27 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 chat_date=chat_date
             )
             
-            # DEBUG: 记录转换后的样本结构
-            print(f"  [DEBUG] task_id={task_id}, messages_count={len(openjudge_sample.get('messages', []))}")
             if openjudge_sample.get('messages'):
                 last_msg = openjudge_sample['messages'][-1]
-                print(f"  [DEBUG] last_msg role={last_msg.get('role')}, content_len={len(last_msg.get('content', ''))}")
             
             # 3. 调用 OpenJudge Runner.arun（异步）
             grading_start_time = time.time()
             grader_results = self._run_openjudge_evaluation([openjudge_sample])
             grading_time = time.time() - grading_start_time
-            
-            # DEBUG: 记录原始 grader 结果
-            print(f"  [DEBUG] grader_results keys: {list(grader_results.keys())}")
-            for gname, glist in grader_results.items():
-                print(f"  [DEBUG] {gname}: count={len(glist)}, type={type(glist[0]) if glist else 'empty'}")
+
             
             # 4. 提取各 grader 分数（arun 返回 Dict[str, List[GraderScore]]，这里取第一条）
             grader_scores, quota_exceeded_flags = self._extract_grader_scores(grader_results)
+            
+            # 4.5 如果有分数为0的grader，保存调试信息到单独文件
+            self._save_zero_score_debug(
+                grader_scores=grader_scores,
+                grader_results=grader_results,
+                query=query,
+                history=history,
+                report=assistants[-1] if assistants else "",
+                task_id=task_id
+            )
             
             # 5. 加权融合（包含 RM Gallery 和 OpenJudge Graders）
             fused_reward, contributions = self._fuse_grader_scores(grader_scores, rm_raw)
@@ -535,7 +535,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 # DEBUG: 记录详细信息
                 reason_str = getattr(grader_score, 'reason', None)
                 print(f"  [DEBUG] {grader_name}: score={getattr(grader_score, 'score', 'N/A')}, reason={str(reason_str)[:300] if reason_str else 'N/A'}")
-                
                 if hasattr(grader_score, "score"):
                     scores[grader_name] = grader_score.score
                     # 检测错误类型：分数为0且有错误信息
@@ -550,7 +549,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                     print(f"  [DEBUG] {grader_name}: no 'score' attr, grader_score={grader_score}")
             else:
                 scores[grader_name] = 0.0
-                print(f"  [DEBUG] {grader_name}: empty score_list")
         
         print(f"  [OpenJudge Scores] {scores}")
         if any(quota_exceeded_flags.values()):
@@ -625,6 +623,69 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         except Exception:
             pass
     
+    def _save_zero_score_debug(
+        self,
+        grader_scores: Dict[str, float],
+        grader_results: Dict[str, List[Any]],
+        query: str,
+        history: List[Dict],
+        report: str,
+        task_id: str
+    ):
+        """
+        当有 grader 分数为 0 时，保存详细调试信息到单独文件
+        
+        保存内容包括：
+        - query: 用户查询
+        - traj: 对话历史
+        - report: 最终报告（前500字）
+        - zero_score_reasons: 得 0 分的原因
+        """
+        try:
+            # 检查是否有分数为 0 的 grader
+            zero_score_graders = [name for name, score in grader_scores.items() if score == 0.0]
+            if not zero_score_graders:
+                return
+            
+            # 提取得 0 分的原因
+            zero_score_reasons = {}
+            for grader_name in zero_score_graders:
+                if grader_name in grader_results:
+                    score_list = grader_results[grader_name]
+                    if score_list and len(score_list) > 0:
+                        grader_score = score_list[0]
+                        reason = getattr(grader_score, 'reason', None)
+                        zero_score_reasons[grader_name] = str(reason) if reason else "N/A"
+                    else:
+                        zero_score_reasons[grader_name] = "empty score_list"
+                else:
+                    zero_score_reasons[grader_name] = "grader not in results"
+            
+            # 构建调试日志
+            debug_log = {
+                "task_id": task_id,
+                "timestamp": datetime.now().isoformat(),
+                "query": query,
+                "report": report if report else "",
+                "trajectory": history,
+                "grader_scores": grader_scores,
+                "zero_score_graders": zero_score_graders,
+                "zero_score_reasons": zero_score_reasons
+            }
+            
+            # 保存到单独文件
+            save_dir = "/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new/tutorial/example_deep_finance/outputs/reward_zero_debug"
+            os.makedirs(save_dir, exist_ok=True)
+            log_file = os.path.join(save_dir, f"zeroscore_{datetime.now().strftime('%Y%m%d')}.jsonl")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(debug_log, ensure_ascii=False) + "\n")
+            
+            print(f"  [ZERO SCORE DEBUG] task_id={task_id}, zero_graders={zero_score_graders}, saved to {log_file}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to save zero score debug: {e}")
+            pass
+    
     def _compute_penalty(self, tool_calls: int) -> float:
         """
         计算工具调用惩罚（保留原有逻辑）
@@ -674,10 +735,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             "penalty": penalty,
             "step_reward": step_reward,
             "openjudge_enabled": True,
-            # Quota exceeded (429) 统计
-            "quota_exceeded_any": quota_exceeded_any,  # 是否有任何 grader 超额
-            "quota_exceeded_count": quota_exceeded_count,  # 超额的 grader 数量
-            "quota_exceeded_graders": quota_exceeded_flags,  # 各 grader 的超额标记
             # RM Gallery 相关
             "rm_enabled": self._rm_enabled,
             "rm_raw": rm_raw,

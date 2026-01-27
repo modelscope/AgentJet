@@ -9,6 +9,7 @@ from ajet.schema.task import WorkflowTask
 from ajet.schema.trajectory import Reward
 from ajet.task_runner.base_runner import BaseAgentRunner
 from ajet.utils.dynamic_import import dynamic_import
+from ajet.utils.metric_helper.reward_metric_helper import populate_reward_metadata_from_stats
 
 
 class GeneralRunner(BaseAgentRunner):
@@ -73,6 +74,10 @@ class GeneralRunner(BaseAgentRunner):
             madness=0,
             description="",
         )
+        
+        # Populate reward metadata with deep_finance reward stats if available
+        if "reward_stats" in workflow_output.metadata:
+            populate_reward_metadata_from_stats(reward, workflow_output.metadata["reward_stats"])
         context_tracker.process_reward(reward)
         # generate token before merging
         context_tracker.group_merge()
