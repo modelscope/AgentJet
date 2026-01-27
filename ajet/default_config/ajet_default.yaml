@@ -281,7 +281,7 @@ ajet:
 
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
-  enable_experimental_interchange_server: True
+  enable_experimental_interchange_server: False
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
     interchange_server_port: 'auto'

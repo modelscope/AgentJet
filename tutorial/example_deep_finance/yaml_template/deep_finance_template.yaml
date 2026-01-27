@@ -46,13 +46,13 @@ ajet:
   interchange_server:
     interchange_method: 'tcp' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
   debug:
-    debug_max_parallel: 64  # 增加并行任务数，充分利用GPU
+    debug_max_parallel: 1  # 增加并行任务数，充分利用GPU
     debug_first_n_tasks: 100  # 增加处理的任务数
   data:
     train_batch_size: {{TRAIN_BATCH_SIZE}}
     max_prompt_length: 8000
     max_response_length: 41000
-  
+
   task_reader:
     type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
     deep_finance:
@@ -63,11 +63,11 @@ ajet:
     # env_service 仍需配置（用于工具调用）
     env_service:
       env_type: "finworld"
-      env_url: "http://127.0.0.1:8080"
+      env_url: {{ENV_SERVICE_URL}}
       env_action_preference: code
 trainer:
   default_local_dir: "{{CKPT_SAVE_PATH}}/{{PREFIX}}/{{SUFFIX}}"
-  # resume_mode: disable  # 禁用自动恢复，从头开始训练 
+  # resume_mode: disable  # 禁用自动恢复，从头开始训练
 actor_rollout_ref:
   rollout:
     tensor_model_parallel_size: 8

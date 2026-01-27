@@ -160,3 +160,7 @@ tutorial/example_deep_finance/scripts/*
 flash_attn-2.8.*.whl
 tutorial/example_deep_finance/prepare_data/*
 tutorial/example_deep_finance/judge/analytical_sufficiency/*
+
+.dockerignore
+benchmark_datasets
+modelscope_cache
