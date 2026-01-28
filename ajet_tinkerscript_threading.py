@@ -1,5 +1,6 @@
 import re
 import requests
+import time
 from textwrap import dedent
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.weight_tuner.experimental.as_tinkerscript_client import TinkerScriptClient
@@ -33,14 +34,18 @@ def main():
     )
     tinkerscript_remote = TinkerScriptClient(TINKERJET_URL)
 
-    tinkerscript_remote.sync_config(
+    print("TinkerScript remote handshake.")
+    tinkerscript_remote.sync_train_config(
         AgentJetJob(
             n_gpu=2,
             algorithm="grpo",
             model='qwen/Qwen2.5-1.5B-instruct'
         )
     )
-    tinkerscript_remote.begin_engine()
+    print("TinkerScript remote handshake and train config sync done.")
+    tinkerscript_remote.start_engine()
+    print("TinkerScript remote engine started.")
+    time.sleep(1000)
 
     # Define rollout
     def rollout(task):

@@ -93,7 +93,11 @@ class TinkerScriptClient(object):
         except Exception as e:
             logger.error(f"Error ending episode: {e}")
 
-    def sync_config(self, agent_jet_job: AgentJetJob):
+    def sync_train_config(self, agent_jet_job: AgentJetJob):
+        """
+        Sync training configuration to the TinkerScript server.
+        This sends the AgentJetJob config as YAML to the remote server.
+        """
         try:
             config_dict = agent_jet_job.config.to_dict()
             yaml_str = yaml.safe_dump(config_dict, sort_keys=False)
@@ -106,9 +110,32 @@ class TinkerScriptClient(object):
                 timeout=30
             )
             resp.raise_for_status()
-            logger.info("Synced train config")
+            logger.info("Synced train config to TinkerScript server")
         except Exception as e:
             logger.error(f"Error syncing train config: {e}")
+            raise
+
+    def start_engine(self):
+        """
+        Start the training engine on the TinkerScript server.
+        This triggers the server to begin the training process.
+        """
+        try:
+            resp = httpx.post(
+                f"{self.server_url}/start_engine",
+                json={},
+                timeout=30
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            if result.get("success"):
+                logger.info("Successfully started training engine on TinkerScript server")
+            else:
+                logger.error("Failed to start training engine")
+                raise RuntimeError("Failed to start training engine")
+        except Exception as e:
+            logger.error(f"Error starting engine: {e}")
+            raise
 
     def get_engine_status(self) -> str:
         try:

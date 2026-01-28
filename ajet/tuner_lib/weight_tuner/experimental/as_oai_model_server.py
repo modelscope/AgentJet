@@ -34,7 +34,7 @@ from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import EpisodeStatus
-
+from ajet.utils.networking import find_free_port, get_host_ip
 API_KEY_PREFIX = "sk-ajet-"
 
 class InterchangeCompletionRequest(BaseModel):
@@ -271,7 +271,7 @@ class InterchangeServer(Process):
 
 
 # Convenience function for quick server startup
-def start_interchange_server(config) -> int:
+def start_interchange_server(config, blocking=False) -> int:
     experiment_dir = config.ajet.experiment_dir
     num_fastapi_process = config.ajet.interchange_server.num_fastapi_process
     max_fastapi_threads = config.ajet.interchange_server.max_fastapi_threads
@@ -299,8 +299,12 @@ def start_interchange_server(config) -> int:
     interchange_server.start()
 
     # Wait for server to be ready
-    health_url = f"http://localhost:{port}/health"
+    health_url = f"http://127.0.0.1:{port}/health"
     start_time = time.time()
+    localhost_url = f"http://127.0.0.1:{port}"
+    host_ip = get_host_ip(os.environ.get("NETWORK_INTERFACE", None))
+    host_url = f"http://{host_ip}:{port}"
+
     while True:
         if interchange_server.exitcode is not None:
             logger.error(f"Interchange server subprocess failed to start. Return code: {interchange_server.exitcode}")
@@ -321,5 +325,13 @@ def start_interchange_server(config) -> int:
     if DEBUG: logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
     atexit.register(lambda: interchange_server.terminate())
 
-    # return port
-    return port
+    if not blocking:
+        # return port
+        return port
+    else:
+        logger.success(f"Interchange server is running in blocking mode on:\n------\n"
+                       f"URL 1: {localhost_url}\n------\n"
+                       f"URL 2: {host_url}\n------\n"
+                       f"Press Ctrl+C to stop.")
+        interchange_server.join()
+        return -1

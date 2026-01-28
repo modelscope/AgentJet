@@ -7,6 +7,7 @@ import time
 
 from beast_logger import print_dict
 from loguru import logger
+from types import SimpleNamespace
 
 from ajet.utils.config_utils import align_parameters
 from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
@@ -23,6 +24,101 @@ def set_loguru_default_color():
         logging.CRITICAL
     )
     return
+
+
+
+def check_debugpy_version():
+    try:
+        import debugpy
+    except ImportError:
+        raise RuntimeError(
+            "Module 'debugpy>=1.8.0' cannot be loaded. "
+            "Ray Debugpy Debugger will not work without 'debugpy>=1.8.0' installed. "
+            "Install this module using 'pip install debugpy>=1.8.0'"
+        )
+    version = getattr(debugpy, "__version__", "0.0.0")
+    from packaging import version as packaging_version
+
+    if packaging_version.parse(version) < packaging_version.parse("1.8.0"):
+        raise RuntimeError(
+            f"debugpy version {version} is too old. "
+            "Ray Debugpy Debugger requires 'debugpy>=1.8.0'. "
+            "Upgrade using 'pip install debugpy>=1.8.0'"
+        )
+    logger.info(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
+
+
+def check_avail_gpu(min_free_ratio: float = 0.95):
+    """
+    Ensure there is at least one GPU and all GPUs have >= min_free_ratio free memory.
+
+    Uses `nvidia-smi` to query total and used memory for each GPU.
+    Raises RuntimeError if no GPU is found or any GPU violates the free ratio threshold.
+    """
+    try:
+        # Query GPU memory via nvidia-smi; output in MiB
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,memory.total,memory.used",
+                "--format=csv,noheader,nounits",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("nvidia-smi not found. NVIDIA drivers/GPU may be unavailable.")
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to query GPUs via nvidia-smi: {result.stderr.strip()}")
+
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if not lines:
+        raise RuntimeError("No GPUs detected by nvidia-smi.")
+
+    violations = []
+    for idx, line in enumerate(lines):
+        # Expected format: "<name>, <total>, <used>"
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 3:
+            violations.append((idx, "parse-error", line))
+            continue
+        name, total_str, used_str = parts[0], parts[1], parts[2]
+        try:
+            total = float(total_str)
+            used = float(used_str)
+        except ValueError:
+            violations.append((idx, "parse-error", line))
+            continue
+        free = max(total - used, 0.0)
+        free_ratio = free / total if total > 0 else 0.0
+        logger.info(
+            f"GPU {idx} ({name}): total={total:.0f} MiB, used={used:.0f} MiB, free_ratio={free_ratio:.3f}"
+        )
+        if free_ratio < min_free_ratio:
+            violations.append((idx, name, f"free_ratio={free_ratio:.3f} < {min_free_ratio:.3f}"))
+
+    if violations:
+        details = "; ".join([f"GPU {i} ({n}): {msg}" for i, n, msg in violations])
+        raise RuntimeError(
+            "GPU memory check failed: all GPUs must have >= "
+            f"{int(min_free_ratio*100)}% free. Violations: {details}"
+        )
+    logger.info(
+        f"✓ GPU check passed: {len(lines)} GPUs, all >= {int(min_free_ratio*100)}% free memory"
+    )
+
+
+def dict_to_namespace(d):
+    """Recursively convert a nested dictionary to a SimpleNamespace."""
+    if isinstance(d, dict):
+        return SimpleNamespace(**{k: dict_to_namespace(v) for k, v in d.items()})
+    elif isinstance(d, list):  # 如果字典中嵌套了列表，递归处理列表中的每个元素
+        return [dict_to_namespace(item) for item in d]
+    else:
+        return d
 
 
 def launch_logview(exp_name=None):

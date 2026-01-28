@@ -1,8 +1,11 @@
+import multiprocessing
 import time
 from multiprocessing.managers import DictProxy
 import threading
+from types import SimpleNamespace
 
 import zmq
+import asyncio
 
 from loguru import logger
 from fastapi import FastAPI, HTTPException
@@ -24,7 +27,6 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     UpdateEngineStatusRequest,
 )
 
-
 DEBUG = True
 
 def register_enable_tinkerscript_mode_routes(
@@ -42,12 +44,119 @@ def register_enable_tinkerscript_mode_routes(
 
     @app.post("/sync_train_config")
     async def sync_train_config(req: SyncTrainConfigRequest):
-        # dummy: just print the yaml string
+        """
+        Receive training configuration from client as YAML string.
+        Store it in shared memory for later use by start_engine.
+        """
         try:
-            print("[sync_train_config] received yaml:", req.yaml_as_string)
-        except Exception:
-            pass
-        return {"success": True}
+            yaml_str = req.yaml_as_string
+            logger.info("[sync_train_config] Received training configuration")
+            if DEBUG:
+                logger.debug(f"[sync_train_config] YAML content:\n{yaml_str}...")
+
+            # Store the YAML config in shared memory for start_engine to use
+            with shared_mem_dict_lock:
+                shared_mem_dict['train_config_yaml'] = yaml_str
+
+            logger.info("[sync_train_config] Successfully stored training configuration")
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"[sync_train_config] Error: {e}")
+            return {"success": False, "error": str(e)}
+
+
+    @app.post("/start_engine")
+    async def start_engine():
+        """
+        Start the training engine using the previously synced configuration.
+        This creates a temporary YAML file and spawns a training process.
+        """
+        try:
+            from ajet.utils.launch_utils import execute_training_process
+            from ajet.launcher import (
+                get_backbone_target,
+                setup_environment_vars,
+            )
+            from ajet.utils.config_utils import (
+                prepare_experiment_config,
+            )
+            import ray
+            import tempfile
+            import yaml as yaml_module
+
+            # Check if config has been synced
+            if 'train_config_yaml' not in shared_mem_dict:
+                logger.error("[start_engine] No training config found. Please call sync_train_config first.")
+                return {"success": False, "error": "No training config found"}
+
+            yaml_str = shared_mem_dict['train_config_yaml']
+
+            # Parse YAML to get backbone
+            config_dict = yaml_module.safe_load(yaml_str)
+            backbone = config_dict.get('ajet', {}).get('backbone', 'verl')
+            exp_dir_final = config_dict.get('ajet', {}).get('experiment_dir', 'saved_experiments')
+
+            # Save YAML to temporary file
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml') as temp_file:
+                temp_file.write(yaml_str)
+                main_yaml_fp = temp_file.name
+
+            logger.info(f"[start_engine] Saved config to temporary file: {main_yaml_fp}")
+
+            # Create args namespace
+            args = SimpleNamespace(
+                conf=main_yaml_fp,
+                backbone=backbone,
+                exp_dir=exp_dir_final,
+                with_logview=False,
+                debug=False,
+            )
+
+            # Finalize experiment config
+            main_yaml_fp, exe_exp_base, exp_name, exp_config = prepare_experiment_config(
+                main_yaml_fp, exp_dir_final, backbone
+            )
+
+            # Setup environment variables
+            env = setup_environment_vars(args, exp_config, main_yaml_fp)
+
+            # Start ray if not already started
+            if not ray.is_initialized():
+                from ajet.utils.launch_utils import start_ray_service
+                logger.info("[start_engine] Starting Ray service...")
+                start_ray_service(args, env)
+            else:
+                logger.info("[start_engine] Ray already initialized")
+
+            # Start training process in a separate process
+            p = multiprocessing.Process(
+                target=execute_training_process,
+                args=(
+                    args,
+                    get_backbone_target(args.backbone),
+                    main_yaml_fp,
+                    exe_exp_base,
+                    main_yaml_fp,
+                    env,
+                    exp_config,
+                )
+            )
+            p.daemon = True
+            p.start()
+
+            # Store process info in shared memory
+            with shared_mem_dict_lock:
+                shared_mem_dict['training_process_pid'] = p.pid
+                shared_mem_dict['engine_status'] = "running"
+
+            logger.info(f"[start_engine] Successfully started training process (PID: {p.pid})")
+            return {"success": True, "pid": p.pid}
+
+        except Exception as e:
+            logger.error(f"[start_engine] Error starting engine: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "error": str(e)}
 
 
     # --- engine status ---
