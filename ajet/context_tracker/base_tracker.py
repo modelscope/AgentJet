@@ -1,5 +1,4 @@
-from typing import List, Tuple, Union
-from typing import List, Union, Tuple, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 from ajet.schema.task import WorkflowTask
 
 from ajet.schema.extended_msg import (
@@ -141,7 +140,7 @@ class BaseTracker(object):
         self.already_mad_flag: bool = False
         self.round_cnt = 0
         self.generation_prompt_token = None
-        self.log_metrics: Optional[Dict[str, Union[float, List[float]]]] = None  # Initialize workflow_metadata to store tool statistics
+        self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None  # Initialize workflow_metadata to store tool statistics
 
         assert (
             self.config.ajet.data.max_prompt_length

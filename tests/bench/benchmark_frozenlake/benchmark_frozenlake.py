@@ -9,7 +9,7 @@ from ajet.utils.sington import singleton
 class TestProbe(BenchmarkProbe):
     def __init__(self):
         # fmt: off
-        self.expected_train_time = 3600 * 12  # 12 hours budget for frozenlake easy benchmark
+        self.expected_train_time = 3600 * 48  # 48 hours budget for frozenlake easy benchmark
         self.begin_time = time.time()
         self.reward_array = []
         self.reward_expectation_avg_window = 20

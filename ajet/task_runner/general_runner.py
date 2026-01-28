@@ -55,6 +55,9 @@ class GeneralRunner(BaseAgentRunner):
         else:
             raw_reward, is_success = self.get_judge().compute_reward(workflow_task, workflow_output)
 
+        if "reward_stats" in workflow_output.metadata:
+            workflow_output.log_metrics["reward_stats"] = workflow_output.metadata["reward_stats"]
+
         workflow_task.gym_env = None  # clear gym env client reference to avoid serialization issue
 
         assert not isinstance(

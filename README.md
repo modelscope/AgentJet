@@ -1,6 +1,6 @@
 # AgentJet (Beta)
 
-[![Benchmarking](https://img.shields.io/badge/Benchmarking-0078D4?style=for-the-badge&logo=github)](https://benchmark.agent-matrix.com/)
+[![Benchmarking](https://img.shields.io/badge/Benchmarking-0078D4?style=for-the-badge&logo=github)](https://benchmark.agentjet.top/)
 [![Docs](https://img.shields.io/badge/Docs-Read%20the%20Documents-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://modelscope.github.io/AgentJet)
 [![License](https://img.shields.io/badge/License-Apache--2.0-4c1?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://modelscope.github.io/AgentJet/en/installation#requirements)
@@ -40,7 +40,7 @@ We aim to build a easy-to-learn Agent tuner that unlock more possibilities for a
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
 - **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support [trinity](https://github.com/modelscope/Trinity-RFT/) as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
 - **Flexible and Fast**. AgentJet supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
-- **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agent-matrix.com/) (under construction, still gathering data, coming soon).
+- **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agentjet.top/) (under construction, still gathering data, coming soon).
 
 For advanced researchers, AgentJet also provides high-resolution logging and debugging solutions:
 <!-- For advanced researchers, AgentJet provides high-resolution logging and debugging solutions that are, to our knowledge, unprecedented in other prior projects. -->
@@ -146,6 +146,8 @@ If you use AgentJet in your research, please cite:
 }
 ```
 
+
+
 <br/>
 
 ---
@@ -153,3 +155,14 @@ If you use AgentJet in your research, please cite:
 
 [⭐ Star Us](https://github.com/modelscope/AgentJet) · [Report Bug](https://github.com/modelscope/AgentJet/issues) · [Request Feature](https://github.com/modelscope/AgentJet/issues)
 </div>
+
+
+
+<div align="center">
+<img width="180" alt="image" src="https://img.alicdn.com/imgextra/i4/O1CN01DJuOtZ1Kgu1UvjaNl_!!6000000001194-2-tps-922-882.png"/>
+<br/>
+<span>Join AgentJet DingTalk Group to share your idea</span>
+</div>
+
+
+

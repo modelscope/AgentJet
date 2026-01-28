@@ -22,7 +22,7 @@ def save_trajectory_as_json(ctx_trackers, global_steps, prefix="train"):
         else:
             ctx_tracker.tag = "half_success"
 
-        formatted_traj = convert_grouped_steps_to_openai_format(ctx_tracker.timeline_cache)
+        formatted_traj = convert_grouped_steps_to_openai_format(ctx_tracker.saved_timelines)
 
         # Prepare trajectory data
         traj_data = {
@@ -40,7 +40,7 @@ def save_trajectory_as_json(ctx_trackers, global_steps, prefix="train"):
         # Define save directory and file path
         traj_save_dir = os.path.join(
             os.environ.get("BEST_LOGGER_PATH", "launcher_record"),
-            "ctx_trackers",
+            "trajectory",
             prefix,
             f"step_{global_steps}"
         )
@@ -51,6 +51,5 @@ def save_trajectory_as_json(ctx_trackers, global_steps, prefix="train"):
         with open(traj_file_path, "w", encoding="utf-8") as f:
             json.dump(traj_data, f, ensure_ascii=False, indent=2)
 
-        # Print confirmation for evaluation trajectories
-        if prefix != "train":
-            print(f"Saved trajectory to {traj_file_path}")
+
+        print(f"Saved trajectory to {traj_file_path}")

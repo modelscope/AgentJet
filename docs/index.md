@@ -29,7 +29,7 @@
             Rich examples as beginner's tutorial: <b>math agent</b>, <b>werewolves rpg</b>, <b>appworld</b> ... All with step-by-step
             guides. Covering various agentic frameworks.</p>
     </a>
-    <a href="https://benchmark.agent-matrix.com/" class="feature-card">
+    <a href="https://benchmark.agentjet.top/" class="feature-card">
         <div class="card-header"><img src="https://api.iconify.design/lucide:shield-check.svg" class="card-icon card-icon-tool"
                 alt="">
             <h3>Reliable and Reproducible</h3>

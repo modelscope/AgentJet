@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import logging
 from typing import Any
 
 def run_async_coroutine_with_timeout(coro, timeout: int = 3600) -> Any:
@@ -68,3 +69,50 @@ def apply_httpx_aclose_patch():
         print("Applied httpx aclose patch.")
     except ImportError:
         pass
+
+
+def suppress_httpx_aclose_exception():
+    """
+    Suppress the 'Task exception was never retrieved' error from httpx AsyncClient.aclose().
+    This error occurs when the event loop is closed before the AsyncClient is properly closed.
+    """
+    # Custom exception handler for asyncio
+    def custom_exception_handler(loop, context):
+        exception = context.get('exception')
+        message = context.get('message', '')
+
+        # Check if this is the specific httpx aclose RuntimeError we want to suppress
+        if exception is not None:
+            if isinstance(exception, RuntimeError):
+                exc_str = str(exception)
+                if 'unable to perform operation on' in exc_str and 'the handler is closed' in exc_str:
+                    return  # Suppress this specific error
+                if 'TCPTransport' in exc_str and 'closed' in exc_str:
+                    return  # Suppress this specific error
+
+        # For other exceptions, use the default handler
+        loop.default_exception_handler(context)
+
+    # Apply custom exception handler to current or new event loop
+    try:
+        loop = asyncio.get_running_loop()
+        loop.set_exception_handler(custom_exception_handler)
+    except RuntimeError:
+        # No running loop, will be applied when loop starts
+        pass
+
+    # Also filter the logging output for this specific error
+    class HttpxAcloseFilter(logging.Filter):
+        def filter(self, record):
+            msg = record.getMessage()
+            if 'Task exception was never retrieved' in msg and 'aclose' in msg:
+                return False
+            if 'unable to perform operation on' in msg and 'the handler is closed' in msg:
+                return False
+            if 'TCPTransport' in msg and 'closed' in msg:
+                return False
+            return True
+
+    # Apply filter to root logger and asyncio logger
+    logging.getLogger().addFilter(HttpxAcloseFilter())
+    logging.getLogger('asyncio').addFilter(HttpxAcloseFilter())

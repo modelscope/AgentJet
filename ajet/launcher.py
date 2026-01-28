@@ -60,10 +60,10 @@ def parse_args():
         help="Launch appworld",
     )
     parser.add_argument(
-        "--with-finworld",
+        "--with-deepfinance",
         action="store_true",
         default=False,
-        help="Launch finworld",
+        help="Launch deepfinance",
     )
     parser.add_argument(
         "--with-webshop",
@@ -99,6 +99,7 @@ def parse_args():
         default=False,
         help="Kill system processes (ray + vllm + python) that may block the current experiment",
     )
+    parser.add_argument("--prefix", type=str, default="", required=False, help="Prefix for deepfinance service names")
     return parser.parse_args()
 
 
@@ -303,8 +304,8 @@ def main():
     if args.with_appworld:
         pty_launch("appworld")
 
-    if args.with_finworld:
-        pty_launch("finworld")
+    if args.with_deepfinance:
+        pty_launch("deepfinance", prefix=args.prefix)
 
     if args.with_crafters:
         pty_launch("crafters")

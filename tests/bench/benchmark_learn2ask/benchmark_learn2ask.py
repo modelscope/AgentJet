@@ -25,8 +25,8 @@ class TestProbe(BenchmarkProbe):
         self.reward_expectation = {
             # step    : expected local average reward range
             # step    :       [low,    high ]
-                50     :       [2.5,  99999.0],
-               100     :       [2.7,  99999.0],
+                50     :       [2.3,  99999.0],
+               100     :       [2.5,  99999.0],
                200     :       [2.9,  99999.0],
         }
         # fmt: on

@@ -83,12 +83,16 @@ class MultiAgentContextTracker(BaseContextTracker):
         #    ],
         # }
 
+
         str_content = ""
         for item in msg["content"]:
             # item = {
             #   "type": "text",
             #   "text": "some text"
             # },
+            item_type = item.get("type", "")
+            assert not item_type == "tool_use", f"never observed such protocal yet"
+            assert not item_type == "tool_result", f"never observed such protocal yet"
 
             assert isinstance(item, dict), f"Unsupported non-dict item in message content: {item}. Full message: {msg}"
 
