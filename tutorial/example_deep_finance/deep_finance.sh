@@ -22,6 +22,9 @@ TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
 
+# Env Service URL 配置
+ENV_SERVICE_URL="http://127.0.0.1:8080"  # 环境服务地址
+
 # 主目录（需要更改）
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
 
@@ -68,6 +71,7 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{TRAIN_REF_ANS_PATH}}|${TRAIN_REF_ANS_PATH}|g" \
     -e "s|{{VAL_REF_ANS_PATH}}|${VAL_REF_ANS_PATH}|g" \
     -e "s|{{CKPT_SAVE_PATH}}|${CKPT_SAVE_PATH}|g" \
+    -e "s|{{ENV_SERVICE_URL}}|${ENV_SERVICE_URL}|g" \
     ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
 
 echo "配置文件已生成: ${CONFIG_FILE}"

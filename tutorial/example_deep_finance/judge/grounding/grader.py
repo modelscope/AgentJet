@@ -195,11 +195,12 @@ class GroundingGrader(BaseGrader):
         
         # 轻量惩罚：存在 invalid refs 会降低 reward
         # 每个 invalid 号扣 0.1，最多扣 0.5
-        invalid_penalty = min(0.1 * invalid_ref_count, 0.5)
+        # invalid_penalty = min(0.1 * invalid_ref_count, 0.5)
+        invalid_penalty = 0
 
         # final_reward: 综合分数（权重 0.5:0.5），再叠加 invalid 惩罚
         final_reward = 0.5 * citation_coverage_score + 0.5 * grounding_score
-        final_reward = max(0.0, final_reward - invalid_penalty)
+        # final_reward = max(0.0, final_reward - invalid_penalty)
         
         # 构建 reason
         good_citations = obj.get('good_citations', [])
