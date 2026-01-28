@@ -28,7 +28,7 @@ class TinkerScriptClient(object):
         self.previous_warning_time = 0
 
 
-    def begin_episode(self, allow_discard_timeout=60) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def begin_episode(self, allow_discard_timeout=60, episode_type="train") -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
         Return (episode_uuid, openai_base_url, openai_api_key)
@@ -37,7 +37,7 @@ class TinkerScriptClient(object):
             try:
                 req_obj = ClaimEpisodeRequest(
                     client_uuid=self.client_uuid,
-                    episode_type="default",
+                    episode_type=episode_type,
                     allow_discard_timeout=allow_discard_timeout,
                 )
                 resp = httpx.post(
@@ -161,15 +161,15 @@ class TinkerScriptClient(object):
             raise
 
         # Poll until engine status is "ENGINE.ROLLING"
-        self._wait_until_avail()
+        self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
         logger.success("Training engine is now ROLLING and ready.")
 
-    def _wait_until_avail(self):
+    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING"):
         """
-        Poll engine status until it reaches ENGINE.ROLLING state.
+        Poll engine status until it reaches desired_status.
         Reports status every 5 seconds while waiting.
         """
-        logger.info("Polling engine status until ENGINE.ROLLING...")
+        logger.info(f"Polling engine status until {desired_status}...")
         last_report_time = time.time()
         init_poll_time = last_report_time
 
@@ -184,8 +184,8 @@ class TinkerScriptClient(object):
                     last_report_time = current_time
 
                 # Check if engine has reached the desired status
-                if current_status == "ENGINE.ROLLING":
-                    logger.info("Engine status is ENGINE.ROLLING - engine is ready")
+                if current_status == desired_status:
+                    logger.info(f"Engine status is {desired_status}.")
                     break
 
                 # Wait a bit before next poll
@@ -256,7 +256,34 @@ class TinkerScriptClient(object):
             logger.info("Engine is already ROLLING. No action needed.")
         elif current_status == "ENGINE.BOOTING":
             logger.info("Engine is BOOTING. Waiting until it becomes ROLLING...")
-            self._wait_until_avail()
+            self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
             logger.success("Training engine is now ROLLING and ready.")
         else:
             raise RuntimeError(f"Cannot sync train config or start engine when engine is in status: {current_status}")
+
+    def stop_engine(self):
+        """
+        Stop the training engine on the TinkerScript server.
+        This triggers the server to stop the training process.
+        """
+        current_status = self.get_engine_status()
+        if current_status == "ENGINE.OFFLINE":
+            logger.info("Engine is already OFFLINE. No action needed.")
+            return
+
+        try:
+            resp = httpx.post(
+                f"{self.server_url}/stop_engine",
+                json={},
+                timeout=600
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            if result.get("success"):
+                logger.info("Successfully stopped training engine on TinkerScript server")
+            else:
+                logger.error("Failed to stop training engine")
+            self._wait_until_status_change_to(desired_status="ENGINE.OFFLINE")
+        except Exception as e:
+            logger.error(f"Error stopping engine: {e}")
+

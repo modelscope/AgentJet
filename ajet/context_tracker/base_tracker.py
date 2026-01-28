@@ -148,6 +148,21 @@ class BaseTracker(object):
             <= max_model_len
         )
 
+    def reset(self):
+        self.saved_timelines: List[List[ExtendedMessage]] = []
+        self.current_context_status = ""
+        self.terminal_rewards_dict = {}
+        self.discarded = False
+        self.is_terminated = False
+        self.reward_structure: Union[Reward, None] = None
+        self.context_time_cost = 0
+        self.tag = ""
+        self.current_batch_success_rate: float = float("-inf")
+        self.current_batch_reward: float = float("-inf")
+        self.already_mad_flag: bool = False
+        self.round_cnt = 0
+        self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None
+
     def group_tokenize(self):
         raise NotImplementedError
 

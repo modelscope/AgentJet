@@ -23,7 +23,7 @@ atexit.register(context.term)
 
 class TinkerScriptRunner(BaseAgentRunner):
 
-    def register_episode_and_wait_output(self, episode_uuid: str, openai_base_url: str, openai_api_key: str) -> WorkflowOutput:
+    def register_episode_and_wait_output(self, episode_uuid: str, openai_base_url: str, openai_api_key: str, context_tracker: BaseContextTracker) -> WorkflowOutput:
         """Register the episode as ready in the TinkerScript data interchange center."""
         # parse episode_uuid, openai_base_url, openai_api_key
         zmq_listen_result_addr, ipc_path = get_zmq_socket(self.config, episode_uuid, tag="workflow")
@@ -39,15 +39,30 @@ class TinkerScriptRunner(BaseAgentRunner):
         # begin wait for result
         zmq_socket = zmq.Context().socket(zmq.REP)
         zmq_socket.bind(zmq_listen_result_addr)
-
-        # <wait for>:
-        #   <from_sourcefile>: ajet/tuner_lib/weight_tuner/experimental/as_tinkerscript_server.py
-        #   <from_code>: socket.send_string(workflow_output.model_dump_json())
-        #   <expect>: workflow_output: WorkflowOutput
-        message = zmq_socket.recv_string()
+        speicial_messages = [
+            "RUNNER.RESET_CONTEXT_TRACKER"
+        ]
+        while True:
+            # <wait for 1/2>:
+            #   <from_sourcefile>: ajet/tuner_lib/weight_tuner/experimental/as_tinkerscript_server.py
+            #   <from_code>: socket.send_string(workflow_output.model_dump_json())
+            #   <expect>: workflow_output: WorkflowOutput
+            # <wait for 2/2>:
+            #   <from_sourcefile>: ajet/tuner_lib/weight_tuner/experimental/as_tinkerscript_server.py
+            #   <from_code>: socket.send_string("RUNNER.SPECIAL.RESET_CONTEXT_TRACKER")
+            #   <expect>: "RUNNER.SPECIAL.RESET_CONTEXT_TRACKER"
+            message = zmq_socket.recv_string()
+            if message not in speicial_messages:
+                zmq_socket.send_string("ack")
+                break
+            elif message == "RUNNER.SPECIAL.RESET_CONTEXT_TRACKER":
+                logger.warning(f"Received reset command for episode {episode_uuid}.")
+                context_tracker.reset()
+                zmq_socket.send_string("ack")
+            else:
+                raise RuntimeError(f"Unknown special message received: {message}")
 
         logger.success(f"Received workflow output for episode {episode_uuid}")
-        zmq_socket.send_string("ack")
         zmq_socket.close()
         if ipc_path and os.path.exists(ipc_path): os.remove(ipc_path)
 
@@ -85,6 +100,7 @@ class TinkerScriptRunner(BaseAgentRunner):
             episode_uuid=context_tracker.episode_uuid,
             openai_base_url=base_url,
             openai_api_key=api_key,
+            context_tracker=context_tracker,
         )
 
         if workflow_output.reward is not None:

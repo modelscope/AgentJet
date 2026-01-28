@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size
 LOCAL_NUM_EPOCH = 10000
+LOCAL_NUM_EPOCH = 1
 LOCAL_MAX_PARALLEL = 32
 LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
 REMOTE_TINKERJET_URL = "http://localhost:10086" # Change to your tinkerscript remote url
@@ -51,6 +52,7 @@ def main():
             grpo_n=LOCAL_GRPO_N,
         )
     )
+    # tinkerscript_remote.stop_engine()
 
     # tinkerscript_remote = connect_to_tinkerscript_server(sync_train_config=False, start_engine=False)
     submit_sem = threading.BoundedSemaphore(LOCAL_MAX_PARALLEL)
@@ -77,12 +79,12 @@ def main():
     # Main Training loop
     with ThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL) as executor:
         for epoch in range(LOCAL_NUM_EPOCH):
-            for task in dataset.get_training_tasks():
+            for task in dataset.get_training_tasks()[:100]:
                 print(f"Submitting task for epoch {epoch}")
                 submit_sem.acquire()
                 executor.submit(rollout, task)
 
-
+    tinkerscript_remote.stop_engine()
     # model_path = tinkerscript_remote.download_latest_model(path='./tinkerscript_saved_model')
 
     # Get tuned model from tinkerscript remote

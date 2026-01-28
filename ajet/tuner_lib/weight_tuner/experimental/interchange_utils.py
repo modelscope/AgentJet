@@ -43,6 +43,7 @@ class EndEpisodeResponse(BaseModel):
 class EpisodeStatus(BaseModel):
     episode_uuid: str
     episode_status: str = "rolling"
+    episode_type: str = "train"
     openai_base_url: str = ""
     openai_api_key: str = ""
     client_uuid: str = ""
