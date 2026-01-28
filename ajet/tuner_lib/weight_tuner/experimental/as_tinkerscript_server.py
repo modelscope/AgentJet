@@ -28,7 +28,7 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     UpdateEngineStatusRequest,
 )
 
-DEBUG = True
+DEBUG = False
 
 def register_enable_tinkerscript_mode_routes(
         app,
@@ -42,6 +42,84 @@ def register_enable_tinkerscript_mode_routes(
 
     if 'unclaimed_episodes' not in shared_mem_dict:
         shared_mem_dict['unclaimed_episodes'] = []
+
+    def find_claimed_episodes_that_need_to_be_unclaimed() -> List[str]:
+        result = []
+        current_time = time.time()
+
+        for k, v in shared_mem_dict.items():
+            if k.startswith("episodes-"):
+                es:EpisodeStatus = v
+                if es.episode_status == "claimed":
+                    if (current_time - es.latest_activity_timestamp) > es.allow_discard_timeout:
+                        result.append(es.episode_uuid)
+
+        for episode_uuid in result:
+            _revert_episode_to_unclaimed(episode_uuid)
+
+        return result
+
+    def _revert_episode_to_unclaimed(episode_uuid: str):
+        with shared_mem_dict_lock:
+            # check status again, because other thread may have changed it
+            if shared_mem_dict[f"episodes-{episode_uuid}"].episode_status != "claimed":
+                return
+
+            # revert
+            logger.warning(f"Reverting episode {episode_uuid} to unclaimed due to client timeout.")
+            if f"episodes-{episode_uuid}" in shared_mem_dict:
+                es:EpisodeStatus = shared_mem_dict[f"episodes-{episode_uuid}"]
+                es.episode_status = "registered"
+                es.client_uuid = ""
+                es.latest_activity_timestamp = time.time()
+                es.allow_discard_timeout = -1
+                shared_mem_dict[f"episodes-{episode_uuid}"] = es
+                shared_mem_dict['unclaimed_episodes'] += [episode_uuid]
+
+
+    async def register_episode_ready_listener():
+        while True:
+            read_all_episode_status()
+            await asyncio.sleep(10)  # check every 10 seconds
+            find_claimed_episodes_that_need_to_be_unclaimed()
+
+
+    def read_all_episode_status() -> Optional[EpisodeStatus]:
+        print_buffer = []
+        group_by_status = {}
+
+        for k, v in shared_mem_dict.items():
+            if k.startswith("episodes-"):
+                es:EpisodeStatus = v
+                if es.episode_status not in group_by_status:
+                    group_by_status[es.episode_status] = []
+                group_by_status[es.episode_status].append(es)
+
+        for status, es_list in group_by_status.items():
+            print_buffer.append(f"--- {status} (time since last activity) ---")
+            in_line_buffer = ""
+            for es in es_list:
+                time_since_last_activity = time.time() - es.latest_activity_timestamp
+                in_line_buffer += f"{es.episode_uuid[:6]}({time_since_last_activity:.1f}s)\t"
+            print_buffer.append(in_line_buffer)
+
+        print_buffer_str = "\n".join(print_buffer)
+        logger.info(f"Current engine status: [{shared_mem_dict['engine_status']}]")
+        if print_buffer:
+            logger.info(f"Current episode statuses:\n{print_buffer_str}")
+        else:
+            logger.info(f"Current episode statuses: [NA]")
+
+        return None
+
+
+    # hiefwu1(15.1s ago)	hiefwu2(20.3s ago)    hiefwu3(5.0s ago)
+
+
+
+    # --------------------------------------------------------------------
+    # -------------------------- fastapi routes --------------------------
+    # --------------------------------------------------------------------
 
     @app.post("/sync_train_config")
     async def sync_train_config(req: SyncTrainConfigRequest):
@@ -120,7 +198,7 @@ def register_enable_tinkerscript_mode_routes(
 
             # Setup environment variables
             exp_config['ajet']['interchange_server']['already_started'] = True
-            exp_config['ajet']['interchange_server']['interchange_server_port'] = int(os.getenv("AJET_DAT_INTERCHANGE_PORT"))
+            exp_config['ajet']['interchange_server']['interchange_server_port'] = int(os.getenv("AJET_DAT_INTERCHANGE_PORT"))   # type: ignore
             env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
 
             # Start ray if not already started
@@ -163,11 +241,12 @@ def register_enable_tinkerscript_mode_routes(
 
 
     # --- engine status ---
-    shared_mem_dict['engine_status'] = "ENGINE.OFF"
+    shared_mem_dict['engine_status'] = "ENGINE.OFFLINE"
     @app.post("/update_engine_status", response_model=BoolResponse)
     async def update_engine_status(req: UpdateEngineStatusRequest):
+        """Update the current engine status."""
         if req.engine_status not in [
-            "ENGINE.OFF",
+            "ENGINE.OFFLINE",
             "ENGINE.BOOTING",
             "ENGINE.ROLLING",
             "ENGINE.WEIGHT_SYNCING",
@@ -180,6 +259,7 @@ def register_enable_tinkerscript_mode_routes(
 
     @app.get("/get_engine_status")
     async def get_engine_status():
+        """Get the current engine status."""
         status = shared_mem_dict['engine_status']
         return {"engine_status": status}
 
@@ -187,7 +267,7 @@ def register_enable_tinkerscript_mode_routes(
     # --- episode status ---
     @app.post("/register_episode", response_model=BoolResponse)
     async def register_episode(req: RegisterEpisodeRequest):
-
+        """(From task_runner) Register a new episode as ready to roll."""
         episode_uuid = req.episode_uuid
         es = EpisodeStatus(
             episode_uuid=req.episode_uuid,
@@ -210,7 +290,29 @@ def register_enable_tinkerscript_mode_routes(
 
     @app.post("/claim_episode", response_model=ClaimEpisodeResponse)
     async def claim_episode(req: ClaimEpisodeRequest):
+        """(From client) Claim an available episode to rollout."""
         find_claimed_episodes_that_need_to_be_unclaimed()
+
+        engine_status = shared_mem_dict['engine_status']
+        if engine_status != "ENGINE.ROLLING":
+            fail_cause = f"Engine not ready. Current status: [{engine_status}]."
+            advise = ""
+            if engine_status == "ENGINE.OFFLINE":
+                advise = "Please start the engine first. Please use one of the client to run `client.sync_train_config() + client.start_engine()` to start the engine."
+            elif engine_status == "ENGINE.BOOTING":
+                advise = "Please wait until the engine is fully booted. Try again (maybe 1 minute) later."
+            elif engine_status == "ENGINE.WEIGHT_SYNCING":
+                advise = "Engine is syncing weights. Try again (maybe 1 minute) later."
+            elif engine_status == "ENGINE.WEIGHT_EXPORTING":
+                advise = "Engine is exporting weights (fsdp -> hf safetensor). Try again (maybe 1 minute) later."
+            return ClaimEpisodeResponse(
+                success=False,
+                client_uuid=req.client_uuid,
+                episode_uuid="",
+                openai_base_url="",
+                openai_api_key="",
+                fail_cause=fail_cause + " " + advise,
+            )
 
         with shared_mem_dict_lock:
             if len(shared_mem_dict['unclaimed_episodes']) <= 0:
@@ -248,41 +350,6 @@ def register_enable_tinkerscript_mode_routes(
         )
 
 
-    def find_claimed_episodes_that_need_to_be_unclaimed() -> List[str]:
-        result = []
-        current_time = time.time()
-
-        for k, v in shared_mem_dict.items():
-            if k.startswith("episodes-"):
-                es:EpisodeStatus = v
-                if es.episode_status == "claimed":
-                    if (current_time - es.latest_activity_timestamp) > es.allow_discard_timeout:
-                        result.append(es.episode_uuid)
-
-        for episode_uuid in result:
-            _revert_episode_to_unclaimed(episode_uuid)
-
-        return result
-
-
-    def _revert_episode_to_unclaimed(episode_uuid: str):
-        with shared_mem_dict_lock:
-            # check status again, because other thread may have changed it
-            if shared_mem_dict[f"episodes-{episode_uuid}"].episode_status != "claimed":
-                return
-
-            # revert
-            logger.info(f"Reverting episode {episode_uuid} to unclaimed due to client timeout.")
-            if f"episodes-{episode_uuid}" in shared_mem_dict:
-                es:EpisodeStatus = shared_mem_dict[f"episodes-{episode_uuid}"]
-                es.episode_status = "registered"
-                es.client_uuid = ""
-                es.latest_activity_timestamp = time.time()
-                es.allow_discard_timeout = -1
-                shared_mem_dict[f"episodes-{episode_uuid}"] = es
-                shared_mem_dict['unclaimed_episodes'] += [episode_uuid]
-
-
     @app.post("/end_episode", response_model=EndEpisodeResponse)
     async def end_episode(req: EndEpisodeRequest):
         # receive workflow output data
@@ -312,6 +379,10 @@ def register_enable_tinkerscript_mode_routes(
         for _ in range(5):  # max 5 minutes wait
             try:
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
+                # <wait for>:
+                #   <from_sourcefile>: ajet/task_runner/tinkerscript_runner.py
+                #   <from_code>: zmq_socket.send_string("ack")
+                #   <expect>: "ack"
                 result_str = socket.recv_string()
                 break
             except zmq.Again as e:
@@ -343,11 +414,6 @@ def register_enable_tinkerscript_mode_routes(
             v for k, v in shared_mem_dict.items() if k.startswith("episodes-")
         ]
         return EpisodeBufferResponse(buffer=result)
-
-
-
-    async def register_episode_ready_listener():
-        pass
 
 
     return app, register_episode_ready_listener()

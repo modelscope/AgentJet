@@ -25,6 +25,7 @@ class TinkerScriptClient(object):
     def __init__(self, server_url: str):
         self.server_url = server_url
         self.client_uuid = str(uuid.uuid4())
+        self.previous_warning_time = 0
 
 
     def begin_episode(self, allow_discard_timeout=60) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
@@ -59,8 +60,18 @@ class TinkerScriptClient(object):
                         episode_uuid=episode_uuid
                     )
                 else:
-                    logger.info(f"Failed to claim episode: {data.fail_cause}. Retrying in 5s...")
-                    time.sleep(5)
+                    need_wait_scenarios =[
+                        "Engine is syncing weights",
+                        "No available episodes to claim.",
+                    ]
+                    if any(scenario in data.fail_cause for scenario in need_wait_scenarios):
+                        if time.time() - self.previous_warning_time > 60:
+                            logger.info(f"{data.fail_cause}. Retrying in 30s...")
+                            self.previous_warning_time = time.time()
+                        time.sleep(30)
+                    else:
+                        logger.warning(f"Failed to claim episode: {data.fail_cause}. Retrying in 5s...")
+                        time.sleep(5)
             except Exception as e:
                 logger.error(f"Error claiming episode: {e}. Retrying in 5s...")
                 time.sleep(5)
@@ -98,6 +109,11 @@ class TinkerScriptClient(object):
         Sync training configuration to the TinkerScript server.
         This sends the AgentJetJob config as YAML to the remote server.
         """
+        # try get init status
+        current_status = self.get_engine_status()
+        if current_status != "ENGINE.OFFLINE":
+            raise RuntimeError(f"Cannot sync train config when engine is NOT ENGINE.OFFLINE. (current status: {current_status})")
+
         try:
             config_dict = agent_jet_job.config.to_dict()
             yaml_str = yaml.safe_dump(config_dict, sort_keys=False)
@@ -121,6 +137,12 @@ class TinkerScriptClient(object):
         This triggers the server to begin the training process.
         Polls until engine status is "ENGINE.ROLLING".
         """
+        # try get init status
+        current_status = self.get_engine_status()
+        if current_status != "ENGINE.OFFLINE":
+            raise RuntimeError(f"Cannot start engine when engine is NOT ENGINE.OFFLINE. (current status: {current_status})")
+
+        # Send start engine request
         try:
             resp = httpx.post(
                 f"{self.server_url}/start_engine",
@@ -139,8 +161,17 @@ class TinkerScriptClient(object):
             raise
 
         # Poll until engine status is "ENGINE.ROLLING"
+        self._wait_until_avail()
+        logger.success("Training engine is now ROLLING and ready.")
+
+    def _wait_until_avail(self):
+        """
+        Poll engine status until it reaches ENGINE.ROLLING state.
+        Reports status every 5 seconds while waiting.
+        """
         logger.info("Polling engine status until ENGINE.ROLLING...")
         last_report_time = time.time()
+        init_poll_time = last_report_time
 
         while True:
             try:
@@ -149,7 +180,7 @@ class TinkerScriptClient(object):
 
                 # Report status every 5 seconds
                 if current_time - last_report_time >= 5:
-                    logger.info(f"Current engine status: {current_status}")
+                    logger.info(f"Current engine status (already waited {current_time - init_poll_time:.1f}s): {current_status}")
                     last_report_time = current_time
 
                 # Check if engine has reached the desired status
@@ -210,3 +241,22 @@ class TinkerScriptClient(object):
         except Exception as e:
             logger.error(f"Error getting episode buffer: {e}")
             return []
+
+    def auto_sync_train_config_and_start_engine(self, agent_jet_job: AgentJetJob):
+        """
+        Automatically sync training configuration and start the engine if needed.
+        This checks the current engine status and performs actions accordingly.
+        """
+        current_status = self.get_engine_status()
+        if current_status == "ENGINE.OFFLINE":
+            logger.info("Engine is OFFLINE. Syncing train config and starting engine...")
+            self.sync_train_config(agent_jet_job)
+            self.start_engine()
+        elif current_status == "ENGINE.ROLLING":
+            logger.info("Engine is already ROLLING. No action needed.")
+        elif current_status == "ENGINE.BOOTING":
+            logger.info("Engine is BOOTING. Waiting until it becomes ROLLING...")
+            self._wait_until_avail()
+            logger.success("Training engine is now ROLLING and ready.")
+        else:
+            raise RuntimeError(f"Cannot sync train config or start engine when engine is in status: {current_status}")

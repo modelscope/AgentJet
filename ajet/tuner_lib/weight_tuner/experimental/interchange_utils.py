@@ -69,6 +69,8 @@ class UpdateEngineStatusRequest(BaseModel):
     engine_status: str = ""
 
 
+DEBUG = False
+
 def get_interchange_server_url(config):
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
     if config.ajet.interchange_server.interchange_server_port != 'auto':
@@ -95,7 +97,7 @@ def http_change_engine_status(config: str, new_status: str):
         timeout=10
     )
     resp.raise_for_status()
-    logger.info(f"Changed engine status to {new_status}")
+    logger.success(f"Changed engine status to {new_status}")
 
 
 
@@ -123,7 +125,7 @@ def http_register_episode(config, episode_uuid: str,
             result = response.json()
             if not result.get('success'):
                 raise RuntimeError(f"Failed to register episode {episode_uuid}")
-            logger.info(f"Successfully registered episode {episode_uuid}")
+            if DEBUG: logger.info(f"Successfully registered episode {episode_uuid}")
             break
         except httpx.HTTPError as e:
             logger.error(f"Error registering episode {episode_uuid}: {e}. Retrying...")

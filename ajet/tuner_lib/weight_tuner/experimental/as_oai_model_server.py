@@ -157,9 +157,9 @@ def get_app(max_fastapi_threads: int = 512, enable_tinkerscript_mode=False, shar
         if enable_tinkerscript_mode:
             assert shared_mem_dict is not None
             assert shared_mem_dict_lock is not None
-            if shared_mem_dict['engine_status'] != "ROLLING":
-                logger.error(f"The server is not in ROLLING status (current status: [{shared_mem_dict['engine_status']}]), cannot accept new requests.")
-                raise HTTPException(status_code=503, detail="The server is not in ROLLING status, cannot accept new requests.")
+            if shared_mem_dict['engine_status'] != "ENGINE.ROLLING":
+                logger.error(f"The server is not in ENGINE.ROLLING status (current status: [{shared_mem_dict['engine_status']}]), cannot accept new requests.")
+                raise HTTPException(status_code=503, detail="The server is not in ENGINE.ROLLING status, cannot accept new requests.")
             if (f"episodes-{episode_uuid}") not in shared_mem_dict:
                 raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
             # update activate timestamp

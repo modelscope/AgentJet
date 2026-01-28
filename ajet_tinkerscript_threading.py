@@ -1,6 +1,7 @@
 import re
+import threading
 import requests
-import time
+from loguru import logger
 from textwrap import dedent
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.weight_tuner.experimental.as_tinkerscript_client import TinkerScriptClient
@@ -14,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size
 LOCAL_NUM_EPOCH = 10000
-LOCAL_MAX_PARALLEL = 2
+LOCAL_MAX_PARALLEL = 32
 LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
 REMOTE_TINKERJET_URL = "http://localhost:10086" # Change to your tinkerscript remote url
 
@@ -26,38 +27,6 @@ REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwe
 
 class WeightUpdatedHalfway(Exception):
     """Raised when the remote side starts updating model weights halfway through an episode."""
-
-
-def connect_to_tinkerscript_server(
-    create_server_via_ssh: bool = False,
-    create_server_locally: bool = False,
-    sync_train_config: bool = True,
-    start_engine: bool = True,
-):
-    if create_server_via_ssh:
-        raise NotImplementedError("Creating tinkerscript server via SSH is not implemented yet.")
-
-    if create_server_locally:
-        raise NotImplementedError("Creating tinkerscript server is not implemented yet, please run `ajet launch --tinkerscript-server` to start manually.")
-
-    tinkerscript_remote = TinkerScriptClient(REMOTE_TINKERJET_URL)
-
-    if sync_train_config:
-        tinkerscript_remote.sync_train_config(
-            AgentJetJob(
-                algorithm="grpo",
-                n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
-                model=REMOTE_TRAIN_MODEL_01,
-                grpo_n=LOCAL_GRPO_N,
-            )
-        )
-        print("TinkerScript remote handshake and train config sync done.")
-
-    if start_engine:
-        tinkerscript_remote.start_engine()
-        print("TinkerScript remote engine started.")
-
-    return tinkerscript_remote
 
 
 def main():
@@ -73,28 +42,44 @@ def main():
     )
 
     # Hand shake with remote tinkerscript server
-    tinkerscript_remote = connect_to_tinkerscript_server(create_server_locally=True, sync_train_config=True, start_engine=True)
+    tinkerscript_remote = TinkerScriptClient(REMOTE_TINKERJET_URL)
+    tinkerscript_remote.auto_sync_train_config_and_start_engine(
+        AgentJetJob(
+            algorithm="grpo",
+            n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
+            model=REMOTE_TRAIN_MODEL_01,
+            grpo_n=LOCAL_GRPO_N,
+        )
+    )
+
+    # tinkerscript_remote = connect_to_tinkerscript_server(sync_train_config=False, start_engine=False)
+    submit_sem = threading.BoundedSemaphore(LOCAL_MAX_PARALLEL)
 
     # Define rollout
     def rollout(task):
-        group_reward = []
-        for i in range(LOCAL_GRPO_N):
-            # begin episode
-            episode_uuid, api_baseurl_key = tinkerscript_remote.begin_episode()
-            # execute agent
-            workflow_output = execute_agent(task, api_baseurl_key)
-            # report output back to tinkerscript remote
-            tinkerscript_remote.end_episode(episode_uuid, workflow_output)
-            # collect reward
-            group_reward.append(workflow_output.reward)
-        print(f"Group reward mean & std: {sum(group_reward)/len(group_reward)} +/- { (max(group_reward)-min(group_reward))/2 }")
-
+        try:
+            group_reward = []
+            for i in range(LOCAL_GRPO_N):
+                # begin episode
+                episode_uuid, api_baseurl_key = tinkerscript_remote.begin_episode()
+                # execute agent
+                workflow_output = execute_agent(task, api_baseurl_key)
+                # report output back to tinkerscript remote
+                tinkerscript_remote.end_episode(episode_uuid, workflow_output)
+                # collect reward
+                group_reward.append(workflow_output.reward)
+            print(f"Group reward mean & std: {sum(group_reward)/len(group_reward)} +/- { (max(group_reward)-min(group_reward))/2 }")
+        except Exception as e:
+            logger.exception("Exception during rollout:", e)
+        finally:
+            submit_sem.release()
 
     # Main Training loop
     with ThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL) as executor:
         for epoch in range(LOCAL_NUM_EPOCH):
             for task in dataset.get_training_tasks():
                 print(f"Submitting task for epoch {epoch}")
+                submit_sem.acquire()
                 executor.submit(rollout, task)
 
 

@@ -444,7 +444,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         )
 
     def _update_interchange_server_status_flag(self, status: str):
-        # if interchange server is enabled, change engine status to ROLLING
         if self.config.ajet.enable_experimental_interchange_server:
             if self.config.ajet.enable_tinkerscript_mode:
                 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status

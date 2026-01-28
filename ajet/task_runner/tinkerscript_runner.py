@@ -16,9 +16,10 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_regi
 from loguru import logger
 from ajet import Workflow
 
+DEBUG = False
+
 context = zmq.Context()
 atexit.register(context.term)
-DEBUG = True
 
 class TinkerScriptRunner(BaseAgentRunner):
 
@@ -33,12 +34,18 @@ class TinkerScriptRunner(BaseAgentRunner):
             openai_api_key=openai_api_key,
             zmq_listen_result_addr=zmq_listen_result_addr,
         )
-        logger.info(f"zmq_listen_result_addr: {zmq_listen_result_addr}")
+        if DEBUG: logger.info(f"zmq_listen_result_addr: {zmq_listen_result_addr}")
 
         # begin wait for result
         zmq_socket = zmq.Context().socket(zmq.REP)
         zmq_socket.bind(zmq_listen_result_addr)
+
+        # <wait for>:
+        #   <from_sourcefile>: ajet/tuner_lib/weight_tuner/experimental/as_tinkerscript_server.py
+        #   <from_code>: socket.send_string(workflow_output.model_dump_json())
+        #   <expect>: workflow_output: WorkflowOutput
         message = zmq_socket.recv_string()
+
         logger.success(f"Received workflow output for episode {episode_uuid}")
         zmq_socket.send_string("ack")
         zmq_socket.close()
