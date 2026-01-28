@@ -1,11 +1,12 @@
 import multiprocessing
 import time
-from multiprocessing.managers import DictProxy
+import zmq
+import os
+import asyncio
 import threading
+from multiprocessing.managers import DictProxy
 from types import SimpleNamespace
 
-import zmq
-import asyncio
 
 from loguru import logger
 from fastapi import FastAPI, HTTPException
@@ -89,9 +90,9 @@ def register_enable_tinkerscript_mode_routes(
                 logger.error("[start_engine] No training config found. Please call sync_train_config first.")
                 return {"success": False, "error": "No training config found"}
 
-            yaml_str = shared_mem_dict['train_config_yaml']
 
             # Parse YAML to get backbone
+            yaml_str = shared_mem_dict['train_config_yaml']
             config_dict = yaml_module.safe_load(yaml_str)
             backbone = config_dict.get('ajet', {}).get('backbone', 'verl')
             exp_dir_final = config_dict.get('ajet', {}).get('experiment_dir', 'saved_experiments')
@@ -100,7 +101,6 @@ def register_enable_tinkerscript_mode_routes(
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yaml') as temp_file:
                 temp_file.write(yaml_str)
                 main_yaml_fp = temp_file.name
-
             logger.info(f"[start_engine] Saved config to temporary file: {main_yaml_fp}")
 
             # Create args namespace
@@ -117,8 +117,11 @@ def register_enable_tinkerscript_mode_routes(
                 main_yaml_fp, exp_dir_final, backbone
             )
 
+
             # Setup environment variables
-            env = setup_environment_vars(args, exp_config, main_yaml_fp)
+            exp_config['ajet']['interchange_server']['already_started'] = True
+            exp_config['ajet']['interchange_server']['interchange_server_port'] = int(os.getenv("AJET_DAT_INTERCHANGE_PORT"))
+            env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
 
             # Start ray if not already started
             if not ray.is_initialized():
@@ -147,7 +150,7 @@ def register_enable_tinkerscript_mode_routes(
             # Store process info in shared memory
             with shared_mem_dict_lock:
                 shared_mem_dict['training_process_pid'] = p.pid
-                shared_mem_dict['engine_status'] = "running"
+                shared_mem_dict['engine_status'] = "ENGINE.BOOTING"
 
             logger.info(f"[start_engine] Successfully started training process (PID: {p.pid})")
             return {"success": True, "pid": p.pid}
@@ -160,9 +163,17 @@ def register_enable_tinkerscript_mode_routes(
 
 
     # --- engine status ---
-    shared_mem_dict['engine_status'] = "booting"
+    shared_mem_dict['engine_status'] = "ENGINE.OFF"
     @app.post("/update_engine_status", response_model=BoolResponse)
     async def update_engine_status(req: UpdateEngineStatusRequest):
+        if req.engine_status not in [
+            "ENGINE.OFF",
+            "ENGINE.BOOTING",
+            "ENGINE.ROLLING",
+            "ENGINE.WEIGHT_SYNCING",
+            "ENGINE.WEIGHT_EXPORTING"
+        ]:
+            return BoolResponse(success=False, failure_reason="Invalid engine status")
         shared_mem_dict['engine_status'] = req.engine_status
         return BoolResponse(success=True)
 

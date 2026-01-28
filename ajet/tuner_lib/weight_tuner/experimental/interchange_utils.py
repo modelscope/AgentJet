@@ -56,6 +56,7 @@ class EpisodeBufferResponse(BaseModel):
 
 class BoolResponse(BaseModel):
     success: bool
+    failure_reason: str = ""
 
 class RegisterEpisodeRequest(BaseModel):
     episode_uuid: str
@@ -79,7 +80,15 @@ def get_interchange_server_url(config):
 
 
 def http_change_engine_status(config: str, new_status: str):
-    # STATES = ["ENGINE.BOOTING", "ENGINE.ROLLING", "ENGINE.WEIGHT_SYNCING", "ENGINE.WEIGHT_EXPORTING"]
+    if new_status not in [
+        "ENGINE.OFF",
+        "ENGINE.BOOTING",
+        "ENGINE.ROLLING",
+        "ENGINE.WEIGHT_SYNCING",
+        "ENGINE.WEIGHT_EXPORTING"
+    ]:
+        raise ValueError(f"Invalid engine status: {new_status}")
+
     resp = httpx.post(
         f"{get_interchange_server_url(config)}/update_engine_status",
         json={"engine_status": new_status},

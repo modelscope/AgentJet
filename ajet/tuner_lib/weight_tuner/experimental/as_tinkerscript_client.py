@@ -119,12 +119,13 @@ class TinkerScriptClient(object):
         """
         Start the training engine on the TinkerScript server.
         This triggers the server to begin the training process.
+        Polls until engine status is "ENGINE.ROLLING".
         """
         try:
             resp = httpx.post(
                 f"{self.server_url}/start_engine",
                 json={},
-                timeout=30
+                timeout=600
             )
             resp.raise_for_status()
             result = resp.json()
@@ -136,6 +137,32 @@ class TinkerScriptClient(object):
         except Exception as e:
             logger.error(f"Error starting engine: {e}")
             raise
+
+        # Poll until engine status is "ENGINE.ROLLING"
+        logger.info("Polling engine status until ENGINE.ROLLING...")
+        last_report_time = time.time()
+
+        while True:
+            try:
+                current_status = self.get_engine_status()
+                current_time = time.time()
+
+                # Report status every 5 seconds
+                if current_time - last_report_time >= 5:
+                    logger.info(f"Current engine status: {current_status}")
+                    last_report_time = current_time
+
+                # Check if engine has reached the desired status
+                if current_status == "ENGINE.ROLLING":
+                    logger.info("Engine status is ENGINE.ROLLING - engine is ready")
+                    break
+
+                # Wait a bit before next poll
+                time.sleep(1)
+
+            except Exception as e:
+                logger.error(f"Error polling engine status: {e}")
+                time.sleep(5)
 
     def get_engine_status(self) -> str:
         try:

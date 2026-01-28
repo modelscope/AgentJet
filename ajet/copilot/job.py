@@ -42,16 +42,23 @@ class AgentJetJob:
         n_gpu: int = 8,
         algorithm: str = "grpo",
         n_gpu_for_infer: int | None = None, # only for trinity backbone
+        grpo_n: int = 8,
+        tinkerscript_mode: bool = True,
         *kwargs,
     ) -> None:
         self.backbone = backbone
-        self.config_as_dict: dict = self.build_job_from_yaml(None)
+        if tinkerscript_mode:
+            default_yaml = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', "default_config/ajet_ts_default.yaml"))
+        else:
+            default_yaml = None
+        self.config_as_dict: dict = self.build_job_from_yaml(default_yaml)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
 
         self.config.ajet.backbone = backbone
         self.config.ajet.model.path = model
         self.config.ajet.trainer_common.n_gpus_per_node = n_gpu
         self.config.ajet.trainer_common.algorithm.adv_estimator = algorithm
+        self.config.ajet.rollout.num_repeat = grpo_n
         if n_gpu_for_infer is None and backbone == "trinity":
             raise ValueError("Please specify `n_gpu_for_infer` (n_gpu_for_infer < n_gpu) for trinity backbone.")
         if (n_gpu_for_infer is not None) and backbone == "verl":

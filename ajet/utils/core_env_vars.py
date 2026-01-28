@@ -34,9 +34,8 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
             # "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
             "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
             "AJET_CONFIG_REDIRECT": os.getenv("AJET_CONFIG_REDIRECT", ""),
-            "AJET_DAT_INTERCHANGE_PORT": data_interchange_port,
-            "AJET_DAT_INTERCHANGE_ZMQ_PORT": str(find_free_port()),
-            "MASTER_NODE_IP": master_node_ip,
+            "AJET_DAT_INTERCHANGE_PORT": os.getenv("AJET_DAT_INTERCHANGE_PORT", data_interchange_port),
+            "MASTER_NODE_IP": os.getenv("MASTER_NODE_IP", master_node_ip),
         }
     }
 

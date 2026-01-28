@@ -292,6 +292,7 @@ ajet:
     num_fastapi_process: 2  # 1, 2 or 4 is fine
     max_fastapi_threads: 128  # 64 or 128 is fine
     max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
+    already_started: False # do not edit, used by `tinkerscript`
 
 
   task_runner:

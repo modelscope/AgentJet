@@ -11,14 +11,53 @@ from ajet.task_reader import RouterTaskReader
 from ajet.utils.retry import retry_with_backoff
 from concurrent.futures import ThreadPoolExecutor
 
+# --------- configurations that take effect locally -------------
+LOCAL_GRPO_N = 4  # grpo group size
+LOCAL_NUM_EPOCH = 10000
+LOCAL_MAX_PARALLEL = 2
+LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
+REMOTE_TINKERJET_URL = "http://localhost:10086" # Change to your tinkerscript remote url
 
-TINKERJET_URL = "http://localhost:10086" # Change to your tinkerscript remote url
-NUM_EPOCH = 100
-GRPO_N = 4  # grpo group size
-MAX_PARALLEL = 2
+# --------- configurations that take effect remotely -------------
+REMOTE_ALLOCATE_GPU_PER_NODE = 4
+REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct'
+
+
 
 class WeightUpdatedHalfway(Exception):
     """Raised when the remote side starts updating model weights halfway through an episode."""
+
+
+def connect_to_tinkerscript_server(
+    create_server_via_ssh: bool = False,
+    create_server_locally: bool = False,
+    sync_train_config: bool = True,
+    start_engine: bool = True,
+):
+    if create_server_via_ssh:
+        raise NotImplementedError("Creating tinkerscript server via SSH is not implemented yet.")
+
+    if create_server_locally:
+        raise NotImplementedError("Creating tinkerscript server is not implemented yet, please run `ajet launch --tinkerscript-server` to start manually.")
+
+    tinkerscript_remote = TinkerScriptClient(REMOTE_TINKERJET_URL)
+
+    if sync_train_config:
+        tinkerscript_remote.sync_train_config(
+            AgentJetJob(
+                algorithm="grpo",
+                n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
+                model=REMOTE_TRAIN_MODEL_01,
+                grpo_n=LOCAL_GRPO_N,
+            )
+        )
+        print("TinkerScript remote handshake and train config sync done.")
+
+    if start_engine:
+        tinkerscript_remote.start_engine()
+        print("TinkerScript remote engine started.")
+
+    return tinkerscript_remote
 
 
 def main():
@@ -28,29 +67,18 @@ def main():
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
             huggingface_dat_repo = HuggingfaceDatRepo(
-                dataset_path = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
+                dataset_path = LOCAL_DATASET_PATH
             )
         )
     )
-    tinkerscript_remote = TinkerScriptClient(TINKERJET_URL)
 
-    print("TinkerScript remote handshake.")
-    tinkerscript_remote.sync_train_config(
-        AgentJetJob(
-            n_gpu=2,
-            algorithm="grpo",
-            model='qwen/Qwen2.5-1.5B-instruct'
-        )
-    )
-    print("TinkerScript remote handshake and train config sync done.")
-    tinkerscript_remote.start_engine()
-    print("TinkerScript remote engine started.")
-    time.sleep(1000)
+    # Hand shake with remote tinkerscript server
+    tinkerscript_remote = connect_to_tinkerscript_server(create_server_locally=True, sync_train_config=True, start_engine=True)
 
     # Define rollout
     def rollout(task):
         group_reward = []
-        for i in range(GRPO_N):
+        for i in range(LOCAL_GRPO_N):
             # begin episode
             episode_uuid, api_baseurl_key = tinkerscript_remote.begin_episode()
             # execute agent
@@ -63,14 +91,14 @@ def main():
 
 
     # Main Training loop
-    with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as executor:
-        for epoch in range(NUM_EPOCH):
+    with ThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL) as executor:
+        for epoch in range(LOCAL_NUM_EPOCH):
             for task in dataset.get_training_tasks():
                 print(f"Submitting task for epoch {epoch}")
                 executor.submit(rollout, task)
 
 
-    model_path = tinkerscript_remote.download_latest_model(path='./tinkerscript_saved_model')
+    # model_path = tinkerscript_remote.download_latest_model(path='./tinkerscript_saved_model')
 
     # Get tuned model from tinkerscript remote
     return None

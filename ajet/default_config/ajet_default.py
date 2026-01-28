@@ -30,6 +30,7 @@ class AjetRollout:
     user_workflow: str = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"
     n_vllm_engine: int = 1
     tensor_model_parallel_size: int = 1
+    num_repeat: int = 8
 
 
 @dataclass

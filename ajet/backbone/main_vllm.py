@@ -191,7 +191,7 @@ def main(config):
         start_interchange_server(config)
         if config.ajet.enable_tinkerscript_mode:
             from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
-            http_change_engine_status(config, "ROLLING")
+            http_change_engine_status(config, "ENGINE.ROLLING")
 
     def companion_launch():
         import torch

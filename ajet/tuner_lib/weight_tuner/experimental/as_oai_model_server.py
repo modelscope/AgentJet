@@ -272,16 +272,18 @@ class InterchangeServer(Process):
 
 # Convenience function for quick server startup
 def start_interchange_server(config, blocking=False) -> int:
+    # Read config
+    already_started = config.ajet.interchange_server.already_started
     experiment_dir = config.ajet.experiment_dir
     num_fastapi_process = config.ajet.interchange_server.num_fastapi_process
     max_fastapi_threads = config.ajet.interchange_server.max_fastapi_threads
     enable_tinkerscript_mode = config.ajet.enable_tinkerscript_mode
+
     # Find a free port if not specified or invalid
     port = int(os.environ.get("AJET_DAT_INTERCHANGE_PORT", -1))
-
     if config.ajet.interchange_server.interchange_server_port != 'auto':
         port = int(config.ajet.interchange_server.interchange_server_port)
-
+        os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
     if port <= 0:
         import socket
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -289,24 +291,30 @@ def start_interchange_server(config, blocking=False) -> int:
             port = s.getsockname()[1]
         os.environ["AJET_DAT_INTERCHANGE_PORT"] = str(port)
 
-    interchange_server = InterchangeServer(
-        experiment_dir,
-        port,
-        num_fastapi_process,
-        max_fastapi_threads,
-        enable_tinkerscript_mode,
-    )
-    interchange_server.start()
+    # init interchage server sub-process
+    if not already_started:
+        interchange_server = InterchangeServer(
+            experiment_dir,
+            port,
+            num_fastapi_process,
+            max_fastapi_threads,
+            enable_tinkerscript_mode,
+        )
+        interchange_server.start()
+    else:
+        interchange_server = None
 
     # Wait for server to be ready
     health_url = f"http://127.0.0.1:{port}/health"
-    start_time = time.time()
     localhost_url = f"http://127.0.0.1:{port}"
-    host_ip = get_host_ip(os.environ.get("NETWORK_INTERFACE", None))
-    host_url = f"http://{host_ip}:{port}"
+    master_node_ip = get_host_ip(os.environ.get("NETWORK_INTERFACE", None))
+    host_url = f"http://{master_node_ip}:{port}"
+    os.environ["MASTER_NODE_IP"] = str(master_node_ip)
 
+    # polling for server ready
+    start_time = time.time()
     while True:
-        if interchange_server.exitcode is not None:
+        if interchange_server and interchange_server.exitcode is not None:
             logger.error(f"Interchange server subprocess failed to start. Return code: {interchange_server.exitcode}")
             raise RuntimeError("Interchange server subprocess failed to start.")
         if time.time() - start_time > 30:
@@ -322,8 +330,9 @@ def start_interchange_server(config, blocking=False) -> int:
         time.sleep(1)
 
     # register a termination handler
-    if DEBUG: logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
-    atexit.register(lambda: interchange_server.terminate())
+    if interchange_server:
+        if DEBUG: logger.info(f"Interchange server subprocess started on port {port} (pid: {interchange_server.pid})")
+        atexit.register(lambda: interchange_server.terminate())
 
     if not blocking:
         # return port
@@ -333,5 +342,6 @@ def start_interchange_server(config, blocking=False) -> int:
                        f"URL 1: {localhost_url}\n------\n"
                        f"URL 2: {host_url}\n------\n"
                        f"Press Ctrl+C to stop.")
-        interchange_server.join()
+        if interchange_server:
+            interchange_server.join()
         return -1

@@ -22,7 +22,6 @@ import socket
 import hydra
 import ray
 from beast_logger import print_dict
-from loguru import logger
 from omegaconf import OmegaConf
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
@@ -110,6 +109,7 @@ class TaskRunner:
         # Print the initial configuration. `resolve=True` will evaluate symbolic values.
         from pprint import pprint
 
+        from loguru import logger
         from omegaconf import OmegaConf
         from verl.utils.fs import copy_to_local
 
