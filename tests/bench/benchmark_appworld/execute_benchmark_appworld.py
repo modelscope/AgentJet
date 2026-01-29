@@ -75,25 +75,25 @@ class TestBenchmarkAppworld(BenchmarkTestCase):
 
     def install_appworld(self):
         # run:
-        # `rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v2.tar.gz  &&   tar   -xzf   ./appworld_pack_v2.tar.gz  -C /tmp`
+        # `rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp`
         self.clear_system_processes()
         import shutil
 
         if os.path.exists("/tmp/pack_all_in_one"):
             shutil.rmtree("/tmp/pack_all_in_one")
-        if os.path.exists("./appworld_pack_v2.tar.gz"):
-            os.remove("./appworld_pack_v2.tar.gz")
+        if os.path.exists("./appworld_pack_v3.tar.gz"):
+            os.remove("./appworld_pack_v3.tar.gz")
         subprocess.run(
             [
                 "wget",
-                "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v2.tar.gz",
+                "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz",
             ]
         )
         subprocess.run(
             [
                 "tar",
                 "-xzf",
-                "./appworld_pack_v2.tar.gz",
+                "./appworld_pack_v3.tar.gz",
                 "-C",
                 "/tmp",
             ]
