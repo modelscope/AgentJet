@@ -1,5 +1,5 @@
 """DeepFinance Task Judge - OpenJudge 版本
-集成: RM Gallery, OpenJudge Graders (含 CitationAudit)
+集成: RM Gallery, PresentationQualityGrader
 """
 
 import os
@@ -13,32 +13,11 @@ from typing import Dict, Any, Optional, Tuple, List
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.workflow import WorkflowOutput, WorkflowTask
 
-from openjudge.graders.agent.action.action_loop import ActionLoopDetectionGrader
-from openjudge.graders.agent.observation.observation_information_gain import (
-    ObservationInformationGainGrader,
-)
-from openjudge.graders.agent.trajectory.trajectory_comprehensive import (
-    TrajectoryComprehensiveGrader,
-)
 from openjudge.models.openai_chat_model import OpenAIChatModel
-from openjudge.models.schema.prompt_template import LanguageEnum
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-from openjudge.scenarios.deep_research.graders.financial_report_resolution import (
-    FinancialReportResolutionGrader,
-)
-from openjudge.scenarios.deep_research.graders.financial_trajectory_faithfulness import (
-    FinancialTrajectoryFaithfulGrader,
-)
-from openjudge.scenarios.deep_research.graders.rubrics_based_trajectory_performance import (
-    RubricsBasedTrajectoryPerformance,
-)
-from openjudge.scenarios.deep_research.graders.financial_report_citation_audit import (
-    FinancialReportCitationAuditGrader,
-)
+from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader
 
 
-# RewardStats 不再使用，OpenJudge 版本直接使用字典存储
-# Reference Answer 路径现在从 config 中读取，见 _init_reference_answers 方法
 
 # OpenJudge imports
 # =============================================================================
@@ -88,7 +67,7 @@ def load_reference_answers_from_file(file_path: str) -> Tuple[Dict[str, str], Di
 class DeepFinanceJudgeByOpenJudge(BaseJudge):
     """
     使用 OpenJudge 框架的 DeepFinance Judge
-    集成: RM Gallery, OpenJudge Graders (含 CitationAudit)
+    集成: RM Gallery, PresentationQualityGrader
     
     分析：
     - compute_reward 每次处理 **一条采样**（单个 workflow_output）
@@ -116,26 +95,15 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         配置 OpenJudge 各 grader 的权重并归一化
         
         graders 对应关系：
-        - financial_report_resolution: 报告质量和问题解决能力
-        - financial_trajectory_faithfulness: 事实准确性（忠实度）
-        - citation_audit: 引用审计（覆盖率 + 真实性）
-        - rubrics_based_trajectory_performance: 基于 rubrics 的评估
-        - trajectory_comprehensive: 轨迹综合评估
-        - observation_information_gain: 信息增益（去重）
-        - action_loop_detection: 动作循环检测（惩罚项）
+        - presentation_quality: 报告呈现质量评估
         """
         cfg = getattr(self.config, "ajet", None)
         
-        # 定义各 grader 的权重（可从 config 中读取）- 与 deep_finance_judge.py 对齐
+        # 定义各 grader 的权重（可从 config 中读取）
         self.w = {
             "rm": getattr(cfg, "rm_weight", 1.0) if cfg else 1.0,  # RM Gallery 权重
-            "citation_audit": getattr(cfg, "citation_audit_weight", 0.0) if cfg else 0.0,  # CitationAudit 权重
-            "report_resolution": getattr(cfg, "report_resolution_weight", 0.0) if cfg else 0.0,
-            "trajectory_faithfulness": getattr(cfg, "trajectory_faithfulness_weight", 0.0) if cfg else 0.0,
-            # "rubrics_performance": getattr(cfg, "rubrics_performance_weight", 0.2) if cfg else 0.2,
-            # "trajectory_comprehensive": getattr(cfg, "trajectory_comprehensive_weight", 0.2) if cfg else 0.2,
-            # "information_gain": getattr(cfg, "information_gain_weight", 0.1) if cfg else 0.1,
-            # "action_loop": getattr(cfg, "action_loop_weight", 0.1) if cfg else 0.1
+            "presentation_quality": getattr(cfg, "presentation_quality_weight", 0.25) if cfg else 0.25,
+            "grounding": getattr(cfg, "grounding_weight", 0.25) if cfg else 0.25,
         }
         
         # 归一化（注意：action_loop 是惩罚项，不参与归一化；rm 需要参与归一化）
@@ -244,15 +212,14 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         注意：GradingRunner 内部的 Semaphore 会绑定到创建时的事件循环，
         因此不能使用单例模式，必须在每次调用的事件循环中创建新实例。
         """
-        language = LanguageEnum.ZH
-        grader_configs = self._create_grader_configs(self.model, language)
+        grader_configs = self._create_grader_configs(self.model)
         return GradingRunner(
             grader_configs=grader_configs,
             max_concurrency=self.max_concurrency,
             show_progress=False
         )
     
-    def _create_grader_configs(self, model: OpenAIChatModel, language: LanguageEnum) -> Dict[str, GraderConfig]:
+    def _create_grader_configs(self, model: OpenAIChatModel) -> Dict[str, GraderConfig]:
         """
         创建所有 grader 的配置
         
@@ -260,54 +227,35 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         - key: grader 名称
         - value: GraderConfig(grader=..., mapper=...)
         """
+        
+        def extract_user_query(data: Dict) -> str:
+            """从 messages 中提取第一条 user 消息的 content"""
+            for msg in data.get("messages", []):
+                if msg.get("role") == "user":
+                    return msg.get("content", "")
+            return ""
+        
+        def extract_report_content(data: Dict) -> str:
+            """从 messages 中提取最后一条 assistant 消息的 content"""
+            for msg in reversed(data.get("messages", [])):
+                if msg.get("role") == "assistant":
+                    return msg.get("content", "")
+            return ""
+        
         return {
-            # 1. 报告质量评估 - 需要 messages 和 chat_date
-            "report_resolution": GraderConfig(
-                grader=FinancialReportResolutionGrader(model=model, language=language),
+            # 报告呈现质量评估 - 需要 user_query 和 report_content
+            "presentation_quality": GraderConfig(
+                grader=PresentationQualityGrader(model=model),
                 mapper=lambda data: {
-                    "messages": data["messages"],
-                    "chat_date": data.get("chat_date")
+                    "user_query": extract_user_query(data),
+                    "report_content": extract_report_content(data),
                 },
             ),
-            
-            # 2. 事实准确性评估 - 需要 messages
-            "trajectory_faithfulness": GraderConfig(
-                grader=FinancialTrajectoryFaithfulGrader(model=model, language=language),
-                mapper=lambda data: {"messages": data["messages"]},
+            # 引用规范性评估 - 需要完整的 traj
+            "grounding": GraderConfig(
+                grader=GroundingGrader(model=model),
+                mapper=lambda data: {"traj": data},
             ),
-            
-            # 3. 引用审计评估 - 需要 messages
-            "citation_audit": GraderConfig(
-                grader=FinancialReportCitationAuditGrader(model=model, language=language),
-                mapper=lambda data: {"messages": data["messages"]},
-            ),
-            
-            # 4. Rubrics 评估 - 需要 messages 和 rubrics
-            # "rubrics_performance": GraderConfig(
-            #     grader=RubricsBasedTrajectoryPerformance(model=model, language=language),
-            #     mapper=lambda data: {
-            #         "messages": data["messages"],
-            #         "rubrics": data.get("rubrics", [])
-            #     },
-            # ),
-            
-            # 5. 轨迹综合评估 - 需要 messages
-            # "trajectory_comprehensive": GraderConfig(
-            #     grader=TrajectoryComprehensiveGrader(model=model, language=language),
-            #     mapper=lambda data: {"messages": data["messages"]},
-            # ),
-            
-            # 6. 信息增益评估 - 需要 messages（非 LLM grader）
-            # "information_gain": GraderConfig(
-            #     grader=ObservationInformationGainGrader(similarity_threshold=0.5),
-            #     mapper=lambda data: {"messages": data["messages"]},
-            # ),
-            
-            # 7. 动作循环检测 - 需要 messages（非 LLM grader）
-            # "action_loop": GraderConfig(
-            #     grader=ActionLoopDetectionGrader(similarity_threshold=1.0),
-            #     mapper=lambda data: {"messages": data["messages"]},
-            # ),
         }
     
     def compute_reward(self, workflow_task: WorkflowTask, workflow_output: WorkflowOutput) -> Tuple[float, bool]:
@@ -361,13 +309,27 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 chat_date=chat_date
             )
             
+            if openjudge_sample.get('messages'):
+                last_msg = openjudge_sample['messages'][-1]
+            
             # 3. 调用 OpenJudge Runner.arun（异步）
             grading_start_time = time.time()
             grader_results = self._run_openjudge_evaluation([openjudge_sample])
             grading_time = time.time() - grading_start_time
+
             
             # 4. 提取各 grader 分数（arun 返回 Dict[str, List[GraderScore]]，这里取第一条）
             grader_scores, quota_exceeded_flags = self._extract_grader_scores(grader_results)
+            
+            # 4.5 如果有分数为0的grader，保存调试信息到单独文件
+            self._save_zero_score_debug(
+                grader_scores=grader_scores,
+                grader_results=grader_results,
+                query=query,
+                history=history,
+                report=assistants[-1] if assistants else "",
+                task_id=task_id
+            )
             
             # 5. 加权融合（包含 RM Gallery 和 OpenJudge Graders）
             fused_reward, contributions = self._fuse_grader_scores(grader_scores, rm_raw)
@@ -552,8 +514,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         输入：
         - grader_results: Dict[str, List[GraderScore]]
           {
-              "report_resolution": [GraderScore(score=0.88, reason="...", metadata={...})],
-              "trajectory_faithfulness": [GraderScore(score=1.0, ...)],
+              "presentation_quality": [GraderScore(score=0.88, reason="...", metadata={...})],
               ...
           }
         
@@ -570,6 +531,10 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             if score_list and len(score_list) > 0:
                 # 取第一条采样的分数（因为每次只评估一条）
                 grader_score = score_list[0]
+                
+                # DEBUG: 记录详细信息
+                reason_str = getattr(grader_score, 'reason', None)
+                print(f"  [DEBUG] {grader_name}: score={getattr(grader_score, 'score', 'N/A')}, reason={str(reason_str)[:300] if reason_str else 'N/A'}")
                 if hasattr(grader_score, "score"):
                     scores[grader_name] = grader_score.score
                     # 检测错误类型：分数为0且有错误信息
@@ -581,6 +546,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 else:
                     # 如果出错，设为 0
                     scores[grader_name] = 0.0
+                    print(f"  [DEBUG] {grader_name}: no 'score' attr, grader_score={grader_score}")
             else:
                 scores[grader_name] = 0.0
         
@@ -657,6 +623,69 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         except Exception:
             pass
     
+    def _save_zero_score_debug(
+        self,
+        grader_scores: Dict[str, float],
+        grader_results: Dict[str, List[Any]],
+        query: str,
+        history: List[Dict],
+        report: str,
+        task_id: str
+    ):
+        """
+        当有 grader 分数为 0 时，保存详细调试信息到单独文件
+        
+        保存内容包括：
+        - query: 用户查询
+        - traj: 对话历史
+        - report: 最终报告（前500字）
+        - zero_score_reasons: 得 0 分的原因
+        """
+        try:
+            # 检查是否有分数为 0 的 grader
+            zero_score_graders = [name for name, score in grader_scores.items() if score == 0.0]
+            if not zero_score_graders:
+                return
+            
+            # 提取得 0 分的原因
+            zero_score_reasons = {}
+            for grader_name in zero_score_graders:
+                if grader_name in grader_results:
+                    score_list = grader_results[grader_name]
+                    if score_list and len(score_list) > 0:
+                        grader_score = score_list[0]
+                        reason = getattr(grader_score, 'reason', None)
+                        zero_score_reasons[grader_name] = str(reason) if reason else "N/A"
+                    else:
+                        zero_score_reasons[grader_name] = "empty score_list"
+                else:
+                    zero_score_reasons[grader_name] = "grader not in results"
+            
+            # 构建调试日志
+            debug_log = {
+                "task_id": task_id,
+                "timestamp": datetime.now().isoformat(),
+                "query": query,
+                "report": report if report else "",
+                "trajectory": history,
+                "grader_scores": grader_scores,
+                "zero_score_graders": zero_score_graders,
+                "zero_score_reasons": zero_score_reasons
+            }
+            
+            # 保存到单独文件
+            save_dir = "/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new/tutorial/example_deep_finance/outputs/reward_zero_debug"
+            os.makedirs(save_dir, exist_ok=True)
+            log_file = os.path.join(save_dir, f"zeroscore_{datetime.now().strftime('%Y%m%d')}.jsonl")
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(debug_log, ensure_ascii=False) + "\n")
+            
+            print(f"  [ZERO SCORE DEBUG] task_id={task_id}, zero_graders={zero_score_graders}, saved to {log_file}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to save zero score debug: {e}")
+            pass
+    
     def _compute_penalty(self, tool_calls: int) -> float:
         """
         计算工具调用惩罚（保留原有逻辑）
@@ -689,13 +718,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         更新 metadata["reward_stats"] - 直接使用 OpenJudge 原始字段
         
         OpenJudge graders（按实际启用情况）：
-        - report_resolution: 报告质量和问题解决能力
-        - trajectory_faithfulness: 事实准确性（忠实度）
-        - citation_audit: 引用审计（覆盖率 + 真实性）
-        - rubrics_performance: 基于 rubrics 的评估（可选）
-        - trajectory_comprehensive: 轨迹综合评估（可选）
-        - information_gain: 信息增益/去重（可选）
-        - action_loop: 动作循环检测（惩罚项，可选）
+        - presentation_quality: 报告呈现质量评估
         
         注意：不再硬套 RewardStats 的字段名，直接使用 openjudge_ 前缀
         """
@@ -712,10 +735,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             "penalty": penalty,
             "step_reward": step_reward,
             "openjudge_enabled": True,
-            # Quota exceeded (429) 统计
-            "quota_exceeded_any": quota_exceeded_any,  # 是否有任何 grader 超额
-            "quota_exceeded_count": quota_exceeded_count,  # 超额的 grader 数量
-            "quota_exceeded_graders": quota_exceeded_flags,  # 各 grader 的超额标记
             # RM Gallery 相关
             "rm_enabled": self._rm_enabled,
             "rm_raw": rm_raw,
