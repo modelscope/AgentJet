@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
 ajet:
-  project_name: ajet_deep_finance
+  project_name: "{{PREFIX}}"
   experiment_name: "{{SUFFIX}}"
   # Judge 配置（嵌套结构，对应 self.config.ajet.judge.*）
   judge:
@@ -10,9 +10,8 @@ ajet:
     train_ref_ans_path: {{TRAIN_REF_ANS_PATH}}   # 训练集 Reference Answer 路径
     val_ref_ans_path: {{VAL_REF_ANS_PATH}}       # 验证集 Reference Answer 路径
   # OpenJudge 权重配置
-  report_resolution_weight: {{REPORT_RESOLUTION_WEIGHT}}         # 报告质量评估
-  trajectory_faithfulness_weight: {{TRAJECTORY_FAITHFULNESS_WEIGHT}}   # 事实准确性评估
-  citation_audit_weight: {{CITATION_AUDIT_WEIGHT}}               # 引用审计评估 (覆盖率 + 真实性)
+  presentation_quality_weight: {{PRESENTATION_QUALITY_WEIGHT}}   # 报告呈现质量评估
+  grounding_weight: {{GROUNDING_WEIGHT}}                         # 引用规范性评估
   rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
     # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）

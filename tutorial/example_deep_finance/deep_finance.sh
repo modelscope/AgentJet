@@ -1,10 +1,10 @@
 #!/bin/bash
-set -e
+set -e  
 #===============================================================================
 # 1. 配置区域 - 用户只需修改这里
 #===============================================================================
-SUFFIX="deep_finance"     # 实验后缀，影响所有日志和实验名称
-PREFIX="open"                        # 实验前缀，影响日志和实验所在文件夹
+SUFFIX="newjudge"     # 实验后缀，影响所有日志和实验名称
+PREFIX="ajet_newjudge"                        # 实验前缀，影响日志和实验所在文件夹
 
 # OpenJudge 模型配置
 OPENJUDGE_LLM='qwen-flash'        # OpenJudge 评分模型
@@ -12,10 +12,9 @@ RM_LLM='qwen-max'                 # RM Gallery 评分模型
 JUDGE_CONCURRENCY=10
 
 # 奖励权重配置
-RM_WEIGHT=0.4
-CITATION_AUDIT_WEIGHT=0.2
-REPORT_RESOLUTION_WEIGHT=0.2
-TRAJECTORY_FAITHFULNESS_WEIGHT=0.2
+RM_WEIGHT=0.5
+PRESENTATION_QUALITY_WEIGHT=0.25
+GROUNDING_WEIGHT=0.25
 
 # 训练参数配置
 NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
@@ -23,7 +22,8 @@ TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
 
-# 主目录
+# 主目录（需要更改）
+export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
 
 NNODES=${WORLD_SIZE}
 
@@ -46,7 +46,7 @@ fi
 # 2. 动态生成配置文件 (从yaml template生成yaml)
 #===============================================================================
 # 修改：配置文件生成路径，现在动态生成到 yaml 目录下
-CONFIG_TEMPLATE="tutorial/example_deep_finance/yaml_template/deep_finance_template.yaml"
+CONFIG_TEMPLATE="tutorial/example_deep_finance/deep_finance.yaml"
 CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/${SUFFIX}.yaml"
 mkdir -p $(dirname ${CONFIG_FILE})
 
@@ -55,12 +55,11 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{MODEL_PATH}}|${MODEL_PATH}|g" \
     -e "s|{{NNODES}}|${NNODES}|g" \
     -e "s|{{RM_WEIGHT}}|${RM_WEIGHT}|g" \
-    -e "s|{{CITATION_AUDIT_WEIGHT}}|${CITATION_AUDIT_WEIGHT}|g" \
+    -e "s|{{PRESENTATION_QUALITY_WEIGHT}}|${PRESENTATION_QUALITY_WEIGHT}|g" \
+    -e "s|{{GROUNDING_WEIGHT}}|${GROUNDING_WEIGHT}|g" \
     -e "s|{{OPENJUDGE_LLM}}|${OPENJUDGE_LLM}|g" \
     -e "s|{{RM_LLM}}|${RM_LLM}|g" \
     -e "s|{{JUDGE_CONCURRENCY}}|${JUDGE_CONCURRENCY}|g" \
-    -e "s|{{REPORT_RESOLUTION_WEIGHT}}|${REPORT_RESOLUTION_WEIGHT}|g" \
-    -e "s|{{TRAJECTORY_FAITHFULNESS_WEIGHT}}|${TRAJECTORY_FAITHFULNESS_WEIGHT}|g" \
     -e "s|{{NUM_REPEAT}}|${NUM_REPEAT}|g" \
     -e "s|{{NUM_STEPS}}|${NUM_STEPS}|g" \
     -e "s|{{TRAIN_BATCH_SIZE}}|${TRAIN_BATCH_SIZE}|g" \
@@ -72,7 +71,7 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
 
 echo "配置文件已生成: ${CONFIG_FILE}"
-echo "参数确认: RM=${RM_WEIGHT}, Citation=${CITATION_AUDIT_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
+echo "参数确认: RM=${RM_WEIGHT}, PresentationQuality=${PRESENTATION_QUALITY_WEIGHT}, Grounding=${GROUNDING_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
 
 #===============================================================================
 # 3. 环境配置
@@ -106,7 +105,7 @@ export DEEPFINANCE_MCP_CONFIG  DEEPFINANCE_TOOL_RESULT_MAX_CHARS
 # 其他服务配置
 HF_ENDPOINT="https://hf-mirror.com"
 ES_HOSTS="http://11.160.132.46:8200"
-export HF_ENDPOINT ES_HOSTS
+export HF_ENDPOINT ES_HOSTS 
 
 # log 文件位置
 CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
@@ -114,7 +113,7 @@ LOG_DIR="${AJET_ROOT}/logs/${PREFIX}"
 MASTER_IP_FILE="${LOG_DIR}/master-ip_${SUFFIX}.log"
 ENV_SERVICE_LOG="${LOG_DIR}/env_service_${SUFFIX}_${CURRENT_TIME}.log"
 TRAIN_LOG="${LOG_DIR}/train_${SUFFIX}_${CURRENT_TIME}.log"
-
+env_log_prefix="${SUFFIX}__${CURRENT_TIME}"
 # 多机训练参数配置
 GPUS_PER_NODE=8
 EXPECTED_WORKERS=$WORLD_SIZE
@@ -156,6 +155,8 @@ export NCCL_ASYNC_ERROR_HANDLING=1
 
 export PYTHONPATH="${AJET_ROOT}:${PYTHONPATH}"
 export RAY_CLUSTER_MODE="multi_node"
+export DEEPFINANCE_PATH="${ENV_SERVICE_ROOT}" # AgentJet 内部可能使用此路径
+export DEEPFINANCE_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profile.d/conda.sh && conda activate finworld_1209  && cd ${ENV_SERVICE_ROOT} && DEEPFINANCE_TOOL_RESULT_MAX_CHARS=${DEEPFINANCE_TOOL_RESULT_MAX_CHARS} DEEPFINANCE_MCP_CONFIG=${DEEPFINANCE_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
 
 
 #===============================================================================
@@ -202,11 +203,12 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
 
     # 启动训练任务（最核心）
     python ajet/launcher.py \
+        --with-deepfinance \
         --conf ${CONFIG_FILE} \
         --backbone="verl" \
-        --prefix=${SUFFIX} \
+        --prefix=${env_log_prefix} \
         2>&1 | tee ${TRAIN_LOG}
-
+    
 
 #===============================================================================
 # 6.2 Worker 节点启动流程
