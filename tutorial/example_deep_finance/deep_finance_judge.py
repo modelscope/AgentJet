@@ -15,7 +15,7 @@ from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader
+from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, CGCVGrader, AuditGrader, TraceabilityRewardGrader
 
 
 
@@ -103,7 +103,10 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         self.w = {
             "rm": getattr(cfg, "rm_weight", 1.0) if cfg else 1.0,  # RM Gallery 权重
             "presentation_quality": getattr(cfg, "presentation_quality_weight", 0.25) if cfg else 0.25,
-            "grounding": getattr(cfg, "grounding_weight", 0.25) if cfg else 0.25,
+            "grounding": getattr(cfg, "grounding_weight", 0.0) if cfg else 0.0,  # 引用规范性评估
+            "cgcv": getattr(cfg, "cgcv_weight", 0.25) if cfg else 0.25,  # Citation-Grounded Claim Verification
+            "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # 引用逻辑审计
+            "traceability": getattr(cfg, "traceability_weight", 0.0) if cfg else 0.0,  # 可追溯性/可核验性审计 (TVR)
         }
         
         # 归一化（注意：action_loop 是惩罚项，不参与归一化；rm 需要参与归一化）
@@ -254,6 +257,21 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             # 引用规范性评估 - 需要完整的 traj
             "grounding": GraderConfig(
                 grader=GroundingGrader(model=model),
+                mapper=lambda data: {"traj": data},
+            ),
+            # CGCV: Citation-Grounded Claim Verification - 引用锤定的断言验证
+            "cgcv": GraderConfig(
+                grader=CGCVGrader(model=model),
+                mapper=lambda data: {"traj": data},
+            ),
+            # Audit: 引用逻辑审计 - 验证引用是否严格符合逻辑蕴含原则
+            "audit": GraderConfig(
+                grader=AuditGrader(model=model),
+                mapper=lambda data: {"traj": data},
+            ),
+            # Traceability: 可追溯性/可核验性审计 - 验证报告断言是否有证据锚点支撑
+            "traceability": GraderConfig(
+                grader=TraceabilityRewardGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
         }

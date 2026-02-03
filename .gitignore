@@ -160,6 +160,7 @@ tutorial/example_deep_finance/scripts/*
 flash_attn-2.8.*.whl
 tutorial/example_deep_finance/prepare_data/*
 tutorial/example_deep_finance/judge/analytical_sufficiency/*
+tutorial/example_deep_finance/output_report/*
 dataset_gsm8k/*
 
 .dockerignore

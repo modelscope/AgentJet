@@ -1,6 +1,9 @@
 # 使得可以通过 from judge import PresentationQualityGrader 直接引用
 from .grounding.grader import GroundingGrader
 from .presentation_quality.grader import PresentationQualityGrader
+from .cgcv.grader import CGCVGrader
+from .audit.grader import AuditGrader
+from .traceability.grader import TraceabilityRewardGrader
 # from .research_depth.grader import ResearchDepthGrader
 # from .research_breadth.grader import ResearchBreadthGrader
 
@@ -8,4 +11,4 @@ from .presentation_quality.grader import PresentationQualityGrader
 # from .grounding.grader import GroundingGrader
 # from .research_breadth.grader import ResearchBreadthGrader
 # __all__ = ["PresentationQualityGrader", "GroundingGrader", "ResearchDepthGrader", "ResearchBreadthGrader"]
-__all__ = ["PresentationQualityGrader", "GroundingGrader"]
+__all__ = ["PresentationQualityGrader", "GroundingGrader", "CGCVGrader", "AuditGrader", "TraceabilityRewardGrader"]
