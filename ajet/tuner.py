@@ -1,9 +1,6 @@
 from typing import TYPE_CHECKING, Callable, Union, Type
 
-from ajet.context_tracker.multiagent_tracking import (
-    MultiAgentContextTracker,
-)
-
+from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 from ajet.tuner_lib.weight_tuner import AgentScopeModelTuner
 from ajet.tuner_lib.weight_tuner import OpenaiClientModelTuner
 from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiClientBaseUrlTuner
@@ -145,6 +142,7 @@ class AjetTuner(object):
             self.target2proxy_registry[target_name] = {}
         self.target2proxy_registry[target_name][agent_name] = explicit_tuner
         return explicit_tuner
+
 
     def _is_target_trainable(self, target_name) -> bool:
         """Determine whether user have used `trainable_targets` to explicitly control training targets.

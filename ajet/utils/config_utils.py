@@ -168,7 +168,7 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
 
 
 def read_ajet_hierarchical_config(
-    yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments"
+    yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments", override_param_callback=None
 ):
     if yaml_fp is None:
         config = {
@@ -210,6 +210,9 @@ def read_ajet_hierarchical_config(
             config["defaults"].remove("trinity_default")
             config["hydra"]["searchpath"].remove("file://ajet/default_config/trinity")
 
+    if override_param_callback is not None:
+        config = override_param_callback(config)
+
     if write_to:
         with open(write_to, "w") as file:
             yaml.dump(config, file)
@@ -239,7 +242,7 @@ def expand_ajet_hierarchical_config(config, write_to=None):
     return config_final
 
 
-def prepare_experiment_config(yaml_path, exp_dir, backbone):
+def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callback=None):
     """
     Prepare experiment configuration by reading YAML, setting up backup directories,
     and copying necessary files for the experiment.
@@ -253,7 +256,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
         tuple: (yaml_backup_dst, exe_exp_base, exp_name, config_final)
     """
     assert yaml_path.endswith(".yaml"), "Configuration file must be a YAML file"
-    exp_base = os.path.dirname(yaml_path)
+    exp_base = os.path.exists(os.path.dirname(yaml_path))
 
     if not os.path.exists(exp_base):
         raise FileNotFoundError(f"Configuration file not found: {exp_base}")
@@ -317,7 +320,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone):
 
     ## 4. edit new yaml
     config = read_ajet_hierarchical_config(
-        yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir
+        yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir, override_param_callback=override_param_callback
     )
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
 

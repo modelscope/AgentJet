@@ -86,6 +86,7 @@ ajet:
 
 
   task_reader:
+    # how to read dataset / environment
     type: huggingface_dat_repo # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
 
     # when `type == jsonl_dataset_file`
@@ -281,13 +282,17 @@ ajet:
 
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
+  enable_swarm_mode: False
+  # both swarm / oai share the same interchange server
   enable_experimental_interchange_server: False
+  # interchange server configuration
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
     interchange_server_port: 'auto'
     num_fastapi_process: 2  # 1, 2 or 4 is fine
-    max_fastapi_threads: 128  # 64 or 128 is fine
+    max_fastapi_threads: 512  # 64 or 128 is fine
     max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
+    already_started: False # do not edit, used by `swarm`
 
 
   task_runner:

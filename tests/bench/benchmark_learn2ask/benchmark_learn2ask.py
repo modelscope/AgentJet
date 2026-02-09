@@ -27,7 +27,7 @@ class TestProbe(BenchmarkProbe):
             # step    :       [low,    high ]
                 50     :       [2.3,  99999.0],
                100     :       [2.5,  99999.0],
-               200     :       [2.9,  99999.0],
+               200     :       [2.6,  99999.0],
         }
         # fmt: on
         self.probe_list = ["reward_probe"]

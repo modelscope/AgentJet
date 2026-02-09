@@ -17,11 +17,7 @@ import ray
 import yaml
 from loguru import logger
 
-from ajet.launcher import (
-    check_avail_gpu,
-    get_backbone_target,
-    setup_environment_vars,
-)
+
 from ajet.default_config.ajet_default import Config
 from ajet.utils.config_utils import (
     expand_ajet_hierarchical_config,
@@ -29,7 +25,12 @@ from ajet.utils.config_utils import (
     read_ajet_hierarchical_config,
 )
 from ajet.utils.dynamic_import import cls_to_path
-from ajet.utils.launch_utils import execute_training_process
+from ajet.utils.launch_utils import (
+    execute_training_process,
+    check_avail_gpu,
+    get_backbone_target,
+    setup_environment_vars,
+)
 
 
 class AgentJetJob:
@@ -37,30 +38,40 @@ class AgentJetJob:
 
     def __init__(
         self,
-        backbone: str = "trinity",
+        backbone: str = "verl",
         model: str = "Qwen/Qwen2___5-7B-Instruct",
         n_gpu: int = 8,
         algorithm: str = "grpo",
         n_gpu_for_infer: int | None = None, # only for trinity backbone
+        grpo_n: int = 8,
+        batch_size: int = 32,
+        swarm_mode: bool = True,
         *kwargs,
     ) -> None:
         self.backbone = backbone
-        self.config_as_dict: dict = self.build_job_from_yaml(None)
+        if swarm_mode:
+            default_yaml = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', "default_config/ajet_ts_default.yaml"))
+        else:
+            default_yaml = None
+        self.config_as_dict: dict = self.build_job_from_yaml(default_yaml)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
 
         self.config.ajet.backbone = backbone
         self.config.ajet.model.path = model
         self.config.ajet.trainer_common.n_gpus_per_node = n_gpu
         self.config.ajet.trainer_common.algorithm.adv_estimator = algorithm
+        self.config.ajet.rollout.num_repeat = grpo_n
+        self.config.ajet.data.train_batch_size = batch_size
         if n_gpu_for_infer is None and backbone == "trinity":
             raise ValueError("Please specify `n_gpu_for_infer` (n_gpu_for_infer < n_gpu) for trinity backbone.")
-        if n_gpu_for_infer is not None and backbone == "verl":
+        if (n_gpu_for_infer is not None) and backbone == "verl":
             raise ValueError("n_gpu_for_infer is only for trinity backbone, please set it to `None`.")
         else:
-            assert isinstance(n_gpu_for_infer, int)
-            assert n_gpu_for_infer < n_gpu, "`n_gpu_for_infer` should be less than `n_gpu`."
-            self.config.ajet.rollout.n_vllm_engine = n_gpu_for_infer
-            self.config.ajet.rollout.tensor_model_parallel_size = 1
+            if backbone == "trinity":
+                assert isinstance(n_gpu_for_infer, int), f"`n_gpu_for_infer` should be int, got {type(n_gpu_for_infer)}."
+                assert n_gpu_for_infer < n_gpu, "`n_gpu_for_infer` should be less than `n_gpu`."
+                self.config.ajet.rollout.n_vllm_engine = n_gpu_for_infer
+                self.config.ajet.rollout.tensor_model_parallel_size = 1
 
     def build_job_from_yaml(self, yaml_path: str | None) -> dict:
         self.exp_name = datetime.now().strftime("ajet_job_%Y%m%d_%H%M%S")

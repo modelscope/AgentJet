@@ -14,8 +14,7 @@ from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
-from ajet.utils.networking import find_free_port
-
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import get_zmq_socket, is_episode_claimed
 
 context = zmq.Context()
 atexit.register(context.term)
@@ -68,16 +67,10 @@ class InterchangeClient:
         self.llm_inference_fn = llm_inference_fn
         self.config = config
         self._should_terminate = False
-
+        self.episode_contect_address, ipc_path = get_zmq_socket(config, episode_uuid, tag="llm")
+        self.ipc_path = ipc_path
         self.interchange_method = config.ajet.interchange_server.interchange_method
-        if self.interchange_method == 'tcp':
-            master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
-            self.episode_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
-        elif self.interchange_method == 'ipc':
-            self.ipc_path = f"/tmp/ajet/{self.episode_uuid}.sock"
-            self.episode_contect_address = f"ipc://{self.ipc_path}"
         self.max_inference_tracker_threads = config.ajet.interchange_server.max_inference_tracker_threads
-
 
     async def llm_infer(
             self,
@@ -110,18 +103,33 @@ class InterchangeClient:
 
 
     @property
-    def should_terminate(self) -> bool:
-        return self._should_terminate
+    def should_soft_terminate(self) -> bool:
+        if self._should_terminate:
+            return True
+        return self.context_tracker.should_interrupt_soft_fn()
+
+    @property
+    def should_hard_terminate(self) -> bool:
+        if self._should_terminate:
+            return True
+        if not self.config.ajet.enable_swarm_mode:
+            return self.should_soft_terminate
+        else:
+            return self.context_tracker.should_interrupt_hard_fn()
+
 
 
     def begin_service(self):
         """
         Starts the zmq communication loop.
         """
+        if self.should_soft_terminate or self.should_hard_terminate:
+            return self.episode_contect_address
+
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"{self.episode_contect_address}")
-        self.socket.setsockopt(zmq.RCVTIMEO, 3*1000)  # 3 second timeout for REP
+        self.socket.setsockopt(zmq.RCVTIMEO, 1*1000)  # 3 second timeout for REP
 
         self.executor = SharedInterchangeThreadExecutor(self.max_inference_tracker_threads).get_shared_executor()
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Submitting _begin_service_threading to executor...")
@@ -129,10 +137,15 @@ class InterchangeClient:
 
         # wait till service begin running
         time.sleep(0.5)
-        w_time = 1
+        wait_time = 1
         while future._state == 'PENDING':
-            time.sleep(min(w_time * 2, 10))
-            w_time += 1
+            if self.should_soft_terminate or self.should_hard_terminate:
+                future.cancel()
+                self.socket.close()
+                if os.path.exists(self.ipc_path): os.remove(self.ipc_path)
+                return self.episode_contect_address
+            time.sleep(min(wait_time * 2, 10))
+            wait_time += 1
 
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Future ready...")
         return self.episode_contect_address
@@ -146,19 +159,20 @@ class InterchangeClient:
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting ZMQ socket bind complete")
 
         try:
-            while not self.should_terminate:
+            while not self.should_hard_terminate:
                 # listen for next request from remote
                 try:
-                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun")
+                    # if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun (should_terminate {self.should_terminate})")
                     message = self.socket.recv_string()
-                    if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() is done")
+                    # if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() is done")
                 except zmq.Again as e:
-                    if self.should_terminate:
+                    if self.should_hard_terminate:
+                        # abort_episode()
                         if DEBUG: logger.info(f"[client] {self.episode_uuid} | episode over")
                         break
                     timepassed = time.time() - begin_time
-                    if timepassed > 60:
-                        logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
+                    if timepassed > 100:
+                        if DEBUG: logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
                 # parse the incoming request
@@ -199,3 +213,4 @@ class InterchangeClient:
                 if os.path.exists(self.ipc_path):
                     os.remove(self.ipc_path)
                     if DEBUG: logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")
+

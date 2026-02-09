@@ -113,40 +113,66 @@ def replace_token_ids(
 class BaseTracker(object):
     def __init__(self, config, tokenizer, workflow_task: WorkflowTask, **kwargs):
 
+        # disable read only mode
+        self._read_only = False
+        self._discarded = False
+
+        # task related info
         self.workflow_task = workflow_task
         self.task_batch_index = self.workflow_task.task_batch_index
-        self.task_tag = self.workflow_task.task_tag
-        self.task_id = self.workflow_task.task_id
+        self.task_tag: str = self.workflow_task.task_tag
+        self.task_id: str = self.workflow_task.task_id
         self.episode_uuid = self.workflow_task.episode_uuid
 
-        self.config = config
+        # tokenizer
         self.tokenizer = tokenizer
+        self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
+        self._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
+
+        # config
+        self.config = config
         self.saved_timelines: List[List[ExtendedMessage]] = []
         self.current_context_status = ""
+
+        # length control
         max_response_length = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
-        self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
-        self._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
-        self.generated_token_cnt = 0
-        self.terminal_rewards_dict = {}
-        self.discarded = False
-        self.is_terminated = False
-        self.reward_structure: Union[Reward, None] = None
-        self.context_time_cost = 0
-        self.tag = ""
-        self.current_batch_success_rate: float = float("-inf")
-        self.current_batch_reward: float = float("-inf")
-        self.already_mad_flag: bool = False
-        self.round_cnt = 0
+
         self.generation_prompt_token = None
         self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None  # Initialize workflow_metadata to store tool statistics
+
+        # meta data attributes
+        self.tag = ""
+        self.round_cnt = 0
+        self.generated_token_cnt = 0
+        self.current_batch_success_rate: float = float("-inf")
+        self.current_batch_reward: float = float("-inf")
+
+        # reward and madness detection
+        self.reward_structure: Union[Reward, None] = None
+        self.already_mad_flag: bool = False
 
         assert (
             self.config.ajet.data.max_prompt_length
             + self.config.ajet.data.max_response_length
             <= max_model_len
         )
+
+    def reset(self):
+        # disable read only mode
+        self._read_only = False
+        self._discarded = False
+
+        self.saved_timelines: List[List[ExtendedMessage]] = []
+        self.current_context_status = ""
+        self.reward_structure: Union[Reward, None] = None
+        self.tag = ""
+        self.current_batch_success_rate: float = float("-inf")
+        self.current_batch_reward: float = float("-inf")
+        self.already_mad_flag: bool = False
+        self.round_cnt = 0
+        self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None
 
     def group_tokenize(self):
         raise NotImplementedError

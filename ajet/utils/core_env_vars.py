@@ -1,4 +1,5 @@
 import os
+import copy
 from pathlib import Path
 
 from beast_logger import print_dict
@@ -18,6 +19,11 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
             if config.ajet.interchange_server.interchange_method == "ipc":
                 raise ValueError("IPC interchange method is not supported for multi-node setup. Please set `ajet.interchange_server.interchange_method: tcp` ")
 
+    if config.ajet.interchange_server.interchange_server_port != 'auto':
+        data_interchange_port = str(int(config.ajet.interchange_server.interchange_server_port))
+    else:
+        data_interchange_port = str(find_free_port())
+
     runtime_env = {
         "env_vars": {
             "VLLM_USE_V1": "1",
@@ -29,8 +35,8 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
             # "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
             "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
             "AJET_CONFIG_REDIRECT": os.getenv("AJET_CONFIG_REDIRECT", ""),
-            "AJET_DAT_INTERCHANGE_PORT": str(find_free_port()),
-            "MASTER_NODE_IP": master_node_ip,
+            "AJET_DAT_INTERCHANGE_PORT": os.getenv("AJET_DAT_INTERCHANGE_PORT", data_interchange_port),
+            "MASTER_NODE_IP": os.getenv("MASTER_NODE_IP", master_node_ip),
         }
     }
 
@@ -56,5 +62,12 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
     if is_trinity:
         assert "AJET_CONFIG_REDIRECT" in runtime_env["env_vars"]
 
-    print_dict(runtime_env["env_vars"], "runtime_env")
+    print_env_dict = copy.deepcopy(runtime_env["env_vars"])
+    # limit value length for printing
+    for k, v in print_env_dict.items():
+        _len_limit = 500
+        _len_limit_half = _len_limit // 2
+        if len(v) > _len_limit:
+            print_env_dict[k] = v[:_len_limit_half] + "..." + v[-_len_limit_half:]
+    print_dict(print_env_dict, "runtime_env")
     return runtime_env

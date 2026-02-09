@@ -24,7 +24,6 @@ class BaseContextTracker(BaseTracker):
         full_context (List[ExtendedMessage]): List of all messages in the conversation
         current_context_status (str): Current status of the context
         max_seq_length (int): Maximum sequence length for the context window
-        terminal_rewards_dict (dict): Dictionary storing terminal rewards
     """
 
     def __init__(self, config, tokenizer, **kwargs):
@@ -262,30 +261,28 @@ class BaseContextTracker(BaseTracker):
 
         # check reward structure
         self.reward_structure: Reward  # type: ignore
-        assert (
-            self.reward_structure.step_reward_arr is not None
-        ), "must call `process_reward` before tokenize_steps"
-        assert len(self.reward_structure.step_reward_arr) == total_steps
+        assert self.reward_structure.step_reward_arr is not None, "must call `process_reward` before tokenize_steps"
+        assert len(self.reward_structure.step_reward_arr) == total_steps, f"reward step count {len(self.reward_structure.step_reward_arr)} != total_steps {total_steps}"
 
         # mapping
         input_ids = []
         input_logprobs = []
         attention_mask = []
         loss_mask = []
-        split_prompt_reponse_index = -1
+        split_prompt_response_index = -1
         split_point_message_left_index = -1
         input_ids_len = []
 
         # cat all messages
         for i, ext_msg in enumerate(ext_steps):
             # find split index, this have to be done before input_ids += ext_msg.token_arr
-            if (split_prompt_reponse_index == -1) and (ext_msg.need_training):
-                split_prompt_reponse_index = len(input_ids)
+            if (split_prompt_response_index == -1) and (ext_msg.need_training):
+                split_prompt_response_index = len(input_ids)
                 split_point_message_left_index = i - 1
                 assert (
                     split_point_message_left_index >= 0
                 ), "There should be at least one message before the first training message"
-                assert split_prompt_reponse_index == input_ids_len[split_point_message_left_index]
+                assert split_prompt_response_index == input_ids_len[split_point_message_left_index]
                 assert (
                     ext_msg.author == "llm"
                 ), "The first message after initialization should be from LLM, not from env or user"
@@ -304,37 +301,37 @@ class BaseContextTracker(BaseTracker):
         # move the split index forward
         MAX_FORWARD_STEPS = 100
         for i in range(MAX_FORWARD_STEPS):
-            if loss_mask[split_prompt_reponse_index] == 0:
-                split_prompt_reponse_index += 1
+            if loss_mask[split_prompt_response_index] == 0:
+                split_prompt_response_index += 1
             else:
                 break
 
         # no matter what, the split index should not exceed max prompt length
         # make sure that the prompt length does not exceed `config.ajet.data.max_prompt_length`
-        if split_prompt_reponse_index > self.config.ajet.data.max_prompt_length:
-            split_prompt_reponse_index = self.config.ajet.data.max_prompt_length
+        if split_prompt_response_index > self.config.ajet.data.max_prompt_length:
+            split_prompt_response_index = self.config.ajet.data.max_prompt_length
 
         # check
         assert len(ext_steps) == len(
             input_ids_len
         ), "length of ext_steps and input_ids_len should be equal"
         assert (
-            split_prompt_reponse_index != -1
-        ), "split_prompt_reponse_index should not be -1, at least one message should be in the context"
+            split_prompt_response_index != -1
+        ), "split_prompt_response_index should not be -1, at least one message should be in the context"
         position_ids = compute_position_id_with_mask(torch.tensor(attention_mask)).tolist()
 
         # sperate prompt and response
-        prompt_ids = input_ids[:split_prompt_reponse_index]
-        prompt_attention_mask = attention_mask[:split_prompt_reponse_index]
-        prompt_position_ids = position_ids[:split_prompt_reponse_index]
-        prompt_loss_mask = loss_mask[:split_prompt_reponse_index]
-        prompt_logprobs = input_logprobs[:split_prompt_reponse_index]
+        prompt_ids = input_ids[:split_prompt_response_index]
+        prompt_attention_mask = attention_mask[:split_prompt_response_index]
+        prompt_position_ids = position_ids[:split_prompt_response_index]
+        prompt_loss_mask = loss_mask[:split_prompt_response_index]
+        prompt_logprobs = input_logprobs[:split_prompt_response_index]
 
-        response_ids = input_ids[split_prompt_reponse_index:]
-        response_attention_mask = attention_mask[split_prompt_reponse_index:]
-        response_position_ids = position_ids[split_prompt_reponse_index:]
-        response_loss_mask = loss_mask[split_prompt_reponse_index:]
-        response_logprobs = input_logprobs[split_prompt_reponse_index:]
+        response_ids = input_ids[split_prompt_response_index:]
+        response_attention_mask = attention_mask[split_prompt_response_index:]
+        response_position_ids = position_ids[split_prompt_response_index:]
+        response_loss_mask = loss_mask[split_prompt_response_index:]
+        response_logprobs = input_logprobs[split_prompt_response_index:]
 
         tracker_tokenized = {}
         tracker_tokenized["input_ids"] = input_ids

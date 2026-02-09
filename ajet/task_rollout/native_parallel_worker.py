@@ -2,12 +2,13 @@
 
 import os
 import time
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait, ALL_COMPLETED, FIRST_COMPLETED
 from typing import Dict, List, Literal
 from urllib.parse import quote
 
 import numpy as np
 import torch
+import threading
 from loguru import logger
 from tensordict import TensorDict
 from torch.nn.utils.rnn import pad_sequence
@@ -15,10 +16,11 @@ from tqdm import tqdm
 from verl import DataProto
 from verl.utils.torch_functional import pad_sequence_to_length
 
-from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.schema.task import Task
 from ajet.schema.trajectory import Sample
 from ajet.task_rollout.single_worker import BaseRolloutManager
+from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
 
 
 class DynamicRolloutManager(BaseRolloutManager):
@@ -59,6 +61,9 @@ class DynamicRolloutManager(BaseRolloutManager):
             if start == -1:
                 print_buf += [f"[finished]:{count} threads"]
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
+        # if "info" in observation_window:
+        #     print_buf2 = "\t".join(observation_window["info"])
+        #     print(print_buf2)
 
     def rollout_static(
         self,
@@ -139,7 +144,9 @@ class DynamicRolloutManager(BaseRolloutManager):
         epoch: str,
     ) -> List[BaseContextTracker]:
         """Delegate to dynamic rollout when oversampling is enabled."""
-        if (
+        if self.config.ajet.enable_swarm_mode:
+            return self.rollout_swarm(tasks, mode, epoch)
+        elif (
             mode == "sample"
             and (self.rollout_n != 1)
             and self.config.ajet.rollout.enable_oversample
@@ -248,7 +255,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                     completed_task_futures = [f for f in task_future_array if f.done()]
                     completed_results = [f.result() for f in completed_task_futures]
                     completed_results = [
-                        tracker for tracker in completed_results if not tracker.discarded
+                        tracker for tracker in completed_results if not tracker._discarded
                     ]
                     reward = [
                         tracker.reward_structure.performance_reward for tracker in completed_results
@@ -299,7 +306,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                         )
                     time.sleep(5)
 
-            # We have enough number of samples, but we need to wait for all threads to finish, including discarded threads
+            # We have enough number of samples, but we need to wait for all threads to finish, including ._discarded threads
             tic = -1
             while any(f.running() for task_future_array in futures for f in task_future_array):
                 tic += 1
@@ -318,7 +325,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
                 completed_results = [
-                    tracker for tracker in completed_results if not tracker.discarded
+                    tracker for tracker in completed_results if not tracker._discarded
                 ]
                 task_cmd_reward_array = [
                     tracker.reward_structure.performance_reward for tracker in completed_results
@@ -402,7 +409,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_task_futures = [f for f in task_future_array if f.done()]
                 completed_results = [f.result() for f in completed_task_futures]
                 completed_results = [
-                    tracker for tracker in completed_results if not tracker.discarded
+                    tracker for tracker in completed_results if not tracker._discarded
                 ]
                 # in-group success rate and reward
                 task_cmd_reward_array = [
@@ -459,6 +466,140 @@ class DynamicRolloutManager(BaseRolloutManager):
             return tracker_array
 
 
+
+    def rollout_swarm(  # noqa: C901
+        self,
+        tasks: List[Task],
+        mode: Literal["sample", "validate"],
+        epoch: str,
+        allow_sample_num_change=True,
+        allow_force_stop=True,
+    ) -> List[BaseContextTracker]:
+        """
+        Build a pool of threads to run context trackers in parallel,
+        each thread re-spawn after complete, until reaching conditions to stop.
+        """
+
+        tracker_array: List[BaseContextTracker] = []
+        assert mode != "validate"
+        rollout_n = self.rollout_n
+        n_batch_task = len(tasks)
+        n_task = min(len(tasks), self.max_parallel // rollout_n)
+        assert n_task > 0, f"n_task is not valid, n_task = min(len(tasks), self.max_parallel // rollout_n) = {n_task}"
+        self.current_token_count_time = time.time()
+
+        # initialize observation window
+        observation_window: Dict[str, List[int | bool | str]] = {
+            "info": ["" for _ in range(n_task * rollout_n)],
+            "step": [0 for _ in range(n_task * rollout_n)],
+            "stop": [False for _ in range(n_task * rollout_n)],
+            "hard_stop": [False for _ in range(n_task * rollout_n)],
+            "token": [0 for _ in range(n_task * rollout_n)],
+        }
+        executor = ThreadPoolExecutor(max_workers=self.max_parallel)
+        futures: List[Future] = []
+        completed_task_id_map_ct: Dict[str, List[BaseContextTracker]] = {}
+        executor_lock = threading.Lock()
+
+        # submit initial tasks
+        dummy_task = Task(main_query="dummy task")
+        for task_batch_index in range(n_task):
+            for task_rollout_index in range(rollout_n):
+                task_thread_index = task_batch_index * rollout_n + task_rollout_index
+                future = executor.submit(
+                    self.rollout_env_worker_loop,
+                    task=dummy_task,
+                    task_tag="",
+                    mode=mode,
+                    task_batch_index=task_batch_index,
+                    task_thread_index=task_thread_index,
+                    observation_window=observation_window,
+                    completed_task_id_map_ct=completed_task_id_map_ct,
+                    executor_lock=executor_lock,
+                )
+                observation_window["info"][task_thread_index] = "1"
+                futures.append(future)
+
+        def enough_sample_stop_condition(completed_task_id_map_ct) -> bool:
+            n = 0
+            for ct_list in completed_task_id_map_ct.values():
+                n += len(ct_list)
+            print(f"Current collected samples: {n}, target: {n_batch_task * rollout_n}")
+            return (n >= n_batch_task * rollout_n)
+
+        def enough_finished_task_stop_condition(completed_task_id_map_ct) -> bool:
+            n_finish_roll_task = 0
+            for ct_list in completed_task_id_map_ct.values():
+                if len(ct_list) >= rollout_n:
+                    n_finish_roll_task += 1
+            return (n_finish_roll_task >= n_batch_task)
+
+        def enough_non_dummy_task_stop_condition(completed_task_id_map_ct) -> bool:
+            n_finish_roll_task = 0
+            for ct_list in completed_task_id_map_ct.values():
+                task_cmd_reward_array = [
+                    tracker.reward_structure.performance_reward for tracker in ct_list
+                ]
+                if (len(ct_list) >= rollout_n):
+                    all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
+                    if all_equal: continue
+                    n_finish_roll_task += 1
+            return (n_finish_roll_task >= n_batch_task)
+
+        stop_condition = enough_sample_stop_condition
+
+        def stop_all_threads_soft():
+            for k in range(len(observation_window["stop"])): observation_window["stop"][k] = True
+            http_change_engine_status(self.config, "ENGINE.ROLLING_POST")
+            return
+
+        def stop_all_threads_hard():
+            for k in range(len(observation_window["hard_stop"])): observation_window["hard_stop"][k] = True
+            http_change_engine_status(self.config, "ENGINE.WEIGHT_SYNCING")
+            return
+
+        cnt = 0
+        while True:
+            cnt += 1
+            time.sleep(2)
+            if (cnt % 5 == 0):
+                self.step_status_printer(observation_window)
+            meet_stop_condition_after_new_results = stop_condition(completed_task_id_map_ct)
+            if meet_stop_condition_after_new_results:
+                print("Sending soft stop signal to all threads...")
+                stop_all_threads_soft()
+                break
+
+        # wait for all threads to complete
+        print('Finalizing all threads...')
+        executor.shutdown(wait=True)
+
+        # stop all threads hard
+        print("Sending hard stop signal to all threads...")
+        stop_all_threads_hard()
+
+        # build tracker_array
+        print('Collecting results...')
+        for ct_list in completed_task_id_map_ct.values():
+            tracker_array.extend(ct_list)
+
+
+        # TODO: support multi-step reward
+        task_success_rate = np.mean(
+            [tracker.reward_structure.success_rate for tracker in tracker_array]
+        )
+        task_scalar_reward = np.mean(
+            [tracker.reward_structure.final_scalar_reward for tracker in tracker_array]
+        )
+
+        for tracker in tracker_array:
+            tracker.current_batch_success_rate = float(task_success_rate)
+            tracker.current_batch_reward = float(task_scalar_reward)
+
+        # return all trackers
+        return tracker_array
+
+
 class VerlRolloutManager(DynamicRolloutManager):
     """High-level manager orchestrating rollouts and batch conversion."""
 
@@ -478,6 +619,7 @@ class VerlRolloutManager(DynamicRolloutManager):
             except Exception as e:
                 raise e
             finally:
+                logger.bind(exception=True).exception("Error during tracker.tokenize()")  # for debugging
                 tracker.generate_log(global_step=self.current_global_steps)
                 if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get(
                     "AJET_DEBUG", None

@@ -1,10 +1,11 @@
 import time
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar
-
 from loguru import logger
 
-from ajet.utils.testing_utils import TestFailException, TestSuccessException
+class SwarmReceiveAbortException(Exception):
+    pass
+
 
 T = TypeVar("T")
 
@@ -17,6 +18,8 @@ def retry_with_backoff(
     """Retry decorator with exponential backoff and structured logging."""
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        from ajet.utils.testing_utils import TestFailException, TestSuccessException
+
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
             target_max_retry = max_retry
@@ -27,27 +30,31 @@ def retry_with_backoff(
             if target_max_retry < 1:
                 target_max_retry = 1
 
-            for attempt in range(target_max_retry):
-                try:
-                    return func(*args, **kwargs)
-                except TestSuccessException as exc:  # noqa: BLE001
-                    raise exc
-                except TestFailException as exc:  # noqa: BLE001
-                    raise exc
-                except Exception as exc:  # noqa: BLE001
-                    if attempt < target_max_retry - 1:
-                        logger.bind(exception=True).exception(
-                            f"{func.__name__} error: {exc.args}, retrying {attempt + 1}/{target_max_retry}"
-                        )
-                        sleep_seconds = backoff_fn(attempt) if backoff_fn else 2**attempt
-                        time.sleep(sleep_seconds)
-                    else:
-                        logger.bind(exception=True).exception(
-                            f"{func.__name__} failed after {target_max_retry} retries: {exc.args}"
-                        )
-                        raise
+            try:
+                for attempt in range(target_max_retry):
+                    try:
+                        return func(*args, **kwargs)
+                    except TestSuccessException as exc:  # noqa: BLE001
+                        raise exc
+                    except TestFailException as exc:  # noqa: BLE001
+                        raise exc
+                    except Exception as exc:  # noqa: BLE001
+                        if attempt < target_max_retry - 1:
+                            logger.bind(exception=True).exception(
+                                f"{func.__name__} error: {exc.args}, retrying {attempt + 1}/{target_max_retry}"
+                            )
+                            sleep_seconds = backoff_fn(attempt) if backoff_fn else 2**attempt
+                            time.sleep(sleep_seconds)
+                        else:
+                            logger.bind(exception=True).exception(
+                                f"{func.__name__} failed after {target_max_retry} retries: {exc.args}"
+                            )
+                            raise
 
-            raise RuntimeError("retry_with_backoff exhausted attempts")
+                raise RuntimeError("retry_with_backoff exhausted attempts")
+            except SwarmReceiveAbortException as exc:  # noqa: BLE001
+                # ignore exception, return None silently
+                return None # type: ignore
 
         return wrapper
 

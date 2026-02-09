@@ -67,7 +67,7 @@
             <h3>Any Training Engine</h3>
         </div>
         <p class="card-desc">
-            Support <b>multiple training engines</b> as backbone (<b>VeRL</b> and <b>Trinity-RFT</b>). Tinker backbone support will be released soon.
+            Support <b>multiple training engines</b> as backbone (<b>VeRL</b> and <b>Trinity-RFT</b>). Swarm backbone support will be released soon.
             Choose from <b>vLLM</b> and <b>SGLang</b> as you wish. Say goodbye to training engine gaps.
         </p>
     </a>

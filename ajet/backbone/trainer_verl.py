@@ -99,16 +99,29 @@ def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | to
         return reward_tensor
 
 
-def union_gen_batch_via_task_id(tasks, batch: DataProto, gen_batch_output: DataProto):
+def union_gen_batch_via_task_id(tasks, batch: DataProto, gen_batch_output: DataProto, discard_original_batch=False):
     """
     Union the gen_batch_output with the batch based on task_id.
     """
-    map_task_id_to_index = {t.task_id: i for i, t in enumerate(tasks)}
-    gen_task_task_ids = gen_batch_output.non_tensor_batch["task_ids"]
-    indices = [map_task_id_to_index[tid] for tid in gen_task_task_ids]
-    batch_extend = batch.select_idxs(indices)
-    batch_final = batch_extend.union(gen_batch_output)
-    return batch_final
+    if not discard_original_batch:
+        map_task_id_to_index = {t.task_id: i for i, t in enumerate(tasks)}
+        gen_task_task_ids = gen_batch_output.non_tensor_batch["task_ids"]
+        indices = [map_task_id_to_index[tid] for tid in gen_task_task_ids]
+        batch_extend = batch.select_idxs(indices)
+        batch_final = batch_extend.union(gen_batch_output)
+        return batch_final
+    else:
+        gen_batch_output.non_tensor_batch['uid'] = gen_batch_output.non_tensor_batch["task_ids"]
+        task_id_counter = {}
+        for i, tid in enumerate(gen_batch_output.non_tensor_batch["task_ids"]):
+            if tid in task_id_counter:
+                task_id_counter[tid] += 1
+            else:
+                task_id_counter[tid] = 1
+            current_id = task_id_counter[tid]
+            gen_batch_output.non_tensor_batch['rollout_ids'][i] = f"T{tid}R{current_id}"
+        logger.info(f'task_id_counter: {task_id_counter}')
+        return gen_batch_output
 
 
 def compute_advantage(
@@ -443,6 +456,12 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             tokenizer=self.tokenizer,
         )
 
+    def _update_interchange_server_status_flag(self, status: str):
+        if self.config.ajet.enable_experimental_interchange_server:
+            if self.config.ajet.enable_swarm_mode:
+                from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
+                http_change_engine_status(self.config, status)
+
     # #######################################
     # training loop
     # #######################################
@@ -474,7 +493,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
         # perform validation before training
         # currently, we only support validation using the reward_function.
-        if self.val_reward_fn is not None and self.config.trainer.get("val_before_train", True):
+        if (self.val_reward_fn is not None) and (self.config.trainer.get("val_before_train", True)) and (not self.config.ajet.enable_swarm_mode):
             val_metrics = self._validate()
             assert val_metrics, f"{val_metrics=}"
             pprint(f"Initial validation metrics: {val_metrics}")
@@ -547,12 +566,13 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                 with marked_timer("step", timing_raw):
                     # generate a batch
-                    logger.info("=== + rollout step begin ===")
+                    logger.info("rollout step begin")
                     with marked_timer("gen", timing_raw, color="red"):
                         assert self.async_rollout_mode
-                        logger.info("=== wake up begin ===")
+                        logger.info("wake up begin")
                         self.async_rollout_manager.wake_up()
-                        logger.info("=== wake up end ===")
+                        self._update_interchange_server_status_flag("ENGINE.ROLLING")
+                        logger.info("wake up end")
                         tasks: List[Task] = [
                             dict_to_ajet_task(dict(
                                 task_id=gen_batch.non_tensor_batch["task_id"][i],
@@ -571,15 +591,17 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                                 ]
                             )
                         )
-                        logger.info("=" * 10 + "start fit rollout" + "=" * 10)
+                        logger.info("start fit rollout")
                         self.parallel_env.current_global_steps = self.global_steps
                         context_tracker_arr: List[BaseContextTracker] = self.parallel_env.rollout(
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
-                        logger.info("=" * 10 + "end fit rollout" + "=" * 10)
-                        logger.info("begin to convert context_tracker_arr to dataproto")
+
+                        # from ajet import bp; bp("BATCH")
+
+                        logger.info("end fit rollout")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
-                        logger.info("end convertion")
+                        logger.info("end dataproto convertion")
 
                         success_rate = [
                             traj.reward_structure.success_rate for traj in context_tracker_arr
@@ -622,17 +644,17 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         logger.info(
                             f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}"
                         )
+                        self._update_interchange_server_status_flag("ENGINE.WEIGHT_SYNCING")
                         self.async_rollout_manager.sleep()
-                    logger.info("=== - rollout step end ===")
+                    logger.info("rollout step end")
 
-                    if self.config.algorithm.adv_estimator == AdvantageEstimator.REMAX:
-                        raise NotImplementedError("REMAX is not supported in GRPO yet.")
 
                     batch.non_tensor_batch["uid"] = np.array(
                         [str(uuid.uuid4()) for _ in range(len(batch.batch))],
                         dtype=object,
                     )
-                    batch = union_gen_batch_via_task_id(tasks, batch, gen_batch_output)
+                    discard_original_batch = self.config.ajet.enable_swarm_mode
+                    batch = union_gen_batch_via_task_id(tasks, batch, gen_batch_output, discard_original_batch)
                     batch.batch["response_mask"] = compute_response_mask(batch)
 
                     if "response_mask" not in batch.batch.keys():
@@ -666,7 +688,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             )
 
                     # recompute old_log_probs
-                    logger.info("=== + compute log_probs begin ===")
+                    logger.info("+ compute log_probs begin")
                     with marked_timer("old_log_prob", timing_raw, color="blue"):
                         old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
                         entropys = old_log_prob.batch["entropys"]
@@ -764,6 +786,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         self.val_reward_fn is not None
                         and self.config.trainer.test_freq > 0
                         and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0)
+                        and (not self.config.ajet.enable_swarm_mode)
                     ):
                         with marked_timer("testing", timing_raw, color="green"):
                             val_metrics: dict = self._validate()
@@ -914,17 +937,16 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             self.async_rollout_manager.wake_up()
             main_val_dataset = self.get_eval_dataset()
 
-            logger.info("=" * 10 + "start validate rollout" + "=" * 10)
+            logger.info("Starting validate rollout")
             context_tracker_arr, tasks, val_metrics = self.eval_dataset(
                 target_dataset=main_val_dataset,
                 target_dataset_name="main_val_dataset",
                 mode="validate",
                 epoch="test.1",
             )
-            logger.info("=" * 10 + "end validate rollout" + "=" * 10)
+            logger.info("Completed validate rollout")
             test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
             self.async_rollout_manager.sleep()
-            logger.info("validation generation end")
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
@@ -938,7 +960,8 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 dtype=object,
             )
             tasks = tasks[: len(main_val_dataset)]
-            test_batch = union_gen_batch_via_task_id(tasks, test_batch, test_output_gen_batch)
+            discard_original_batch = self.config.ajet.enable_swarm_mode
+            test_batch = union_gen_batch_via_task_id(tasks, test_batch, test_output_gen_batch, discard_original_batch)
             # test_batch = test_batch.union(test_output_gen_batch)
             test_batch.meta_info["validate"] = True
 

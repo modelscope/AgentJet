@@ -1,6 +1,6 @@
 
-from ajet import AjetTuner
-from ajet import WorkflowOutput
+from ajet.tuner import AjetTuner
+from ajet.schema.task import WorkflowOutput, WorkflowTask
 from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )

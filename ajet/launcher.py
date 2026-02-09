@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -12,6 +13,11 @@ from ajet.utils.launch_utils import (
     launch_logview,
     set_loguru_default_color,
     start_ray_service,
+    check_debugpy_version,
+    check_avail_gpu,
+    dict_to_namespace,
+    get_backbone_target,
+    setup_environment_vars,
 )
 from ajet.utils.pty import pty_launch
 
@@ -27,6 +33,12 @@ def parse_args():
         default="verl",
         required=False,
         help="verl or trinity or debug",
+    )
+    parser.add_argument(
+        "--swarm-server",
+        action="store_true",
+        default=False,
+        help="Enable Swarm server mode",
     )
     parser.add_argument(
         "--conf",
@@ -50,9 +62,18 @@ def parse_args():
         required=False,
         help="Path to configuration file",
     )
-
-    parser.add_argument("--with-ray", action="store_true", default=False, help="Launch ray")
-    parser.add_argument("--with-ray-cluster", action="store_true", default=False, help="Launch ray")
+    parser.add_argument(
+        "--with-ray",
+        action="store_true",
+        default=False,
+        help="Launch ray"
+    )
+    parser.add_argument(
+        "--with-ray-cluster",
+        action="store_true",
+        default=False,
+        help="Launch ray"
+    )
     parser.add_argument(
         "--with-appworld",
         action="store_true",
@@ -71,7 +92,12 @@ def parse_args():
         default=False,
         help="Launch webshop",
     )
-    parser.add_argument("--with-bfcl", action="store_true", default=False, help="Launch bfcl")
+    parser.add_argument(
+        "--with-bfcl",
+        action="store_true",
+        default=False,
+        help="Launch bfcl"
+    )
     parser.add_argument(
         "--with-logview",
         action="store_true",
@@ -84,8 +110,12 @@ def parse_args():
         default=False,
         help="Launch Crafters Env Simulation",
     )
-    parser.add_argument("--reboot", action="store_true", default=False, help="reboot flag")
-    parser.add_argument("--skip-check-avail-gpu", action="store_true", default=False, help="Skip GPU availability check")
+    parser.add_argument(
+        "--skip-check-avail-gpu",
+        action="store_true",
+        default=False,
+        help="Skip GPU availability check"
+    )
     parser.add_argument(
         "--kill",
         type=str,
@@ -99,156 +129,31 @@ def parse_args():
         default=False,
         help="Kill system processes (ray + vllm + python) that may block the current experiment",
     )
-    parser.add_argument("--prefix", type=str, default="", required=False, help="Prefix for deepfinance service names")
-    return parser.parse_args()
-
-
-def check_debugpy_version():
-    try:
-        import debugpy
-    except ImportError:
-        raise RuntimeError(
-            "Module 'debugpy>=1.8.0' cannot be loaded. "
-            "Ray Debugpy Debugger will not work without 'debugpy>=1.8.0' installed. "
-            "Install this module using 'pip install debugpy>=1.8.0'"
-        )
-    version = getattr(debugpy, "__version__", "0.0.0")
-    from packaging import version as packaging_version
-
-    if packaging_version.parse(version) < packaging_version.parse("1.8.0"):
-        raise RuntimeError(
-            f"debugpy version {version} is too old. "
-            "Ray Debugpy Debugger requires 'debugpy>=1.8.0'. "
-            "Upgrade using 'pip install debugpy>=1.8.0'"
-        )
-    logger.info(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
-
-
-def check_avail_gpu(min_free_ratio: float = 0.95):
-    """
-    Ensure there is at least one GPU and all GPUs have >= min_free_ratio free memory.
-
-    Uses `nvidia-smi` to query total and used memory for each GPU.
-    Raises RuntimeError if no GPU is found or any GPU violates the free ratio threshold.
-    """
-    try:
-        # Query GPU memory via nvidia-smi; output in MiB
-        result = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=name,memory.total,memory.used",
-                "--format=csv,noheader,nounits",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
-        )
-    except FileNotFoundError:
-        raise RuntimeError("nvidia-smi not found. NVIDIA drivers/GPU may be unavailable.")
-
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to query GPUs via nvidia-smi: {result.stderr.strip()}")
-
-    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    if not lines:
-        raise RuntimeError("No GPUs detected by nvidia-smi.")
-
-    violations = []
-    for idx, line in enumerate(lines):
-        # Expected format: "<name>, <total>, <used>"
-        parts = [p.strip() for p in line.split(",")]
-        if len(parts) < 3:
-            violations.append((idx, "parse-error", line))
-            continue
-        name, total_str, used_str = parts[0], parts[1], parts[2]
-        try:
-            total = float(total_str)
-            used = float(used_str)
-        except ValueError:
-            violations.append((idx, "parse-error", line))
-            continue
-        free = max(total - used, 0.0)
-        free_ratio = free / total if total > 0 else 0.0
-        logger.info(
-            f"GPU {idx} ({name}): total={total:.0f} MiB, used={used:.0f} MiB, free_ratio={free_ratio:.3f}"
-        )
-        if free_ratio < min_free_ratio:
-            violations.append((idx, name, f"free_ratio={free_ratio:.3f} < {min_free_ratio:.3f}"))
-
-    if violations:
-        details = "; ".join([f"GPU {i} ({n}): {msg}" for i, n, msg in violations])
-        raise RuntimeError(
-            "GPU memory check failed: all GPUs must have >= "
-            f"{int(min_free_ratio*100)}% free. Violations: {details}"
-        )
-    logger.info(
-        f"✓ GPU check passed: {len(lines)} GPUs, all >= {int(min_free_ratio*100)}% free memory"
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        default="",
+        required=False,
+        help="Prefix for deepfinance service names"
     )
-
-
-def get_backbone_target(backbone):
-    """
-    Determine the appropriate backbone target module based on the backbone name.
-
-    Args:
-        backbone (str): The backbone name (e.g., "verl", "debug", "trinity")
-
-    Returns:
-        str: The full module path for the specified backbone
-    """
-    backbone_target = "ajet.backbone.main_verl"  # Default to trinity
-    if backbone == "verl":
-        backbone_target = "ajet.backbone.main_verl"
-    if backbone == "debug":
-        backbone_target = "ajet.backbone.main_vllm"
-    if backbone == "trinity":
-        backbone_target = "ajet.backbone.main_trinity"
-    return backbone_target
-
-
-def setup_environment_vars(args, exp_config, main_yaml_fp):
-    """
-    Configure environment variables based on command line arguments.
-
-    Args:
-        args: Command line arguments
-        exp_config: Experiment configuration dictionary
-        main_yaml_fp: Path to main YAML configuration file
-
-    Returns:
-        dict: Configured environment variables dictionary
-    """
-    env = os.environ.copy()
-    if args.debug:
-        env["RAY_DEBUG_POST_MORTEM"] = "1"
-        env["DEBUG_TAGS"] = args.debug
-        env["RAY_record_task_actor_creation_sites"] = "true"
-        # assert exp_config["ajet"]["rollout"]["max_env_worker"] <= 4, "parallel worker too many for debugging mode"  # type: ignore
-        if exp_config["ajet"]["rollout"]["max_env_worker"] > 1:  # type: ignore
-            exp_config["ajet"]["rollout"]["max_env_worker"] = 1
-            logger.warning(
-                "For debugging mode, max_env_worker is set to 1 to facilitate debugging."
-            )
-        logger.warning("Debug mode is ON")
-    else:
-        logger.warning("Debug mode is OFF")
-        # if args.conf:
-        #     assert exp_config["ajet"]["rollout"]["max_env_worker"] > 4, "parallel worker too few"  # type: ignore
-    if args.backbone == "trinity":
-        env["AJET_CONFIG_REDIRECT"] = main_yaml_fp  # type: ignore
-    if args.backbone == "debug":
-        env["AJET_DEBUG"] = "1"  # type: ignore
-    return env, exp_config
+    return parser.parse_args()
 
 
 def check_model_file_exists(exp_config):
     model_path = exp_config["ajet"]["model"]["path"]
     # if model_path has more than 2 '/', we consider it as a dir path
     if model_path.count("/") > 2:
-        assert os.path.exists(
-            model_path
-        ), f"Model path {model_path} does not exist. Please check your configuration."
+        assert os.path.exists(model_path), f"Model path {model_path} does not exist. Please check your configuration."
+
+
+def start_swarm_server(env, config):
+    config = dict_to_namespace(config)
+    assert config.ajet.enable_swarm_mode, \
+        "Please enable_swarm_mode in config to start swarm server."
+    assert config.ajet.enable_experimental_interchange_server, \
+        "Please enable_experimental_interchange_server in config to start swarm server."
+    from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+    start_interchange_server(config, blocking=True, env=env)
 
 
 def main():
@@ -283,8 +188,12 @@ def main():
     # switch backbone target
     backbone_target = get_backbone_target(args.backbone)
 
+    # read configuration from yaml
     exp_config = None
     exp_dir = args.exp_dir or "saved_experiments"
+    if args.swarm_server and (not args.conf):
+        args.conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "default_config/ajet_ts_default.yaml"))
+        assert os.path.exists(args.conf), "Please provide a valid config file for swarm server mode."
     if args.conf:
         yaml_path = args.conf
         (
@@ -294,7 +203,13 @@ def main():
             exp_config,
         ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone)
 
+    # setup environment variables
     env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
+
+    if args.swarm_server:
+        start_swarm_server(env, exp_config)
+        return
+
     if args.with_ray:
         assert (
             not args.with_ray_cluster

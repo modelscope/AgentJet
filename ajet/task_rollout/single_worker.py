@@ -1,10 +1,13 @@
 """Single worker primitives for environment rollouts."""
 
 import uuid
+import time
+import threading
 from typing import Literal
 
 from loguru import logger
 from omegaconf import DictConfig
+from typing import Dict, List, Literal
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from ajet.context_tracker.basic_tracker import BaseContextTracker
@@ -12,7 +15,9 @@ from ajet.schema.task import Task, WorkflowTask
 from ajet.task_rollout.async_llm_bridge import AsyncLlmBridge
 from ajet.task_rollout.resource_keeper import ResourceKeeper
 from ajet.task_runner.general_runner import GeneralRunner
+from ajet.task_runner.swarm_runner import SwarmRunner
 from ajet.utils.retry import retry_with_backoff
+from ajet.utils.retry import SwarmReceiveAbortException
 from ajet.utils.sample import get_sample_params
 from ajet.utils.testing_utils import TestFailException, TestSuccessException
 
@@ -59,6 +64,7 @@ class BaseRolloutManager:
         assert isinstance(self.pad_token_id, int), "pad_token_id must be an integer"
         self.current_token = 0
         self.current_global_steps: int | str = "NA"
+        self.enable_swarm_mode = config.ajet.enable_swarm_mode
         self.async_llm_bridge = AsyncLlmBridge(
             config=config,
             async_rollout_manager=async_rollout_manager,
@@ -110,12 +116,20 @@ class BaseRolloutManager:
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
-                agent_runner = GeneralRunner(
-                    llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
-                )
+                if self.enable_swarm_mode:
+                    agent_runner = SwarmRunner(
+                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
+                    )
+                else:
+                    agent_runner = GeneralRunner(
+                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
+                    )
                 tracker = agent_runner.execute(
                     workflow_task=workflow_task,
                 )
+            except SwarmReceiveAbortException as exc:  # noqa: BLE001
+                # print('SwarmReceiveAbortException caught in rollout_env_worker')
+                return None # type: ignore
             except TestSuccessException as e:
                 logger.success(
                     f"env_worker.agent_flow completed with TestSuccessException: {e.args}"
@@ -131,3 +145,60 @@ class BaseRolloutManager:
                 raise e
 
         return tracker
+
+
+    def rollout_env_worker_loop(
+        self,
+        task: Task,
+        task_batch_index: int,
+        task_tag: str,
+        mode: Literal["sample", "validate"],
+        task_thread_index: int,
+        observation_window: dict,
+        completed_task_id_map_ct: Dict[str, List[BaseContextTracker]],
+        executor_lock: threading.Lock,
+        **kwargs,
+    ):
+        try:
+
+            cnt = 1
+
+            while True:
+
+                if observation_window["stop"][task_thread_index]:           # since we use multi-threading, the best way to communicate with main thread is through shared memory.
+                    return
+
+                observation_window["info"][task_thread_index] = str(cnt)    # observe how many iterations have been done in the loop
+
+                # Let's begin working on the task, the result `tracker` will contain everything: reward, llm calls, conversation history, etc.
+                # Later we will gather all trackers and do post-processing, generating samples for VeRL.
+                tracker = self.rollout_env_worker(
+                    task=task,
+                    task_batch_index=task_batch_index,
+                    task_tag=task_tag,
+                    mode=mode,
+                    task_thread_index=task_thread_index,
+                    observation_window=observation_window,
+                    **kwargs,
+                )
+
+                # avoid write conflict
+                if tracker and tracker.reward_structure:
+                    with executor_lock:
+                        if tracker.task_id not in completed_task_id_map_ct:
+                            completed_task_id_map_ct[tracker.task_id] = [tracker]
+                        else:
+                            completed_task_id_map_ct[tracker.task_id] += [tracker]
+
+                cnt += 1
+
+                if observation_window["stop"][task_thread_index]:
+                    return
+                else:
+                    del tracker
+
+        except Exception as e:
+            logger.exception(
+                f"encounter exception in env_worker_loop error={e.args}"
+            )
+            raise e

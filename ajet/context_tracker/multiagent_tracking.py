@@ -48,13 +48,15 @@ class MultiAgentContextTracker(BaseContextTracker):
         self,
         tokenizer: PreTrainedTokenizer,
         config,
-        should_interrupt_fn,
+        should_interrupt_soft_fn,
+        should_interrupt_hard_fn,
         generated_token_callback_fn,
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
         self.tokenizer = tokenizer
-        self.should_interrupt_fn = should_interrupt_fn
+        self.should_interrupt_soft_fn = should_interrupt_soft_fn
+        self.should_interrupt_hard_fn = should_interrupt_hard_fn
         self.generated_token_callback_fn = generated_token_callback_fn
         self.context_overflow = False
         self.output_kwargs = {}
@@ -226,7 +228,12 @@ class MultiAgentContextTracker(BaseContextTracker):
         timeline_uuid: str = "",
     ):
         assert timeline_uuid in self.timeline_cache, "Timeline UUID not found in cache. Please ensure `step_prepare` is called before `step_track`."
-        timeline = self.timeline_cache.get(timeline_uuid, [])
+
+        # round ++
+        self.round_cnt += 1
+
+        # get timeline from cache
+        timeline = self.timeline_cache.pop(timeline_uuid, [])
         if not self.already_mad_flag:
             if (
                 compute_string_madness(
@@ -301,10 +308,15 @@ class MultiAgentContextTracker(BaseContextTracker):
         for i in range(1, len(timeline)):
             assert not timeline[i].first_message
 
+        # no longer write anything
+        if self._read_only:
+            logger.exception("Timeline is in read-only mode, should not save new timeline. Please report a github issue if you see this error.")
+            return
+
         # save to self.saved_timelines
         self.saved_timelines += [copy.deepcopy(timeline)]
 
-        # DEBUG = True   # warn when merge fails
+        # warn when merge fails
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         if (
             self.config.ajet.context_tracker.detect_timeline_snap
@@ -566,6 +578,8 @@ class MultiAgentContextTracker(BaseContextTracker):
     def group_merge(self) -> List[List[ExtendedMessage]]:
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         self.saved_timelines = merge_tracker_timelines(self.saved_timelines, timeline_merging_policy)
+        self._read_only = True
+
         return self.saved_timelines
 
 
@@ -611,7 +625,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             token_overflow = False
         else:
             token_overflow = True
-        if self.should_interrupt_fn():
+        if self.should_interrupt_soft_fn():
             ret = (False, token_overflow, "externally_interrupted")
         elif self.already_mad_flag and self.config.ajet.rollout.agent_madness_termination:
             ret = (False, token_overflow, "already_mad")
