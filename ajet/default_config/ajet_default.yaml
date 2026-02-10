@@ -293,7 +293,17 @@ ajet:
     max_fastapi_threads: 512  # 64 or 128 is fine
     max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
     already_started: False # do not edit, used by `swarm`
-
+  # what is the stop condition for swarm mode sample collection
+  # "rollout_until_finish_enough_episodes":
+  #   AgentJet simply counts the number of completed episodes, and stop when it has collected [>= (ajet.data.train_batch_size * ajet.rollout.num_repeat)] samples
+  # "rollout_until_finish_enough_tasks":
+  #   AgentJet will identify the **task_id** of each episode, and stop when it has collected [>= ajet.data.train_batch_size] unique & FINISHED **task_id**.
+  #     (Hint: a **task_id** is considered "FINISHED" when [>= ajet.rollout.num_repeat] episodes of this **task_id** have been completed.)
+  # "rollout_until_finish_enough_non_dummy_tasks":
+  #   AgentJet will identify the **task_id** of each episode, and stop when it has collected [>= ajet.data.train_batch_size] unique & FINISHED & NON-DUMMY **task_id**.
+  #     (Hint: a **task_id** is considered "NON-DUMMY" at least one of **episodes** of **task_id** has **different** reward value.)
+  swarm_mode_sample_collection_method: "rollout_until_finish_enough_tasks"
+  swarm_mode_sample_collection_max_cached_episodes: 9999
 
   task_runner:
     # submit llm infer submit method
@@ -303,7 +313,6 @@ ajet:
     wrapper_type: "asyncio-with-gc"
     # - wrapper_type: "asyncio-with-gc":  safe, with periodic garbage collection to prevent event loop leaks (recommended)
     # - wrapper_type: "asyncio":          fast, but may cause event loop leak in long run
-    # - wrapper_type: "multi-processing": safe, but resource consuming
 
     # when `wrapper_type` is `multi-processing`, the timeout for each task
     wrapper_multiprocessing_timeout: 3600  # in seconds

@@ -100,12 +100,13 @@ class BaseRolloutManager:
                 sampling_params=sampling_params
             )
 
+        episode_uuid = uuid.uuid4().hex
         workflow_task = WorkflowTask(
             env_type=task.env_type,
             task_id=task.task_id,
             task_thread_index=task_thread_index,
             task_batch_index=task_batch_index,
-            episode_uuid=uuid.uuid4().hex,
+            episode_uuid=episode_uuid,
             task_tag=task_tag,
             observation_window=observation_window,
             llm_inference_fn=llm_inference_fn,
@@ -113,6 +114,7 @@ class BaseRolloutManager:
             task=task,
         )
 
+        observation_window["info"][task_thread_index] += f"[{task_thread_index} Initialized workflow task with episode_uuid={episode_uuid}]\n"
         with ResourceKeeper(workflow_task, config=self.config) as resource_keeper:
             try:
                 workflow_task = resource_keeper.prepare()
@@ -128,7 +130,7 @@ class BaseRolloutManager:
                     workflow_task=workflow_task,
                 )
             except SwarmReceiveAbortException as exc:  # noqa: BLE001
-                # print('SwarmReceiveAbortException caught in rollout_env_worker')
+                observation_window["info"][task_thread_index] += f"[SwarmReceiveAbortException caught]\n"
                 return None # type: ignore
             except TestSuccessException as e:
                 logger.success(
@@ -159,6 +161,9 @@ class BaseRolloutManager:
         executor_lock: threading.Lock,
         **kwargs,
     ):
+
+        observation_window["info"][task_thread_index] += f"[thread {task_thread_index} begin]\n"
+
         try:
 
             cnt = 1
@@ -166,9 +171,10 @@ class BaseRolloutManager:
             while True:
 
                 if observation_window["stop"][task_thread_index]:           # since we use multi-threading, the best way to communicate with main thread is through shared memory.
+                    observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"
                     return
 
-                observation_window["info"][task_thread_index] = str(cnt)    # observe how many iterations have been done in the loop
+                observation_window["info"][task_thread_index] += f"[thread {task_thread_index} iteration {str(cnt)} Begin]\n"    # observe how many iterations have been done in the loop
 
                 # Let's begin working on the task, the result `tracker` will contain everything: reward, llm calls, conversation history, etc.
                 # Later we will gather all trackers and do post-processing, generating samples for VeRL.
@@ -183,7 +189,7 @@ class BaseRolloutManager:
                 )
 
                 # avoid write conflict
-                if tracker and tracker.reward_structure:
+                if tracker and tracker.reward_structure and len(tracker.saved_timelines) > 0:
                     with executor_lock:
                         if tracker.task_id not in completed_task_id_map_ct:
                             completed_task_id_map_ct[tracker.task_id] = [tracker]
@@ -193,9 +199,10 @@ class BaseRolloutManager:
                 cnt += 1
 
                 if observation_window["stop"][task_thread_index]:
+                    observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"
                     return
                 else:
-                    del tracker
+                    continue
 
         except Exception as e:
             logger.exception(

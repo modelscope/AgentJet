@@ -33,6 +33,17 @@ ajet:
     max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
     already_started: False # do not edit, used by `swarm`
 
+  # the method to determine when to stop rollout in swarm mode. Options:
+  # "rollout_until_finish_enough_episodes":
+  #   AgentJet simply counts the number of completed episodes, and stop when it has collected [>= (ajet.data.train_batch_size * ajet.rollout.num_repeat)] samples
+  # "rollout_until_finish_enough_tasks":
+  #   AgentJet will identify the **task_id** of each episode, and stop when it has collected [>= ajet.data.train_batch_size] unique & FINISHED **task_id**.
+  #     (Hint: a **task_id** is considered "FINISHED" when [>= ajet.rollout.num_repeat] episodes of this **task_id** have been completed.)
+  # "rollout_until_finish_enough_non_dummy_tasks":
+  #   AgentJet will identify the **task_id** of each episode, and stop when it has collected [>= ajet.data.train_batch_size] unique & FINISHED & NON-DUMMY **task_id**.
+  #     (Hint: a **task_id** is considered "NON-DUMMY" at least one of **episodes** of **task_id** has **different** reward value.)
+  swarm_mode_sample_collection_method: "rollout_until_finish_enough_tasks"
+
   rollout:
     # maximum number of parallel environments / simulate workers
     max_env_worker: 128

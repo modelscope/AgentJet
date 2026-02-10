@@ -22,8 +22,8 @@ atexit.register(context.term)
 if TYPE_CHECKING:
     from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 
-DEBUG = False
-# DEBUG = True
+# DEBUG = False
+DEBUG = True
 
 def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     """
@@ -156,6 +156,7 @@ class InterchangeClient:
         """
 
         begin_time = time.time()
+        ever_receive_anything = False
         if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting ZMQ socket bind complete")
 
         try:
@@ -164,6 +165,7 @@ class InterchangeClient:
                 try:
                     # if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() has begun (should_terminate {self.should_terminate})")
                     message = self.socket.recv_string()
+                    ever_receive_anything = True
                     # if DEBUG: logger.info(f"[client] {self.episode_uuid} | socket.recv_string() is done")
                 except zmq.Again as e:
                     if self.should_hard_terminate:
@@ -171,7 +173,7 @@ class InterchangeClient:
                         if DEBUG: logger.info(f"[client] {self.episode_uuid} | episode over")
                         break
                     timepassed = time.time() - begin_time
-                    if timepassed > 100:
+                    if (not ever_receive_anything) and (timepassed > 100):
                         if DEBUG: logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
@@ -202,8 +204,9 @@ class InterchangeClient:
                 result = loop.run_until_complete(future).model_dump_json()  # type: ignore
 
                 # great, let's send back the result
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string")
+                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string (send llm call result)")
                 self.socket.send_string(result)
+                if DEBUG: logger.info(f"[client] {self.episode_uuid} | after send_string (send llm call result)")
         except:
             logger.exception(f"[client] {self.episode_uuid} | Exception occurred in service loop.")
         finally:

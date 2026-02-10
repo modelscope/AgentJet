@@ -20,6 +20,10 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
 )
 
 
+# To prevent stale records from accumulating, do not need to be changed
+CLEAN_RECORD_TIMEOUT = 10
+
+
 class SwarmClient(object):
 
     def __init__(self, server_url: str):
@@ -29,17 +33,37 @@ class SwarmClient(object):
         self.record_episode_expire_time = {}
 
 
-    def begin_episode(self, allow_discard_timeout=60, episode_type="train") -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def _clean_up_expired_records(self):
+        # remove records that have expired and expired at least CLEAN_RECORD_TIMEOUT seconds ago
+        current_time = time.time()
+        expired_episodes = [
+            episode_uuid for episode_uuid, expire_time
+                         in self.record_episode_expire_time.items()
+            if expire_time < current_time - CLEAN_RECORD_TIMEOUT
+        ]
+        for episode_uuid in expired_episodes:
+            self.record_episode_expire_time.pop(episode_uuid, None)
+        return
+
+
+    def begin_episode(self, discard_episode_timeout=60, max_episode_time=120, episode_type="train") -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
-        Return (episode_uuid, openai_base_url, openai_api_key)
+        Argument:
+            - discard_episode_timeout: when an episode is **idle** (idle means no llm request) for X seconds, it will be terminated by swarm server **remotely**
+            - max_episode_time:        when an episode has **lasted** for more than X seconds, it will be terminated **locally** by client (call `end_episode` will be re-route to `abort_episode`)
+            - episode_type:
+                - train: data will be fed to training pipeline
+                - eval: data will NOT be fed to training pipeline
+        Return:
+            (episode_uuid, openai_base_url, openai_api_key)
         """
         while True:
             try:
                 req_obj = ClaimEpisodeRequest(
                     client_uuid=self.client_uuid,
                     episode_type=episode_type,
-                    allow_discard_timeout=allow_discard_timeout,
+                    discard_episode_timeout=discard_episode_timeout,
                 )
                 resp = httpx.post(
                     f"{self.server_url}/claim_episode",
@@ -49,7 +73,8 @@ class SwarmClient(object):
                 resp.raise_for_status()
                 data = ClaimEpisodeResponse.model_validate(resp.json())
                 episode_uuid = data.episode_uuid
-                self.record_episode_expire_time[episode_uuid] = time.time() + allow_discard_timeout
+                self.record_episode_expire_time[episode_uuid] = time.time() + max_episode_time
+                self._clean_up_expired_records()
 
                 if data.success:
                     episode_uuid = data.episode_uuid
@@ -79,14 +104,23 @@ class SwarmClient(object):
                 logger.error(f"Error claiming episode: {e}. Retrying in 5s...")
                 time.sleep(5)
 
+
     def end_episode(self, task:Task, episode_uuid: str, workflow_output: WorkflowOutput):
         if not episode_uuid:
             logger.error("No episode to end.")
             return
 
-        remain_time = self.record_episode_expire_time.get(episode_uuid, 0) - time.time()
-        if remain_time < 0:
-            logger.warning(f"Episode {episode_uuid} has expired (expired {remain_time} seconds ago). Please use a larger `allow_discard_timeout` when `begin_episode`. Skipping end_episode.")
+        if episode_uuid in self.record_episode_expire_time:
+            remain_time = self.record_episode_expire_time.pop(episode_uuid, 0) - time.time()
+            if remain_time < 0:
+                logger.warning(f"Episode {episode_uuid} has expired (expired {-remain_time} seconds ago). Please use a larger `discard_episode_timeout` and `max_episode_time` when `begin_episode`. Skipping end_episode.")
+                # send abort signal to server to clean up episode
+                self.abort_episode(episode_uuid)
+                return
+        else:
+            # send abort signal to server to clean up episode
+            logger.warning(f"Episode {episode_uuid} has expired (expired at least {CLEAN_RECORD_TIMEOUT} seconds ago). Please use a larger `discard_episode_timeout` and `max_episode_time` when `begin_episode`. Skipping end_episode.")
+            self.abort_episode(episode_uuid)
             return
 
         try:
@@ -114,6 +148,7 @@ class SwarmClient(object):
 
         except Exception as e:
             logger.error(f"Error ending episode: {e}")
+
 
     def abort_episode(self, episode_uuid: str):
         if not episode_uuid:

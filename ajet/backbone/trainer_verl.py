@@ -610,10 +610,10 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             traj.reward_structure.madness for traj in context_tracker_arr
                         ]
                         # reward = [traj.reward_structure.raw_reward for traj in context_tracker_arr]
-                        round_cnt = [traj.round_cnt for traj in context_tracker_arr]
+                        llm_call_cnt = [traj.llm_call_cnt for traj in context_tracker_arr]
                         metrics.update(
                             {
-                                "critic/round_cnt": np.mean(round_cnt),
+                                "critic/llm_call_cnt": np.mean(llm_call_cnt),
                                 "critic/madness_rate": np.mean(madness_rate),
                                 "critic/success_rate": np.mean(success_rate),
                                 "critic/real_success_rate": np.mean(

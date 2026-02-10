@@ -22,6 +22,19 @@ from ajet.task_rollout.single_worker import BaseRolloutManager
 from ajet.context_tracker.basic_tracker import BaseContextTracker
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
 
+DEBUG = True
+
+
+def spawn_thread_shared_observation_window(n_threads) -> Dict[str, List[int | bool | str]]:
+    observation_window: Dict[str, List[int | bool | str]] = {
+        "info":      [""    for _ in range(n_threads + 1)],
+        "step":      [0     for _ in range(n_threads)],
+        "stop":      [False for _ in range(n_threads)],
+        "hard_stop": [False for _ in range(n_threads)],
+        "token":     [0     for _ in range(n_threads)],
+    }
+    return observation_window
+
 
 class DynamicRolloutManager(BaseRolloutManager):
     """Dynamic rollout supporting oversampling and early termination."""
@@ -61,9 +74,20 @@ class DynamicRolloutManager(BaseRolloutManager):
             if start == -1:
                 print_buf += [f"[finished]:{count} threads"]
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
-        # if "info" in observation_window:
-        #     print_buf2 = "\t".join(observation_window["info"])
-        #     print(print_buf2)
+
+        if DEBUG:
+            self._write_swarm_rollout_dynamic_log(observation_window)
+
+
+    def _write_swarm_rollout_dynamic_log(self, observation_window):
+        fp = "./swarm_rollout.dynamic.log"
+        string_buffer = ""
+        for info in observation_window["info"]:
+            string_buffer += f"{info}\n"
+        with open(fp, "w") as f:
+            f.write(string_buffer)
+        return
+
 
     def rollout_static(
         self,
@@ -75,11 +99,8 @@ class DynamicRolloutManager(BaseRolloutManager):
         self.current_token_count_time = time.time()
         tracker_array: List[BaseContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
-        observation_window = {
-            "step": [0 for _ in range(len(tasks) * rollout_n)],
-            "token": [0 for _ in range(len(tasks) * rollout_n)],
-            "stop": [False for _ in range(len(tasks) * rollout_n)],
-        }
+        observation_window = spawn_thread_shared_observation_window(n_threads=len(tasks)*rollout_n)
+
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
             futures: List[Future] = []
             for task_batch_index, task in enumerate(tasks):
@@ -137,335 +158,6 @@ class DynamicRolloutManager(BaseRolloutManager):
 
             return tracker_array
 
-    def rollout(
-        self,
-        tasks: List[Task],
-        mode: Literal["sample", "validate"],
-        epoch: str,
-    ) -> List[BaseContextTracker]:
-        """Delegate to dynamic rollout when oversampling is enabled."""
-        if self.config.ajet.enable_swarm_mode:
-            return self.rollout_swarm(tasks, mode, epoch)
-        elif (
-            mode == "sample"
-            and (self.rollout_n != 1)
-            and self.config.ajet.rollout.enable_oversample
-        ):
-            return self.rollout_dynamic(tasks, mode, epoch)
-        else:
-            return self.rollout_static(tasks, mode, epoch)
-
-    def greedy_max_std_selection(self, samples: List[BaseContextTracker], n):
-        """Select samples whose rewards maximize spread to cover diverse rollouts."""
-        if len(samples) < n:
-            additional_n = n - len(samples)
-            n = len(samples)
-        else:
-            additional_n = 0
-
-        sorted_samples = sorted(
-            samples,
-            key=lambda tracker: abs(tracker.reward_structure.performance_reward),
-        )
-        value_array = [tracker.reward_structure.performance_reward for tracker in sorted_samples]
-        macro_selected_value = []
-        macro_selected_index = []
-        while len(macro_selected_index) != n:
-            selected_value = []
-            selected_index = []
-            for index, value in enumerate(value_array):
-                if (value not in selected_value) and (index not in macro_selected_index):
-                    selected_value.append(value)
-                    selected_index.append(index)
-
-            if len(selected_value) + len(macro_selected_value) <= n:
-                macro_selected_value += selected_value
-                macro_selected_index += selected_index
-
-            elif len(selected_value) + len(macro_selected_value) > n:
-                preserve_n = n - len(macro_selected_value)
-                pick_left = preserve_n // 2
-                pick_right = preserve_n - pick_left
-                macro_selected_value += selected_value[:pick_left] + selected_value[-pick_right:]
-                macro_selected_index += selected_index[:pick_left] + selected_index[-pick_right:]
-
-        if additional_n > 0:
-            additional_indices = np.random.choice(macro_selected_index, additional_n, replace=True)
-            macro_selected_index += additional_indices.tolist()
-
-        selected_samples = [sorted_samples[i] for i in macro_selected_index]
-        sorted_selected_samples = sorted(
-            selected_samples,
-            key=lambda tracker: abs(tracker.reward_structure.performance_reward),
-        )
-        return sorted_selected_samples
-
-    def rollout_dynamic(  # noqa: C901
-        self,
-        tasks: List[Task],
-        mode: Literal["sample", "validate"],
-        epoch: str,
-        allow_sample_num_change=True,
-        allow_force_stop=True,
-    ) -> List[BaseContextTracker]:
-        """Perform oversampled rollouts with optional early termination heuristics."""
-
-        tracker_array: List[BaseContextTracker] = []
-        assert mode != "validate"
-        rollout_n = self.rollout_n
-        self.current_token_count_time = time.time()
-        submit_oversample_multiplier = self.config.ajet.rollout.submit_oversample_multiplier
-        rollout_n_oversample = int(rollout_n * submit_oversample_multiplier)
-        rollout_n_confirm = int(rollout_n * (1 + submit_oversample_multiplier) / 2)
-        assert (
-            rollout_n < rollout_n_confirm < rollout_n_oversample
-        ), f"submit_oversample_multiplier is too small, rollout_n={rollout_n}, rollout_n_confirm={rollout_n_confirm}, rollout_n_oversample={rollout_n_oversample}"
-
-        observation_window: Dict[str, List[int | bool]] = {
-            "step": [0 for _ in range(len(tasks) * rollout_n_oversample)],
-            "stop": [False for _ in range(len(tasks) * rollout_n_oversample)],
-            "token": [0 for _ in range(len(tasks) * rollout_n_oversample)],
-        }
-
-        with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
-            futures = []
-            for task_batch_index, task in enumerate(tasks):
-                task_future_array = []
-                for task_rollout_index in range(rollout_n_oversample):
-                    task_thread_index = task_batch_index * rollout_n_oversample + task_rollout_index
-                    future = executor.submit(
-                        self.rollout_env_worker,
-                        task=task,
-                        task_batch_index=task_batch_index,
-                        task_tag=f"T{task.task_id}#R{task_rollout_index}",
-                        mode=mode,
-                        task_thread_index=task_thread_index,
-                        observation_window=observation_window,
-                    )
-                    task_future_array.append(future)
-                futures += [task_future_array]
-
-            # A while loop to wait for all task can be terminated
-            tic = -1
-            while True:
-                tic += 1
-                can_terminate = [False for _ in futures]
-                terminate_status = ["running" for _ in futures]
-                for j, task_future_array in enumerate(futures):
-                    completed_task_futures = [f for f in task_future_array if f.done()]
-                    completed_results = [f.result() for f in completed_task_futures]
-                    completed_results = [
-                        tracker for tracker in completed_results if not tracker._discarded
-                    ]
-                    reward = [
-                        tracker.reward_structure.performance_reward for tracker in completed_results
-                    ]
-                    reward_std = np.std(reward) if reward else 0.0
-                    all_finished = len(completed_task_futures) == len(task_future_array)
-                    if all_finished:
-                        can_terminate[j] = True
-                        terminate_status[j] = f"all_fin({len(completed_results)}/{reward_std:.2f})"
-                    num_finished = len(completed_task_futures)
-                    task_cmd_reward_array = [
-                        tracker.reward_structure.performance_reward for tracker in completed_results
-                    ]
-                    all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
-                    if not all_equal:
-                        if num_finished >= rollout_n:
-                            can_terminate[j] = True
-                            terminate_status[
-                                j
-                            ] = f"early_end({len(completed_results)}/{reward_std:.2f})"
-                        else:
-                            pass
-                    else:
-                        if num_finished >= rollout_n_confirm:
-                            can_terminate[j] = True
-                            terminate_status[
-                                j
-                            ] = f"confirm_dummy({len(completed_results)}/{reward_std:.2f})"
-                            if allow_force_stop:
-                                for k in range(
-                                    j * rollout_n_oversample,
-                                    j * rollout_n_oversample + rollout_n_oversample,
-                                ):
-                                    observation_window["stop"][k] = True
-                        else:
-                            pass
-                terminate_status = "/".join(terminate_status)
-                if all(can_terminate):
-                    logger.info(f"epoch{epoch}.collect_rollout: all tasks finished, exiting loop")
-                    for i, stop_flag in enumerate(observation_window["stop"]):
-                        observation_window["stop"][i] = True
-                    break
-                else:
-                    if tic % 10 == 0:
-                        self.step_status_printer(observation_window)
-                        logger.info(
-                            f"task complete {sum(can_terminate)}/{len(can_terminate)} tasks: {terminate_status}"
-                        )
-                    time.sleep(5)
-
-            # We have enough number of samples, but we need to wait for all threads to finish, including ._discarded threads
-            tic = -1
-            while any(f.running() for task_future_array in futures for f in task_future_array):
-                tic += 1
-                if tic % 10 == 0:
-                    logger.info("waiting final sync, this will not take long")
-                time.sleep(5)
-
-            # find sample group that has identical reward, mark them as need_amend
-            task_ineffective_thread_cnt = []
-            task_completed_thread_cnt = []  # how many effective threads are obtained per group
-            task_extra_thread_cnt = (
-                []
-            )  # using rollout_n as baseline, how many extra threads are obtained per group
-            task_need_amend = 0  # how many groups need amendment due to identical rewards
-            for j, task_future_array in enumerate(futures):
-                completed_task_futures = [f for f in task_future_array if f.done()]
-                completed_results = [f.result() for f in completed_task_futures]
-                completed_results = [
-                    tracker for tracker in completed_results if not tracker._discarded
-                ]
-                task_cmd_reward_array = [
-                    tracker.reward_structure.performance_reward for tracker in completed_results
-                ]
-                all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
-                completed_task_cnt = len(completed_results)
-                if all_equal:
-                    task_need_amend += 1
-                    task_completed_thread_cnt += [0]
-                    task_extra_thread_cnt += [0]
-                    task_ineffective_thread_cnt += [completed_task_cnt]
-                else:
-                    task_need_amend += 0
-                    task_completed_thread_cnt += [completed_task_cnt]
-                    task_extra_thread_cnt += [completed_task_cnt - rollout_n]
-                    task_ineffective_thread_cnt += [0]
-
-            logger.info(f"task_completed_thread_cnt: {task_completed_thread_cnt}")
-            logger.info(f"task_extra_thread_cnt: {task_extra_thread_cnt}")
-
-            # reduce `task_extra_thread_cnt`
-            world_size = self.config.trainer.n_gpus_per_node * self.config.trainer.nnodes
-            # the number of all reward-diverse samples
-            total_sample = sum(task_completed_thread_cnt)
-
-            # begin to compute a removal plan  (output: `task_extra_thread_cnt` and `num_task_to_amend`)
-            # - task_extra_thread_cnt: using rollout_n as baseline, how many extra threads to preserve per group
-            # - num_task_to_amend: how many groups can be amended according to removal plan
-            if allow_sample_num_change and (total_sample > world_size * 2):
-                # When changing the number of samples is ALLOWED
-                num_task_to_amend = len(
-                    futures
-                )  # this means infinate budget to amend, indicating that we throw away all ineffective samples
-                task_extra_thread_cnt = task_extra_thread_cnt  # do not change extra thread cnt, we simply take all diverse samples
-                # log
-                logger.info(
-                    f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
-                )
-                logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
-            else:
-                # When changing the number of samples is NOT ALLOWED (or the number of samples are too small)
-                # compute how many valid extra samples are obtained during previous oversampling
-                num_task_max_to_amend = sum(task_extra_thread_cnt) // rollout_n
-                # compute how many tasks actually need amendment, we fix as many as we can, but not exceed `num_task_max_to_amend`:
-                # - num_task_max_to_amend: how many CAN be fixed
-                # - task_need_amend:       how many SHOULD be fixed
-                num_task_to_amend = min(num_task_max_to_amend, task_need_amend)
-                # according to `num_task_to_amend`, how many extra samples should be CONSUMED
-                extra_num_thread_required = num_task_to_amend * rollout_n
-                # after CONSUME, how many extra samples are really EXTRA and should be REMOVED
-                remove_count = sum(task_extra_thread_cnt) - extra_num_thread_required
-                logger.info(
-                    f"forbid_sample_num_change policy: num_task_max_to_amend: {num_task_max_to_amend}, "
-                    f"num_task_to_amend: {num_task_to_amend}, remove_count: {remove_count}, "
-                )
-                # remove extra samples according to `remove_count`
-                while remove_count != 0:
-                    # if we should remove some extra samples, we always remove from the group that has the MOST extra samples
-                    max_extra_index = task_extra_thread_cnt.index(max(task_extra_thread_cnt))
-                    assert (
-                        task_extra_thread_cnt[max_extra_index] > 0
-                    ), "task_extra_thread_cnt should be greater than 0"
-                    task_extra_thread_cnt[max_extra_index] -= 1
-                    task_completed_thread_cnt[max_extra_index] -= 1
-                    remove_count -= 1
-
-                # now, we have computed the final `task_extra_thread_cnt` and `num_task_to_amend`, which the removal plan deps
-                logger.info(
-                    f"task_completed_thread_cnt (after remove): {task_completed_thread_cnt}"
-                )
-                logger.info(f"task_extra_thread_cnt (after remove): {task_extra_thread_cnt}")
-
-            # collect results and get the final tracker_array according to removal plan (`task_extra_thread_cnt` and `num_task_to_amend`)
-            tracker_array = []
-            print_buffer = ""
-            task_success_rate = []
-            task_group_reward = []
-            for j, task_future_array, avail_extra_cnt in zip(
-                range(len(futures)), futures, task_extra_thread_cnt
-            ):
-                completed_task_futures = [f for f in task_future_array if f.done()]
-                completed_results = [f.result() for f in completed_task_futures]
-                completed_results = [
-                    tracker for tracker in completed_results if not tracker._discarded
-                ]
-                # in-group success rate and reward
-                task_cmd_reward_array = [
-                    tracker.reward_structure.performance_reward for tracker in completed_results
-                ]
-                success_rate_array = [
-                    tracker.reward_structure.success_rate for tracker in completed_results
-                ]
-                task_group_reward += [
-                    np.mean(
-                        [
-                            tracker.reward_structure.final_scalar_reward
-                            for tracker in completed_results
-                        ]
-                    )
-                ]
-                task_success_rate += [np.mean(success_rate_array)]
-                # whether this group need amendment
-                need_amend = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
-                # if so, whether we have quota (num_task_to_amend) to amend
-                if need_amend and (num_task_to_amend > 0):
-                    # this group need amendment, so, we discard all its samples
-                    # do not worry, other groups will take up the slack
-                    num_task_to_amend -= 1
-                    print_buffer += "/(amend)"
-                    continue
-                else:
-                    if need_amend:
-                        # this group need amendment, but we simply do not have quota to amend
-                        # we just accept rollout_n samples from this group
-                        num_to_be_selected = rollout_n
-                    else:
-                        # this group is good and healthy, if it has extra samples, we accept them
-                        num_to_be_selected = rollout_n + avail_extra_cnt
-                    # if num_to_be_selected > the number of resulting samples, we choose them to maximum reward diversity
-                    selected_tracker_array = self.greedy_max_std_selection(
-                        completed_results, num_to_be_selected
-                    )
-                    # good, we have collected selected samples from this group
-                    tracker_array += selected_tracker_array
-                    # print info
-                    print_buffer += f"/({len(selected_tracker_array)})"
-                    if need_amend:
-                        print_buffer += "(no-amend)"
-
-            logger.info(print_buffer)
-
-            # for tracker in tracker_array:
-            #     # average of gourp success rate
-            #     tracker.current_batch_success_rate = np.mean(task_success_rate)
-            #     # average of gourp average reward
-            #     tracker.current_batch_reward = np.mean(task_group_reward)
-
-            return tracker_array
-
-
 
     def rollout_swarm(  # noqa: C901
         self,
@@ -481,7 +173,6 @@ class DynamicRolloutManager(BaseRolloutManager):
         """
 
         tracker_array: List[BaseContextTracker] = []
-        assert mode != "validate"
         rollout_n = self.rollout_n
         n_batch_task = len(tasks)
         n_task = min(len(tasks), self.max_parallel // rollout_n)
@@ -489,13 +180,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         self.current_token_count_time = time.time()
 
         # initialize observation window
-        observation_window: Dict[str, List[int | bool | str]] = {
-            "info": ["" for _ in range(n_task * rollout_n)],
-            "step": [0 for _ in range(n_task * rollout_n)],
-            "stop": [False for _ in range(n_task * rollout_n)],
-            "hard_stop": [False for _ in range(n_task * rollout_n)],
-            "token": [0 for _ in range(n_task * rollout_n)],
-        }
+        observation_window = spawn_thread_shared_observation_window(n_threads = n_task * rollout_n)
         executor = ThreadPoolExecutor(max_workers=self.max_parallel)
         futures: List[Future] = []
         completed_task_id_map_ct: Dict[str, List[BaseContextTracker]] = {}
@@ -506,6 +191,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         for task_batch_index in range(n_task):
             for task_rollout_index in range(rollout_n):
                 task_thread_index = task_batch_index * rollout_n + task_rollout_index
+                observation_window["info"][task_thread_index] = f"\n\n\n\n[thread {task_thread_index} submit]\n"
                 future = executor.submit(
                     self.rollout_env_worker_loop,
                     task=dummy_task,
@@ -517,52 +203,126 @@ class DynamicRolloutManager(BaseRolloutManager):
                     completed_task_id_map_ct=completed_task_id_map_ct,
                     executor_lock=executor_lock,
                 )
-                observation_window["info"][task_thread_index] = "1"
                 futures.append(future)
 
-        def enough_sample_stop_condition(completed_task_id_map_ct) -> bool:
-            n = 0
+        def count_tasks(completed_task_id_map_ct):
+            total_completed_episodes = 0
+            total_completed_tasks = 0
+            total_completed_non_dummy_tasks = 0
             for ct_list in completed_task_id_map_ct.values():
-                n += len(ct_list)
-            print(f"Current collected samples: {n}, target: {n_batch_task * rollout_n}")
-            return (n >= n_batch_task * rollout_n)
-
-        def enough_finished_task_stop_condition(completed_task_id_map_ct) -> bool:
-            n_finish_roll_task = 0
-            for ct_list in completed_task_id_map_ct.values():
-                if len(ct_list) >= rollout_n:
-                    n_finish_roll_task += 1
-            return (n_finish_roll_task >= n_batch_task)
-
-        def enough_non_dummy_task_stop_condition(completed_task_id_map_ct) -> bool:
-            n_finish_roll_task = 0
-            for ct_list in completed_task_id_map_ct.values():
+                total_completed_episodes += len(ct_list)
                 task_cmd_reward_array = [
                     tracker.reward_structure.performance_reward for tracker in ct_list
                 ]
                 if (len(ct_list) >= rollout_n):
+                    total_completed_tasks += 1
                     all_equal = all(x == task_cmd_reward_array[0] for x in task_cmd_reward_array)
                     if all_equal: continue
-                    n_finish_roll_task += 1
-            return (n_finish_roll_task >= n_batch_task)
+                    total_completed_non_dummy_tasks += 1
+            return {
+                "total_completed_episodes": total_completed_episodes,
+                "total_completed_tasks": total_completed_tasks,
+                "total_completed_non_dummy_tasks": total_completed_non_dummy_tasks,
+            }
 
-        stop_condition = enough_sample_stop_condition
+        def enough_sample_stop_condition(completed_task_id_map_ct) -> bool:
+            # ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_episodes"
+            counts = count_tasks(completed_task_id_map_ct)
+            total_completed_episodes = counts["total_completed_episodes"]
+            return (total_completed_episodes >= n_batch_task * rollout_n)
 
+        def enough_finished_task_stop_condition(completed_task_id_map_ct) -> bool:
+            # ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_tasks"
+            counts = count_tasks(completed_task_id_map_ct)
+            total_completed_episodes = counts["total_completed_episodes"]
+            total_completed_tasks = counts["total_completed_tasks"]
+            if total_completed_episodes > self.config.ajet.swarm_mode_sample_collection_max_cached_episodes // 2:
+                logger.warning(
+                    f"Total cached episodes [{total_completed_episodes}] is going to exceed the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}], "
+                    f"but we are still not able to meet the stop condition (current finished tasks [{total_completed_tasks}], target tasks [{n_batch_task}]), this may cause memory issues. "
+                    f"The current stop condition requires at least [{rollout_n}] episodes for each task, however, among the completed [{total_completed_episodes}] episodes, "
+                    f"we only have [{total_completed_tasks}] finished tasks which contain at least [{rollout_n}] episodes. "
+                    f"Please make sure your swarm workers are instructed to repeat each task for enough times (current rollout_n=[{rollout_n}])"
+                )
+            if total_completed_episodes > self.config.ajet.swarm_mode_sample_collection_max_cached_episodes:
+                logger.warning(
+                    f"Too many cached episodes [{total_completed_episodes}] has exceeded the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}] "
+                    f"Deleting cached episodes to release memory..."
+                )
+                completed_task_id_map_ct = {}
+            return (total_completed_tasks >= n_batch_task)
+
+        def enough_non_dummy_task_stop_condition(completed_task_id_map_ct) -> bool:
+            # ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_non_dummy_tasks"
+            counts = count_tasks(completed_task_id_map_ct)
+            total_completed_episodes = counts["total_completed_episodes"]
+            total_completed_tasks = counts["total_completed_tasks"]
+            total_completed_non_dummy_tasks = counts["total_completed_non_dummy_tasks"]
+            if total_completed_episodes > self.config.ajet.swarm_mode_sample_collection_max_cached_episodes // 2:
+                logger.warning(
+                    f"Total cached episodes [{total_completed_episodes}] is going to exceed the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}], "
+                    f"but we are still not able to meet the stop condition (current finished tasks [{total_completed_non_dummy_tasks}], target tasks [{n_batch_task}]), this may cause memory issues. "
+                    f"The current stop condition requires at least [{rollout_n}] episodes for each task, and each task contain at least two episodes that differs in reward, "
+                    f"however, among the completed [{total_completed_episodes}] episodes, "
+                    f"we only have [{total_completed_tasks}] finished tasks which contain at least [{rollout_n}] episodes, "
+                    f"and we only have [{total_completed_non_dummy_tasks}] finished tasks which contain at least two episodes that differs in reward. "
+                    f"Please make sure your swarm workers are instructed to repeat each task for enough times (current rollout_n=[{rollout_n}]), "
+                    f"and please make sure your task is not too simple or too hard to cause all episodes to always have the same reward (e.g. all 0 or all 1)."
+                )
+            if total_completed_episodes > self.config.ajet.swarm_mode_sample_collection_max_cached_episodes:
+                logger.warning(
+                    f"Too many cached episodes [{total_completed_episodes}] has exceeded the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}] "
+                    f"Deleting cached episodes to release memory..."
+                )
+                completed_task_id_map_ct = {}
+            return (total_completed_non_dummy_tasks >= n_batch_task)
+
+        # select stop condition function based on config
+        if self.config.ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_episodes":
+            stop_condition = enough_sample_stop_condition
+        elif self.config.ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_tasks":
+            stop_condition = enough_finished_task_stop_condition
+        elif self.config.ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_non_dummy_tasks":
+            stop_condition = enough_non_dummy_task_stop_condition
+        else:
+            logger.error(f"Invalid swarm_mode_sample_collection_method: {self.config.ajet.swarm_mode_sample_collection_method}, fallback to default method: rollout_until_finish_enough_tasks")
+            stop_condition = enough_finished_task_stop_condition
+
+        # communicate with interchange server to stop new episode, and let threads finish current episode, then collect results and shutdown executor
         def stop_all_threads_soft():
             for k in range(len(observation_window["stop"])): observation_window["stop"][k] = True
             http_change_engine_status(self.config, "ENGINE.ROLLING_POST")
             return
 
+        # communicate with interchange server to stop all threads immediately, and shutdown executor without waiting for threads to finish
         def stop_all_threads_hard():
             for k in range(len(observation_window["hard_stop"])): observation_window["hard_stop"][k] = True
             http_change_engine_status(self.config, "ENGINE.WEIGHT_SYNCING")
             return
 
+        def update_rollout_result_array_preview(observation_window, completed_task_id_map_ct: Dict[str, List[BaseContextTracker]]):
+            buffer = ""
+            for task_id, tracker_arr in completed_task_id_map_ct.items():
+                buffer += f"Task {task_id} (completed {len(tracker_arr)} episodes):\n"
+                for ct in tracker_arr:
+                    buffer += f"\tEpisode: {ct.episode_uuid}\tTimelines: {len(ct.saved_timelines)}\tLLM_Calls: {ct.llm_call_cnt}\tReward: {ct.reward_structure.performance_reward}\n"
+            buffer += f"\n"
+            buffer += f"\n"
+            counts = count_tasks(completed_task_id_map_ct)
+            buffer += f"Total completed episodes: {counts['total_completed_episodes']} (target {n_batch_task * rollout_n})\n"
+            buffer += f"Total completed tasks: {counts['total_completed_tasks']} (target {n_batch_task})\n"
+            buffer += f"Total completed non-dummy tasks: {counts['total_completed_non_dummy_tasks']} (target {n_batch_task})\n"
+            buffer += f"Current stop condition: {self.config.ajet.swarm_mode_sample_collection_method}\n"
+            observation_window["info"][-1] = buffer
+            return
+
+        # loop and wait until stop condition is met, then stop threads and collect results
         cnt = 0
         while True:
             cnt += 1
             time.sleep(2)
             if (cnt % 5 == 0):
+                update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
                 self.step_status_printer(observation_window)
             meet_stop_condition_after_new_results = stop_condition(completed_task_id_map_ct)
             if meet_stop_condition_after_new_results:
@@ -583,7 +343,6 @@ class DynamicRolloutManager(BaseRolloutManager):
         for ct_list in completed_task_id_map_ct.values():
             tracker_array.extend(ct_list)
 
-
         # TODO: support multi-step reward
         task_success_rate = np.mean(
             [tracker.reward_structure.success_rate for tracker in tracker_array]
@@ -596,8 +355,42 @@ class DynamicRolloutManager(BaseRolloutManager):
             tracker.current_batch_success_rate = float(task_success_rate)
             tracker.current_batch_reward = float(task_scalar_reward)
 
+        # for debugging
+        if DEBUG:
+            update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
+            self._write_swarm_rollout_dynamic_log(observation_window)
+
+        time.sleep(10)
+        raise RuntimeError("DEBUG")
         # return all trackers
         return tracker_array
+
+
+    def rollout(
+        self,
+        tasks: List[Task],
+        mode: Literal["sample", "validate"],
+        epoch: str,
+    ) -> List[BaseContextTracker]:
+        """Delegate to dynamic rollout when oversampling is enabled."""
+        if self.config.ajet.enable_swarm_mode:
+            return self.rollout_swarm(tasks, mode, epoch)
+        else:
+            return self.rollout_static(tasks, mode, epoch)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class VerlRolloutManager(DynamicRolloutManager):

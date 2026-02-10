@@ -63,7 +63,7 @@ def main():
                 try:
                     # begin episode
                     episode_uuid, api_baseurl_key = swarm_remote.begin_episode()
-                    # execute agent
+                    # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
                     workflow_output = execute_agent(task, api_baseurl_key)
                     # report output back to swarm remote
                     swarm_remote.end_episode(task, episode_uuid, workflow_output)
@@ -88,7 +88,7 @@ def main():
             executor.shutdown(wait=True)
             task_batch = []
             print('*********** tasks completed, wait a minute... ***********')
-            time.sleep(3)
+            time.sleep(5)
 
 
     return None

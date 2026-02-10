@@ -26,8 +26,8 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     VALID_STATUSES,
 )
 
-# DEBUG = True
-DEBUG = False
+DEBUG = True
+# DEBUG = False
 RCVTIMEO = 2 * 1000
 RCVTIMEO_OUT = 300 * 1000
 RCVTIMEO_WAIT_N = RCVTIMEO_OUT // RCVTIMEO
@@ -68,7 +68,7 @@ def register_enable_swarm_mode_routes(
             if is_key_epsisode_status(k):
                 es:EpisodeStatus = v
                 if es.episode_status == "claimed":
-                    if (current_time - es.latest_activity_timestamp) > es.allow_discard_timeout:
+                    if (current_time - es.latest_activity_timestamp) > es.discard_episode_timeout:
                         to_unclaim_episodes.append(es.episode_uuid)
 
         for episode_uuid in to_unclaim_episodes:
@@ -125,7 +125,7 @@ def register_enable_swarm_mode_routes(
             es.episode_status = "registered"
             es.client_uuid = ""
             es.latest_activity_timestamp = time.time()
-            es.allow_discard_timeout = -1
+            es.discard_episode_timeout = -1
             with shared_mem_dict_lock:
                 shared_mem_dict[ep_key(episode_uuid)] = es
                 if episode_uuid in shared_mem_dict['unclaimed_episodes']: pass
@@ -172,7 +172,8 @@ def register_enable_swarm_mode_routes(
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string timeout, retrying.")
                 if shared_mem_dict["engine_status"] not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
                     logger.info(f"[server] episode_uuid: {episode_uuid} | Engine is no longer rolling, aborting wait for ack.")
-                    raise RuntimeError("Engine is no longer rolling, aborting wait for ack.")
+                    # raise RuntimeError("Engine is no longer rolling, aborting wait for ack.")
+                    break
                 continue
         # clean up episode records
         with shared_mem_dict_lock:
@@ -191,6 +192,7 @@ def register_enable_swarm_mode_routes(
             await asyncio.sleep(10)  # check every 10 seconds
             await find_claimed_episodes_that_need_to_be_unclaimed()
             read_all_episode_status()
+            if DEBUG: _write_swarm_server_dynamic_log(shared_mem_dict)
 
     def read_all_episode_status() -> Optional[EpisodeStatus]:
         group_by_status = {}
@@ -206,6 +208,22 @@ def register_enable_swarm_mode_routes(
         logger.info(f"Current engine status: [{shared_mem_dict['engine_status']}], " + print_buffer_str)
 
         return None
+
+
+    def _write_swarm_server_dynamic_log(shared_mem_dict):
+        fp = "./swarm_server.dynamic.log"
+        string_buffer = ""
+
+        for k, v in shared_mem_dict.items():
+            if is_key_epsisode_status(k):
+                es:EpisodeStatus = v
+                p = es.model_dump_json()
+                string_buffer += f"{p}\n"
+
+        with open(fp, "w") as f:
+            f.write(string_buffer)
+
+        return
 
 
     # --------------------------------------------------------------------------------------
@@ -257,7 +275,8 @@ def register_enable_swarm_mode_routes(
             if 'train_config_yaml' not in shared_mem_dict:
                 logger.error("[start_engine] No training config found. Please call sync_train_config first.")
                 return {"success": False, "error": "No training config found"}
-
+            with shared_mem_dict_lock:
+                shared_mem_dict['engine_status'] = "ENGINE.BOOTING"
             # Parse YAML to get backbone
             yaml_str = shared_mem_dict['train_config_yaml']
             config_dict = yaml_module.safe_load(yaml_str)
@@ -390,7 +409,7 @@ def register_enable_swarm_mode_routes(
             openai_api_key=req.openai_api_key,
             episode_status="registered",
             zmq_listen_result_addr=req.zmq_listen_result_addr,
-            allow_discard_timeout=-1,
+            discard_episode_timeout=-1,
         )
         es.latest_activity_timestamp = time.time()
 
@@ -453,7 +472,7 @@ def register_enable_swarm_mode_routes(
                 es.episode_type = req.episode_type
                 es.client_uuid = req.client_uuid
                 es.latest_activity_timestamp = time.time()
-                es.allow_discard_timeout = req.allow_discard_timeout
+                es.discard_episode_timeout = req.discard_episode_timeout
 
                 shared_mem_dict[ep_key(episode_uuid)] = es
                 openai_base_url = es.openai_base_url
@@ -512,7 +531,6 @@ def register_enable_swarm_mode_routes(
             raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} is not in claimed status, maybe you take too long to submit.")
 
         if episode_type == "train":
-            # _register_final_episode_output_blocking(episode_uuid, workflow_output, shared_mem_dict, shared_mem_dict_lock)    # must async
             await asyncio.to_thread(_register_final_episode_output_blocking, episode_uuid, workflow_output, shared_mem_dict, shared_mem_dict_lock)
 
         elif episode_type == "eval":

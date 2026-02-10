@@ -54,8 +54,8 @@ class HealthCheckRequest(BaseModel):
 
 # Create FastAPI app
 SERVER_SHUTDOWN_EVENT = threading.Event()
-DEBUG = False
-# DEBUG = True
+# DEBUG = False
+DEBUG = True
 
 context = zmq.Context()
 atexit.register(context.term)

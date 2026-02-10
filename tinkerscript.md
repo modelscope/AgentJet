@@ -127,7 +127,7 @@ stateDiagram-v2
 
 *   **Registered**: Task created by the training algorithm.
 *   **Claimed**: A client is currently working on it.
-*   **Timeout**: If a client claims a task but doesn't report back within `allow_discard_timeout`, the server reverts the status to **Registered** so another client can try.
+*   **Timeout**: If a client claims a task but doesn't report back within `discard_episode_timeout`, the server reverts the status to **Registered** so another client can try.
 
 ### 5. Implementation Example
 

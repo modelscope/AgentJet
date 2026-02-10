@@ -213,6 +213,8 @@ class MultiAgentContextTracker(BaseContextTracker):
         custom_sampling_params = {}
         if not context_safe:
             self.context_overflow = True
+            logger.warning(f"[{self.workflow_task.episode_uuid}] Stop tracking timelines because {info}.")
+
 
         self.timeline_cache[timeline_uuid] = timeline
         return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
@@ -230,7 +232,7 @@ class MultiAgentContextTracker(BaseContextTracker):
         assert timeline_uuid in self.timeline_cache, "Timeline UUID not found in cache. Please ensure `step_prepare` is called before `step_track`."
 
         # round ++
-        self.round_cnt += 1
+        self.llm_call_cnt += 1
 
         # get timeline from cache
         timeline = self.timeline_cache.pop(timeline_uuid, [])

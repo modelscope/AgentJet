@@ -144,7 +144,7 @@ class BaseTracker(object):
 
         # meta data attributes
         self.tag = ""
-        self.round_cnt = 0
+        self.llm_call_cnt = 0
         self.generated_token_cnt = 0
         self.current_batch_success_rate: float = float("-inf")
         self.current_batch_reward: float = float("-inf")
@@ -171,7 +171,7 @@ class BaseTracker(object):
         self.current_batch_success_rate: float = float("-inf")
         self.current_batch_reward: float = float("-inf")
         self.already_mad_flag: bool = False
-        self.round_cnt = 0
+        self.llm_call_cnt = 0
         self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None
 
     def group_tokenize(self):

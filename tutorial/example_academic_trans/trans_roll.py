@@ -27,7 +27,7 @@ LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/agentjet/agentjet/tmp/arxiv_paper
 REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 
 # --------- configurations that take effect remotely -------------
-REMOTE_BATCH_SIZE = 32
+REMOTE_BATCH_SIZE = 8
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct'
 
@@ -66,8 +66,8 @@ def main():
                 try:
                     # begin episode
                     episode_uuid, api_baseurl_key = swarm_remote.begin_episode()
-                    # execute agent
-                    workflow_output = execute_agent(task, api_baseurl_key)
+                    # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
+                    workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
                     # report output back to swarm remote
                     swarm_remote.end_episode(task, episode_uuid, workflow_output)
                     # collect reward

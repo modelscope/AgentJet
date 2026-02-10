@@ -23,7 +23,7 @@ class SyncTrainConfigRequest(BaseModel):
 class ClaimEpisodeRequest(BaseModel):
     client_uuid: str
     episode_type: str
-    allow_discard_timeout: float
+    discard_episode_timeout: float
 
 class ClaimEpisodeResponse(BaseModel):
     success: bool
@@ -59,7 +59,8 @@ class EpisodeStatus(BaseModel):
     client_uuid: str = ""
     zmq_listen_result_addr: str = ""
     latest_activity_timestamp: float = time.time()
-    allow_discard_timeout: float
+    discard_episode_timeout: float
+    debug_log: List[str] = []
 
 class EpisodeBufferResponse(BaseModel):
     buffer: List[EpisodeStatus]
@@ -80,7 +81,8 @@ class UpdateEngineStatusRequest(BaseModel):
     engine_status: str = ""
 
 
-DEBUG = False
+# DEBUG = False
+DEBUG = True
 
 def get_interchange_server_url(config):
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
