@@ -15,6 +15,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import get_zmq_socket, is_episode_claimed
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
 
 context = zmq.Context()
 atexit.register(context.term)
@@ -22,8 +23,6 @@ atexit.register(context.term)
 if TYPE_CHECKING:
     from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 
-# DEBUG = False
-DEBUG = True
 
 def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
     """

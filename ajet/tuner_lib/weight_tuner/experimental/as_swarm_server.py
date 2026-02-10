@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI, HTTPException
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
@@ -23,11 +24,10 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     BoolResponse,
     RegisterEpisodeRequest,
     UpdateEngineStatusRequest,
+    CurrentBatchRolloutPoolInformation,
     VALID_STATUSES,
 )
 
-DEBUG = True
-# DEBUG = False
 RCVTIMEO = 2 * 1000
 RCVTIMEO_OUT = 300 * 1000
 RCVTIMEO_WAIT_N = RCVTIMEO_OUT // RCVTIMEO
@@ -54,6 +54,9 @@ def register_enable_swarm_mode_routes(
 
     if 'unclaimed_episodes' not in shared_mem_dict:
         shared_mem_dict['unclaimed_episodes'] = []
+
+    if 'current_batch_rollout_pool_information' not in shared_mem_dict:
+        shared_mem_dict['current_batch_rollout_pool_information'] = CurrentBatchRolloutPoolInformation()
 
     # ------------------------------------------------------------------------------------------------
     # ------ Recycle claimed episodes that client failed to complete in (promised) time --------------
@@ -611,6 +614,28 @@ def register_enable_swarm_mode_routes(
             v for k, v in shared_mem_dict.items() if is_key_epsisode_status(k)
         ]
         return EpisodeBufferResponse(buffer=result)
+
+
+    @app.post("/update_current_batch_rollout_pool_information", response_model=BoolResponse)
+    async def update_current_batch_rollout_pool_information(req: CurrentBatchRolloutPoolInformation):
+        """Update the current batch rollout pool information."""
+        try:
+            with shared_mem_dict_lock:
+                shared_mem_dict['current_batch_rollout_pool_information'] = req
+            return BoolResponse(success=True)
+        except Exception as e:
+            logger.error(f"Error updating current batch rollout pool information: {e}")
+            return BoolResponse(success=False, failure_reason=str(e))
+
+
+    @app.get("/get_current_batch_rollout_pool_information", response_model=CurrentBatchRolloutPoolInformation)
+    async def get_current_batch_rollout_pool_information():
+        """Get the current batch rollout pool information."""
+        try:
+            return shared_mem_dict.get('current_batch_rollout_pool_information', CurrentBatchRolloutPoolInformation())
+        except Exception as e:
+            logger.error(f"Error getting current batch rollout pool information: {e}")
+            return CurrentBatchRolloutPoolInformation()
 
 
 

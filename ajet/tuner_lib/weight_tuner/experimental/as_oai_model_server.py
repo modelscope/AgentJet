@@ -35,6 +35,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 from ajet.utils.networking import find_free_port, get_host_ip
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import EpisodeStatus
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
 
 API_KEY_PREFIX = "sk-ajet-"
 
@@ -54,8 +55,6 @@ class HealthCheckRequest(BaseModel):
 
 # Create FastAPI app
 SERVER_SHUTDOWN_EVENT = threading.Event()
-# DEBUG = False
-DEBUG = True
 
 context = zmq.Context()
 atexit.register(context.term)

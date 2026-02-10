@@ -17,6 +17,7 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     EndEpisodeResponse,
     EpisodeStatus,
     EpisodeBufferResponse,
+    CurrentBatchRolloutPoolInformation,
 )
 
 
@@ -379,3 +380,20 @@ class SwarmClient(object):
             self._wait_until_status_change_to(desired_status="ENGINE.OFFLINE")
         except Exception as e:
             logger.error(f"Error stopping engine: {e}")
+
+    def get_rollout_stat(self) -> CurrentBatchRolloutPoolInformation:
+        """
+        Get the current batch rollout pool information from the Swarm server.
+        Returns statistics about completed episodes, tasks, and progress.
+        """
+        try:
+            resp = httpx.get(
+                f"{self.server_url}/get_current_batch_rollout_pool_information",
+                timeout=10
+            )
+            resp.raise_for_status()
+            data = CurrentBatchRolloutPoolInformation.model_validate(resp.json())
+            return data
+        except Exception as e:
+            logger.error(f"Error getting rollout statistics: {e}")
+            return CurrentBatchRolloutPoolInformation()

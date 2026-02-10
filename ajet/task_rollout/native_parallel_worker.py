@@ -20,9 +20,12 @@ from ajet.schema.task import Task
 from ajet.schema.trajectory import Sample
 from ajet.task_rollout.single_worker import BaseRolloutManager
 from ajet.context_tracker.basic_tracker import BaseContextTracker
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
-
-DEBUG = True
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
+    http_change_engine_status,
+    http_update_rollout_pool_information,
+    CurrentBatchRolloutPoolInformation,
+    DEBUG,
+)
 
 
 def spawn_thread_shared_observation_window(n_threads) -> Dict[str, List[int | bool | str]]:
@@ -302,10 +305,14 @@ class DynamicRolloutManager(BaseRolloutManager):
 
         def update_rollout_result_array_preview(observation_window, completed_task_id_map_ct: Dict[str, List[BaseContextTracker]]):
             buffer = ""
+            completed_tasks_details = {}
             for task_id, tracker_arr in completed_task_id_map_ct.items():
                 buffer += f"Task {task_id} (completed {len(tracker_arr)} episodes):\n"
+                episode_uuids = []
                 for ct in tracker_arr:
                     buffer += f"\tEpisode: {ct.episode_uuid}\tTimelines: {len(ct.saved_timelines)}\tLLM_Calls: {ct.llm_call_cnt}\tReward: {ct.reward_structure.performance_reward}\n"
+                    episode_uuids.append(ct.episode_uuid)
+                completed_tasks_details[task_id] = episode_uuids
             buffer += f"\n"
             buffer += f"\n"
             counts = count_tasks(completed_task_id_map_ct)
@@ -314,6 +321,20 @@ class DynamicRolloutManager(BaseRolloutManager):
             buffer += f"Total completed non-dummy tasks: {counts['total_completed_non_dummy_tasks']} (target {n_batch_task})\n"
             buffer += f"Current stop condition: {self.config.ajet.swarm_mode_sample_collection_method}\n"
             observation_window["info"][-1] = buffer
+
+            # Update rollout pool information via API
+            pool_info = CurrentBatchRolloutPoolInformation(
+                completed_episodes=counts['total_completed_episodes'],
+                completed_episode_target=n_batch_task * rollout_n,
+                completed_tasks=counts['total_completed_tasks'],
+                completed_task_target=n_batch_task,
+                completed_non_dummy_tasks=counts['total_completed_non_dummy_tasks'],
+                completed_non_dummy_task_target=n_batch_task,
+                task_expected_num_repeat=rollout_n,
+                completed_tasks_details=completed_tasks_details,
+            )
+            http_update_rollout_pool_information(self.config, pool_info)
+
             return
 
         # loop and wait until stop condition is met, then stop threads and collect results
@@ -360,9 +381,6 @@ class DynamicRolloutManager(BaseRolloutManager):
             update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
             self._write_swarm_rollout_dynamic_log(observation_window)
 
-        time.sleep(10)
-        raise RuntimeError("DEBUG")
-        # return all trackers
         return tracker_array
 
 
