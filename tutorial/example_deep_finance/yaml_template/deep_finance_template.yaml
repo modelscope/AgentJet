@@ -15,6 +15,7 @@ ajet:
   cgcv_weight: {{CGCV_WEIGHT}}                                   # Citation-Grounded Claim Verification
   audit_weight: {{AUDIT_WEIGHT}}                                 # 引用逻辑审计
   traceability_weight: {{TRACEABILITY_WEIGHT}}                   # 可追溯性/可核验性审计 (TVR)
+  ebtu_weight: {{EBTU_WEIGHT}}                                     # Audit Grader: audit reward EBTU证据优先可追溯性审计
   rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
     # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）

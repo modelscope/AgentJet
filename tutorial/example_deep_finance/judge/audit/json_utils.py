@@ -15,16 +15,102 @@ def extract_first_json_object(text: str) -> str | None:
         return None
     return m.group(0)
 
+
+def _repair_json(js: str) -> str:
+    """
+    尝试修复常见的JSON格式错误
+    1. 修复字符串中未转义的换行符
+    2. 修复trailing comma
+    3. 修复缺少的逗号
+    4. 修复不完整的JSON（截断）
+    """
+    # 1. 替换字符串值中的未转义换行符
+    # 这是最常见的问题：LLM在字符串中直接输出换行而非 \n
+    def escape_newlines_in_strings(s: str) -> str:
+        result = []
+        in_string = False
+        escape_next = False
+        i = 0
+        while i < len(s):
+            c = s[i]
+            if escape_next:
+                result.append(c)
+                escape_next = False
+            elif c == '\\':
+                result.append(c)
+                escape_next = True
+            elif c == '"':
+                result.append(c)
+                in_string = not in_string
+            elif in_string and c == '\n':
+                result.append('\\n')
+            elif in_string and c == '\r':
+                result.append('\\r')
+            elif in_string and c == '\t':
+                result.append('\\t')
+            else:
+                result.append(c)
+            i += 1
+        return ''.join(result)
+    
+    js = escape_newlines_in_strings(js)
+    
+    # 2. 移除trailing comma: ",}" -> "}" 和 ",]" -> "]"
+    js = re.sub(r',\s*}', '}', js)
+    js = re.sub(r',\s*]', ']', js)
+    
+    # 3. 尝试修复截断的JSON - 补全缺失的括号
+    # 统计括号数量
+    open_braces = js.count('{')
+    close_braces = js.count('}')
+    open_brackets = js.count('[')
+    close_brackets = js.count(']')
+    
+    # 如果括号不匹配，尝试补全
+    if open_braces > close_braces:
+        # 先关闭可能未闭合的字符串
+        # 检查最后是否在字符串中
+        in_string = False
+        escape_next = False
+        for c in js:
+            if escape_next:
+                escape_next = False
+            elif c == '\\':
+                escape_next = True
+            elif c == '"':
+                in_string = not in_string
+        if in_string:
+            js += '"'
+        
+        # 补全缺失的括号
+        js += ']' * (open_brackets - close_brackets)
+        js += '}' * (open_braces - close_braces)
+    
+    return js
+
+
 def strict_load_json(text: str) -> Tuple[Dict[str, Any] | None, str | None]:
     js = extract_first_json_object(text)
     if js is None:
         return None, "No JSON object found"
+    
+    # 第一次尝试：直接解析
     try:
         obj = json.loads(js)
         if not isinstance(obj, dict):
             return None, f"Root is not dict: {type(obj)}"
         return obj, None
-    except Exception as e:
+    except json.JSONDecodeError:
+        pass  # 继续尝试修复
+    
+    # 第二次尝试：修复后解析
+    try:
+        repaired = _repair_json(js)
+        obj = json.loads(repaired)
+        if not isinstance(obj, dict):
+            return None, f"Root is not dict: {type(obj)}"
+        return obj, None
+    except json.JSONDecodeError as e:
         return None, f"JSONDecodeError: {str(e)}"
 
 def validate_integrity_shape(obj: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | None]:

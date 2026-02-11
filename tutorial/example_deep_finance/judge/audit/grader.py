@@ -184,11 +184,11 @@ class AuditGrader(BaseGrader):
         supported_count = verdict_counts["Supported"]
         
         # 优先使用模型输出的 score，如果有误则回退到手动计算
-        model_score = obj.get("integrity_score")
-        if isinstance(model_score, (float, int)) and 0.0 <= model_score <= 1.0:
-            final_score = float(model_score)
-        else:
-            final_score = supported_count / total_citations if total_citations > 0 else 0.0
+        # model_score = obj.get("integrity_score")
+        # if isinstance(model_score, (float, int)) and 0.0 <= model_score <= 1.0:
+        #     final_score = float(model_score)
+        # else:
+        final_score = supported_count / total_citations if total_citations > 0 else 0.0
 
         # 构建 Reason
         # 格式: Score: 0.80 | Total: 10 | Supp: 8, Over: 1, Hallu: 1 | Summary: ...

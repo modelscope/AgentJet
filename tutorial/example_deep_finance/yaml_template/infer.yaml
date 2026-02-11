@@ -12,6 +12,10 @@ ajet:
   # OpenJudge 权重配置
   presentation_quality_weight: {{PRESENTATION_QUALITY_WEIGHT}}   # 报告呈现质量评估
   grounding_weight: {{GROUNDING_WEIGHT}}                         # 引用规范性评估
+  cgcv_weight: {{CGCV_WEIGHT}}                                   # Citation-Grounded Claim Verification
+  audit_weight: {{AUDIT_WEIGHT}}                                 # 引用逻辑审计
+  traceability_weight: {{TRACEABILITY_WEIGHT}}                   # 可追溯性/可核验性审计 (TVR)
+  ebtu_weight: {{EBTU_WEIGHT}}                                     # Audit Grader: audit reward EBTU证据优先可追溯性审计
   rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
     # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）
@@ -23,7 +27,7 @@ ajet:
     nnodes: {{NNODES}}
     n_gpus_per_node: 8
     val_before_train: True
-    val_pass_n: 4
+    val_pass_n: 2
     save_freq: 10
     test_freq: 2
     total_epochs: {{TOTAL_EPOCHS}}
@@ -38,7 +42,7 @@ ajet:
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
     max_response_length_in_one_turn: 8000
-    max_model_len: 50000
+    max_model_len: {{MAX_MODEL_LEN}}
     agent_madness_reward: 0.0
     compute_madness_checklist: None
     multi_turn:

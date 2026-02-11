@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from openjudge.graders.base_grader import BaseGrader
 from openjudge.graders.schema import GraderScore
@@ -29,21 +29,22 @@ class TraceabilityRewardGrader(BaseGrader):
 
     def __init__(
         self,
-        model: Optional[OpenAIChatModel] = None,
+        model: OpenAIChatModel,
         name: str = "traceability",
-        temperature: float = 0.0,
-        max_tokens: int = 2200,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(name=name)
-        self.model = model or OpenAIChatModel(
-            model_name="gpt-4.1-mini",
-            temperature=temperature,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"},
-        )
+        super().__init__(name=name, **kwargs)
+        self.model = model 
 
     async def aevaluate(self, traj: Any, **kwargs: Any) -> GraderScore:
         messages = coerce_to_messages_list(traj)
+        
+        if not messages:
+            return GraderScore(
+                name=self.name,
+                score=0.0,
+                reason="BadInput: empty trajectory",
+            )
 
         user_prompt, report_plain = construct_traceability_prompt(
             messages,
@@ -55,20 +56,32 @@ class TraceabilityRewardGrader(BaseGrader):
             {"role": "user", "content": user_prompt},
         ]
 
-        resp = await self.model.achat(judge_messages)
-        text = resp.get("content", "")
-
+        # 调用模型（带异常捕获）
         try:
-            obj = strict_load_json(text)
+            resp = await self.model.achat(judge_messages)
+            raw_text = getattr(resp, "content", None)
+            if raw_text is None:
+                raw_text = str(resp)
+        except Exception as e:
+            return GraderScore(
+                name=self.name,
+                score=0.0,
+                reason=f"ModelCallError: {type(e).__name__}: {e}",
+            )
+
+        # 解析 JSON 并计算分数
+        try:
+            obj = strict_load_json(str(raw_text))
             norm = validate_shape(obj)
             score = self._compute_score(norm, report_plain)
             reason = self._build_reason(norm, report_plain, score)
             return GraderScore(name=self.name, score=score, reason=reason)
         except Exception as e:
+            snippet = str(raw_text)[:200].replace("\n", " ")
             return GraderScore(
                 name=self.name,
                 score=0.0,
-                reason=f"TVR judge output invalid: {e}",
+                reason=f"TVR ParseError: {e}; raw[:200]={snippet}",
             )
 
     def _compute_score(self, norm: Dict[str, Any], report_plain: str) -> float:

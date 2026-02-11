@@ -15,7 +15,7 @@ from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, CGCVGrader, AuditGrader, TraceabilityRewardGrader
+from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, CGCVGrader, AuditGrader, TraceabilityRewardGrader, EBTUTraceabilityGrader
 
 
 
@@ -105,8 +105,9 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             "presentation_quality": getattr(cfg, "presentation_quality_weight", 0.25) if cfg else 0.25,
             "grounding": getattr(cfg, "grounding_weight", 0.0) if cfg else 0.0,  # 引用规范性评估
             "cgcv": getattr(cfg, "cgcv_weight", 0.25) if cfg else 0.25,  # Citation-Grounded Claim Verification
-            "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # 引用逻辑审计
+            "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # Audit Grader: audit reward 引用逻辑审计
             "traceability": getattr(cfg, "traceability_weight", 0.0) if cfg else 0.0,  # 可追溯性/可核验性审计 (TVR)
+            "ebtu": getattr(cfg, "ebtu_weight", 0.0) if cfg else 0.0,  # Audit Grader: audit reward EBTU证据优先可追溯性审计
         }
         
         # 归一化（注意：action_loop 是惩罚项，不参与归一化；rm 需要参与归一化）
@@ -272,6 +273,11 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             # Traceability: 可追溯性/可核验性审计 - 验证报告断言是否有证据锚点支撑
             "traceability": GraderConfig(
                 grader=TraceabilityRewardGrader(model=model),
+                mapper=lambda data: {"traj": data},
+            ),
+            # Audit Grader: audit reward EBTU证据优先可追溯性审计 - Evidence-Backed Trace Units
+            "ebtu": GraderConfig(
+                grader=EBTUTraceabilityGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
         }

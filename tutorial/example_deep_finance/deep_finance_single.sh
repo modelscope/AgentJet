@@ -15,6 +15,10 @@ JUDGE_CONCURRENCY=10
 RM_WEIGHT=0.5
 PRESENTATION_QUALITY_WEIGHT=0.25
 GROUNDING_WEIGHT=0.25
+CGCV_WEIGHT=0.0                   # 不使用 CGCV，设为 0
+AUDIT_WEIGHT=0.0                  # 不使用 Audit，设为 0
+TRACEABILITY_WEIGHT=0.0           # 不使用 Traceability，设为 0
+EBTU_WEIGHT=0.0                   # 不使用 EBTU，设为 0
 
 # 训练参数配置
 NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
@@ -28,7 +32,13 @@ ENV_SERVICE_URL="http://127.0.0.1:8080"  # 环境服务地址
 # 主目录（需要更改）
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
 
-NNODES=${WORLD_SIZE}
+# 单机调试配置（默认值）
+NNODES=${WORLD_SIZE:-1}
+GPUS_PER_NODE=8
+CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
+LOG_DIR="${AJET_ROOT}/logs/${PREFIX}"
+TRAIN_LOG="${LOG_DIR}/train_${SUFFIX}_${CURRENT_TIME}.log"
+mkdir -p ${LOG_DIR}
 
 # 涉密的配置（API_KEY以及模型、数据位置）从.env读取
 cd ${AJET_ROOT}
@@ -45,6 +55,9 @@ else
     echo -e "\033[31m警告: 找不到 .env 文件: $ENV_FILE\033[0m"
 fi
 
+export MODEL_PATH="/mnt/data_cpfs/taoshuchang.tsc/models/Qwen3-8B"
+
+
 #===============================================================================
 # 2. 动态生成配置文件 (从yaml template生成yaml)
 #===============================================================================
@@ -60,6 +73,10 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{RM_WEIGHT}}|${RM_WEIGHT}|g" \
     -e "s|{{PRESENTATION_QUALITY_WEIGHT}}|${PRESENTATION_QUALITY_WEIGHT}|g" \
     -e "s|{{GROUNDING_WEIGHT}}|${GROUNDING_WEIGHT}|g" \
+    -e "s|{{CGCV_WEIGHT}}|${CGCV_WEIGHT}|g" \
+    -e "s|{{AUDIT_WEIGHT}}|${AUDIT_WEIGHT}|g" \
+    -e "s|{{TRACEABILITY_WEIGHT}}|${TRACEABILITY_WEIGHT}|g" \
+    -e "s|{{EBTU_WEIGHT}}|${EBTU_WEIGHT}|g" \
     -e "s|{{OPENJUDGE_LLM}}|${OPENJUDGE_LLM}|g" \
     -e "s|{{RM_LLM}}|${RM_LLM}|g" \
     -e "s|{{JUDGE_CONCURRENCY}}|${JUDGE_CONCURRENCY}|g" \
@@ -75,7 +92,7 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
 
 echo "配置文件已生成: ${CONFIG_FILE}"
-echo "参数确认: RM=${RM_WEIGHT}, PresentationQuality=${PRESENTATION_QUALITY_WEIGHT}, Grounding=${GROUNDING_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
+echo "参数确认: RM=${RM_WEIGHT}, PresentationQuality=${PRESENTATION_QUALITY_WEIGHT}, Grounding=${GROUNDING_WEIGHT}, CGCV=${CGCV_WEIGHT}, Audit=${AUDIT_WEIGHT}, Traceability=${TRACEABILITY_WEIGHT}, EBTU=${EBTU_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
 
 
 #===============================================================================
@@ -119,15 +136,16 @@ export RAY_CLUSTER_MODE="multi_node"
 #===============================================================================
 # 6. 主流程
 #===============================================================================
-log "节点数: ${NNODES}, 每节点GPU数: ${GPUS_PER_NODE}"
-mkdir -p ${LOG_DIR}
-mkdir -p $(dirname ${CONFIG_FILE})
+log "单机调试模式: NNODES=${NNODES}, GPUS_PER_NODE=${GPUS_PER_NODE}"
 
 #===============================================================================
 #  6.1 Master 节点启动流程
 #===============================================================================
 # 启动训练任务（最核心）
+# 请注意只有单节点需要--with-ray 多节点应该删除
 python ajet/launcher.py \
     --conf ${CONFIG_FILE} \
+    --with-deepfinance \
+    --with-ray \
     --backbone="debug" \
     2>&1 | tee ${TRAIN_LOG}

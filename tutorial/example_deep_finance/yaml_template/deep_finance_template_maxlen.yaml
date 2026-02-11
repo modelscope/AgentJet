@@ -12,6 +12,10 @@ ajet:
   # OpenJudge 权重配置
   presentation_quality_weight: {{PRESENTATION_QUALITY_WEIGHT}}   # 报告呈现质量评估
   grounding_weight: {{GROUNDING_WEIGHT}}                         # 引用规范性评估
+  cgcv_weight: {{CGCV_WEIGHT}}                                   # Citation-Grounded Claim Verification
+  audit_weight: {{AUDIT_WEIGHT}}                                 # 引用逻辑审计
+  traceability_weight: {{TRACEABILITY_WEIGHT}}                   # 可追溯性/可核验性审计 (TVR)
+  ebtu_weight: {{EBTU_WEIGHT}}                                     # Audit Grader: audit reward EBTU证据优先可追溯性审计
   rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
     # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）
@@ -38,7 +42,7 @@ ajet:
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
     max_response_length_in_one_turn: 8000
-    max_model_len: 40960
+    max_model_len: {{MAX_MODEL_LEN}}
     agent_madness_reward: 0.0
     compute_madness_checklist: None
     multi_turn:
@@ -50,8 +54,8 @@ ajet:
     debug_first_n_tasks: 100  # 增加处理的任务数
   data:
     train_batch_size: {{TRAIN_BATCH_SIZE}}
-    max_prompt_length: 8000
-    max_response_length: 41000
+    max_prompt_length: 20000
+    max_response_length: 45000
 
   task_reader:
     type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
