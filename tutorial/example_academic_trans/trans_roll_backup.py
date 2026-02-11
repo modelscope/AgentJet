@@ -66,15 +66,17 @@ def main():
         swarm_worker.print_rollout_stat()
         return workflow_output.reward
 
-    next_batch = []
+    episodes = []
     for _, task in enumerate(dataset.generate_training_tasks()):
         for _ in range(LOCAL_GRPO_N):
-            next_batch.append(task)
-            if len(next_batch) >= (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
-                # wait until getting `local_batching_size` next_batch, then execute them with with retry logic
-                episode_results = run_episodes_until_all_complete(next_batch, func=rollout, auto_retry=True)
-                print(episode_results)
-                next_batch.clear()
+            episodes += [ task ]
+            # wait until getting `local_batching_size` episodes, then execute them with with retry logic
+            if len(episodes) == (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
+                episode_results = run_episodes_until_all_complete(episodes, func=rollout, auto_retry=True)
+                for episode, reward in zip(episodes, episode_results):
+                    logger.info(f"Episode for task {episode.task_id} completed with reward: {reward}")
+                episodes.clear()
+
     return None
 
 

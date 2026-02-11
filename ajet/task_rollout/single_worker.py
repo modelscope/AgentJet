@@ -159,6 +159,7 @@ class BaseRolloutManager:
         observation_window: dict,
         completed_task_id_map_ct: Dict[str, List[BaseContextTracker]],
         executor_lock: threading.Lock,
+        stop_condition_callback=None,
         **kwargs,
     ):
 
@@ -197,6 +198,10 @@ class BaseRolloutManager:
                             completed_task_id_map_ct[tracker.task_id] += [tracker]
 
                 cnt += 1
+
+                if stop_condition_callback is not None and stop_condition_callback(completed_task_id_map_ct):
+                    observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop_condition_callback true, returning]\n"
+                    return
 
                 if observation_window["stop"][task_thread_index]:
                     observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"

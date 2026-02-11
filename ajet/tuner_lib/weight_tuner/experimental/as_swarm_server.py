@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI, HTTPException
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
+from ajet.utils.process_killer import kill_process_tree
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     SyncTrainConfigRequest,
@@ -194,7 +195,7 @@ def register_enable_swarm_mode_routes(
         while True:
             await asyncio.sleep(10)  # check every 10 seconds
             await find_claimed_episodes_that_need_to_be_unclaimed()
-            read_all_episode_status()
+            # read_all_episode_status()
             if DEBUG: _write_swarm_server_dynamic_log(shared_mem_dict)
 
     def read_all_episode_status() -> Optional[EpisodeStatus]:
@@ -214,18 +215,18 @@ def register_enable_swarm_mode_routes(
 
 
     def _write_swarm_server_dynamic_log(shared_mem_dict):
-        fp = "./swarm_server.dynamic.log"
-        string_buffer = ""
+        if DEBUG:
+            fp = "./swarm_server.dynamic.log"
+            string_buffer = ""
 
-        for k, v in shared_mem_dict.items():
-            if is_key_epsisode_status(k):
-                es:EpisodeStatus = v
-                p = es.model_dump_json()
-                string_buffer += f"{p}\n"
+            for k, v in shared_mem_dict.items():
+                if is_key_epsisode_status(k):
+                    es:EpisodeStatus = v
+                    p = es.model_dump_json()
+                    string_buffer += f"{p}\n"
 
-        with open(fp, "w") as f:
-            f.write(string_buffer)
-
+            with open(fp, "w") as f:
+                f.write(string_buffer)
         return
 
 
@@ -373,6 +374,7 @@ def register_enable_swarm_mode_routes(
                 shared_mem_dict['unclaimed_episodes'] = []
                 logger.info(f"[clean_up_engine_status] Cleared {num_unclaimed} unclaimed episodes")
 
+
     @app.post("/update_engine_status", response_model=BoolResponse)
     async def update_engine_status(req: UpdateEngineStatusRequest):
         """Update the current engine status."""
@@ -383,6 +385,12 @@ def register_enable_swarm_mode_routes(
         if previous_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"] and req.engine_status not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
             clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
 
+        engine_status_detail = req.engine_status_detail
+        global_step = req.global_step
+        if global_step is not None:
+            shared_mem_dict['global_step'] = global_step
+        if engine_status_detail is not None:
+            shared_mem_dict['engine_status_detail'] = engine_status_detail
         logger.info(f"[update_engine_status] Engine status set to {req.engine_status}")
         return BoolResponse(success=True)
 
@@ -391,7 +399,13 @@ def register_enable_swarm_mode_routes(
     async def get_engine_status():
         """Get the current engine status."""
         status = shared_mem_dict['engine_status']
-        return {"engine_status": status}
+        engine_status_detail = shared_mem_dict.get('engine_status_detail', None)
+        global_step = shared_mem_dict.get('global_step', None)
+        return {
+            "engine_status": status,
+            "engine_status_detail": engine_status_detail,
+            "global_step": global_step
+        }
 
 
     # --- episode status ---
@@ -525,13 +539,14 @@ def register_enable_swarm_mode_routes(
         episode_type = ep_stat.episode_type
         episode_status = ep_stat.episode_status
         client_uuid_recorded = ep_stat.client_uuid
-        if client_uuid_recorded != client_uuid:
-            logger.error(f"[server] Episode {episode_uuid} is claimed by different client: {client_uuid_recorded}, but got {client_uuid}.")
-            raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} is claimed by different client: {client_uuid_recorded}, but got {client_uuid}.")
 
         if episode_status != "claimed":
             logger.error(f"[server] Episode {episode_uuid} is not in claimed status.")
-            raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} is not in claimed status, maybe you take too long to submit.")
+            raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} is not in claimed status, maybe you take **too long** to submit the workflow output, increase `discard_episode_timeout` when `begin_episode`.")
+
+        if client_uuid_recorded != client_uuid:
+            logger.error(f"[server] Episode {episode_uuid} is claimed by different client: {client_uuid_recorded}, but got {client_uuid}.")
+            raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} is claimed by different client: {client_uuid_recorded}, but got {client_uuid}.")
 
         if episode_type == "train":
             await asyncio.to_thread(_register_final_episode_output_blocking, episode_uuid, workflow_output, shared_mem_dict, shared_mem_dict_lock)
@@ -658,122 +673,3 @@ def register_enable_swarm_mode_routes(
     return app, register_episode_ready_listener()
 
 
-
-def kill_process_tree(shared_mem_dict_lock=None, shared_mem_dict=None):
-    logger.exception("[stop_engine] Initiating engine shutdown and cleanup...")
-    try:
-        import psutil
-
-        killed_pids = []
-        errors = []
-
-        # Get the training process PID if it exists
-        if shared_mem_dict and shared_mem_dict_lock:
-            training_pid = shared_mem_dict.get('training_process_pid', None)
-        else:
-            training_pid = os.getpid()
-
-        if training_pid is not None:
-            try:
-                # Try to get the process and all its children
-                try:
-                    parent = psutil.Process(training_pid)
-                    children = parent.children(recursive=True)
-
-                    # Kill all child processes first
-                    for child in children:
-                        try:
-                            logger.info(f"[stop_engine] Terminating child process PID: {child.pid}")
-                            child.terminate()
-                            killed_pids.append(child.pid)
-                        except psutil.NoSuchProcess:
-                            logger.warning(f"[stop_engine] Child process {child.pid} already terminated")
-                        except Exception as e:
-                            logger.error(f"[stop_engine] Error terminating child process {child.pid}: {e}")
-                            errors.append(f"Child {child.pid}: {str(e)}")
-
-                    # Wait for children to terminate gracefully
-                    gone, alive = psutil.wait_procs(children, timeout=16)
-
-                    # Force kill any remaining children
-                    for p in alive:
-                        try:
-                            logger.warning(f"[stop_engine] Force killing child process PID: {p.pid}")
-                            p.kill()
-                        except Exception as e:
-                            logger.error(f"[stop_engine] Error force killing child {p.pid}: {e}")
-                            errors.append(f"Force kill child {p.pid}: {str(e)}")
-
-                    # Now terminate the parent process
-                    logger.info(f"[stop_engine] Terminating parent process PID: {training_pid}")
-                    parent.terminate()
-                    killed_pids.append(training_pid)
-
-                    # Wait for parent to terminate gracefully
-                    try:
-                        parent.wait(timeout=3)
-                    except psutil.TimeoutExpired:
-                        logger.warning(f"[stop_engine] Force killing parent process PID: {training_pid}")
-                        parent.kill()
-
-                except psutil.NoSuchProcess:
-                    logger.warning(f"[stop_engine] Process {training_pid} not found (may have already terminated)")
-
-            except Exception as e:
-                logger.error(f"[stop_engine] Error killing training process: {e}")
-                errors.append(f"Training process: {str(e)}")
-        else:
-            logger.info("[stop_engine] No training process PID found in shared memory")
-
-        # Clean up all episodes from shared memory
-        episode_keys = []
-        if shared_mem_dict and shared_mem_dict_lock:
-            with shared_mem_dict_lock:
-                episode_keys = [k for k in shared_mem_dict.keys() if is_key_epsisode_status(k)]
-                for key in episode_keys:
-                    del shared_mem_dict[key]
-                    logger.info(f"[stop_engine] Removed episode: {key}")
-
-                # Clear unclaimed episodes list
-                if 'unclaimed_episodes' in shared_mem_dict:
-                    num_unclaimed = len(shared_mem_dict['unclaimed_episodes'])
-                    shared_mem_dict['unclaimed_episodes'] = []
-                    logger.info(f"[stop_engine] Cleared {num_unclaimed} unclaimed episodes")
-
-                # Reset engine status to OFFLINE
-                shared_mem_dict['engine_status'] = "ENGINE.OFFLINE"
-
-                # Remove training process PID
-                if 'training_process_pid' in shared_mem_dict:
-                    del shared_mem_dict['training_process_pid']
-
-                logger.info("[stop_engine] Engine status set to OFFLINE")
-
-        result = {
-            "success": True,
-            "killed_pids": killed_pids,
-            "episodes_removed": len(episode_keys) if 'episode_keys' in locals() else 0,
-        }
-
-        if errors:
-            result["warnings"] = errors
-            logger.warning(f"[stop_engine] Completed with warnings: {errors}")
-        else:
-            logger.info(f"[stop_engine] Successfully terminated engine and reset state")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"[stop_engine] Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
-
-        # Even if there's an error, try to reset the status
-        try:
-            if shared_mem_dict and shared_mem_dict_lock:
-                with shared_mem_dict_lock:
-                    shared_mem_dict['engine_status'] = "ENGINE.OFFLINE"
-        except:
-            pass
-
-        return {"success": False, "error": str(e)}

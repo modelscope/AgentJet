@@ -201,7 +201,7 @@ def main():
             exe_exp_base,
             exp_name,
             exp_config,
-        ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone)
+        ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone, storage=(not args.swarm_server))
 
     # setup environment variables
     env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)

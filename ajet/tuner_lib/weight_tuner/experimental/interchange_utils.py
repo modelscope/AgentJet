@@ -1,12 +1,14 @@
 import os
 import time
 import httpx
-from typing import List, Dict
+from typing import List, Dict, Callable, Any
+from functools import wraps
 from pydantic import BaseModel
 from loguru import logger
 from ajet.schema.task import WorkflowOutput
 from ajet.utils.networking import find_free_port
 from ajet.utils.retry import retry_with_backoff
+from ajet.utils.cache import cache_with_ttl
 
 VALID_STATUSES = [
     "ENGINE.OFFLINE",
@@ -79,6 +81,8 @@ class RegisterEpisodeRequest(BaseModel):
 
 class UpdateEngineStatusRequest(BaseModel):
     engine_status: str = ""
+    engine_status_detail: str|None = None
+    global_step: int|None = None
 
 
 class CurrentBatchRolloutPoolInformation(BaseModel):
@@ -95,6 +99,7 @@ class CurrentBatchRolloutPoolInformation(BaseModel):
 DEBUG = False
 # DEBUG = True
 
+
 def get_interchange_server_url(config):
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
     if config.ajet.interchange_server.interchange_server_port != 'auto':
@@ -105,21 +110,21 @@ def get_interchange_server_url(config):
     return base_url
 
 
-def http_change_engine_status(config, new_status: str):
+def http_change_engine_status(config, new_status: str, new_status_detail: str|None = None, global_step: int|None = None):
     if new_status not in VALID_STATUSES:
         raise ValueError(f"Invalid engine status: {new_status}")
 
     resp = httpx.post(
         f"{get_interchange_server_url(config)}/update_engine_status",
-        json={"engine_status": new_status},
+        json={"engine_status": new_status, "engine_status_detail": new_status_detail, "global_step": global_step},
         timeout=10
     )
     resp.raise_for_status()
     logger.success(f"Changed engine status to {new_status}")
 
 
+@cache_with_ttl(ttl=1.0)
 def is_episode_claimed(config, episode_uuid: str) -> bool:
-    # TODO: add cache to reduce communication overhead
     resp = httpx.post(
         f"{get_interchange_server_url(config)}/is_episode_claimed",
         json={"client_uuid": "", "episode_uuid": episode_uuid},

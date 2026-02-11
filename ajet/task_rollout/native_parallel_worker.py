@@ -78,12 +78,10 @@ class DynamicRolloutManager(BaseRolloutManager):
                 print_buf += [f"[finished]:{count} threads"]
         print(f"Rollout progress ({token_gen_per_sec_str}): " + "  //  ".join(print_buf))
 
-        if DEBUG:
-            self._write_swarm_rollout_dynamic_log(observation_window)
-
 
     def _write_swarm_rollout_dynamic_log(self, observation_window):
-        fp = "./swarm_rollout.dynamic.log"
+        base_exp_dir = self.config.ajet.experiment_dir # {exp-dir}/{experiment_name}
+        fp = f"{base_exp_dir}/swarm_rollout.dynamic.log"
         string_buffer = ""
         for info in observation_window["info"]:
             string_buffer += f"{info}\n"
@@ -189,25 +187,6 @@ class DynamicRolloutManager(BaseRolloutManager):
         completed_task_id_map_ct: Dict[str, List[BaseContextTracker]] = {}
         executor_lock = threading.Lock()
 
-        # submit initial tasks
-        dummy_task = Task(main_query="dummy task")
-        for task_batch_index in range(n_task):
-            for task_rollout_index in range(rollout_n):
-                task_thread_index = task_batch_index * rollout_n + task_rollout_index
-                observation_window["info"][task_thread_index] = f"\n\n\n\n[thread {task_thread_index} submit]\n"
-                future = executor.submit(
-                    self.rollout_env_worker_loop,
-                    task=dummy_task,
-                    task_tag="",
-                    mode=mode,
-                    task_batch_index=task_batch_index,
-                    task_thread_index=task_thread_index,
-                    observation_window=observation_window,
-                    completed_task_id_map_ct=completed_task_id_map_ct,
-                    executor_lock=executor_lock,
-                )
-                futures.append(future)
-
         def count_tasks(completed_task_id_map_ct):
             total_completed_episodes = 0
             total_completed_tasks = 0
@@ -239,7 +218,7 @@ class DynamicRolloutManager(BaseRolloutManager):
             counts = count_tasks(completed_task_id_map_ct)
             total_completed_episodes = counts["total_completed_episodes"]
             total_completed_tasks = counts["total_completed_tasks"]
-            if total_completed_episodes > self.config.ajet.swarm_mode_sample_collection_max_cached_episodes // 2:
+            if total_completed_episodes > (self.config.ajet.swarm_mode_sample_collection_max_cached_episodes // 5 * 4):
                 logger.warning(
                     f"Total cached episodes [{total_completed_episodes}] is going to exceed the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}], "
                     f"but we are still not able to meet the stop condition (current finished tasks [{total_completed_tasks}], target tasks [{n_batch_task}]), this may cause memory issues. "
@@ -261,7 +240,7 @@ class DynamicRolloutManager(BaseRolloutManager):
             total_completed_episodes = counts["total_completed_episodes"]
             total_completed_tasks = counts["total_completed_tasks"]
             total_completed_non_dummy_tasks = counts["total_completed_non_dummy_tasks"]
-            if total_completed_episodes > self.config.ajet.swarm_mode_sample_collection_max_cached_episodes // 2:
+            if total_completed_episodes > (self.config.ajet.swarm_mode_sample_collection_max_cached_episodes // 5 * 4):
                 logger.warning(
                     f"Total cached episodes [{total_completed_episodes}] is going to exceed the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}], "
                     f"but we are still not able to meet the stop condition (current finished tasks [{total_completed_non_dummy_tasks}], target tasks [{n_batch_task}]), this may cause memory issues. "
@@ -291,6 +270,9 @@ class DynamicRolloutManager(BaseRolloutManager):
             logger.error(f"Invalid swarm_mode_sample_collection_method: {self.config.ajet.swarm_mode_sample_collection_method}, fallback to default method: rollout_until_finish_enough_tasks")
             stop_condition = enough_finished_task_stop_condition
 
+        def is_already_soft_stopped():
+            return all(observation_window["stop"])
+
         # communicate with interchange server to stop new episode, and let threads finish current episode, then collect results and shutdown executor
         def stop_all_threads_soft():
             for k in range(len(observation_window["stop"])): observation_window["stop"][k] = True
@@ -302,6 +284,34 @@ class DynamicRolloutManager(BaseRolloutManager):
             for k in range(len(observation_window["hard_stop"])): observation_window["hard_stop"][k] = True
             http_change_engine_status(self.config, "ENGINE.WEIGHT_SYNCING")
             return
+
+        # pass a stop condition callback function to each thread, so that threads can check the stop condition whenever it finishes a cycle, this is faster than polling
+        def stop_condition_callback(completed_task_id_map_ct):
+            if stop_condition(completed_task_id_map_ct):
+                if not is_already_soft_stopped():
+                    stop_all_threads_soft()
+                return True
+            return False
+
+        # submit initial tasks
+        dummy_task = Task(main_query="dummy task")
+        for task_batch_index in range(n_task):
+            for task_rollout_index in range(rollout_n):
+                task_thread_index = task_batch_index * rollout_n + task_rollout_index
+                observation_window["info"][task_thread_index] = f"\n\n\n\n[thread {task_thread_index} submit]\n"
+                future = executor.submit(
+                    self.rollout_env_worker_loop,
+                    task=dummy_task,
+                    task_tag="",
+                    mode=mode,
+                    task_batch_index=task_batch_index,
+                    task_thread_index=task_thread_index,
+                    observation_window=observation_window,
+                    completed_task_id_map_ct=completed_task_id_map_ct,
+                    executor_lock=executor_lock,
+                    stop_condition_callback=stop_condition_callback,
+                )
+                futures.append(future)
 
         def update_rollout_result_array_preview(observation_window, completed_task_id_map_ct: Dict[str, List[BaseContextTracker]]):
             buffer = ""
@@ -334,17 +344,19 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_tasks_details=completed_tasks_details,
             )
             http_update_rollout_pool_information(self.config, pool_info)
-
             return
 
         # loop and wait until stop condition is met, then stop threads and collect results
+        CHECK_STATUS_INTERVAL = 4   # seconds
+        PRINT_STATUS_INTERVAL = 12  # seconds
         cnt = 0
         while True:
             cnt += 1
-            time.sleep(2)
-            if (cnt % 5 == 0):
+            time.sleep(CHECK_STATUS_INTERVAL)
+            if (cnt % ( PRINT_STATUS_INTERVAL//CHECK_STATUS_INTERVAL ) == 0):
                 update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
                 self.step_status_printer(observation_window)
+            self._write_swarm_rollout_dynamic_log(observation_window)
             meet_stop_condition_after_new_results = stop_condition(completed_task_id_map_ct)
             if meet_stop_condition_after_new_results:
                 print("Sending soft stop signal to all threads...")
@@ -377,9 +389,8 @@ class DynamicRolloutManager(BaseRolloutManager):
             tracker.current_batch_reward = float(task_scalar_reward)
 
         # for debugging
-        if DEBUG:
-            update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
-            self._write_swarm_rollout_dynamic_log(observation_window)
+        update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
+        self._write_swarm_rollout_dynamic_log(observation_window)
 
         return tracker_array
 
@@ -428,9 +439,9 @@ class VerlRolloutManager(DynamicRolloutManager):
             try:
                 sample_arr = tracker.group_tokenize()
             except Exception as e:
+                logger.bind(exception=True).exception("Error during tracker.group_tokenize()")
                 raise e
             finally:
-                logger.bind(exception=True).exception("Error during tracker.tokenize()")  # for debugging
                 tracker.generate_log(global_step=self.current_global_steps)
                 if os.environ.get("BEST_LOGGER_PATH", None) and os.environ.get(
                     "AJET_DEBUG", None

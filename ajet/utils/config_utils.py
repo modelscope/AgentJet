@@ -242,7 +242,7 @@ def expand_ajet_hierarchical_config(config, write_to=None):
     return config_final
 
 
-def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callback=None):
+def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callback=None, storage=True):
     """
     Prepare experiment configuration by reading YAML, setting up backup directories,
     and copying necessary files for the experiment.
@@ -283,11 +283,12 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
     yaml_backup_dst = os.path.abspath(yaml_backup_dst)
     exe_exp_base = os.path.dirname(yaml_backup_dst)
 
-    logger.info("----------------------------------------")
-    logger.info(f"Experiment Name: {exp_name}")
-    logger.info(f"Experiment Backup Dir: {backup_dir}")
-    logger.info(f"Experiment Yaml Dir: {yaml_backup_dst}")
-    logger.info("----------------------------------------")
+    if storage:
+        logger.info("----------------------------------------")
+        logger.info(f"Experiment Name: {exp_name}")
+        logger.info(f"Experiment Backup Dir: {backup_dir}")
+        logger.info(f"Experiment Yaml Dir: {yaml_backup_dst}")
+        logger.info("----------------------------------------")
 
     ## 1. check exp_base/backup exist
     if not os.path.exists(backup_dir):
@@ -323,5 +324,8 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
         yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir, override_param_callback=override_param_callback
     )
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
+
+    if not storage:
+        shutil.rmtree(os.path.join(exp_dir, exp_name))
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final
