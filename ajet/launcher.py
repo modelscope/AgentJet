@@ -1,7 +1,5 @@
 import argparse
 import os
-import subprocess
-from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -154,7 +152,7 @@ def start_swarm_server(env, config):
     assert config.ajet.enable_experimental_interchange_server, (
         "Please enable_experimental_interchange_server in config to start swarm server."
     )
-    from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import (
+    from ajet.tuner_lib.experimental.as_oai_model_server import (
         start_interchange_server,
     )
 

@@ -11,8 +11,8 @@ from ajet.schema.task import WorkflowTask
 from ajet.schema.trajectory import Reward
 from ajet.task_runner.base_runner import BaseAgentRunner
 from ajet.utils.retry import SwarmReceiveAbortException
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_register_episode, get_zmq_socket, is_episode_claimed
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
+from ajet.tuner_lib.experimental.interchange_utils import http_register_episode, get_zmq_socket
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG
 from loguru import logger
 from ajet import Workflow
 from typing import Callable
@@ -66,11 +66,11 @@ class SwarmRunner(BaseAgentRunner):
 
             while True:
                 # <wait for 1/2>:
-                #   <from_sourcefile>: ajet/tuner_lib/weight_tuner/experimental/as_swarm_server.py
+                #   <from_sourcefile>: ajet/tuner_lib/experimental/as_swarm_server.py
                 #   <from_code>: socket.send_string(workflow_output.model_dump_json())
                 #   <expect>: workflow_output: WorkflowOutput
                 # <wait for 2/2>:
-                #   <from_sourcefile>: ajet/tuner_lib/weight_tuner/experimental/as_swarm_server.py
+                #   <from_sourcefile>: ajet/tuner_lib/experimental/as_swarm_server.py
                 #   <from_code>: socket.send_string("RUNNER.SPECIAL.RESET_CONTEXT_TRACKER")
                 #   <expect>: "RUNNER.SPECIAL.RESET_CONTEXT_TRACKER"
                 try:

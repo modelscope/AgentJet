@@ -187,10 +187,10 @@ def main(config):
     # atexit.register(lambda: print("Process exiting, performing cleanup..."))
 
     if config.ajet.enable_experimental_interchange_server:
-        from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+        from ajet.tuner_lib.experimental.as_oai_model_server import start_interchange_server
         start_interchange_server(config)
         if config.ajet.enable_swarm_mode:
-            from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
+            from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
             http_change_engine_status(config, "ENGINE.ROLLING")
 
     def companion_launch():

@@ -20,7 +20,7 @@ from ajet.schema.task import Task
 from ajet.schema.trajectory import Sample
 from ajet.task_rollout.single_worker import BaseRolloutManager
 from ajet.context_tracker.basic_tracker import BaseContextTracker
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
+from ajet.tuner_lib.experimental.interchange_utils import (
     http_change_engine_status,
     http_update_rollout_pool_information,
     CurrentBatchRolloutPoolInformation,

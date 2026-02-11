@@ -1,14 +1,8 @@
 from loguru import logger
-from textwrap import dedent
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.weight_tuner.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete, auto_train_with_dataset
+from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
-from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
-from ajet.utils.thread_executors import BoundedThreadPoolExecutor
-from ajet.schema.task import Task
 from ajet.task_reader import RouterTaskReader
-from ajet.utils.retry import retry_with_backoff
-from concurrent.futures import ThreadPoolExecutor
 from tutorial.example_academic_trans.trans import execute_agent
 
 # python -m tutorial.example_academic_trans.trans_roll
@@ -82,5 +76,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

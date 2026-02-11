@@ -12,10 +12,10 @@ from loguru import logger
 from typing import TYPE_CHECKING
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
-from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
+from ajet.tuner_lib.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import get_zmq_socket, is_episode_claimed
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
+from ajet.tuner_lib.experimental.interchange_utils import get_zmq_socket
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG
 
 context = zmq.Context()
 atexit.register(context.term)
@@ -215,4 +215,3 @@ class InterchangeClient:
                 if os.path.exists(self.ipc_path):
                     os.remove(self.ipc_path)
                     if DEBUG: logger.info(f"[client] {self.episode_uuid} | IPC socket file {self.ipc_path} removed.")
-

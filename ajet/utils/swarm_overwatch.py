@@ -16,7 +16,7 @@ from rich.layout import Layout
 from rich.text import Text
 from loguru import logger
 
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
+from ajet.tuner_lib.experimental.interchange_utils import (
     CurrentBatchRolloutPoolInformation,
 )
 

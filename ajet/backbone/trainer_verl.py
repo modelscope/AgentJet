@@ -459,7 +459,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
     def _update_interchange_server_status_flag(self, status: str):
         if self.config.ajet.enable_experimental_interchange_server:
             if self.config.ajet.enable_swarm_mode:
-                from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import http_change_engine_status
+                from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
                 http_change_engine_status(self.config, status, global_step=self.global_steps)
 
     # #######################################
@@ -859,7 +859,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                 # # when enabled oai request interchange, we need to clear the cache from time to time
                 # if self.config.ajet.enable_experimental_interchange_server:
-                #     from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import ensure_dat_interchange_server_cache_clear
+                #     from ajet.tuner_lib.experimental.as_oai_model_server import ensure_dat_interchange_server_cache_clear
                 #     ensure_dat_interchange_server_cache_clear()
 
                 if is_last_step:

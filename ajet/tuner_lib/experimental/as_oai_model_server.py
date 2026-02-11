@@ -33,9 +33,9 @@ from typing import Coroutine, Optional, Tuple
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 
-from ajet.utils.networking import find_free_port, get_host_ip
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import EpisodeStatus
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG, VERBOSE
+from ajet.utils.networking import get_host_ip
+from ajet.tuner_lib.experimental.interchange_utils import EpisodeStatus
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
 
 API_KEY_PREFIX = "sk-ajet-"
 
@@ -158,7 +158,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
         # enable_swarm_mode
         if enable_swarm_mode:
-            from ajet.tuner_lib.weight_tuner.experimental.as_swarm_server import ep_key
+            from ajet.tuner_lib.experimental.as_swarm_server import ep_key
             assert shared_mem_dict is not None
             assert shared_mem_dict_lock is not None
 
@@ -189,7 +189,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
 
     if enable_swarm_mode:
-        from ajet.tuner_lib.weight_tuner.experimental.as_swarm_server import register_enable_swarm_mode_routes
+        from ajet.tuner_lib.experimental.as_swarm_server import register_enable_swarm_mode_routes
         assert shared_mem_dict is not None, "shared_mem_dict must not be None when enable_swarm_mode is True."
         assert shared_mem_dict_lock is not None, "shared_mem_dict_lock must not be None when enable_swarm_mode is True."
         app, additional_coro = register_enable_swarm_mode_routes(app, zmq_context=context, shared_mem_dict=shared_mem_dict, shared_mem_dict_lock=shared_mem_dict_lock)
@@ -354,6 +354,6 @@ def start_interchange_server(config, blocking=False, env={}) -> int:
             if interchange_server:
                 interchange_server.terminate()
             if enable_swarm_mode:
-                from ajet.tuner_lib.weight_tuner.experimental.as_swarm_server import kill_process_tree
+                from ajet.tuner_lib.experimental.as_swarm_server import kill_process_tree
                 kill_process_tree(None, None)
         return -1

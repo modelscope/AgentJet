@@ -21,7 +21,6 @@ import socket
 
 import hydra
 import ray
-from beast_logger import print_dict
 from omegaconf import DictConfig, OmegaConf
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
@@ -243,7 +242,7 @@ class TaskRunner:
         from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
         if config.ajet.enable_experimental_interchange_server:
-            from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+            from ajet.tuner_lib.experimental.as_oai_model_server import start_interchange_server
             start_interchange_server(config)
 
         # Initialize the PPO trainer.

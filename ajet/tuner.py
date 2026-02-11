@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, Callable, Union, Type
 
 from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
-from ajet.tuner_lib.weight_tuner import AgentScopeModelTuner
-from ajet.tuner_lib.weight_tuner import OpenaiClientModelTuner
-from ajet.tuner_lib.weight_tuner.as_oai_baseurl_apikey import OpenaiClientBaseUrlTuner
+from ajet.tuner_lib import AgentScopeModelTuner
+from ajet.tuner_lib import OpenaiClientModelTuner
+from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiClientBaseUrlTuner
 if TYPE_CHECKING:
     from ajet import Workflow
 
@@ -171,7 +171,7 @@ class AjetTuner(object):
     def _enable_experimental_interchange_server(self, llm_inference_fn):
         # experimental reverse proxy start
         if self.enable_interchange_server:
-            from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_client import InterchangeClient
+            from ajet.tuner_lib.experimental.as_oai_model_client import InterchangeClient
             self.interchange_client = InterchangeClient(
                 episode_uuid=self.context_tracker.episode_uuid,
                 context_tracker=self.context_tracker,

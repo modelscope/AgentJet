@@ -11,8 +11,8 @@ from fastapi import FastAPI, HTTPException
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
 from ajet.utils.process_killer import kill_process_tree
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG, VERBOSE
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
+from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
     ClaimEpisodeResponse,
@@ -689,7 +689,6 @@ def register_enable_swarm_mode_routes(
                 CurrentBatchRolloutPoolInformation(),
             )
             # Fetch additional fields from shared_mem_dict
-            pool_info.sample_collection_method = shared_mem_dict.get("sample_collection_method", "")
             pool_info.engine_status = shared_mem_dict.get("engine_status", None)
             pool_info.global_step = shared_mem_dict.get("global_step", None)
 

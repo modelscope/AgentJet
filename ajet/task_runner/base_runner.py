@@ -11,7 +11,7 @@ from ajet.tuner import AjetTuner
 from ajet.utils.async_utils import run_async_coroutine_with_timeout
 from ajet.utils.dynamic_import import dynamic_import
 from ajet.workflow import Workflow
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import is_episode_claimed
+from ajet.tuner_lib.experimental.interchange_utils import is_episode_claimed
 
 gc_lock = Lock()
 
