@@ -4,7 +4,6 @@ Similar to htop/nvidia-smi for AgentJet swarm servers
 """
 
 import time
-import sys
 from datetime import datetime
 from typing import Optional
 
@@ -15,7 +14,6 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.layout import Layout
 from rich.text import Text
-from rich.progress import Progress, BarColumn, TextColumn
 from loguru import logger
 
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
@@ -58,7 +56,9 @@ class SwarmOverwatch:
             logger.error(f"Failed to fetch pool info: {e}")
             return None
 
-    def create_header(self) -> Panel:
+    def create_header(
+        self, info: Optional[CurrentBatchRolloutPoolInformation] = None
+    ) -> Panel:
         """Create header panel with server info"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         last_update = (
@@ -78,6 +78,17 @@ class SwarmOverwatch:
             f"  |  Errors: {self.error_count}",
             style="red" if self.error_count > 0 else "green",
         )
+
+        # Add engine status and global step if available
+        if info:
+            if info.engine_status:
+                header_text.append(
+                    f"\nEngine Status: {info.engine_status}", style="bold yellow"
+                )
+            if info.global_step is not None:
+                header_text.append(
+                    f"  |  Global Step: {info.global_step:,}", style="bold blue"
+                )
 
         return Panel(header_text, border_style="bright_blue", padding=(0, 1))
 
@@ -106,13 +117,38 @@ class SwarmOverwatch:
         table.add_column("Progress", justify="right", style="blue", width=15)
         table.add_column("Bar", width=30)
 
+        # Determine which row to highlight based on sample_collection_method
+        highlight_episodes = (
+            info.sample_collection_method == "rollout_until_finish_enough_episodes"
+        )
+        highlight_tasks = (
+            info.sample_collection_method == "rollout_until_finish_enough_tasks"
+        )
+        highlight_non_dummy = (
+            info.sample_collection_method
+            == "rollout_until_finish_enough_non_dummy_tasks"
+        )
+
         # Episodes
         ep_cur, ep_tgt, ep_pct = self.create_progress_bar(
             info.completed_episodes, info.completed_episode_target, "Episodes"
         )
         ep_bar = self._create_text_bar(ep_pct)
+        ep_metric = (
+            "Episodes (current sample_collection_method)"
+            if highlight_episodes
+            else "Episodes"
+        )
+        ep_style = "bold green" if highlight_episodes else None
         table.add_row(
-            "Episodes", f"{ep_cur:,}", f"{ep_tgt:,}", f"{ep_pct:.1f}%", ep_bar
+            f"[{ep_style}]{ep_metric}[/{ep_style}]"
+            if highlight_episodes
+            else ep_metric,
+            f"{ep_cur:,}",
+            f"{ep_tgt:,}",
+            f"{ep_pct:.1f}%",
+            ep_bar,
+            style=ep_style if highlight_episodes else None,
         )
 
         # Tasks
@@ -120,8 +156,19 @@ class SwarmOverwatch:
             info.completed_tasks, info.completed_task_target, "Tasks"
         )
         task_bar = self._create_text_bar(task_pct)
+        task_metric = (
+            "Tasks (current sample_collection_method)" if highlight_tasks else "Tasks"
+        )
+        task_style = "bold green" if highlight_tasks else None
         table.add_row(
-            "Tasks", f"{task_cur:,}", f"{task_tgt:,}", f"{task_pct:.1f}%", task_bar
+            f"[{task_style}]{task_metric}[/{task_style}]"
+            if highlight_tasks
+            else task_metric,
+            f"{task_cur:,}",
+            f"{task_tgt:,}",
+            f"{task_pct:.1f}%",
+            task_bar,
+            style=task_style if highlight_tasks else None,
         )
 
         # Non-dummy tasks
@@ -131,8 +178,21 @@ class SwarmOverwatch:
             "Non-Dummy Tasks",
         )
         nd_bar = self._create_text_bar(nd_pct)
+        nd_metric = (
+            "Non-Dummy Tasks (current sample_collection_method)"
+            if highlight_non_dummy
+            else "Non-Dummy Tasks"
+        )
+        nd_style = "bold green" if highlight_non_dummy else None
         table.add_row(
-            "Non-Dummy Tasks", f"{nd_cur:,}", f"{nd_tgt:,}", f"{nd_pct:.1f}%", nd_bar
+            f"[{nd_style}]{nd_metric}[/{nd_style}]"
+            if highlight_non_dummy
+            else nd_metric,
+            f"{nd_cur:,}",
+            f"{nd_tgt:,}",
+            f"{nd_pct:.1f}%",
+            nd_bar,
+            style=nd_style if highlight_non_dummy else None,
         )
 
         # Expected repeats
@@ -147,6 +207,47 @@ class SwarmOverwatch:
         filled = int((percentage / 100) * width)
         bar = "█" * filled + "░" * (width - filled)
         return f"[{'green' if percentage >= 100 else 'yellow'}]{bar}[/]"
+
+    def create_running_episodes_table(
+        self, info: CurrentBatchRolloutPoolInformation
+    ) -> Table:
+        """Create running episodes table"""
+        table = Table(
+            title="Running Episodes",
+            show_header=True,
+            header_style="bold magenta",
+            border_style="blue",
+            expand=True,
+        )
+
+        table.add_column("Episode UUID", style="cyan", no_wrap=True, width=40)
+        table.add_column("Status", style="green", width=15)
+        table.add_column("Time Since Last Activity", style="yellow", width=30)
+
+        if not info.running_episode_details:
+            table.add_row("[dim]No running episodes[/dim]", "", "")
+            return table
+
+        # Sort by time since last activity (descending)
+        sorted_episodes = sorted(
+            info.running_episode_details.items(),
+            key=lambda x: float(x[1]["time_since_last_activity"].rstrip("s")),
+            reverse=True,
+        )
+
+        for episode_uuid, details in sorted_episodes[:15]:
+            table.add_row(
+                episode_uuid[:40] if len(episode_uuid) > 40 else episode_uuid,
+                details["episode_status"],
+                details["time_since_last_activity"],
+            )
+
+        if len(sorted_episodes) > 15:
+            table.add_row(
+                f"[dim]... and {len(sorted_episodes) - 15} more episodes[/dim]", "", ""
+            )
+
+        return table
 
     def create_task_details_table(
         self, info: CurrentBatchRolloutPoolInformation
@@ -201,7 +302,7 @@ class SwarmOverwatch:
         layout = Layout()
 
         # Create header
-        header = self.create_header()
+        header = self.create_header(info)
 
         if info is None:
             # Show error state
@@ -216,10 +317,14 @@ class SwarmOverwatch:
         else:
             # Show data
             summary = self.create_summary_table(info)
+            running_episodes = self.create_running_episodes_table(info)
             details = self.create_task_details_table(info)
 
             layout.split_column(
-                Layout(header, size=8), Layout(summary, size=12), Layout(details)
+                Layout(header, size=8),
+                Layout(summary, size=12),
+                Layout(running_episodes, size=10),
+                Layout(details),
             )
 
         return layout

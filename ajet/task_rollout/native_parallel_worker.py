@@ -2,7 +2,7 @@
 
 import os
 import time
-from concurrent.futures import Future, ThreadPoolExecutor, wait, ALL_COMPLETED, FIRST_COMPLETED
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Dict, List, Literal
 from urllib.parse import quote
 
@@ -24,7 +24,6 @@ from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     http_change_engine_status,
     http_update_rollout_pool_information,
     CurrentBatchRolloutPoolInformation,
-    DEBUG,
 )
 
 
@@ -337,6 +336,7 @@ class DynamicRolloutManager(BaseRolloutManager):
 
             # Update rollout pool information via API
             pool_info = CurrentBatchRolloutPoolInformation(
+                sample_collection_method=self.config.ajet.swarm_mode_sample_collection_method,
                 completed_episodes=counts['total_completed_episodes'],
                 completed_episode_target=n_batch_task * rollout_n,
                 completed_tasks=counts['total_completed_tasks'],

@@ -164,3 +164,4 @@ tutorial/example_deep_finance/judge/analytical_sufficiency/*
 .dockerignore
 benchmark_datasets
 modelscope_cache
+prompts

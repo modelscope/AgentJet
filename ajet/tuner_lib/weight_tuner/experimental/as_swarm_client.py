@@ -384,6 +384,11 @@ class SwarmClient(object):
             logger.warning("Force restarting the engine...")
             self.stop_engine()
             time.sleep(8)
+
+        logger.success(f"--------------------------------------------------------------------------------------------------")
+        logger.success(f"Run `python -m ajet.launcher --swarm-overwatch={self.server_url}` to monitor the training process.")
+        logger.success(f"--------------------------------------------------------------------------------------------------")
+
         current_status, _ = self.get_engine_status()
         if current_status == "ENGINE.OFFLINE":
             self.logger_info("Engine is OFFLINE. Syncing train config and starting engine...")
@@ -525,5 +530,5 @@ def auto_train_with_dataset(dataset, swarm_worker: SwarmClient, execute_agent, l
             if len(episodes) == (remote_batch_size * local_grpo_n):
                 episode_results = run_episodes_until_all_complete(episodes, func=rollout, auto_retry=True)
                 for episode, reward in zip(episodes, episode_results):
-                    self.logger_info(f"Episode for task {episode.task_id} completed with reward: {reward}")
+                    print(f"Episode for task {episode.task_id} completed with reward: {reward}")
                 episodes.clear()
