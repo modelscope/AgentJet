@@ -35,7 +35,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 from ajet.utils.networking import find_free_port, get_host_ip
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import EpisodeStatus
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG, VERBOSE
 
 API_KEY_PREFIX = "sk-ajet-"
 
@@ -58,13 +58,6 @@ SERVER_SHUTDOWN_EVENT = threading.Event()
 
 context = zmq.Context()
 atexit.register(context.term)
-
-
-
-
-
-
-
 
 
 def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
@@ -131,7 +124,6 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         OpenAI-compatible chat completions endpoint.
         Receives ChatCompletionRequest and returns ChatCompletion.
         """
-        if DEBUG: logger.info("Received /v1/chat/completions request")
 
         # Parse authorization header (base64 encoded JSON)
         if not authorization:
@@ -152,6 +144,8 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 return HTTPException(status_code=401, detail="Invalid authorization data")
         except Exception as e:
             return HTTPException(status_code=401, detail=f"Invalid authorization header: {str(e)}")
+
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/chat/completions")
 
         # Parse request body
         body = await request.json()
@@ -245,7 +239,7 @@ class InterchangeServer(Process):
                 app=app,
                 host="0.0.0.0",
                 port=self.port,
-                log_level="info",
+                log_level="error",
                 workers=self.num_fastapi_process
             )
             server = uvicorn.Server(config)

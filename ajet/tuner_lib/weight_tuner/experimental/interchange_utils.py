@@ -99,6 +99,7 @@ class CurrentBatchRolloutPoolInformation(BaseModel):
 DEBUG = False
 # DEBUG = True
 
+VERBOSE = True
 
 def get_interchange_server_url(config):
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")

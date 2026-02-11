@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
 from ajet.utils.process_killer import kill_process_tree
-from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG
+from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import DEBUG, VERBOSE
 from ajet.tuner_lib.weight_tuner.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
@@ -230,6 +230,27 @@ def register_enable_swarm_mode_routes(
         return
 
 
+
+    # --------------------------------------------------------------------------------------
+    # -------------------------- engine status op ------------------------------------------
+    # --------------------------------------------------------------------------------------
+    shared_mem_dict['engine_status'] = "ENGINE.OFFLINE" # initial status
+    def _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict):
+        with shared_mem_dict_lock:
+            episode_keys = [k for k in shared_mem_dict.keys() if is_key_epsisode_status(k)]
+            # remove all episodes
+            for key in episode_keys:
+                del shared_mem_dict[key]
+                logger.info(f"[_clean_up_engine_status] Removed episode: {key}")
+
+            # clear unclaimed episodes list
+            if 'unclaimed_episodes' in shared_mem_dict:
+                num_unclaimed = len(shared_mem_dict['unclaimed_episodes'])
+                shared_mem_dict['unclaimed_episodes'] = []
+                logger.info(f"[_clean_up_engine_status] Cleared {num_unclaimed} unclaimed episodes")
+
+
+
     # --------------------------------------------------------------------------------------
     # -------------------------- fastapi routes --------------------------------------------
     # --------------------------------------------------------------------------------------
@@ -240,6 +261,7 @@ def register_enable_swarm_mode_routes(
         Receive training configuration from client as YAML string.
         Store it in shared memory for later use by start_engine.
         """
+        if VERBOSE: logger.info(f"Running: /sync_train_config")
 
         if shared_mem_dict['engine_status'] != "ENGINE.OFFLINE":
             raise HTTPException(status_code=400, detail="Engine is already started. Call `stop_engine` first before syncing new training configuration.")
@@ -267,6 +289,7 @@ def register_enable_swarm_mode_routes(
         Start the training engine using the previously synced configuration.
         This creates a temporary YAML file and spawns a training process.
         """
+        if VERBOSE: logger.info(f"Running: /start_engine")
         try:
             import ray
             import tempfile
@@ -343,7 +366,7 @@ def register_enable_swarm_mode_routes(
             os.setpgid(p.pid, p.pid)
 
             # Store process info in shared memory
-            clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+            _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
             with shared_mem_dict_lock:
                 shared_mem_dict['training_process_pid'] = p.pid
                 shared_mem_dict['engine_status'] = "ENGINE.BOOTING"
@@ -358,32 +381,16 @@ def register_enable_swarm_mode_routes(
             return {"success": False, "error": str(e)}
 
 
-    # --- engine status ---
-    shared_mem_dict['engine_status'] = "ENGINE.OFFLINE" # initial status
-    def clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict):
-        with shared_mem_dict_lock:
-            episode_keys = [k for k in shared_mem_dict.keys() if is_key_epsisode_status(k)]
-            # remove all episodes
-            for key in episode_keys:
-                del shared_mem_dict[key]
-                logger.info(f"[clean_up_engine_status] Removed episode: {key}")
-
-            # clear unclaimed episodes list
-            if 'unclaimed_episodes' in shared_mem_dict:
-                num_unclaimed = len(shared_mem_dict['unclaimed_episodes'])
-                shared_mem_dict['unclaimed_episodes'] = []
-                logger.info(f"[clean_up_engine_status] Cleared {num_unclaimed} unclaimed episodes")
-
-
     @app.post("/update_engine_status", response_model=BoolResponse)
     async def update_engine_status(req: UpdateEngineStatusRequest):
         """Update the current engine status."""
+        if VERBOSE: logger.info(f"Running /update_engine_status")
         if req.engine_status not in VALID_STATUSES:
             return BoolResponse(success=False, failure_reason="Invalid engine status")
         previous_status = shared_mem_dict['engine_status']
         shared_mem_dict['engine_status'] = req.engine_status
         if previous_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"] and req.engine_status not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
-            clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+            _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
 
         engine_status_detail = req.engine_status_detail
         global_step = req.global_step
@@ -420,6 +427,8 @@ def register_enable_swarm_mode_routes(
             )
 
         episode_uuid = req.episode_uuid
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /register_episode")
+
         es = EpisodeStatus(
             episode_uuid=req.episode_uuid,
             openai_base_url=req.openai_base_url,
@@ -495,6 +504,8 @@ def register_enable_swarm_mode_routes(
                 openai_base_url = es.openai_base_url
                 openai_api_key = es.openai_api_key
 
+            if VERBOSE: logger.info(f"Running [{episode_uuid}]: /claim_episode")
+
             return ClaimEpisodeResponse(
                 success=True,
                 client_uuid=req.client_uuid,
@@ -521,6 +532,7 @@ def register_enable_swarm_mode_routes(
         workflow_output = req.workflow_output
         task_id = req.task_id
 
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /end_episode")
 
         assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
         assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
@@ -575,6 +587,8 @@ def register_enable_swarm_mode_routes(
         episode_uuid = req.episode_uuid
         workflow_output = req.workflow_output
         task_id = req.task_id
+
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /abort_episode")
 
         assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
         assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
@@ -634,6 +648,7 @@ def register_enable_swarm_mode_routes(
     @app.post("/update_current_batch_rollout_pool_information", response_model=BoolResponse)
     async def update_current_batch_rollout_pool_information(req: CurrentBatchRolloutPoolInformation):
         """Update the current batch rollout pool information."""
+        if VERBOSE: logger.info(f"Running /update_current_batch_rollout_pool_information")
         try:
             with shared_mem_dict_lock:
                 shared_mem_dict['current_batch_rollout_pool_information'] = req

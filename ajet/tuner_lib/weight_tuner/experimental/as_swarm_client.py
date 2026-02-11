@@ -1,6 +1,7 @@
 import uuid
 import time
 import httpx
+import json
 import yaml
 from beast_logger import print_dict
 from typing import List, Tuple
@@ -31,13 +32,17 @@ def raise_for_status_with_detail(resp):
     try:
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
+        # Read response text first (can only read body once)
+        response_text = resp.text
         try:
-            error_detail = resp.json()
+            # Try to parse as JSON
+            error_detail = json.loads(response_text)
             logger.error(f"SwarmClient error {resp.status_code}: {error_detail}")
             raise RuntimeError(f"SwarmClient error {resp.status_code}: {error_detail}") from e
-        except Exception:
-            logger.error(f"SwarmClient error {resp.status_code} with non-JSON response: {resp.text}")
-            raise RuntimeError(f"SwarmClient error {resp.status_code} with non-JSON response: {resp.text}") from e
+        except (json.JSONDecodeError, ValueError):
+            # Failed to parse JSON response
+            logger.error(f"SwarmClient error {resp.status_code} with non-JSON response: {response_text}")
+            raise RuntimeError(f"SwarmClient error {resp.status_code} with non-JSON response: {response_text}") from e
 
 
 class SwarmClient(object):
@@ -272,9 +277,9 @@ class SwarmClient(object):
                 current_time = time.time()
 
                 # Report status every 5 seconds
-                if current_time - last_report_time >= 10:
+                if current_time - last_report_time >= 30:
                     if verbose:
-                        logger.info(f"Current engine status (already waited {current_time - init_poll_time:.1f}s): {current_status}")
+                        logger.info(f"Current engine status (already waited {int(current_time - init_poll_time)}s): {current_status}")
                     last_report_time = current_time
 
                 # Check if engine has reached the desired status
