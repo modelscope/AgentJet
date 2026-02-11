@@ -187,6 +187,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         completed_task_id_map_ct: Dict[str, List[BaseContextTracker]] = {}
         executor_lock = threading.Lock()
 
+        # count tasks to see whether we have reach the finish line for next weight update
         def count_tasks(completed_task_id_map_ct):
             total_completed_episodes = 0
             total_completed_tasks = 0
@@ -290,7 +291,9 @@ class DynamicRolloutManager(BaseRolloutManager):
             if stop_condition(completed_task_id_map_ct):
                 if not is_already_soft_stopped():
                     stop_all_threads_soft()
+                    update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
                 return True
+            update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
             return False
 
         # submit initial tasks
@@ -388,7 +391,6 @@ class DynamicRolloutManager(BaseRolloutManager):
             tracker.current_batch_success_rate = float(task_success_rate)
             tracker.current_batch_reward = float(task_scalar_reward)
 
-        # for debugging
         update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
         self._write_swarm_rollout_dynamic_log(observation_window)
 
