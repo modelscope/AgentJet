@@ -554,7 +554,7 @@ def register_enable_swarm_mode_routes(
 
         if episode_status != "claimed":
             logger.error(f"[server] Episode {episode_uuid} is not in claimed status.")
-            raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} is not in claimed status, maybe you take **too long** to submit the workflow output, increase `discard_episode_timeout` when `begin_episode`.")
+            raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} is not in claimed status, maybe you take **too long** to submit the workflow output, try increase `discard_episode_timeout` when `begin_episode`.")
 
         if client_uuid_recorded != client_uuid:
             logger.error(f"[server] Episode {episode_uuid} is claimed by different client: {client_uuid_recorded}, but got {client_uuid}.")

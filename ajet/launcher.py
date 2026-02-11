@@ -63,16 +63,10 @@ def parse_args():
         help="Path to configuration file",
     )
     parser.add_argument(
-        "--with-ray",
-        action="store_true",
-        default=False,
-        help="Launch ray"
+        "--with-ray", action="store_true", default=False, help="Launch ray"
     )
     parser.add_argument(
-        "--with-ray-cluster",
-        action="store_true",
-        default=False,
-        help="Launch ray"
+        "--with-ray-cluster", action="store_true", default=False, help="Launch ray"
     )
     parser.add_argument(
         "--with-appworld",
@@ -93,10 +87,7 @@ def parse_args():
         help="Launch webshop",
     )
     parser.add_argument(
-        "--with-bfcl",
-        action="store_true",
-        default=False,
-        help="Launch bfcl"
+        "--with-bfcl", action="store_true", default=False, help="Launch bfcl"
     )
     parser.add_argument(
         "--with-logview",
@@ -114,7 +105,7 @@ def parse_args():
         "--skip-check-avail-gpu",
         action="store_true",
         default=False,
-        help="Skip GPU availability check"
+        help="Skip GPU availability check",
     )
     parser.add_argument(
         "--kill",
@@ -134,7 +125,14 @@ def parse_args():
         type=str,
         default="",
         required=False,
-        help="Prefix for deepfinance service names"
+        help="Prefix for deepfinance service names",
+    )
+    parser.add_argument(
+        "--swarm-overwatch",
+        type=str,
+        default="",
+        required=False,
+        help="Swarm server URL for overwatch monitoring (e.g., http://localhost:10086)",
     )
     return parser.parse_args()
 
@@ -143,21 +141,36 @@ def check_model_file_exists(exp_config):
     model_path = exp_config["ajet"]["model"]["path"]
     # if model_path has more than 2 '/', we consider it as a dir path
     if model_path.count("/") > 2:
-        assert os.path.exists(model_path), f"Model path {model_path} does not exist. Please check your configuration."
+        assert os.path.exists(model_path), (
+            f"Model path {model_path} does not exist. Please check your configuration."
+        )
 
 
 def start_swarm_server(env, config):
     config = dict_to_namespace(config)
-    assert config.ajet.enable_swarm_mode, \
+    assert config.ajet.enable_swarm_mode, (
         "Please enable_swarm_mode in config to start swarm server."
-    assert config.ajet.enable_experimental_interchange_server, \
+    )
+    assert config.ajet.enable_experimental_interchange_server, (
         "Please enable_experimental_interchange_server in config to start swarm server."
-    from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+    )
+    from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import (
+        start_interchange_server,
+    )
+
     start_interchange_server(config, blocking=True, env=env)
 
 
 def main():
     args = parse_args()
+
+    # Handle swarm overwatch mode
+    if args.swarm_overwatch:
+        from ajet.utils.swarm_overwatch import start_overwatch
+
+        logger.info(f"Starting Swarm Overwatch for server: {args.swarm_overwatch}")
+        start_overwatch(args.swarm_overwatch, refresh_interval=1.0)
+        return
 
     # Enforce GPU availability and free memory threshold before proceeding
     if not args.skip_check_avail_gpu:
@@ -174,7 +187,9 @@ def main():
             logger.info(f"Killing processes matching keyword: {keyword}")
             killed_pids = fast_kill_by_keyword_bash(keyword)
             if killed_pids:
-                logger.success(f"Successfully killed processes with PIDs: {killed_pids}")
+                logger.success(
+                    f"Successfully killed processes with PIDs: {killed_pids}"
+                )
             else:
                 logger.warning(f"No processes found matching keyword: {keyword}")
         if not args.conf:
@@ -192,8 +207,14 @@ def main():
     exp_config = None
     exp_dir = args.exp_dir or "saved_experiments"
     if args.swarm_server and (not args.conf):
-        args.conf = os.path.abspath(os.path.join(os.path.dirname(__file__), "default_config/ajet_ts_default.yaml"))
-        assert os.path.exists(args.conf), "Please provide a valid config file for swarm server mode."
+        args.conf = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__), "default_config/ajet_ts_default.yaml"
+            )
+        )
+        assert os.path.exists(args.conf), (
+            "Please provide a valid config file for swarm server mode."
+        )
     if args.conf:
         yaml_path = args.conf
         (
@@ -201,7 +222,9 @@ def main():
             exe_exp_base,
             exp_name,
             exp_config,
-        ) = prepare_experiment_config(yaml_path, exp_dir, args.backbone, storage=(not args.swarm_server))
+        ) = prepare_experiment_config(
+            yaml_path, exp_dir, args.backbone, storage=(not args.swarm_server)
+        )
 
     # setup environment variables
     env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
@@ -211,9 +234,9 @@ def main():
         return
 
     if args.with_ray:
-        assert (
-            not args.with_ray_cluster
-        ), "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        assert not args.with_ray_cluster, (
+            "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        )
         start_ray_service(args, env)
 
     if args.with_appworld:
@@ -235,9 +258,9 @@ def main():
         launch_logview(exp_name)
 
     if args.with_ray_cluster:
-        assert (
-            not args.with_ray
-        ), "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        assert not args.with_ray, (
+            "Cannot use both --with-ray and --with-ray-cluster simultaneously."
+        )
         start_ray_service(args, env, cluster=True)
 
     if args.conf and main_yaml_fp and exe_exp_base and exp_config:

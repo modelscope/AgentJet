@@ -51,7 +51,7 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
         )
         grader_score = asyncio.run(asyncio.wait_for(grader.aevaluate(original_text=abstract, translation=final_translation), timeout=120))
         raw_reward = grader_score.score
-        print(f"Grader Score: {grader_score.score}, Reason: {grader_score.reason}, Metadata: {grader_score.metadata}")
+        # print(f"Grader Score: {grader_score.score}, Reason: {grader_score.reason}, Metadata: {grader_score.metadata}")
     return WorkflowOutput(reward=raw_reward, metadata={
         "rough_translate": rough_translate,
         "fix_nouns": fix_nouns,

@@ -54,6 +54,29 @@ class SwarmClient(object):
         self.record_episode_expire_time = {}
         self.auto_batching_tasks = []
 
+        # better logging management
+        self._last_second_print_buffer: dict[str, float] = {}
+
+    def logger_info(self, message):
+        # logger with de-duplication within 1 second to prevent log flooding
+
+        if message in self._last_second_print_buffer.keys():
+            timestamp = self._last_second_print_buffer
+            if time.time() - timestamp[message] < 1:
+                return
+            else:
+                self._last_second_print_buffer[message] = time.time()
+                logger.info(message)
+                # clean up old records to prevent memory leak
+                keys_to_delete = [key for key, ts in self._last_second_print_buffer.items() if time.time() - ts > 1]
+                for key in keys_to_delete:
+                    del self._last_second_print_buffer[key]
+        else:
+            self._last_second_print_buffer[message] = time.time()
+            logger.info(message)
+
+        return
+
 
     def _clean_up_expired_records(self):
         # remove records that have expired and expired at least CLEAN_RECORD_TIMEOUT seconds ago
@@ -82,7 +105,7 @@ class SwarmClient(object):
         """
         status, status_json = self.get_engine_status()  # warm up connection and log the status
         if status not in ["ENGINE.ROLLING"]:
-            logger.info(f"Engine status is {status}. Waiting until ENGINE.ROLLING...")
+            self.logger_info(f"Engine status is {status}. Waiting until ENGINE.ROLLING...")
             self._wait_until_status_change_to(desired_status="ENGINE.ROLLING", verbose=False)
 
         while True:
@@ -107,7 +130,7 @@ class SwarmClient(object):
                     episode_uuid = data.episode_uuid
                     openai_base_url = data.openai_base_url
                     openai_api_key = data.openai_api_key
-                    logger.info(f"Claimed episode {episode_uuid}, current global step: {status_json.get('global_step', 'unknown')}")
+                    self.logger_info(f"Claimed episode {episode_uuid}, current global step: {status_json.get('global_step', 'unknown')}")
                     return episode_uuid, OpenaiBaseUrlAndApiKey(
                         base_url=openai_base_url,
                         api_key=openai_api_key,
@@ -121,7 +144,7 @@ class SwarmClient(object):
                     ]
                     if any(scenario in data.fail_cause for scenario in need_wait_scenarios):
                         if time.time() - self.previous_warning_time > 60:
-                            logger.info(f"{data.fail_cause}. Retrying in 15s...")
+                            self.logger_info(f"{data.fail_cause}. Retrying in 15s...")
                             self.previous_warning_time = time.time()
                         time.sleep(15)
                     else:
@@ -169,7 +192,7 @@ class SwarmClient(object):
         data = EndEpisodeResponse.model_validate(resp.json())
 
         if data.success:
-            logger.info(f"Ended episode {episode_uuid}")
+            self.logger_info(f"Ended episode {episode_uuid}")
         else:
             logger.error(f"Failed to end episode {episode_uuid}")
             raise RuntimeError(f"Failed to end episode {episode_uuid}")
@@ -198,7 +221,7 @@ class SwarmClient(object):
             data = EndEpisodeResponse.model_validate(resp.json())
 
             if data.success:
-                logger.info(f"Aborted episode {episode_uuid}")
+                self.logger_info(f"Aborted episode {episode_uuid}")
             else:
                 logger.error(f"Failed to end episode {episode_uuid}")
 
@@ -227,7 +250,7 @@ class SwarmClient(object):
                 timeout=GENERAL_TIMEOUT
             )
             raise_for_status_with_detail(resp)
-            logger.info("Synced train config to Swarm server")
+            self.logger_info("Synced train config to Swarm server")
         except Exception as e:
             logger.error(f"Error syncing train config: {e}")
             raise
@@ -252,7 +275,7 @@ class SwarmClient(object):
         raise_for_status_with_detail(resp)
         result = resp.json()
         if result.get("success"):
-            logger.info("Successfully started training engine on Swarm server (current model global step)")
+            self.logger_info("Successfully started training engine on Swarm server (current model global step)")
         else:
             logger.error("Failed to start training engine")
             raise RuntimeError("Failed to start training engine")
@@ -267,7 +290,7 @@ class SwarmClient(object):
         Reports status every 5 seconds while waiting.
         """
         if verbose:
-            logger.info(f"Polling engine status until {desired_status}...")
+            self.logger_info(f"Polling engine status until {desired_status}...")
         last_report_time = time.time()
         init_poll_time = last_report_time
 
@@ -279,13 +302,13 @@ class SwarmClient(object):
                 # Report status every 5 seconds
                 if current_time - last_report_time >= 30:
                     if verbose:
-                        logger.info(f"Current engine status (already waited {int(current_time - init_poll_time)}s): {current_status}")
+                        self.logger_info(f"Current engine status (already waited {int(current_time - init_poll_time)}s): {current_status}")
                     last_report_time = current_time
 
                 # Check if engine has reached the desired status
                 if current_status == desired_status:
                     if verbose:
-                        logger.info(f"Engine status is {desired_status}.")
+                        self.logger_info(f"Engine status is {desired_status}.")
                     break
 
                 # Wait a bit before next poll
@@ -363,15 +386,15 @@ class SwarmClient(object):
             time.sleep(8)
         current_status, _ = self.get_engine_status()
         if current_status == "ENGINE.OFFLINE":
-            logger.info("Engine is OFFLINE. Syncing train config and starting engine...")
+            self.logger_info("Engine is OFFLINE. Syncing train config and starting engine...")
             self.sync_train_config(agent_jet_job)
             self.start_engine()
         elif current_status == "ENGINE.ROLLING":
-            logger.info("Engine is already ROLLING. No action needed.")
+            self.logger_info("Engine is already ROLLING. No action needed.")
         elif current_status == "ENGINE.ROLLING_POST":
-            logger.info("Engine is already ROLLING. No action needed.")
+            self.logger_info("Engine is already ROLLING. No action needed.")
         elif current_status == "ENGINE.BOOTING":
-            logger.info("Engine is BOOTING. Waiting until it becomes ROLLING...")
+            self.logger_info("Engine is BOOTING. Waiting until it becomes ROLLING...")
             self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
             logger.success("Training engine is now ROLLING and ready.")
         elif current_status == "ENGINE.CANNOT_CONNECT":
@@ -388,7 +411,7 @@ class SwarmClient(object):
         """
         current_status, _ = self.get_engine_status()
         if current_status == "ENGINE.OFFLINE":
-            logger.info("Engine is already OFFLINE. No action needed.")
+            self.logger_info("Engine is already OFFLINE. No action needed.")
             return
 
         resp = httpx.post(
@@ -399,7 +422,7 @@ class SwarmClient(object):
         raise_for_status_with_detail(resp)
         result = resp.json()
         if result.get("success"):
-            logger.info("Successfully stopped training engine on Swarm server")
+            self.logger_info("Successfully stopped training engine on Swarm server")
         else:
             logger.error("Failed to stop training engine")
             raise RuntimeError("Failed to stop training engine")
@@ -502,5 +525,5 @@ def auto_train_with_dataset(dataset, swarm_worker: SwarmClient, execute_agent, l
             if len(episodes) == (remote_batch_size * local_grpo_n):
                 episode_results = run_episodes_until_all_complete(episodes, func=rollout, auto_retry=True)
                 for episode, reward in zip(episodes, episode_results):
-                    logger.info(f"Episode for task {episode.task_id} completed with reward: {reward}")
+                    self.logger_info(f"Episode for task {episode.task_id} completed with reward: {reward}")
                 episodes.clear()
