@@ -1,13 +1,14 @@
 import os
 import time
 import httpx
-from typing import List, Dict
+from typing import List
 from pydantic import BaseModel
 from loguru import logger
 from ajet.schema.task import WorkflowOutput
 from ajet.utils.networking import find_free_port
 from ajet.utils.retry import retry_with_backoff
 from ajet.utils.cache import cache_with_ttl
+from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 
 VALID_STATUSES = [
     "ENGINE.OFFLINE",
@@ -82,20 +83,6 @@ class UpdateEngineStatusRequest(BaseModel):
     engine_status_detail: str|None = None
     global_step: int|None = None
 
-
-class CurrentBatchRolloutPoolInformation(BaseModel):
-    sample_collection_method: str = ""
-    completed_episodes: int = 0
-    completed_episode_target: int = 0
-    completed_tasks: int = 0
-    completed_task_target: int = 0
-    completed_non_dummy_tasks: int = 0
-    completed_non_dummy_task_target: int = 0
-    task_expected_num_repeat: int = 0
-    completed_tasks_details: Dict[str, List[str]] = {}  # task_id -> list of episode_uuids
-    running_episode_details: Dict[str, Dict[str, str]] | None = None # episode_uuid -> { "episode_status": ..., "time_since_last_activity": ...}
-    engine_status: str | None = None
-    global_step: int | None = None
 
 
 DEBUG = False

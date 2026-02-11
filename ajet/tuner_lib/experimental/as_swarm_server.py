@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
 from ajet.utils.process_killer import kill_process_tree
+from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
 from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
@@ -25,7 +26,6 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     BoolResponse,
     RegisterEpisodeRequest,
     UpdateEngineStatusRequest,
-    CurrentBatchRolloutPoolInformation,
     VALID_STATUSES,
 )
 
@@ -309,6 +309,7 @@ def register_enable_swarm_mode_routes(
                 return {"success": False, "error": "No training config found"}
             with shared_mem_dict_lock:
                 shared_mem_dict["engine_status"] = "ENGINE.BOOTING"
+                shared_mem_dict["booting_start_time"] = time.time()
             # Parse YAML to get backbone
             yaml_str = shared_mem_dict["train_config_yaml"]
             config_dict = yaml_module.safe_load(yaml_str)
@@ -383,6 +384,7 @@ def register_enable_swarm_mode_routes(
             with shared_mem_dict_lock:
                 shared_mem_dict["training_process_pid"] = p.pid
                 shared_mem_dict["engine_status"] = "ENGINE.BOOTING"
+                shared_mem_dict["booting_start_time"] = time.time()
 
             logger.info(f"[start_engine] Successfully started training process (PID: {p.pid})")
             return {"success": True, "pid": p.pid}
@@ -405,6 +407,10 @@ def register_enable_swarm_mode_routes(
         shared_mem_dict["engine_status"] = req.engine_status
         if previous_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"] and req.engine_status not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
             _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+
+        # Clear booting_start_time when transitioning away from BOOTING
+        if previous_status == "ENGINE.BOOTING" and req.engine_status != "ENGINE.BOOTING":
+            shared_mem_dict["booting_start_time"] = None
 
         engine_status_detail = req.engine_status_detail
         global_step = req.global_step
@@ -691,6 +697,7 @@ def register_enable_swarm_mode_routes(
             # Fetch additional fields from shared_mem_dict
             pool_info.engine_status = shared_mem_dict.get("engine_status", None)
             pool_info.global_step = shared_mem_dict.get("global_step", None)
+            pool_info.booting_start_time = shared_mem_dict.get("booting_start_time", None)
 
             # Build running_episode_details for claimed episodes
             running_episode_details = {}

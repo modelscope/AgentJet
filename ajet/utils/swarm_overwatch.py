@@ -16,9 +16,7 @@ from rich.layout import Layout
 from rich.text import Text
 from loguru import logger
 
-from ajet.tuner_lib.experimental.interchange_utils import (
-    CurrentBatchRolloutPoolInformation,
-)
+from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 
 
 class SwarmOverwatch:
@@ -85,6 +83,12 @@ class SwarmOverwatch:
                 header_text.append(
                     f"\nEngine Status: {info.engine_status}", style="bold yellow"
                 )
+                # Show booting time if engine is booting
+                if info.engine_status == "ENGINE.BOOTING" and info.booting_start_time is not None:
+                    booting_duration = int(time.time() - info.booting_start_time)
+                    header_text.append(
+                        f"  |  Booting Time: {booting_duration}s", style="bold cyan"
+                    )
             if info.global_step is not None:
                 header_text.append(
                     f"  |  Global Step: {info.global_step:,}", style="bold blue"
@@ -131,13 +135,13 @@ class SwarmOverwatch:
 
         # Episodes
         ep_cur, ep_tgt, ep_pct = self.create_progress_bar(
-            info.completed_episodes, info.completed_episode_target, "Episodes"
+            info.completed_episodes, info.completed_episode_target, "Completed Episodes"
         )
         ep_bar = self._create_text_bar(ep_pct)
         ep_metric = (
-            "Episodes (current sample_collection_method)"
+            "*Completed Episodes (chosen)*"
             if highlight_episodes
-            else "Episodes"
+            else "Completed Episodes"
         )
         ep_style = "bold green" if highlight_episodes else None
         table.add_row(
@@ -153,11 +157,11 @@ class SwarmOverwatch:
 
         # Tasks
         task_cur, task_tgt, task_pct = self.create_progress_bar(
-            info.completed_tasks, info.completed_task_target, "Tasks"
+            info.completed_tasks, info.completed_task_target, "Completed Tasks"
         )
         task_bar = self._create_text_bar(task_pct)
         task_metric = (
-            "Tasks (current sample_collection_method)" if highlight_tasks else "Tasks"
+            "*Completed Tasks (chosen)*" if highlight_tasks else "Completed Tasks"
         )
         task_style = "bold green" if highlight_tasks else None
         table.add_row(
@@ -175,13 +179,13 @@ class SwarmOverwatch:
         nd_cur, nd_tgt, nd_pct = self.create_progress_bar(
             info.completed_non_dummy_tasks,
             info.completed_non_dummy_task_target,
-            "Non-Dummy Tasks",
+            "Completed Non-Dummy Tasks",
         )
         nd_bar = self._create_text_bar(nd_pct)
         nd_metric = (
-            "Non-Dummy Tasks (current sample_collection_method)"
+            "*Completed Non-Dummy Tasks (chosen)*"
             if highlight_non_dummy
-            else "Non-Dummy Tasks"
+            else "Completed Non-Dummy Tasks"
         )
         nd_style = "bold green" if highlight_non_dummy else None
         table.add_row(
@@ -195,9 +199,18 @@ class SwarmOverwatch:
             style=nd_style if highlight_non_dummy else None,
         )
 
-        # Expected repeats
+        # Average episodes per task
+        if info.completed_tasks_details:
+            episodes_per_task = [len(episode_list) for episode_list in info.completed_tasks_details.values()]
+            avg_episodes_per_task = sum(episodes_per_task) / len(episodes_per_task) if episodes_per_task else 0.0
+        else:
+            avg_episodes_per_task = 0.0
         table.add_row(
-            "Expected Repeats", "-", f"{info.task_expected_num_repeat:,}", "-", "-"
+            "Average Episode Per Task",
+            f"{avg_episodes_per_task:.2f}",
+            f"{info.task_expected_num_repeat:,}",
+            "-",
+            "-"
         )
 
         return table
@@ -235,16 +248,16 @@ class SwarmOverwatch:
             reverse=True,
         )
 
-        for episode_uuid, details in sorted_episodes[:15]:
+        for episode_uuid, details in sorted_episodes[:30]:
             table.add_row(
                 episode_uuid[:40] if len(episode_uuid) > 40 else episode_uuid,
                 details["episode_status"],
                 details["time_since_last_activity"],
             )
 
-        if len(sorted_episodes) > 15:
+        if len(sorted_episodes) > 30:
             table.add_row(
-                f"[dim]... and {len(sorted_episodes) - 15} more episodes[/dim]", "", ""
+                f"[dim]... and {len(sorted_episodes) - 30} more episodes[/dim]", "", ""
             )
 
         return table
@@ -261,8 +274,8 @@ class SwarmOverwatch:
             expand=True,
         )
 
-        table.add_column("Task ID", style="cyan", no_wrap=True, width=40)
-        table.add_column("Episodes", justify="right", style="green", width=15)
+        table.add_column("Task ID", style="cyan", no_wrap=True, width=10, overflow="ellipsis")
+        table.add_column("Completed Episodes", justify="right", style="green", width=20)
         table.add_column("Episode UUIDs (first 3)", style="dim", overflow="fold")
 
         if not info.completed_tasks_details:
@@ -274,8 +287,8 @@ class SwarmOverwatch:
             info.completed_tasks_details.items(), key=lambda x: len(x[1]), reverse=True
         )
 
-        # Limit to top 15 tasks to fit in terminal
-        for task_id, episode_uuids in sorted_tasks[:15]:
+        # Limit to top 30 tasks to fit in terminal
+        for task_id, episode_uuids in sorted_tasks[:30]:
             # Show first 3 episode UUIDs
             preview_uuids = episode_uuids[:3]
             uuid_str = ", ".join([f"{uuid[:8]}..." for uuid in preview_uuids])
@@ -288,9 +301,9 @@ class SwarmOverwatch:
                 uuid_str,
             )
 
-        if len(sorted_tasks) > 15:
+        if len(sorted_tasks) > 30:
             table.add_row(
-                f"[dim]... and {len(sorted_tasks) - 15} more tasks[/dim]", "", ""
+                f"[dim]... and {len(sorted_tasks) - 30} more tasks[/dim]", "", ""
             )
 
         return table
@@ -320,11 +333,17 @@ class SwarmOverwatch:
             running_episodes = self.create_running_episodes_table(info)
             details = self.create_task_details_table(info)
 
+            # Create a horizontal layout for running episodes and task details
+            bottom_row = Layout()
+            bottom_row.split_row(
+                Layout(running_episodes, name="running"),
+                Layout(details, name="details"),
+            )
+
             layout.split_column(
                 Layout(header, size=8),
                 Layout(summary, size=12),
-                Layout(running_episodes, size=10),
-                Layout(details),
+                Layout(bottom_row),
             )
 
         return layout

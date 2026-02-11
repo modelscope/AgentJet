@@ -10,6 +10,7 @@ from ajet.schema.task import WorkflowOutput, Task
 from ajet.copilot.job import AgentJetJob
 from ajet.utils.thread_executors import BoundedThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
+from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
@@ -20,7 +21,6 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     EndEpisodeResponse,
     EpisodeStatus,
     EpisodeBufferResponse,
-    CurrentBatchRolloutPoolInformation,
 )
 
 # general http timeout
