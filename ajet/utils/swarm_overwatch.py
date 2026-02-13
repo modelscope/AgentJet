@@ -140,13 +140,13 @@ class SwarmOverwatch:
 
         # Episodes
         ep_cur, ep_tgt, ep_pct = self.create_progress_bar(
-            info.completed_episodes, info.completed_episode_target, "Completed Episodes"
+            info.completed_episodes, info.completed_episode_target, "Episodes"
         )
         ep_bar = self._create_text_bar(ep_pct)
         ep_metric = (
-            "*Completed Episodes (chosen)*"
+            "*Episodes (chosen)*"
             if highlight_episodes
-            else "Completed Episodes"
+            else "Episodes"
         )
         ep_style = "bold green" if highlight_episodes else None
         table.add_row(
@@ -243,7 +243,7 @@ class SwarmOverwatch:
             expand=True,
         )
 
-        table.add_column("Episode UUID", style="cyan", no_wrap=True, width=40)
+        table.add_column("Episode UUID", style="cyan", no_wrap=True, width=20, overflow="ellipsis")
         table.add_column("Status", style="green", width=15)
         table.add_column("Time Since Last Activity", style="yellow", width=30)
 
@@ -289,8 +289,8 @@ class SwarmOverwatch:
             expand=True,
         )
 
-        table.add_column("Task ID", style="cyan", no_wrap=True, width=10, overflow="ellipsis")
-        table.add_column("Completed Episodes", justify="right", style="green", width=20)
+        table.add_column("Task ID", style="cyan", no_wrap=True, overflow="ellipsis")
+        table.add_column("Episodes", justify="right", style="green")
         table.add_column("Episode UUIDs (first 3)", style="dim", overflow="fold")
 
         if not info.completed_tasks_details:
@@ -323,6 +323,43 @@ class SwarmOverwatch:
 
         return table
 
+    def create_logo_panel(self, info: CurrentBatchRolloutPoolInformation) -> Text:
+        """Create logo display for OFFLINE and BOOTING states"""
+        logo = """
+     █████╗  ██████╗ ███████╗███╗   ██╗████████╗     ██╗███████╗████████╗
+    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝     ██║██╔════╝╚══██╔══╝
+    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║        ██║█████╗     ██║
+    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   ██   ██║██╔══╝     ██║
+    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   ╚█████╔╝███████╗   ██║
+    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝    ╚════╝ ╚══════╝   ╚═╝
+        """
+
+        content = Text()
+        content.append(logo, style="bold cyan")
+        content.append("\n\n")
+
+        if info.engine_status == "ENGINE.OFFLINE":
+            content.append("Engine Status: ", style="bold white")
+            content.append("OFFLINE", style="bold yellow")
+            content.append("\n\n")
+            content.append("Ready to accept commands:\n", style="bold green")
+            content.append(f"  • swarm_client = SwarmClient(\"{self.server_url}\")\n", style="cyan")
+            content.append("  • swarm_client.sync_train_config()\n", style="cyan")
+            content.append("  • swarm_client.start_engine()\n", style="cyan")
+            content.append("\n")
+            content.append("Please sync your training configuration and start the engine to begin rollouts.", style="dim")
+        elif info.engine_status == "ENGINE.BOOTING":
+            content.append("Engine Status: ", style="bold white")
+            content.append("BOOTING", style="bold yellow")
+            if info.booting_start_time is not None:
+                booting_duration = int(time.time() - info.booting_start_time)
+                content.append(f"  ({booting_duration}s)", style="bold cyan")
+            content.append("\n\n")
+            content.append("Engine is booting...\n", style="bold green")
+            content.append("Please wait, we are loading model weights and ray workers, this will take a few minutes.\n", style="dim")
+
+        return content
+
     def create_dashboard(
         self, info: Optional[CurrentBatchRolloutPoolInformation]
     ) -> Layout:
@@ -343,23 +380,32 @@ class SwarmOverwatch:
             )
             layout.split_column(Layout(header, size=8), Layout(error_panel))
         else:
-            # Show data
-            summary = self.create_summary_table(info)
-            running_episodes = self.create_running_episodes_table(info)
-            details = self.create_task_details_table(info)
+            # Check engine status and show logo for OFFLINE or BOOTING states
+            if info.engine_status in ["ENGINE.OFFLINE", "ENGINE.BOOTING"]:
+                # Hide tables and show logo
+                logo_display = self.create_logo_panel(info)
+                layout.split_column(
+                    Layout(header, size=8),
+                    Layout(logo_display),
+                )
+            else:
+                # Show data tables for other engine states
+                summary = self.create_summary_table(info)
+                running_episodes = self.create_running_episodes_table(info)
+                details = self.create_task_details_table(info)
 
-            # Create a horizontal layout for running episodes and task details
-            bottom_row = Layout()
-            bottom_row.split_row(
-                Layout(running_episodes, name="running"),
-                Layout(details, name="details"),
-            )
+                # Create a horizontal layout for running episodes and task details
+                bottom_row = Layout()
+                bottom_row.split_row(
+                    Layout(running_episodes, name="running"),
+                    Layout(details, name="details"),
+                )
 
-            layout.split_column(
-                Layout(header, size=8),
-                Layout(summary, size=12),
-                Layout(bottom_row),
-            )
+                layout.split_column(
+                    Layout(header, size=8),
+                    Layout(summary, size=12),
+                    Layout(bottom_row),
+                )
 
         return layout
 
