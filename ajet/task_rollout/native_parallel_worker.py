@@ -318,13 +318,17 @@ class DynamicRolloutManager(BaseRolloutManager):
         def update_rollout_result_array_preview(observation_window, completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]]):
             buffer = ""
             completed_tasks_details = {}
+            completed_tasks_rewards = {}
             for task_id, tracker_arr in completed_task_id_map_ct.items():
                 buffer += f"Task {task_id} (completed {len(tracker_arr)} episodes):\n"
                 episode_uuids = []
+                rewards = []
                 for ct in tracker_arr:
                     buffer += f"\tEpisode: {ct.episode_uuid}\tTimelines: {len(ct.saved_timelines)}\tLLM_Calls: {ct.llm_call_cnt}\tReward: {ct.reward_structure.performance_reward}\n"
                     episode_uuids.append(ct.episode_uuid)
+                    rewards.append(float(ct.reward_structure.performance_reward))
                 completed_tasks_details[task_id] = episode_uuids
+                completed_tasks_rewards[task_id] = rewards
             buffer += f"\n"
             buffer += f"\n"
             counts = count_tasks(completed_task_id_map_ct)
@@ -345,6 +349,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_non_dummy_task_target=n_batch_task,
                 task_expected_num_repeat=rollout_n,
                 completed_tasks_details=completed_tasks_details,
+                completed_tasks_rewards=completed_tasks_rewards,
             )
             http_update_rollout_pool_information(self.config, pool_info)
             return

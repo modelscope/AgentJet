@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 import httpx
+import numpy as np
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -296,10 +297,11 @@ class SwarmOverwatch:
 
         table.add_column("Task ID", style="cyan", no_wrap=True, overflow="ellipsis")
         table.add_column("Episodes", justify="right", style="green")
+        table.add_column("Reward", justify="right", style="yellow")
         table.add_column("Episode UUIDs (first 3)", style="dim", overflow="fold")
 
         if not info.completed_tasks_details:
-            table.add_row("[dim]No task details available[/dim]", "", "")
+            table.add_row("[dim]No task details available[/dim]", "", "", "")
             return table
 
         # Sort tasks by number of completed episodes (descending)
@@ -315,15 +317,25 @@ class SwarmOverwatch:
             if len(episode_uuids) > 3:
                 uuid_str += f" (+{len(episode_uuids) - 3} more)"
 
+            # Calculate reward statistics
+            reward_str = "-"
+            if info.completed_tasks_rewards and task_id in info.completed_tasks_rewards:
+                rewards = info.completed_tasks_rewards[task_id]
+                if rewards:
+                    mean_reward = np.mean(rewards)
+                    std_reward = np.std(rewards)
+                    reward_str = f"{mean_reward:.3f} ± {std_reward:.3f}"
+
             table.add_row(
                 task_id[:40] if len(task_id) > 40 else task_id,
                 f"{len(episode_uuids):,}",
+                reward_str,
                 uuid_str,
             )
 
         if len(sorted_tasks) > 30:
             table.add_row(
-                f"[dim]... and {len(sorted_tasks) - 30} more tasks[/dim]", "", ""
+                f"[dim]... and {len(sorted_tasks) - 30} more tasks[/dim]", "", "", ""
             )
 
         return table
