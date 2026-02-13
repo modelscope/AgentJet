@@ -15,11 +15,7 @@ from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-<<<<<<< HEAD
 from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, CGCVGrader, AuditGrader, TraceabilityRewardGrader, EBTUTraceabilityGrader
-=======
-from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader
->>>>>>> origin/main
 
 
 
