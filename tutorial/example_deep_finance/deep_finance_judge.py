@@ -15,7 +15,11 @@ from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
+<<<<<<< HEAD
 from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, CGCVGrader, AuditGrader, TraceabilityRewardGrader, EBTUTraceabilityGrader
+=======
+from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader
+>>>>>>> origin/main
 
 
 
@@ -103,11 +107,15 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         self.w = {
             "rm": getattr(cfg, "rm_weight", 1.0) if cfg else 1.0,  # RM Gallery 权重
             "presentation_quality": getattr(cfg, "presentation_quality_weight", 0.25) if cfg else 0.25,
+<<<<<<< HEAD
             "grounding": getattr(cfg, "grounding_weight", 0.0) if cfg else 0.0,  # 引用规范性评估
             "cgcv": getattr(cfg, "cgcv_weight", 0.25) if cfg else 0.25,  # Citation-Grounded Claim Verification
             "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # Audit Grader: audit reward 引用逻辑审计
             "traceability": getattr(cfg, "traceability_weight", 0.0) if cfg else 0.0,  # 可追溯性/可核验性审计 (TVR)
             "ebtu": getattr(cfg, "ebtu_weight", 0.0) if cfg else 0.0,  # Audit Grader: audit reward EBTU证据优先可追溯性审计
+=======
+            "grounding": getattr(cfg, "grounding_weight", 0.25) if cfg else 0.25,
+>>>>>>> origin/main
         }
         
         # 归一化（注意：action_loop 是惩罚项，不参与归一化；rm 需要参与归一化）
@@ -260,6 +268,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 grader=GroundingGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
+<<<<<<< HEAD
             # CGCV: Citation-Grounded Claim Verification - 引用锤定的断言验证
             "cgcv": GraderConfig(
                 grader=CGCVGrader(model=model),
@@ -280,6 +289,8 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 grader=EBTUTraceabilityGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
+=======
+>>>>>>> origin/main
         }
     
     def compute_reward(self, workflow_task: WorkflowTask, workflow_output: WorkflowOutput) -> Tuple[float, bool]:

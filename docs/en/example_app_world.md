@@ -24,10 +24,10 @@ export APPWORLD_PATH="${base_path}/pack_all_in_one"
 export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 
 rm -rf "${APPWORLD_PATH}"
-rm -f ./appworld_pack_v2.tar.gz
+rm -f ./appworld_pack_v3.tar.gz
 
-wget -q "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v2.tar.gz" -O appworld_pack_v2.tar.gz
-tar -xzf ./appworld_pack_v2.tar.gz -C "${base_path}"
+wget -q "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz" -O appworld_pack_v3.tar.gz
+tar -xzf ./appworld_pack_v3.tar.gz -C "${base_path}"
 ```
 
 Then export the environment variables (re-run in every new shell):

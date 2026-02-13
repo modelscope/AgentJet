@@ -145,7 +145,7 @@ tutorial/example_math_agent/math_agent_debug.yaml
 saved_experiments
 tests/temp
 vsdb.py
-appworld_pack_v2.tar*
+appworld_pack_v3.tar*
 saved_checkpoints
 data
 datasets
@@ -160,8 +160,11 @@ tutorial/example_deep_finance/scripts/*
 flash_attn-2.8.*.whl
 tutorial/example_deep_finance/prepare_data/*
 tutorial/example_deep_finance/judge/analytical_sufficiency/*
+<<<<<<< HEAD
 tutorial/example_deep_finance/output_report/*
 dataset_gsm8k/*
+=======
+>>>>>>> origin/main
 
 .dockerignore
 benchmark_datasets

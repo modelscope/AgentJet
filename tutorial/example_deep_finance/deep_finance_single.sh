@@ -15,10 +15,13 @@ JUDGE_CONCURRENCY=10
 RM_WEIGHT=0.5
 PRESENTATION_QUALITY_WEIGHT=0.25
 GROUNDING_WEIGHT=0.25
+<<<<<<< HEAD
 CGCV_WEIGHT=0.0                   # 不使用 CGCV，设为 0
 AUDIT_WEIGHT=0.0                  # 不使用 Audit，设为 0
 TRACEABILITY_WEIGHT=0.0           # 不使用 Traceability，设为 0
 EBTU_WEIGHT=0.0                   # 不使用 EBTU，设为 0
+=======
+>>>>>>> origin/main
 
 # 训练参数配置
 NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
@@ -26,8 +29,13 @@ TRAIN_BATCH_SIZE=32  # 训练batchsize
 NUM_STEPS=6         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
 
+<<<<<<< HEAD
 # Env Service URL 配置
 ENV_SERVICE_URL="http://127.0.0.1:8080"  # 环境服务地址
+=======
+# 主目录（需要更改）
+export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
+>>>>>>> origin/main
 
 # 主目录（需要更改）
 export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
@@ -73,10 +81,13 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{RM_WEIGHT}}|${RM_WEIGHT}|g" \
     -e "s|{{PRESENTATION_QUALITY_WEIGHT}}|${PRESENTATION_QUALITY_WEIGHT}|g" \
     -e "s|{{GROUNDING_WEIGHT}}|${GROUNDING_WEIGHT}|g" \
+<<<<<<< HEAD
     -e "s|{{CGCV_WEIGHT}}|${CGCV_WEIGHT}|g" \
     -e "s|{{AUDIT_WEIGHT}}|${AUDIT_WEIGHT}|g" \
     -e "s|{{TRACEABILITY_WEIGHT}}|${TRACEABILITY_WEIGHT}|g" \
     -e "s|{{EBTU_WEIGHT}}|${EBTU_WEIGHT}|g" \
+=======
+>>>>>>> origin/main
     -e "s|{{OPENJUDGE_LLM}}|${OPENJUDGE_LLM}|g" \
     -e "s|{{RM_LLM}}|${RM_LLM}|g" \
     -e "s|{{JUDGE_CONCURRENCY}}|${JUDGE_CONCURRENCY}|g" \
@@ -92,7 +103,11 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
 
 echo "配置文件已生成: ${CONFIG_FILE}"
+<<<<<<< HEAD
 echo "参数确认: RM=${RM_WEIGHT}, PresentationQuality=${PRESENTATION_QUALITY_WEIGHT}, Grounding=${GROUNDING_WEIGHT}, CGCV=${CGCV_WEIGHT}, Audit=${AUDIT_WEIGHT}, Traceability=${TRACEABILITY_WEIGHT}, EBTU=${EBTU_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
+=======
+echo "参数确认: RM=${RM_WEIGHT}, PresentationQuality=${PRESENTATION_QUALITY_WEIGHT}, Grounding=${GROUNDING_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
+>>>>>>> origin/main
 
 
 #===============================================================================
@@ -136,7 +151,13 @@ export RAY_CLUSTER_MODE="multi_node"
 #===============================================================================
 # 6. 主流程
 #===============================================================================
+<<<<<<< HEAD
 log "单机调试模式: NNODES=${NNODES}, GPUS_PER_NODE=${GPUS_PER_NODE}"
+=======
+log "节点数: ${NNODES}, 每节点GPU数: ${GPUS_PER_NODE}"
+mkdir -p ${LOG_DIR}
+mkdir -p $(dirname ${CONFIG_FILE})
+>>>>>>> origin/main
 
 #===============================================================================
 #  6.1 Master 节点启动流程
