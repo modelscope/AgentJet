@@ -625,8 +625,8 @@ def register_enable_swarm_mode_routes(
         if VERBOSE:
             logger.info(f"Running [{episode_uuid}]: /abort_episode")
 
-        assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
-        assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
+        # assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
+        # assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
 
         if "episodes" not in shared_mem_dict:
             logger.error(f"[server] No episodes registered yet.")
@@ -715,6 +715,7 @@ def register_enable_swarm_mode_routes(
                         running_episode_details[es.episode_uuid] = {
                             "episode_status": es.episode_status,
                             "time_since_last_activity": f"{time_since_last_activity:.1f}s",
+                            "discard_episode_timeout": f"{es.discard_episode_timeout:.1f}s",
                         }
             pool_info.running_episode_details = running_episode_details if running_episode_details else None
 

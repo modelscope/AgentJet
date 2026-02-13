@@ -469,7 +469,8 @@ class SwarmClient(object):
                 "Completed episodes: (current) / (required)": f"{stat.get('completed_episodes', 0)} / {stat.get('completed_episode_target', 0)}",
                 "Average episodes per task: (current) / (expected)": f"{stat.get('average_episodes_per_task', 0):.2f} / {stat.get('task_expected_num_repeat', 0)}",
                 "Completed num-dummy tasks: (current) / (required)": f"{stat.get('completed_non_dummy_tasks', 0)} / {stat.get('completed_task_target', 0)}",
-                "Tasks (Number of episodes completed for each task)": task_buffer
+                "Tasks (Number of episodes completed for each task)": task_buffer,
+                "Hint": f"Please run `ajet-swarm overwatch --swarm-url={self.server_url}` to get more details."
             }
             print_dict(stat, mod="console", header="Current Swarm Rollout Pool Information")
         except:

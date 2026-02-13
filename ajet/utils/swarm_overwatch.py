@@ -113,7 +113,7 @@ class SwarmOverwatch:
         title_prefix = "" if is_active else "[WAITING ENGINE.ROLLING] "
 
         table = Table(
-            title=f"{title_prefix}Rollout Pool Summary (Progress to Hit Next Weight Update)",
+            title=f"{title_prefix}Completed Episode Pool Summary (Progress to Hit Next Weight Update)",
             show_header=True,
             header_style="bold magenta",
             border_style=border_style,
@@ -140,13 +140,13 @@ class SwarmOverwatch:
 
         # Episodes
         ep_cur, ep_tgt, ep_pct = self.create_progress_bar(
-            info.completed_episodes, info.completed_episode_target, "Episodes"
+            info.completed_episodes, info.completed_episode_target, "Completed Episodes"
         )
         ep_bar = self._create_text_bar(ep_pct)
         ep_metric = (
-            "*Episodes (chosen)*"
+            "-> *Completed Episodes (chosen)*"
             if highlight_episodes
-            else "Episodes"
+            else "Completed Episodes"
         )
         ep_style = "bold green" if highlight_episodes else None
         table.add_row(
@@ -166,7 +166,7 @@ class SwarmOverwatch:
         )
         task_bar = self._create_text_bar(task_pct)
         task_metric = (
-            "*Completed Tasks (chosen)*" if highlight_tasks else "Completed Tasks"
+            "-> *Completed Tasks (chosen)*" if highlight_tasks else "Completed Tasks"
         )
         task_style = "bold green" if highlight_tasks else None
         table.add_row(
@@ -188,7 +188,7 @@ class SwarmOverwatch:
         )
         nd_bar = self._create_text_bar(nd_pct)
         nd_metric = (
-            "*Completed Non-Dummy Tasks (chosen)*"
+            "-> *Completed Non-Dummy Tasks (chosen)*"
             if highlight_non_dummy
             else "Completed Non-Dummy Tasks"
         )
@@ -245,7 +245,7 @@ class SwarmOverwatch:
 
         table.add_column("Episode UUID", style="cyan", no_wrap=True, width=20, overflow="ellipsis")
         table.add_column("Status", style="green", width=15)
-        table.add_column("Time Since Last Activity", style="yellow", width=30)
+        table.add_column("Last Req / Patience", style="yellow", width=30)
 
         if not info.running_episode_details:
             table.add_row("[dim]No running episodes[/dim]", "", "")
@@ -259,10 +259,12 @@ class SwarmOverwatch:
         )
 
         for episode_uuid, details in sorted_episodes[:30]:
+            last_req = details["time_since_last_activity"]
+            patience = details.get("discard_episode_timeout", "N/A")
             table.add_row(
                 episode_uuid[:40] if len(episode_uuid) > 40 else episode_uuid,
                 details["episode_status"],
-                details["time_since_last_activity"],
+                f"{last_req} / {patience}",
             )
 
         if len(sorted_episodes) > 30:

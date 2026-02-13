@@ -29,8 +29,7 @@ def start_swarm_server(env, config, port):
     )
 
     # Set the port in the config
-    if hasattr(config.ajet, 'experimental_interchange_server_port'):
-        config.ajet.experimental_interchange_server_port = port
+    config.ajet.interchange_server.interchange_server_port = port
 
     from ajet.tuner_lib.experimental.as_oai_model_server import (
         start_interchange_server,
@@ -62,7 +61,7 @@ def cmd_start(args):
         exp_name,
         exp_config,
     ) = prepare_experiment_config(
-        yaml_path, exp_dir, args.backbone, storage=False
+        yaml_path, exp_dir, "verl", storage=False
     )
 
     # Setup environment variables
@@ -75,7 +74,7 @@ def cmd_start(args):
             self.swarm_overwatch = ""
             self.debug = ""
 
-    swarm_args = SwarmArgs(args.conf, args.backbone, args.exp_dir)
+    swarm_args = SwarmArgs(args.conf, "verl", args.exp_dir)
     env, exp_config = setup_environment_vars(swarm_args, exp_config, main_yaml_fp)
 
     # Start swarm server
@@ -86,8 +85,8 @@ def cmd_overwatch(args):
     """Handle the 'overwatch' subcommand."""
     from ajet.utils.swarm_overwatch import start_overwatch
 
-    logger.info(f"Starting Swarm Overwatch for server: {args.swarm_port}")
-    start_overwatch(args.swarm_port, refresh_interval=args.refresh_interval)
+    logger.info(f"Starting Swarm Overwatch for server: {args.swarm_url}")
+    start_overwatch(args.swarm_url, refresh_interval=args.refresh_interval)
 
 
 def main():
@@ -117,19 +116,13 @@ def main():
         required=False,
         help="Path to experiment directory",
     )
-    parser_start.add_argument(
-        "--backbone",
-        type=str,
-        default="verl",
-        required=False,
-        help="verl or trinity or debug",
-    )
+
     parser_start.set_defaults(func=cmd_start)
 
     # Subcommand: overwatch
     parser_overwatch = subparsers.add_parser("overwatch", help="Monitor the swarm server")
     parser_overwatch.add_argument(
-        "--swarm-port",
+        "--swarm-url",
         type=str,
         default="http://localhost:10086",
         required=False,
