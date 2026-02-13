@@ -54,7 +54,7 @@ def _test_if_test_mode(key, value, config):
         return
     if config.ajet.execute_test == "do_not_test":
         return
-    init_parallel_rollout_logger(config.ajet.experiment_name)
+    init_parallel_rollout_logger(config.ajet.experiment_name, config.ajet.experiment_dir)
     test_lambda = get_test_lambda(config.ajet.execute_testing_lambda)
     if key not in test_lambda.probe_list:
         return
