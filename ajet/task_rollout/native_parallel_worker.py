@@ -19,7 +19,7 @@ from verl.utils.torch_functional import pad_sequence_to_length
 from ajet.schema.task import Task
 from ajet.schema.trajectory import Sample
 from ajet.task_rollout.single_worker import BaseRolloutManager
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.tuner_lib.experimental.interchange_utils import (
     http_change_engine_status,
     http_update_rollout_pool_information,
@@ -94,10 +94,10 @@ class DynamicRolloutManager(BaseRolloutManager):
         tasks: List[Task],
         mode: Literal["sample", "validate"],
         epoch: str,
-    ) -> List[BaseContextTracker]:
+    ) -> List[SingleAgentContextTracker]:
         """Execute non-dynamic rollouts in parallel and return collected trackers."""
         self.current_token_count_time = time.time()
-        tracker_array: List[BaseContextTracker] = []
+        tracker_array: List[SingleAgentContextTracker] = []
         rollout_n = 1 if mode == "validate" else self.rollout_n
         observation_window = spawn_thread_shared_observation_window(n_threads=len(tasks)*rollout_n)
 
@@ -166,13 +166,13 @@ class DynamicRolloutManager(BaseRolloutManager):
         epoch: str,
         allow_sample_num_change=True,
         allow_force_stop=True,
-    ) -> List[BaseContextTracker]:
+    ) -> List[SingleAgentContextTracker]:
         """
         Build a pool of threads to run context trackers in parallel,
         each thread re-spawn after complete, until reaching conditions to stop.
         """
 
-        tracker_array: List[BaseContextTracker] = []
+        tracker_array: List[SingleAgentContextTracker] = []
         rollout_n = self.rollout_n
         n_batch_task = len(tasks)
         n_task = min(len(tasks), self.max_parallel // rollout_n)
@@ -183,7 +183,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         observation_window = spawn_thread_shared_observation_window(n_threads = n_task * rollout_n)
         executor = ThreadPoolExecutor(max_workers=self.max_parallel)
         futures: List[Future] = []
-        completed_task_id_map_ct: Dict[str, List[BaseContextTracker]] = {}
+        completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]] = {}
         executor_lock = threading.Lock()
 
         # count tasks to see whether we have reach the finish line for next weight update
@@ -315,7 +315,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                 )
                 futures.append(future)
 
-        def update_rollout_result_array_preview(observation_window, completed_task_id_map_ct: Dict[str, List[BaseContextTracker]]):
+        def update_rollout_result_array_preview(observation_window, completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]]):
             buffer = ""
             completed_tasks_details = {}
             for task_id, tracker_arr in completed_task_id_map_ct.items():
@@ -348,6 +348,8 @@ class DynamicRolloutManager(BaseRolloutManager):
             )
             http_update_rollout_pool_information(self.config, pool_info)
             return
+
+        update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
 
         # loop and wait until stop condition is met, then stop threads and collect results
         CHECK_STATUS_INTERVAL = 4   # seconds
@@ -402,7 +404,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         tasks: List[Task],
         mode: Literal["sample", "validate"],
         epoch: str,
-    ) -> List[BaseContextTracker]:
+    ) -> List[SingleAgentContextTracker]:
         """Delegate to dynamic rollout when oversampling is enabled."""
         if self.config.ajet.enable_swarm_mode:
             return self.rollout_swarm(tasks, mode, epoch)
@@ -433,10 +435,10 @@ class VerlRolloutManager(DynamicRolloutManager):
         dataproto = self.samples_to_dataproto(samples)
         return dataproto
 
-    def trajectories_to_samples(self, tracker_array: List[BaseContextTracker]) -> List[Sample]:
+    def trajectories_to_samples(self, tracker_array: List[SingleAgentContextTracker]) -> List[Sample]:
         """Tokenize each tracker into `Sample` objects ready for tensorization."""
         sample_arr_final = []
-        BaseContextTracker.compute_reference_advantage(tracker_array)
+        SingleAgentContextTracker.compute_reference_advantage(tracker_array)
         for tracker in tracker_array:
             try:
                 sample_arr = tracker.group_tokenize()

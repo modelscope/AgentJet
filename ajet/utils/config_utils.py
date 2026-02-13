@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 
 from ajet.utils.config_computer import split_keys_and_operators
 
+DEFAULT_DIR = "saved_experiments"
 
 def read_ajet_config(yaml_fp):
     """Load a Hydra configuration relative to this module."""
@@ -168,7 +169,7 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
 
 
 def read_ajet_hierarchical_config(
-    yaml_fp, exp_name, backbone, write_to=None, exp_dir="saved_experiments", override_param_callback=None
+    yaml_fp, exp_name, backbone, write_to=None, exp_dir=DEFAULT_DIR, override_param_callback=None
 ):
     if yaml_fp is None:
         config = {

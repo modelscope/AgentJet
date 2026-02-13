@@ -1,7 +1,6 @@
 """Single worker primitives for environment rollouts."""
 
 import uuid
-import time
 import threading
 from typing import Literal
 
@@ -10,7 +9,7 @@ from omegaconf import DictConfig
 from typing import Dict, List, Literal
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import Task, WorkflowTask
 from ajet.task_rollout.async_llm_bridge import AsyncLlmBridge
 from ajet.task_rollout.resource_keeper import ResourceKeeper
@@ -83,7 +82,7 @@ class BaseRolloutManager:
         task_thread_index: int,
         observation_window: dict,
         **kwargs,
-    ) -> BaseContextTracker:
+    ) -> SingleAgentContextTracker:
         """Execute one environment rollout worker.
 
         Handles environment initialization, LLM sampling parameter construction
@@ -157,7 +156,7 @@ class BaseRolloutManager:
         mode: Literal["sample", "validate"],
         task_thread_index: int,
         observation_window: dict,
-        completed_task_id_map_ct: Dict[str, List[BaseContextTracker]],
+        completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]],
         executor_lock: threading.Lock,
         stop_condition_callback=None,
         **kwargs,

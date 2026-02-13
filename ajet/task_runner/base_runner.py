@@ -4,7 +4,7 @@ from threading import Lock
 from typing import Any, Callable, Union, Type
 from multiprocessing import Process, Queue
 
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import WorkflowOutput, WorkflowTask
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.tuner import AjetTuner
@@ -21,7 +21,7 @@ class BaseAgentRunner(object):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
-        self.tracker: Union[BaseContextTracker, Any, None] = None
+        self.tracker: Union[SingleAgentContextTracker, Any, None] = None
         self.external_llm_fn: Union[Callable, None] = None
         self.llm_inference_fn: Callable = llm_inference_fn
         self.config = config

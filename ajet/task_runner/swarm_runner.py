@@ -6,7 +6,7 @@ import os
 from ajet.tuner import AjetTuner
 from ajet.schema.task import WorkflowOutput
 from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import WorkflowTask
 from ajet.schema.trajectory import Reward
 from ajet.task_runner.base_runner import BaseAgentRunner
@@ -30,7 +30,7 @@ class SwarmRunner(BaseAgentRunner):
         episode_uuid: str,
         openai_base_url: str,
         openai_api_key: str,
-        context_tracker: BaseContextTracker,
+        context_tracker: SingleAgentContextTracker,
         tuner:AjetTuner,
         should_exit_soft:Callable,
         should_exit_hard:Callable
@@ -118,7 +118,7 @@ class SwarmRunner(BaseAgentRunner):
         return final_output
 
 
-    def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
+    def execute(self, workflow_task: WorkflowTask) -> SingleAgentContextTracker:
 
         observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index

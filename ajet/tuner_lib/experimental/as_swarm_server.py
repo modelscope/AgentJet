@@ -314,7 +314,12 @@ def register_enable_swarm_mode_routes(
             yaml_str = shared_mem_dict["train_config_yaml"]
             config_dict = yaml_module.safe_load(yaml_str)
             backbone = config_dict.get("ajet", {}).get("backbone", "verl")
-            exp_dir_final = config_dict.get("ajet", {}).get("experiment_dir", "saved_experiments")
+            DEFAULT_DIR = "saved_experiments"
+            exp_dir_final = config_dict.get("ajet", {}).get("experiment_dir", DEFAULT_DIR)
+            if exp_dir_final != DEFAULT_DIR:
+                # remove last dir level if possible
+                exp_dir_final = os.path.dirname(exp_dir_final)
+
 
             # Save YAML to temporary file
             with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as temp_file:

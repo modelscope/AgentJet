@@ -10,8 +10,7 @@ from ajet.utils.async_utils import apply_httpx_aclose_patch, suppress_httpx_aclo
 apply_httpx_aclose_patch()
 suppress_httpx_aclose_exception()
 
-
-def init_parallel_rollout_logger(experiment_name):
+def init_parallel_rollout_logger(experiment_name, experiment_dir):
     """Initialize the logger with the given configuration."""
     if "PROCESS_LEVEL_WARMUP_INIT_LOGGER" in os.environ:
         return
@@ -22,8 +21,7 @@ def init_parallel_rollout_logger(experiment_name):
     from beast_logger import register_logger
 
     final_log_path = os.path.join(
-        "saved_experiments",
-        experiment_name,
+        experiment_dir,
         datetime.now().strftime("%Y_%m_%d_%H_%M"),
         # machine host name
         os.uname().nodename,
@@ -100,6 +98,7 @@ def warm_up_process(config):
         return
     os.environ["PROCESS_LEVEL_WARMUP_INIT"] = "1"
     experiment_name = config.ajet.experiment_name
-    init_parallel_rollout_logger(experiment_name)
+    experiment_dir = config.ajet.experiment_dir
+    init_parallel_rollout_logger(experiment_name, experiment_dir)
     warm_up_task_judge_when_needed(config)
     clean_up_tmp_ajet_dir(config)

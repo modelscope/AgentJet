@@ -22,6 +22,7 @@ from ajet.utils.pty import pty_launch
 set_loguru_default_color()
 load_dotenv(override=False)
 
+DEFAULT_DIR = "saved_experiments"
 
 def parse_args():
     parser = argparse.ArgumentParser(description="AgentJet Launcher")
@@ -48,7 +49,7 @@ def parse_args():
     parser.add_argument(
         "--exp-dir",
         type=str,
-        default="saved_experiments",
+        default=DEFAULT_DIR,
         required=False,
         help="Path to experiment directory",
     )
@@ -203,7 +204,7 @@ def main():
 
     # read configuration from yaml
     exp_config = None
-    exp_dir = args.exp_dir or "saved_experiments"
+    exp_dir = args.exp_dir or DEFAULT_DIR
     if args.swarm_server and (not args.conf):
         args.conf = os.path.abspath(
             os.path.join(

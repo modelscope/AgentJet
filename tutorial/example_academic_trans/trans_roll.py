@@ -41,6 +41,8 @@ def main():
     swarm_worker.auto_sync_train_config_and_start_engine(
         AgentJetJob(
             algorithm="grpo",
+            project_name="ajet-swarm",
+            experiment_name="test",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_TRAIN_MODEL_01,
             batch_size=REMOTE_BATCH_SIZE,

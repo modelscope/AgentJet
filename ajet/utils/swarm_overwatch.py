@@ -91,7 +91,7 @@ class SwarmOverwatch:
                     )
             if info.global_step is not None:
                 header_text.append(
-                    f"  |  Global Step: {info.global_step:,}", style="bold blue"
+                    f"  |  Global Step (Model's Weight Version): {info.global_step:,}", style="bold blue"
                 )
 
         return Panel(header_text, border_style="bright_blue", padding=(0, 1))
@@ -107,11 +107,16 @@ class SwarmOverwatch:
 
     def create_summary_table(self, info: CurrentBatchRolloutPoolInformation) -> Table:
         """Create summary statistics table"""
+        # Determine border style based on engine status
+        is_active = info.engine_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]
+        border_style = "blue" if is_active else "dim"
+        title_prefix = "" if is_active else "[WAITING ENGINE.ROLLING] "
+
         table = Table(
-            title="Rollout Pool Summary",
+            title=f"{title_prefix}Rollout Pool Summary (Progress to Hit Next Weight Update)",
             show_header=True,
             header_style="bold magenta",
-            border_style="blue",
+            border_style=border_style,
             expand=True,
         )
 
@@ -225,11 +230,16 @@ class SwarmOverwatch:
         self, info: CurrentBatchRolloutPoolInformation
     ) -> Table:
         """Create running episodes table"""
+        # Determine border style based on engine status
+        is_active = info.engine_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]
+        border_style = "blue" if is_active else "dim"
+        title_prefix = "" if is_active else "[WAITING ENGINE.ROLLING] "
+
         table = Table(
-            title="Running Episodes",
+            title=f"{title_prefix}Running Episodes",
             show_header=True,
             header_style="bold magenta",
-            border_style="blue",
+            border_style=border_style,
             expand=True,
         )
 
@@ -266,11 +276,16 @@ class SwarmOverwatch:
         self, info: CurrentBatchRolloutPoolInformation
     ) -> Table:
         """Create detailed task completion table"""
+        # Determine border style based on engine status
+        is_active = info.engine_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]
+        border_style = "blue" if is_active else "dim"
+        title_prefix = "" if is_active else "[WAITING ENGINE.ROLLING] "
+
         table = Table(
-            title="Task Completion Details",
+            title=f"{title_prefix}Task Completion Details",
             show_header=True,
             header_style="bold magenta",
-            border_style="blue",
+            border_style=border_style,
             expand=True,
         )
 

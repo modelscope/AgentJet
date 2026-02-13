@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 import tempfile
-from datetime import datetime
 from types import SimpleNamespace
 from typing import Any, Callable, Union
 
@@ -32,6 +31,7 @@ from ajet.utils.launch_utils import (
     setup_environment_vars,
 )
 
+DEFAULT_DIR = "saved_experiments"
 
 class AgentJetJob:
     """Lightweight builder that launches AgentJet training as a subprocess."""
@@ -42,6 +42,8 @@ class AgentJetJob:
         model: str = "Qwen/Qwen2___5-7B-Instruct",
         n_gpu: int = 8,
         algorithm: str = "grpo",
+        project_name="ajet-swarm",
+        experiment_name="test",
         n_gpu_for_infer: int | None = None, # only for trinity backbone
         grpo_n: int = 8,
         batch_size: int = 32,
@@ -49,6 +51,9 @@ class AgentJetJob:
         *kwargs,
     ) -> None:
         self.backbone = backbone
+        self.exp_dir = DEFAULT_DIR
+        self.project_name = project_name
+        self.exp_name = experiment_name
         if swarm_mode:
             default_yaml = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', "default_config/ajet_ts_default.yaml"))
         else:
@@ -56,6 +61,7 @@ class AgentJetJob:
         self.config_as_dict: dict = self.build_job_from_yaml(default_yaml)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
 
+        self.config.ajet.experiment_name = experiment_name
         self.config.ajet.backbone = backbone
         self.config.ajet.model.path = model
         self.config.ajet.trainer_common.n_gpus_per_node = n_gpu
@@ -74,14 +80,12 @@ class AgentJetJob:
                 self.config.ajet.rollout.tensor_model_parallel_size = 1
 
     def build_job_from_yaml(self, yaml_path: str | None) -> dict:
-        self.exp_name = datetime.now().strftime("ajet_job_%Y%m%d_%H%M%S")
-        self.exp_dir_final = "saved_experiments"
         self.config_as_dict = read_ajet_hierarchical_config(
             yaml_path,
             exp_name=self.exp_name,
             backbone=self.backbone,
             write_to=None,
-            exp_dir=self.exp_dir_final,
+            exp_dir=self.exp_dir,
         )
         self.config_as_dict = expand_ajet_hierarchical_config(self.config_as_dict, write_to=None)
         logger.info(f"Built AgentJet job config: {yaml_path}")

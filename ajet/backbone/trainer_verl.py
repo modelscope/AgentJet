@@ -50,7 +50,7 @@ from verl.utils.debug import marked_timer
 from verl.utils.metric import reduce_metrics
 
 from ajet.backbone.warm_up import warm_up_process
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
@@ -593,7 +593,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         )
                         logger.info("start fit rollout")
                         self.parallel_env.current_global_steps = self.global_steps
-                        context_tracker_arr: List[BaseContextTracker] = self.parallel_env.rollout(
+                        context_tracker_arr: List[SingleAgentContextTracker] = self.parallel_env.rollout(
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
 

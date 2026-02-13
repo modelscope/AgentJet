@@ -11,8 +11,8 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from ajet.context_tracker.timeline_merging.timeline_merging import (
     merge_tracker_timelines, is_timeline_mergeable
 )
-from ajet.context_tracker.basic_tracker import (
-    BaseContextTracker,
+from ajet.context_tracker.single_agent_tracking import (
+    SingleAgentContextTracker,
     ExtendedMessage,
 )
 from ajet.schema.extended_msg import INVALID_LOG_PROB_VALUE
@@ -38,7 +38,7 @@ class ContextTrackerConfig:
 
 
 
-class MultiAgentContextTracker(BaseContextTracker):
+class MultiAgentContextTracker(SingleAgentContextTracker):
     """
     Context tracker is responsible to monitor and process LLM IO.
     Each context tracker is responsible for ONE episode run only.

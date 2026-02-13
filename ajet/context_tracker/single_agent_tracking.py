@@ -13,7 +13,7 @@ from ajet.schema.trajectory import Reward, Sample
 from ajet.utils.tokenizer import ajet_apply_chat_template
 
 
-class BaseContextTracker(BaseTracker):
+class SingleAgentContextTracker(BaseTracker):
     """
     A linear context tracker template that handles the conversation flow between LLM and environment.
     This class manages the context window, tokenization, and message history in a linear fashion.
