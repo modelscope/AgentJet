@@ -13,7 +13,7 @@ LOCAL_NUM_EPOCH = 10000
 LOCAL_NUM_EPOCH = 1
 LOCAL_MAX_PARALLEL = 32
 LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/agentjet/agentjet/tmp/arxiv_papers/train.parquet"
-REMOTE_SWARM_URL = "http://localhost:10099" # Change to your swarm remote url
+REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 
 # --------- configurations that take effect remotely -------------
 REMOTE_BATCH_SIZE = 8

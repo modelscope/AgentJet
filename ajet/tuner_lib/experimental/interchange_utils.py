@@ -62,6 +62,7 @@ class EpisodeStatus(BaseModel):
     zmq_listen_result_addr: str = ""
     latest_activity_timestamp: float = time.time()
     discard_episode_timeout: float
+    llm_call_count: int = 0
     debug_log: List[str] = []
 
 class EpisodeBufferResponse(BaseModel):

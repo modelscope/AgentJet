@@ -244,11 +244,12 @@ class SwarmOverwatch:
         )
 
         table.add_column("Episode UUID", style="cyan", no_wrap=True, width=20, overflow="ellipsis")
-        table.add_column("Status", style="green", width=15)
-        table.add_column("Last Req / Patience", style="yellow", width=30)
+        table.add_column("Status", style="green")
+        table.add_column("LLM Calls", style="magenta", justify="right")
+        table.add_column("Last Req / Patience", style="yellow")
 
         if not info.running_episode_details:
-            table.add_row("[dim]No running episodes[/dim]", "", "")
+            table.add_row("[dim]No running episodes[/dim]", "", "", "")
             return table
 
         # Sort by time since last activity (descending)
@@ -261,15 +262,17 @@ class SwarmOverwatch:
         for episode_uuid, details in sorted_episodes[:30]:
             last_req = details["time_since_last_activity"]
             patience = details.get("discard_episode_timeout", "N/A")
+            llm_calls = details.get("llm_call_count", "0")
             table.add_row(
                 episode_uuid[:40] if len(episode_uuid) > 40 else episode_uuid,
                 details["episode_status"],
+                llm_calls,
                 f"{last_req} / {patience}",
             )
 
         if len(sorted_episodes) > 30:
             table.add_row(
-                f"[dim]... and {len(sorted_episodes) - 30} more episodes[/dim]", "", ""
+                f"[dim]... and {len(sorted_episodes) - 30} more episodes[/dim]", "", "", ""
             )
 
         return table

@@ -132,6 +132,7 @@ def register_enable_swarm_mode_routes(
             es.episode_status = "registered"
             es.client_uuid = ""
             es.latest_activity_timestamp = time.time()
+            es.llm_call_count = 0
             es.discard_episode_timeout = -1
             with shared_mem_dict_lock:
                 shared_mem_dict[ep_key(episode_uuid)] = es
@@ -461,6 +462,7 @@ def register_enable_swarm_mode_routes(
             discard_episode_timeout=-1,
         )
         es.latest_activity_timestamp = time.time()
+        es.llm_call_count = 0
 
         with shared_mem_dict_lock:
             shared_mem_dict[ep_key(episode_uuid)] = es
@@ -519,6 +521,7 @@ def register_enable_swarm_mode_routes(
                 es.episode_type = req.episode_type
                 es.client_uuid = req.client_uuid
                 es.latest_activity_timestamp = time.time()
+                es.llm_call_count = 0
                 es.discard_episode_timeout = req.discard_episode_timeout
 
                 shared_mem_dict[ep_key(episode_uuid)] = es
@@ -716,6 +719,7 @@ def register_enable_swarm_mode_routes(
                             "episode_status": es.episode_status,
                             "time_since_last_activity": f"{time_since_last_activity:.1f}s",
                             "discard_episode_timeout": f"{es.discard_episode_timeout:.1f}s",
+                            "llm_call_count": str(es.llm_call_count),
                         }
             pool_info.running_episode_details = running_episode_details if running_episode_details else None
 

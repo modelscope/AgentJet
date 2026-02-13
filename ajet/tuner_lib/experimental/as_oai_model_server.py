@@ -169,10 +169,11 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             if ep_key(episode_uuid) not in shared_mem_dict:
                 raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
 
-            # update activate timestamp
+            # update activate timestamp and increment llm call counter
             with shared_mem_dict_lock:
                 es:EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
                 es.latest_activity_timestamp = time.time()
+                es.llm_call_count += 1
                 shared_mem_dict[ep_key(episode_uuid)] = es
 
         # Add to received queue
