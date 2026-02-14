@@ -2,7 +2,6 @@
 import datasets
 
 from ajet.schema.task import Task
-from typing import List, Generator
 from ajet.task_reader.task_reader_base import BaseTaskReader
 
 
@@ -38,6 +37,7 @@ class HuggingFaceTaskReader(BaseTaskReader):
                 # Load from Hugging Face hub
                 dataset = datasets.load_dataset(self.dataset_name, split=split)
             # shuffle dataset
+            dataset = dataset.map(lambda example, idx: {"original_idx": idx}, with_indices=True)
             dataset = dataset.shuffle()
         except Exception as e:
             raise ValueError(
@@ -49,14 +49,14 @@ class HuggingFaceTaskReader(BaseTaskReader):
 
         self.as_generator = True
 
-        for idx, example in enumerate(dataset):
+        for _, example in enumerate(dataset):
             # Create Task object
             task = Task(
-                main_query=example.get("question", "Empty"),
+                main_query=example.get("question", "Empty"),    # type: ignore
                 init_messages=[],  # Dataset examples typically don't have init messages
-                task_id=str(idx),
+                task_id=str(example["original_idx"]),           # type: ignore
                 env_type="no_env",
-                metadata=example,
+                metadata=example,                               # type: ignore
             )
             yield task
 

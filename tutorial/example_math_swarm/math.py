@@ -4,7 +4,7 @@ from textwrap import dedent
 from ajet.schema.task import Task, WorkflowOutput
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader
-from ajet.utils.retry import retry_with_backoff, retry_infinite
+from ajet.utils.retry import retry_with_backoff
 from ajet.utils.thread_executors import BoundedThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.tuner_lib.experimental.interchange_utils import SwarmThrottlePolicy
@@ -51,28 +51,30 @@ def main():
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_TRAIN_MODEL_01,
             batch_size=REMOTE_BATCH_SIZE,
-            grpo_n=LOCAL_GRPO_N,
+            num_repeat=LOCAL_GRPO_N,
         )
     )
 
-    @retry_infinite(backoff_fn=lambda attempt: min(2**attempt, 15))
     def rollout(task):
-        # begin episode
-        episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
-            throttle_policy=SwarmThrottlePolicy(
-                ratio=1.0,
-                expected_total_task_in_batch=REMOTE_BATCH_SIZE,
-                current_task_id=task.task_id
+        try:
+            # begin episode
+            episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
+                throttle_policy=SwarmThrottlePolicy(
+                    ratio=0.5,
+                    expected_batch_size=REMOTE_BATCH_SIZE,
+                    expected_num_repeat=LOCAL_GRPO_N,
+                    current_task_id=task.task_id
+                )
             )
-        )
-        # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
-        workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
-        # report output back to swarm remote
-        swarm_worker.end_episode(task, episode_uuid, workflow_output)
-        # print global rollout status across the swarm
-        swarm_worker.print_rollout_stat()
-        return
-
+            # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
+            workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
+            # report output back to swarm remote
+            swarm_worker.end_episode(task, episode_uuid, workflow_output)
+            # print global rollout status across the swarm
+            swarm_worker.print_rollout_stat()
+            return
+        except:
+            pass
 
     executor = BoundedThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL)
     for epoch in range(LOCAL_NUM_EPOCH):

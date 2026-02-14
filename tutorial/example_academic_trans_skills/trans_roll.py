@@ -2,9 +2,9 @@ from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.task_reader import RouterTaskReader
-from tutorial.example_academic_trans.trans import execute_agent
+from tutorial.example_academic_trans_skills.trans import execute_agent
 
-# python -m tutorial.example_academic_trans.trans_roll
+# python -m tutorial.example_academic_trans_skills.trans_roll
 
 
 # --------- configurations that take effect locally -------------
@@ -41,8 +41,8 @@ def main():
     swarm_worker.auto_sync_train_config_and_start_engine(
         AgentJetJob(
             algorithm="grpo",
-            project_name="ajet-swarm",
-            experiment_name="test",
+            project_name="ajet-swarm-skills",
+            experiment_name="academic-translation",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_TRAIN_MODEL_01,
             batch_size=REMOTE_BATCH_SIZE,

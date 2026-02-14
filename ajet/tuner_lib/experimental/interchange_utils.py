@@ -25,9 +25,10 @@ class SyncTrainConfigRequest(BaseModel):
 
 
 class SwarmThrottlePolicy(BaseModel):
-    ratio: float = Field(default=1.0, description="Ratio limit for the batch. Value between 0 and 2 when method is `Task_Ratio_Limit`. Value can go above 1 to allow more parallelism.")
-    expected_total_task_in_batch: int = Field(default=-1, description="Expected total task number in a batch.")
-    current_task_id: str = Field(default="", description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
+    ratio: float = Field(default=1.5, description="Ratio limit for the batch. Value between 0 and 2 when method is `Task_Ratio_Limit`. Value can go above 1 to allow more parallelism.")
+    expected_batch_size: int = Field(..., description="Expected total task number in a batch.")
+    expected_num_repeat: int = Field(..., description="Expected number of repeat for each task.")
+    current_task_id: str = Field(..., description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
 
 
 class ClaimEpisodeRequest(BaseModel):

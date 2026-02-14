@@ -43,7 +43,7 @@ def main():
             n_gpu=REMOTE_1_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_1_TRAIN_MODEL,
             batch_size=REMOTE_BATCH_SIZE,
-            grpo_n=LOCAL_GRPO_N,
+            num_repeat=LOCAL_GRPO_N,
         ),
     )
     # Hand shake with remote swarm server
@@ -56,7 +56,7 @@ def main():
             n_gpu=REMOTE_2_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_2_TRAIN_MODEL,
             batch_size=REMOTE_BATCH_SIZE,
-            grpo_n=LOCAL_GRPO_N,
+            num_repeat=LOCAL_GRPO_N,
         ),
     )
     def play_different_swarm_server(task, swarm_worker:SwarmClient) -> float | None:

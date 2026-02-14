@@ -45,7 +45,7 @@ def main():
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_TRAIN_MODEL_01,
             batch_size=REMOTE_BATCH_SIZE,
-            grpo_n=LOCAL_GRPO_N,
+            num_repeat=LOCAL_GRPO_N,
         ),
     )
 

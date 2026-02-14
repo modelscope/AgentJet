@@ -58,7 +58,8 @@ class AjetDefaultConfig:
     rollout: AjetRollout = field(default_factory=AjetRollout)
     trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
-
+    enable_swarm_mode: bool = True
+    swarm_mode_sample_collection_method: str = "rollout_until_finish_enough_tasks"
 
 @dataclass
 class Config:
