@@ -2,7 +2,7 @@ import os
 import time
 import httpx
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from loguru import logger
 from ajet.schema.task import WorkflowOutput
 from ajet.utils.networking import find_free_port
@@ -22,10 +22,21 @@ VALID_STATUSES = [
 class SyncTrainConfigRequest(BaseModel):
     yaml_as_string: str
 
+class SwarmBatchPartitionLimit(BaseModel):
+    limit_method: str = Field("Task_Ratio_Limit", description="Method to limit the batch. Options: Episode_Ratio_Limit / Task_Ratio_Limit ")
+    ratio: float = Field(0.5, description="Ratio limit for the batch. Value between 0 and 1.")
+
+    expected_total_episode_in_batch: int|None = Field(None, description="Expected total episode number in a batch. Required if limit_method is Episode_Ratio_Limit")
+
+    expected_total_task_in_batch: int|None = Field(None, description="Expected total task number in a batch. Required if limit_method is Task_Ratio_Limit")
+    current_task_id: str|None = Field("", description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
+
+
 class ClaimEpisodeRequest(BaseModel):
     client_uuid: str
     episode_type: str
     discard_episode_timeout: float
+    partition_limit: SwarmBatchPartitionLimit | None = None
 
 class ClaimEpisodeResponse(BaseModel):
     success: bool
@@ -64,6 +75,7 @@ class EpisodeStatus(BaseModel):
     discard_episode_timeout: float
     llm_call_count: int = 0
     debug_log: List[str] = []
+    optional_task_id: str = ""
 
 class EpisodeBufferResponse(BaseModel):
     buffer: List[EpisodeStatus]

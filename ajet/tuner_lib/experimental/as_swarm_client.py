@@ -21,6 +21,7 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     EndEpisodeResponse,
     EpisodeStatus,
     EpisodeBufferResponse,
+    SwarmBatchPartitionLimit,
 )
 
 # general http timeout
@@ -43,6 +44,7 @@ def raise_for_status_with_detail(resp):
             # Failed to parse JSON response
             logger.error(f"SwarmClient error {resp.status_code} with non-JSON response: {response_text}")
             raise RuntimeError(f"SwarmClient error {resp.status_code} with non-JSON response: {response_text}") from e
+
 
 
 class SwarmClient(object):
@@ -91,7 +93,7 @@ class SwarmClient(object):
         return
 
 
-    def begin_episode(self, discard_episode_timeout=60, max_episode_time=120, episode_type="train") -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def begin_episode(self, discard_episode_timeout=60, max_episode_time=120, episode_type="train", partition_limit: SwarmBatchPartitionLimit|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
         Argument:
@@ -100,6 +102,8 @@ class SwarmClient(object):
             - episode_type:
                 - train: data will be fed to training pipeline
                 - eval: data will NOT be fed to training pipeline
+            - partition_limit:        when there are multiple clients running different tasks (e.g. math + coding), you may need to arrange the percentage of different tasks in each batch (e.g. 40% math + 60% coding).
+                                      But of course, you can set up your own logic and ignore this argument, the choice is all yours.
         Return:
             (episode_uuid, openai_base_url, openai_api_key)
         """
@@ -114,6 +118,7 @@ class SwarmClient(object):
                     client_uuid=self.client_uuid,
                     episode_type=episode_type,
                     discard_episode_timeout=discard_episode_timeout,
+                    partition_limit=partition_limit
                 )
                 resp = httpx.post(
                     f"{self.server_url}/claim_episode",
@@ -398,12 +403,8 @@ class SwarmClient(object):
             self.logger_info("Engine is already ROLLING. No action needed.")
         elif current_status == "ENGINE.ROLLING_POST":
             self.logger_info("Engine is already ROLLING. No action needed.")
-        elif current_status == "ENGINE.BOOTING":
-            self.logger_info("Engine is BOOTING. Waiting until it becomes ROLLING...")
-            self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
-            logger.success("Training engine is now ROLLING and ready.")
-        elif current_status == "ENGINE.CANNOT_CONNECT":
-            logger.error("Cannot connect to the engine. Please check the network.")
+        elif current_status in ["ENGINE.BOOTING", "ENGINE.CANNOT_CONNECT", "ENGINE.WEIGHT_SYNCING"]:
+            self.logger_info(f"Engine is {current_status}. Waiting until it becomes ROLLING...")
             self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
             logger.success("Training engine is now ROLLING and ready.")
         else:
