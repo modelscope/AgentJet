@@ -18,6 +18,7 @@ from verl.utils.torch_functional import pad_sequence_to_length
 
 from ajet.schema.task import Task
 from ajet.schema.trajectory import Sample
+from ajet.utils.async_utils import IterationSafeDict
 from ajet.task_rollout.single_worker import BaseRolloutManager
 from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.tuner_lib.experimental.interchange_utils import (
@@ -183,7 +184,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         observation_window = spawn_thread_shared_observation_window(n_threads = n_task * rollout_n)
         executor = ThreadPoolExecutor(max_workers=self.max_parallel)
         futures: List[Future] = []
-        completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]] = {}
+        completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]] = IterationSafeDict()
         executor_lock = threading.Lock()
 
         # count tasks to see whether we have reach the finish line for next weight update

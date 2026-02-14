@@ -19,16 +19,18 @@ VALID_STATUSES = [
     "ENGINE.WEIGHT_EXPORTING"
 ]
 
+
 class SyncTrainConfigRequest(BaseModel):
     yaml_as_string: str
 
+
 class SwarmBatchPartitionLimit(BaseModel):
-    limit_method: str = Field("Task_Ratio_Limit", description="Method to limit the batch. Options: Episode_Ratio_Limit / Task_Ratio_Limit ")
-    ratio: float = Field(0.5, description="Ratio limit for the batch. Value between 0 and 1.")
+    limit_method: str = Field("Parallel_Flood_Control", description="Method to limit the batch. Options: `Episode_Ratio_Limit` / `Task_Ratio_Limit` / `Parallel_Flood_Control`")
+    ratio: float = Field(1.2, description="Ratio limit for the batch. Value between 0 and 1 when method is `Episode_Ratio_Limit` / `Task_Ratio_Limit`. Value can go above 1 for `Parallel_Flood_Control` to allow more parallelism.")
 
-    expected_total_episode_in_batch: int|None = Field(None, description="Expected total episode number in a batch. Required if limit_method is Episode_Ratio_Limit")
+    expected_total_episode_in_batch: int|None = Field(None, description="Expected total episode number in a batch. Required if limit_method is `Episode_Ratio_Limit` / `Parallel_Flood_Control`")
 
-    expected_total_task_in_batch: int|None = Field(None, description="Expected total task number in a batch. Required if limit_method is Task_Ratio_Limit")
+    expected_total_task_in_batch: int|None = Field(None, description="Expected total task number in a batch. Required if limit_method is `Task_Ratio_Limit`")
     current_task_id: str|None = Field("", description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
 
 

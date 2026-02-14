@@ -34,13 +34,19 @@ RCVTIMEO_OUT = 300 * 1000
 RCVTIMEO_WAIT_N = RCVTIMEO_OUT // RCVTIMEO
 
 
-def is_key_epsisode_status(key: str) -> bool:
+def is_key_episode_status(key: str) -> bool:
     return key.startswith("episodes-")
 
+def is_key_finished_episode_status(key: str) -> bool:
+    return key.startswith("finished-episodes-")
 
 @lru_cache(maxsize=128)
 def ep_key(episode_uuid: str) -> str:
     return f"episodes-{episode_uuid}"
+
+@lru_cache(maxsize=128)
+def finished_ep_key(episode_uuid: str) -> str:
+    return f"finished-episodes-{episode_uuid}"
 
 
 def register_enable_swarm_mode_routes(
@@ -68,7 +74,7 @@ def register_enable_swarm_mode_routes(
         current_time = time.time()
 
         for k, v in shared_mem_dict.items():
-            if is_key_epsisode_status(k):
+            if is_key_episode_status(k):
                 es: EpisodeStatus = v
                 if es.episode_status == "claimed":
                     if (current_time - es.latest_activity_timestamp) > es.discard_episode_timeout:
@@ -114,6 +120,9 @@ def register_enable_swarm_mode_routes(
 
     async def _revert_episode_to_unclaimed(episode_uuid: str, shared_mem_dict, shared_mem_dict_lock):
         # check status again, because other thread may have changed it
+        if ep_key(episode_uuid) not in shared_mem_dict:
+            logger.warning(f"Episode record for {episode_uuid} not found in shared memory. It may have been already processed by another thread. Skipping unclaim.")
+            return
         if shared_mem_dict[ep_key(episode_uuid)].episode_status != "claimed":
             if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
                 pass
@@ -189,6 +198,9 @@ def register_enable_swarm_mode_routes(
                 continue
         # clean up episode records
         with shared_mem_dict_lock:
+            # preserve a record snapshot
+            shared_mem_dict[finished_ep_key(episode_uuid)] = shared_mem_dict[ep_key(episode_uuid)]
+            # then remove the active record
             del shared_mem_dict[ep_key(episode_uuid)]
             if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
                 shared_mem_dict["unclaimed_episodes"].remove(episode_uuid)
@@ -209,7 +221,7 @@ def register_enable_swarm_mode_routes(
         group_by_status = {}
 
         for k, v in shared_mem_dict.items():
-            if is_key_epsisode_status(k):
+            if is_key_episode_status(k):
                 es: EpisodeStatus = v
                 if es.episode_status not in group_by_status:
                     group_by_status[es.episode_status] = []
@@ -226,7 +238,7 @@ def register_enable_swarm_mode_routes(
             string_buffer = ""
 
             for k, v in shared_mem_dict.items():
-                if is_key_epsisode_status(k):
+                if is_key_episode_status(k):
                     es: EpisodeStatus = v
                     p = es.model_dump_json()
                     string_buffer += f"{p}\n"
@@ -241,17 +253,132 @@ def register_enable_swarm_mode_routes(
     shared_mem_dict["engine_status"] = "ENGINE.OFFLINE"  # initial status
     def _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict):
         with shared_mem_dict_lock:
-            episode_keys = [k for k in shared_mem_dict.keys() if is_key_epsisode_status(k)]
+            episode_keys = [k for k in shared_mem_dict.keys() if is_key_episode_status(k) or is_key_finished_episode_status(k)]
             # remove all episodes
             for key in episode_keys:
                 del shared_mem_dict[key]
-                logger.info(f"[_clean_up_engine_status] Removed episode: {key}")
+                if DEBUG:
+                    logger.info(f"[_clean_up_engine_status] Removed: {key}")
 
             # clear unclaimed episodes list
             if "unclaimed_episodes" in shared_mem_dict:
                 num_unclaimed = len(shared_mem_dict["unclaimed_episodes"])
                 shared_mem_dict["unclaimed_episodes"] = []
                 logger.info(f"[_clean_up_engine_status] Cleared {num_unclaimed} unclaimed episodes")
+
+    # --------------------------------------------------------------------------------------
+    # -------------------------- parallel flood control ------------------------------------
+    # --------------------------------------------------------------------------------------
+    def _get_client_episode_stats_at_current_step(client_uuid: str, shared_mem_dict, only_this_client_uuid: bool):
+        """
+        Get statistics about episodes (claimed + completed) for a specific client in current batch.
+        Returns: (total_episode_count, unique_task_ids_set)
+        """
+        total_episode_count = 0
+        unique_task_ids = set()
+        for k, v in shared_mem_dict.items():
+            if is_key_episode_status(k):
+                es: EpisodeStatus = v
+                # Count claimed episodes for this client
+                if es.episode_status == "claimed" and (es.client_uuid == client_uuid or not only_this_client_uuid):
+                    total_episode_count += 1
+                    if es.optional_task_id:
+                        unique_task_ids.add(es.optional_task_id)
+            if is_key_finished_episode_status(k):
+                es: EpisodeStatus = v
+                # Count finished episodes for this client
+                if (es.client_uuid == client_uuid or not only_this_client_uuid):
+                    total_episode_count += 1
+                    if es.optional_task_id:
+                        unique_task_ids.add(es.optional_task_id)
+        return total_episode_count, unique_task_ids
+
+    def _check_partition_limit_at_current_step(req: ClaimEpisodeRequest, shared_mem_dict) -> Optional[ClaimEpisodeResponse]:
+        if req.partition_limit is None:
+            return None
+
+        partition_limit = req.partition_limit
+        client_uuid = req.client_uuid
+
+        # Get current client's episode statistics
+        only_this_client_uuid = partition_limit.limit_method in ["Episode_Ratio_Limit", "Task_Ratio_Limit"]
+        total_episode_count, unique_task_ids = _get_client_episode_stats_at_current_step(client_uuid, shared_mem_dict, only_this_client_uuid)
+
+        if partition_limit.limit_method in ["Episode_Ratio_Limit", "Parallel_Flood_Control"]:
+            # Check if client has exceeded episode ratio limit
+            if partition_limit.expected_total_episode_in_batch is None:
+                return ClaimEpisodeResponse(
+                    success=False,
+                    client_uuid=req.client_uuid,
+                    episode_uuid="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    fail_cause=f"{partition_limit.limit_method} requires expected_total_episode_in_batch to be set.",
+                )
+
+            max_allowed_episodes = partition_limit.ratio * partition_limit.expected_total_episode_in_batch
+            if total_episode_count >= max_allowed_episodes:
+                return ClaimEpisodeResponse(
+                    success=False,
+                    client_uuid=req.client_uuid,
+                    episode_uuid="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    fail_cause=(
+                        f"Client {client_uuid} has reached SwarmBatchPartitionLimit: {total_episode_count} >= "
+                        f"{max_allowed_episodes} (ratio={partition_limit.ratio}, "
+                        f"expected_total={partition_limit.expected_total_episode_in_batch})"
+                    ),
+                )
+
+        elif partition_limit.limit_method == "Task_Ratio_Limit":
+            # Check if client has exceeded task ratio limit
+            if partition_limit.expected_total_task_in_batch is None:
+                return ClaimEpisodeResponse(
+                    success=False,
+                    client_uuid=req.client_uuid,
+                    episode_uuid="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    fail_cause="Task_Ratio_Limit requires expected_total_task_in_batch to be set.",
+                )
+
+            current_task_id = partition_limit.current_task_id
+            if not current_task_id:
+                return ClaimEpisodeResponse(
+                    success=False,
+                    client_uuid=req.client_uuid,
+                    episode_uuid="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    fail_cause="Task_Ratio_Limit requires current_task_id to be set.",
+                )
+
+            # If current task_id is already in the set, allow it (pass through)
+            if current_task_id in unique_task_ids:
+                return None
+
+            # Check if adding this new task would exceed the limit
+            max_allowed_tasks = partition_limit.ratio * partition_limit.expected_total_task_in_batch
+            current_task_count = len(unique_task_ids)
+            if current_task_count >= max_allowed_tasks:
+                return ClaimEpisodeResponse(
+                    success=False,
+                    client_uuid=req.client_uuid,
+                    episode_uuid="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    fail_cause=(
+                        f"Client {client_uuid} has reached SwarmBatchPartitionLimit: {current_task_count} >= "
+                        f"{max_allowed_tasks} (ratio={partition_limit.ratio}, "
+                        f"expected_total={partition_limit.expected_total_task_in_batch}). "
+                        f"Current task_id={current_task_id} is not in existing task set."
+                    ),
+                )
+
+        return None
+
+
 
     # --------------------------------------------------------------------------------------
     # -------------------------- fastapi routes --------------------------------------------
@@ -499,6 +626,11 @@ def register_enable_swarm_mode_routes(
                 fail_cause=fail_cause + " " + advise,
             )
 
+        if req.episode_type == "train":
+            partition_limit_response = _check_partition_limit_at_current_step(req, shared_mem_dict)
+            if partition_limit_response is not None:
+                return partition_limit_response
+
         if req.episode_type == "train" or req.episode_type == "eval":
             with shared_mem_dict_lock:
                 if len(shared_mem_dict["unclaimed_episodes"]) <= 0:
@@ -523,6 +655,10 @@ def register_enable_swarm_mode_routes(
                 es.latest_activity_timestamp = time.time()
                 es.llm_call_count = 0
                 es.discard_episode_timeout = req.discard_episode_timeout
+
+                # Store task_id if partition_limit is provided with Task_Ratio_Limit
+                if (req.partition_limit is not None) and (req.partition_limit.limit_method == "Task_Ratio_Limit"):
+                    es.optional_task_id = req.partition_limit.current_task_id or ""
 
                 shared_mem_dict[ep_key(episode_uuid)] = es
                 openai_base_url = es.openai_base_url
@@ -674,7 +810,7 @@ def register_enable_swarm_mode_routes(
 
     @app.post("/get_episode_buffer", response_model=EpisodeBufferResponse)
     async def get_episode_buffer():
-        result = [v for k, v in shared_mem_dict.items() if is_key_epsisode_status(k)]
+        result = [v for k, v in shared_mem_dict.items() if is_key_episode_status(k)]
         return EpisodeBufferResponse(buffer=result)
 
     @app.post("/update_current_batch_rollout_pool_information", response_model=BoolResponse)
@@ -711,7 +847,7 @@ def register_enable_swarm_mode_routes(
             running_episode_details = {}
             current_time = time.time()
             for k, v in shared_mem_dict.items():
-                if is_key_epsisode_status(k):
+                if is_key_episode_status(k):
                     es: EpisodeStatus = v
                     if es.episode_status == "claimed":
                         time_since_last_activity = current_time - es.latest_activity_timestamp

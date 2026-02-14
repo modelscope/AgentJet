@@ -116,3 +116,23 @@ def suppress_httpx_aclose_exception():
     # Apply filter to root logger and asyncio logger
     logging.getLogger().addFilter(HttpxAcloseFilter())
     logging.getLogger('asyncio').addFilter(HttpxAcloseFilter())
+
+
+class IterationSafeDict(dict):
+    """A dict subclass that creates snapshots during iteration to avoid RuntimeError when dict changes size."""
+
+    def keys(self):     # type: ignore[override]
+        """Return a list snapshot of keys instead of a view."""
+        return list(super().keys())
+
+    def values(self):   # type: ignore[override]
+        """Yield values based on the snapshot of keys."""
+        for key in self.keys():
+            if key in self:
+                yield self[key]
+
+    def items(self):    # type: ignore[override]
+        """Yield items based on the snapshot of keys."""
+        for key in self.keys():
+            if key in self:
+                yield key, self[key]

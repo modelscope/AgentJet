@@ -146,6 +146,7 @@ class SwarmClient(object):
                         "Engine is syncing weights",
                         "Engine is in post-rolling phase",
                         "No available episodes to claim.",
+                        "SwarmBatchPartitionLimit",
                     ]
                     if any(scenario in data.fail_cause for scenario in need_wait_scenarios):
                         if time.time() - self.previous_warning_time > 60:

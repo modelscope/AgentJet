@@ -1,8 +1,11 @@
 import os
 from loguru import logger
 
-def is_key_epsisode_status(key: str) -> bool:
+def is_key_episode_status(key: str) -> bool:
     return key.startswith("episodes-")
+
+def is_key_finished_episode_status(key: str) -> bool:
+    return key.startswith("finished-episodes-")
 
 def kill_process_tree(shared_mem_dict_lock=None, shared_mem_dict=None):
     logger.exception("[stop_engine] Initiating engine shutdown and cleanup...")
@@ -74,7 +77,7 @@ def kill_process_tree(shared_mem_dict_lock=None, shared_mem_dict=None):
         episode_keys = []
         if shared_mem_dict and shared_mem_dict_lock:
             with shared_mem_dict_lock:
-                episode_keys = [k for k in shared_mem_dict.keys() if is_key_epsisode_status(k)]
+                episode_keys = [k for k in shared_mem_dict.keys() if is_key_episode_status(k) or is_key_finished_episode_status(k)]
                 for key in episode_keys:
                     del shared_mem_dict[key]
                     logger.info(f"[stop_engine] Removed episode: {key}")

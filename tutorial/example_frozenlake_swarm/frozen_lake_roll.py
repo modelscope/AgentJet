@@ -7,8 +7,6 @@ from .frozenlake import FrozenLake
 import asyncio
 import threading
 
-# step 1: CUDA_VISIBLE_DEVICES="0,1,2,3" ajet-swarm start --swarm-port=10086
-# step 2: CUDA_VISIBLE_DEVICES="4,5,6,7" ajet-swarm start --swarm-port=10087
 # step 1: ajet-swarm start --swarm-port=10086
 # step 2: ajet-swarm start --swarm-port=10087
 # step 3: python -m tutorial.example_frozenlake_swarm.frozen_lake_roll
@@ -16,7 +14,6 @@ import threading
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size
 LOCAL_NUM_EPOCH = 10000
-LOCAL_NUM_EPOCH = 1
 LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/agentjet/agentjet/tmp/arxiv_papers/train.parquet"
 
 # --------- configurations that take effect remotely -------------
