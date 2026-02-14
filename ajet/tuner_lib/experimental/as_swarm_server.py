@@ -293,30 +293,31 @@ def register_enable_swarm_mode_routes(
                         unique_task_ids.add(es.optional_task_id)
         return total_episode_count, unique_task_ids
 
-    def _check_partition_limit_at_current_step(req: ClaimEpisodeRequest, shared_mem_dict) -> Optional[ClaimEpisodeResponse]:
-        if req.partition_limit is None:
+    def _check_throttle_policy_at_current_step(req: ClaimEpisodeRequest, shared_mem_dict) -> Optional[ClaimEpisodeResponse]:
+        if req.throttle_policy is None:
             return None
 
-        partition_limit = req.partition_limit
+        throttle_policy = req.throttle_policy
         client_uuid = req.client_uuid
 
         # Get current client's episode statistics
-        only_this_client_uuid = partition_limit.limit_method in ["Episode_Ratio_Limit", "Task_Ratio_Limit"]
+        only_this_client_uuid = throttle_policy.throttle_method in ["Episode_Ratio_Limit", "Task_Ratio_Limit"]
         total_episode_count, unique_task_ids = _get_client_episode_stats_at_current_step(client_uuid, shared_mem_dict, only_this_client_uuid)
 
-        if partition_limit.limit_method in ["Episode_Ratio_Limit", "Parallel_Flood_Control"]:
+        if throttle_policy.throttle_method in ["Episode_Ratio_Limit", "Parallel_Flood_Control"]:
             # Check if client has exceeded episode ratio limit
-            if partition_limit.expected_total_episode_in_batch is None:
+            if throttle_policy.expected_total_episode_in_batch is None:
                 return ClaimEpisodeResponse(
                     success=False,
                     client_uuid=req.client_uuid,
                     episode_uuid="",
                     openai_base_url="",
                     openai_api_key="",
-                    fail_cause=f"{partition_limit.limit_method} requires expected_total_episode_in_batch to be set.",
+                    fail_cause=f"{throttle_policy.throttle_method} requires expected_total_episode_in_batch to be set.",
                 )
 
-            max_allowed_episodes = partition_limit.ratio * partition_limit.expected_total_episode_in_batch
+            max_allowed_episodes = throttle_policy.ratio * throttle_policy.expected_total_episode_in_batch
+            logger.info(f"Client {client_uuid} has {total_episode_count} episodes / max allowed: {max_allowed_episodes}")
             if total_episode_count >= max_allowed_episodes:
                 return ClaimEpisodeResponse(
                     success=False,
@@ -325,15 +326,16 @@ def register_enable_swarm_mode_routes(
                     openai_base_url="",
                     openai_api_key="",
                     fail_cause=(
-                        f"Client {client_uuid} has reached SwarmBatchPartitionLimit: {total_episode_count} >= "
-                        f"{max_allowed_episodes} (ratio={partition_limit.ratio}, "
-                        f"expected_total={partition_limit.expected_total_episode_in_batch})"
+                        f"Client {client_uuid} has reached SwarmThrottlePolicy: {total_episode_count} >= "
+                        f"{max_allowed_episodes} (ratio={throttle_policy.ratio}, "
+                        f"expected_total={throttle_policy.expected_total_episode_in_batch})"
                     ),
                 )
 
-        elif partition_limit.limit_method == "Task_Ratio_Limit":
+        elif throttle_policy.throttle_method == "Task_Ratio_Limit":
+
             # Check if client has exceeded task ratio limit
-            if partition_limit.expected_total_task_in_batch is None:
+            if throttle_policy.expected_total_task_in_batch is None:
                 return ClaimEpisodeResponse(
                     success=False,
                     client_uuid=req.client_uuid,
@@ -343,7 +345,7 @@ def register_enable_swarm_mode_routes(
                     fail_cause="Task_Ratio_Limit requires expected_total_task_in_batch to be set.",
                 )
 
-            current_task_id = partition_limit.current_task_id
+            current_task_id = throttle_policy.current_task_id
             if not current_task_id:
                 return ClaimEpisodeResponse(
                     success=False,
@@ -359,8 +361,9 @@ def register_enable_swarm_mode_routes(
                 return None
 
             # Check if adding this new task would exceed the limit
-            max_allowed_tasks = partition_limit.ratio * partition_limit.expected_total_task_in_batch
+            max_allowed_tasks = throttle_policy.ratio * throttle_policy.expected_total_task_in_batch
             current_task_count = len(unique_task_ids)
+            logger.info(f"Client {client_uuid} has {current_task_count} unique tasks ({unique_task_ids}) / max allowed: {max_allowed_tasks}")
             if current_task_count >= max_allowed_tasks:
                 return ClaimEpisodeResponse(
                     success=False,
@@ -369,9 +372,9 @@ def register_enable_swarm_mode_routes(
                     openai_base_url="",
                     openai_api_key="",
                     fail_cause=(
-                        f"Client {client_uuid} has reached SwarmBatchPartitionLimit: {current_task_count} >= "
-                        f"{max_allowed_tasks} (ratio={partition_limit.ratio}, "
-                        f"expected_total={partition_limit.expected_total_task_in_batch}). "
+                        f"Client {client_uuid} has reached SwarmThrottlePolicy: {current_task_count} >= "
+                        f"{max_allowed_tasks} (ratio={throttle_policy.ratio}, "
+                        f"expected_total={throttle_policy.expected_total_task_in_batch}). "
                         f"Current task_id={current_task_id} is not in existing task set."
                     ),
                 )
@@ -627,9 +630,9 @@ def register_enable_swarm_mode_routes(
             )
 
         if req.episode_type == "train":
-            partition_limit_response = _check_partition_limit_at_current_step(req, shared_mem_dict)
-            if partition_limit_response is not None:
-                return partition_limit_response
+            throttle_policy_response = _check_throttle_policy_at_current_step(req, shared_mem_dict)
+            if throttle_policy_response is not None:
+                return throttle_policy_response
 
         if req.episode_type == "train" or req.episode_type == "eval":
             with shared_mem_dict_lock:
@@ -656,9 +659,9 @@ def register_enable_swarm_mode_routes(
                 es.llm_call_count = 0
                 es.discard_episode_timeout = req.discard_episode_timeout
 
-                # Store task_id if partition_limit is provided with Task_Ratio_Limit
-                if (req.partition_limit is not None) and (req.partition_limit.limit_method == "Task_Ratio_Limit"):
-                    es.optional_task_id = req.partition_limit.current_task_id or ""
+                # Store task_id if throttle_policy is provided with Task_Ratio_Limit
+                if (req.throttle_policy is not None) and (req.throttle_policy.throttle_method == "Task_Ratio_Limit"):
+                    es.optional_task_id = req.throttle_policy.current_task_id or ""
 
                 shared_mem_dict[ep_key(episode_uuid)] = es
                 openai_base_url = es.openai_base_url

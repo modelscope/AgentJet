@@ -21,7 +21,7 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     EndEpisodeResponse,
     EpisodeStatus,
     EpisodeBufferResponse,
-    SwarmBatchPartitionLimit,
+    SwarmThrottlePolicy,
 )
 
 # general http timeout
@@ -93,7 +93,7 @@ class SwarmClient(object):
         return
 
 
-    def begin_episode(self, discard_episode_timeout=60, max_episode_time=120, episode_type="train", partition_limit: SwarmBatchPartitionLimit|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def begin_episode(self, discard_episode_timeout=60, max_episode_time=120, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
         Argument:
@@ -102,7 +102,7 @@ class SwarmClient(object):
             - episode_type:
                 - train: data will be fed to training pipeline
                 - eval: data will NOT be fed to training pipeline
-            - partition_limit:        when there are multiple clients running different tasks (e.g. math + coding), you may need to arrange the percentage of different tasks in each batch (e.g. 40% math + 60% coding).
+            - throttle_policy:        when there are multiple clients running different tasks (e.g. math + coding), you may need to arrange the percentage of different tasks in each batch (e.g. 40% math + 60% coding).
                                       But of course, you can set up your own logic and ignore this argument, the choice is all yours.
         Return:
             (episode_uuid, openai_base_url, openai_api_key)
@@ -118,7 +118,7 @@ class SwarmClient(object):
                     client_uuid=self.client_uuid,
                     episode_type=episode_type,
                     discard_episode_timeout=discard_episode_timeout,
-                    partition_limit=partition_limit
+                    throttle_policy=throttle_policy
                 )
                 resp = httpx.post(
                     f"{self.server_url}/claim_episode",
@@ -146,7 +146,7 @@ class SwarmClient(object):
                         "Engine is syncing weights",
                         "Engine is in post-rolling phase",
                         "No available episodes to claim.",
-                        "SwarmBatchPartitionLimit",
+                        "SwarmThrottlePolicy",
                     ]
                     if any(scenario in data.fail_cause for scenario in need_wait_scenarios):
                         if time.time() - self.previous_warning_time > 60:

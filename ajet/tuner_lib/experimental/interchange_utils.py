@@ -1,7 +1,7 @@
 import os
 import time
 import httpx
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from loguru import logger
 from ajet.schema.task import WorkflowOutput
@@ -24,21 +24,21 @@ class SyncTrainConfigRequest(BaseModel):
     yaml_as_string: str
 
 
-class SwarmBatchPartitionLimit(BaseModel):
-    limit_method: str = Field("Parallel_Flood_Control", description="Method to limit the batch. Options: `Episode_Ratio_Limit` / `Task_Ratio_Limit` / `Parallel_Flood_Control`")
-    ratio: float = Field(1.2, description="Ratio limit for the batch. Value between 0 and 1 when method is `Episode_Ratio_Limit` / `Task_Ratio_Limit`. Value can go above 1 for `Parallel_Flood_Control` to allow more parallelism.")
+class SwarmThrottlePolicy(BaseModel):
+    throttle_method: str = Field(default="Parallel_Flood_Control", description="Method to limit the batch. Options: `Episode_Ratio_Limit` or `Task_Ratio_Limit` or `Parallel_Flood_Control`")
+    ratio: float = Field(default=1.0, description="Ratio limit for the batch. Value between 0 and 2 when method is `Episode_Ratio_Limit` or `Task_Ratio_Limit`. Value can go above 1 to allow more parallelism.")
 
-    expected_total_episode_in_batch: int|None = Field(None, description="Expected total episode number in a batch. Required if limit_method is `Episode_Ratio_Limit` / `Parallel_Flood_Control`")
+    expected_total_episode_in_batch: Optional[int] = Field(default=None, description="Expected total episode number in a batch. Required if throttle_method is `Episode_Ratio_Limit` or `Parallel_Flood_Control`")
 
-    expected_total_task_in_batch: int|None = Field(None, description="Expected total task number in a batch. Required if limit_method is `Task_Ratio_Limit`")
-    current_task_id: str|None = Field("", description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
+    expected_total_task_in_batch: Optional[int] = Field(default=None, description="Expected total task number in a batch. Required if throttle_method is `Task_Ratio_Limit`")
+    current_task_id: Optional[str] = Field(default=None, description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
 
 
 class ClaimEpisodeRequest(BaseModel):
     client_uuid: str
     episode_type: str
     discard_episode_timeout: float
-    partition_limit: SwarmBatchPartitionLimit | None = None
+    throttle_policy: SwarmThrottlePolicy | None = None
 
 class ClaimEpisodeResponse(BaseModel):
     success: bool

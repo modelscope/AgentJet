@@ -1,16 +1,15 @@
 import re
-import time
 import requests
-from loguru import logger
 from textwrap import dedent
 from ajet.schema.task import Task, WorkflowOutput
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader
 from ajet.utils.retry import retry_with_backoff
-from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
+from ajet.utils.thread_executors import BoundedThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
-from concurrent.futures import ThreadPoolExecutor
+from ajet.tuner_lib.experimental.interchange_utils import SwarmThrottlePolicy
+from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
+from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, SwarmThrottlePolicy
 
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size
@@ -23,9 +22,9 @@ REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 # --------- configurations that take effect remotely -------------
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 4
-REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct'
+REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct'
 
-
+# python -m tutorial.example_math_swarm.math
 
 class WeightUpdatedHalfway(Exception):
     """Raised when the remote side starts updating model weights halfway through an episode."""
@@ -44,8 +43,8 @@ def main():
     )
 
     # # Hand shake with remote swarm server
-    swarm_remote = SwarmClient(REMOTE_SWARM_URL)
-    swarm_remote.auto_sync_train_config_and_start_engine(
+    swarm_worker = SwarmClient(REMOTE_SWARM_URL)
+    swarm_worker.auto_sync_train_config_and_start_engine(
         AgentJetJob(
             algorithm="grpo",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
@@ -56,39 +55,28 @@ def main():
     )
 
     def rollout(task):
-        group_reward = []
-        try:
+        # begin episode
+        episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
+            throttle_policy=SwarmThrottlePolicy(
+                throttle_method="Parallel_Flood_Control",
+                ratio=1.0,
+                expected_total_episode_in_batch=LOCAL_GRPO_N*REMOTE_BATCH_SIZE,
+            )
+        )
+        # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
+        workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
+        # report output back to swarm remote
+        swarm_worker.end_episode(task, episode_uuid, workflow_output)
+        # print global rollout status across the swarm
+        swarm_worker.print_rollout_stat()
+        return
+
+
+    executor = BoundedThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL)
+    for epoch in range(LOCAL_NUM_EPOCH):
+        for _, task in enumerate(dataset.generate_training_tasks()):
             for _ in range(LOCAL_GRPO_N):
-                try:
-                    # begin episode
-                    episode_uuid, api_baseurl_key = swarm_remote.begin_episode()
-                    # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
-                    workflow_output = execute_agent(task, api_baseurl_key)
-                    # report output back to swarm remote
-                    swarm_remote.end_episode(task, episode_uuid, workflow_output)
-                    # collect reward
-                    group_reward.append(workflow_output.reward)
-                except Exception as e:
-                    logger.exception("Exception during rollout:", e)
-
-            print(f"Group reward mean & std: {sum(group_reward)/len(group_reward)} +/- { (max(group_reward)-min(group_reward))/2 }")
-        except Exception as e:
-            logger.exception("Exception during rollout group", e)
-
-    task_batch = []
-    for i, task in enumerate(dataset.generate_training_tasks()):
-        task_batch += [task]
-
-        if len(task_batch) == REMOTE_BATCH_SIZE:
-            print('*********** beginning a new batch of tasks... ***********')
-            with ThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL) as executor:
-                for task in task_batch:
-                    executor.submit(rollout, task)
-            executor.shutdown(wait=True)
-            task_batch = []
-            print('*********** tasks completed, wait a minute... ***********')
-            time.sleep(5)
-
+                executor.submit(rollout, task)
 
     return None
 
@@ -111,8 +99,7 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
     response = requests.post( f"{base_url}/chat/completions", json = { "model": "fill_whatever_model", "messages": messages, },
                                headers = { "Authorization": f"Bearer {api_key}" } )
     final_answer = response.json()['choices'][0]['message']['content']
-    # print(final_answer)
-    # Compute reward
+
     reference_answer = reference_answer.split("####")[-1].strip()
     pattern = r"\\boxed\{([^}]*)\}"
     match = re.search(pattern, final_answer)
