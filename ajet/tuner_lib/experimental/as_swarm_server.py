@@ -267,123 +267,6 @@ def register_enable_swarm_mode_routes(
                 logger.info(f"[_clean_up_engine_status] Cleared {num_unclaimed} unclaimed episodes")
 
     # --------------------------------------------------------------------------------------
-    # -------------------------- parallel flood control ------------------------------------
-    # --------------------------------------------------------------------------------------
-    def _get_client_episode_stats_at_current_step(client_uuid: str, shared_mem_dict, only_this_client_uuid: bool):
-        """
-        Get statistics about episodes (claimed + completed) for a specific client in current batch.
-        Returns: (total_episode_count, unique_task_ids_set)
-        """
-        total_episode_count = 0
-        unique_task_ids = set()
-        for k, v in shared_mem_dict.items():
-            if is_key_episode_status(k):
-                es: EpisodeStatus = v
-                # Count claimed episodes for this client
-                if es.episode_status == "claimed" and (es.client_uuid == client_uuid or not only_this_client_uuid):
-                    total_episode_count += 1
-                    if es.optional_task_id:
-                        unique_task_ids.add(es.optional_task_id)
-            if is_key_finished_episode_status(k):
-                es: EpisodeStatus = v
-                # Count finished episodes for this client
-                if (es.client_uuid == client_uuid or not only_this_client_uuid):
-                    total_episode_count += 1
-                    if es.optional_task_id:
-                        unique_task_ids.add(es.optional_task_id)
-        return total_episode_count, unique_task_ids
-
-    def _check_throttle_policy_at_current_step(req: ClaimEpisodeRequest, shared_mem_dict) -> Optional[ClaimEpisodeResponse]:
-        if req.throttle_policy is None:
-            return None
-
-        throttle_policy = req.throttle_policy
-        client_uuid = req.client_uuid
-
-        # Get current client's episode statistics
-        only_this_client_uuid = throttle_policy.throttle_method in ["Episode_Ratio_Limit", "Task_Ratio_Limit"]
-        total_episode_count, unique_task_ids = _get_client_episode_stats_at_current_step(client_uuid, shared_mem_dict, only_this_client_uuid)
-
-        if throttle_policy.throttle_method in ["Episode_Ratio_Limit", "Parallel_Flood_Control"]:
-            # Check if client has exceeded episode ratio limit
-            if throttle_policy.expected_total_episode_in_batch is None:
-                return ClaimEpisodeResponse(
-                    success=False,
-                    client_uuid=req.client_uuid,
-                    episode_uuid="",
-                    openai_base_url="",
-                    openai_api_key="",
-                    fail_cause=f"{throttle_policy.throttle_method} requires expected_total_episode_in_batch to be set.",
-                )
-
-            max_allowed_episodes = throttle_policy.ratio * throttle_policy.expected_total_episode_in_batch
-            logger.info(f"Client {client_uuid} has {total_episode_count} episodes / max allowed: {max_allowed_episodes}")
-            if total_episode_count >= max_allowed_episodes:
-                return ClaimEpisodeResponse(
-                    success=False,
-                    client_uuid=req.client_uuid,
-                    episode_uuid="",
-                    openai_base_url="",
-                    openai_api_key="",
-                    fail_cause=(
-                        f"Client {client_uuid} has reached SwarmThrottlePolicy: {total_episode_count} >= "
-                        f"{max_allowed_episodes} (ratio={throttle_policy.ratio}, "
-                        f"expected_total={throttle_policy.expected_total_episode_in_batch})"
-                    ),
-                )
-
-        elif throttle_policy.throttle_method == "Task_Ratio_Limit":
-
-            # Check if client has exceeded task ratio limit
-            if throttle_policy.expected_total_task_in_batch is None:
-                return ClaimEpisodeResponse(
-                    success=False,
-                    client_uuid=req.client_uuid,
-                    episode_uuid="",
-                    openai_base_url="",
-                    openai_api_key="",
-                    fail_cause="Task_Ratio_Limit requires expected_total_task_in_batch to be set.",
-                )
-
-            current_task_id = throttle_policy.current_task_id
-            if not current_task_id:
-                return ClaimEpisodeResponse(
-                    success=False,
-                    client_uuid=req.client_uuid,
-                    episode_uuid="",
-                    openai_base_url="",
-                    openai_api_key="",
-                    fail_cause="Task_Ratio_Limit requires current_task_id to be set.",
-                )
-
-            # If current task_id is already in the set, allow it (pass through)
-            if current_task_id in unique_task_ids:
-                return None
-
-            # Check if adding this new task would exceed the limit
-            max_allowed_tasks = throttle_policy.ratio * throttle_policy.expected_total_task_in_batch
-            current_task_count = len(unique_task_ids)
-            logger.info(f"Client {client_uuid} has {current_task_count} unique tasks ({unique_task_ids}) / max allowed: {max_allowed_tasks}")
-            if current_task_count >= max_allowed_tasks:
-                return ClaimEpisodeResponse(
-                    success=False,
-                    client_uuid=req.client_uuid,
-                    episode_uuid="",
-                    openai_base_url="",
-                    openai_api_key="",
-                    fail_cause=(
-                        f"Client {client_uuid} has reached SwarmThrottlePolicy: {current_task_count} >= "
-                        f"{max_allowed_tasks} (ratio={throttle_policy.ratio}, "
-                        f"expected_total={throttle_policy.expected_total_task_in_batch}). "
-                        f"Current task_id={current_task_id} is not in existing task set."
-                    ),
-                )
-
-        return None
-
-
-
-    # --------------------------------------------------------------------------------------
     # -------------------------- fastapi routes --------------------------------------------
     # --------------------------------------------------------------------------------------
 
@@ -629,11 +512,6 @@ def register_enable_swarm_mode_routes(
                 fail_cause=fail_cause + " " + advise,
             )
 
-        if req.episode_type == "train":
-            throttle_policy_response = _check_throttle_policy_at_current_step(req, shared_mem_dict)
-            if throttle_policy_response is not None:
-                return throttle_policy_response
-
         if req.episode_type == "train" or req.episode_type == "eval":
             with shared_mem_dict_lock:
                 if len(shared_mem_dict["unclaimed_episodes"]) <= 0:
@@ -659,9 +537,9 @@ def register_enable_swarm_mode_routes(
                 es.llm_call_count = 0
                 es.discard_episode_timeout = req.discard_episode_timeout
 
-                # Store task_id if throttle_policy is provided with Task_Ratio_Limit
-                if (req.throttle_policy is not None) and (req.throttle_policy.throttle_method == "Task_Ratio_Limit"):
-                    es.optional_task_id = req.throttle_policy.current_task_id or ""
+                # Store task_id if throttle_policy is provided with current_task_id
+                if (req.throttle_policy is not None) and (req.throttle_policy.current_task_id):
+                    es.optional_task_id = req.throttle_policy.current_task_id
 
                 shared_mem_dict[ep_key(episode_uuid)] = es
                 openai_base_url = es.openai_base_url
@@ -827,6 +705,7 @@ def register_enable_swarm_mode_routes(
                 req.running_episode_details = None
                 req.engine_status = None
                 req.global_step = None
+                req.completed_tasks_client_uuids = {}
                 shared_mem_dict["current_batch_rollout_pool_information"] = req
             return BoolResponse(success=True)
         except Exception as e:
@@ -859,8 +738,26 @@ def register_enable_swarm_mode_routes(
                             "time_since_last_activity": f"{time_since_last_activity:.1f}s",
                             "discard_episode_timeout": f"{es.discard_episode_timeout:.1f}s",
                             "llm_call_count": str(es.llm_call_count),
+                            "client_uuid": es.client_uuid,
+                            "optional_task_id": es.optional_task_id if hasattr(es, "optional_task_id") else None,
                         }
             pool_info.running_episode_details = running_episode_details if running_episode_details else None
+
+            # Build completed_tasks_client_uuids from finished episodes
+            # Map task_id -> list of client_uuids
+            completed_tasks_client_uuids = {}
+            for k, v in shared_mem_dict.items():
+                if is_key_finished_episode_status(k):
+                    es: EpisodeStatus = v
+                    task_id = es.optional_task_id if hasattr(es, "optional_task_id") else None
+                    if task_id:
+                        if task_id not in completed_tasks_client_uuids:
+                            completed_tasks_client_uuids[task_id] = []
+                        completed_tasks_client_uuids[task_id].append(es.client_uuid)
+
+            # Only set if we have data, otherwise keep the existing value from pool_info
+            if completed_tasks_client_uuids:
+                pool_info.completed_tasks_client_uuids = completed_tasks_client_uuids
 
             return pool_info
         except Exception as e:

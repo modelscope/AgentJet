@@ -1,3 +1,4 @@
+import threading
 import uuid
 import time
 import httpx
@@ -58,6 +59,7 @@ class SwarmClient(object):
 
         # better logging management
         self._last_second_print_buffer: dict[str, float] = {}
+        self.begin_episode_lock = threading.Lock()
 
     def logger_info(self, message):
         # logger with de-duplication within 1 second to prevent log flooding
@@ -93,6 +95,58 @@ class SwarmClient(object):
         return
 
 
+    def _check_throttle_policy(self, throttle_policy: SwarmThrottlePolicy, pool_info: CurrentBatchRolloutPoolInformation) -> Tuple[bool, str]:
+        """
+        Check if the client should throttle based on the throttle policy.
+        Returns: (should_throttle, reason)
+        """
+        if throttle_policy is None:
+            return False, ""
+
+        client_uuid = self.client_uuid
+        # only_this_client_uuid = throttle_policy.throttle_method in ["Task_Ratio_Limit"]
+        only_this_client_uuid = True
+
+        current_task_id = throttle_policy.current_task_id
+        if not current_task_id:
+            raise RuntimeError("Task_Ratio_Limit requires current_task_id to be set.")
+
+        # loop completed_tasks, count how many task show up (consider this uuid only if only_this_client_uuid is True)
+        task_set = set()
+        for task_id, client_uuid_list in pool_info.completed_tasks_client_uuids.items():
+            for cuuid in client_uuid_list:
+                if (not only_this_client_uuid) or (cuuid == client_uuid):
+                    task_set.add(task_id)
+                    break
+
+        # loop running episodes, count how many task show up (consider this uuid only if only_this_client_uuid is True)
+        if pool_info.running_episode_details is not None:
+            for episode_uuid, episode_detail in pool_info.running_episode_details.items():
+                cuuid = episode_detail.get("client_uuid", "")
+                task_id = episode_detail.get("optional_task_id", "")
+                if task_id and ((not only_this_client_uuid) or (cuuid == client_uuid)):
+                    task_set.add(task_id)
+        else:
+            # no running episode, just count completed tasks
+            pass
+
+        # count
+        n_unique_task = len(task_set)
+
+        if throttle_policy.current_task_id in task_set:
+            logger.info(f"Throttling check for task_id {current_task_id}: already has the same task_id in the batch. ")
+            return False, ""
+
+        # is above threshold?
+        _max = throttle_policy.expected_total_task_in_batch * throttle_policy.ratio
+        logger.info(f"Throttling check for task_id {current_task_id}: there are currently {n_unique_task} / (max: {_max}) unique tasks. ")
+        if n_unique_task >= _max:
+            reason = f"Throttling because there are already {n_unique_task} unique tasks in the batch, which meets/exceeds the threshold of {_max} for task_id {current_task_id}."
+            return True, reason
+        else:
+            return False, ""
+
+
     def begin_episode(self, discard_episode_timeout=60, max_episode_time=120, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
@@ -112,8 +166,30 @@ class SwarmClient(object):
             self.logger_info(f"Engine status is {status}. Waiting until ENGINE.ROLLING...")
             self._wait_until_status_change_to(desired_status="ENGINE.ROLLING", verbose=False)
 
+
+        retry_delay = 0
+
         while True:
+
+            if retry_delay > 0:
+                time.sleep(retry_delay)
+
+            if throttle_policy is not None:
+                # when throttle_policy is set, acquire lock to prevent multiple threads from claiming episode at the same time and causing throttle policy to fail
+                self.begin_episode_lock.acquire()
+
             try:
+                # Check throttle policy before claiming episode (only for train episodes)
+                if episode_type == "train" and throttle_policy is not None:
+                    pool_info = self.get_rollout_stat()
+                    should_throttle, throttle_reason = self._check_throttle_policy(throttle_policy, pool_info)
+                    if should_throttle:
+                        if time.time() - self.previous_warning_time > 60:
+                            self.logger_info(f"{throttle_reason}. Waiting 15s before retry...")
+                            self.previous_warning_time = time.time()
+                        retry_delay = 15
+                        continue
+
                 req_obj = ClaimEpisodeRequest(
                     client_uuid=self.client_uuid,
                     episode_type=episode_type,
@@ -152,14 +228,21 @@ class SwarmClient(object):
                         if time.time() - self.previous_warning_time > 60:
                             self.logger_info(f"{data.fail_cause}. Retrying in 15s...")
                             self.previous_warning_time = time.time()
-                        time.sleep(15)
+                        retry_delay = 15
+                        continue
                     else:
                         logger.warning(f"Failed to claim episode: {data.fail_cause}. Retrying in 5s...")
-                        time.sleep(5)
+                        retry_delay = 5
+                        continue
             except Exception as e:
                 logger.error(f"Error claiming episode: {e}. Retrying in 5s...")
-                time.sleep(5)
+                retry_delay = 5
+                continue
 
+            finally:
+                if throttle_policy is not None:
+                    if self.begin_episode_lock.locked():
+                        self.begin_episode_lock.release()
 
     def end_episode(self, task:Task, episode_uuid: str, workflow_output: WorkflowOutput):
 

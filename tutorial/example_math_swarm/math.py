@@ -4,7 +4,7 @@ from textwrap import dedent
 from ajet.schema.task import Task, WorkflowOutput
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader
-from ajet.utils.retry import retry_with_backoff
+from ajet.utils.retry import retry_with_backoff, retry_infinite
 from ajet.utils.thread_executors import BoundedThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.tuner_lib.experimental.interchange_utils import SwarmThrottlePolicy
@@ -46,6 +46,7 @@ def main():
     swarm_worker = SwarmClient(REMOTE_SWARM_URL)
     swarm_worker.auto_sync_train_config_and_start_engine(
         AgentJetJob(
+            experiment_name="math_gsm8k_grpo",
             algorithm="grpo",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_TRAIN_MODEL_01,
@@ -54,13 +55,14 @@ def main():
         )
     )
 
+    @retry_infinite(backoff_fn=lambda attempt: min(2**attempt, 15))
     def rollout(task):
         # begin episode
         episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
             throttle_policy=SwarmThrottlePolicy(
-                throttle_method="Parallel_Flood_Control",
                 ratio=1.0,
-                expected_total_episode_in_batch=LOCAL_GRPO_N*REMOTE_BATCH_SIZE,
+                expected_total_task_in_batch=REMOTE_BATCH_SIZE,
+                current_task_id=task.task_id
             )
         )
         # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
