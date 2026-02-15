@@ -1,10 +1,10 @@
 
-from ajet import AjetTuner
-from ajet import WorkflowOutput
+from ajet.tuner import AjetTuner
+from ajet.schema.task import WorkflowOutput, WorkflowTask
 from ajet.context_tracker.multiagent_tracking import (
     MultiAgentContextTracker,
 )
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import WorkflowTask
 from ajet.schema.trajectory import Reward
 from ajet.task_runner.base_runner import BaseAgentRunner
@@ -14,7 +14,7 @@ from ajet.utils.metric_helper.reward_metric_helper import populate_reward_metada
 
 class GeneralRunner(BaseAgentRunner):
 
-    def execute(self, workflow_task: WorkflowTask) -> BaseContextTracker:
+    def execute(self, workflow_task: WorkflowTask) -> SingleAgentContextTracker:
         observation_window = workflow_task.observation_window
         task_thread_index = workflow_task.task_thread_index
 
@@ -74,7 +74,7 @@ class GeneralRunner(BaseAgentRunner):
             madness=0,
             description="",
         )
-        
+
         # Populate reward metadata with deep_finance reward stats if available
         if "reward_stats" in workflow_output.metadata:
             populate_reward_metadata_from_stats(reward, workflow_output.metadata["reward_stats"])

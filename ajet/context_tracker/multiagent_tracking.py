@@ -11,8 +11,8 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from ajet.context_tracker.timeline_merging.timeline_merging import (
     merge_tracker_timelines, is_timeline_mergeable
 )
-from ajet.context_tracker.basic_tracker import (
-    BaseContextTracker,
+from ajet.context_tracker.single_agent_tracking import (
+    SingleAgentContextTracker,
     ExtendedMessage,
 )
 from ajet.schema.extended_msg import INVALID_LOG_PROB_VALUE
@@ -38,7 +38,7 @@ class ContextTrackerConfig:
 
 
 
-class MultiAgentContextTracker(BaseContextTracker):
+class MultiAgentContextTracker(SingleAgentContextTracker):
     """
     Context tracker is responsible to monitor and process LLM IO.
     Each context tracker is responsible for ONE episode run only.
@@ -48,13 +48,15 @@ class MultiAgentContextTracker(BaseContextTracker):
         self,
         tokenizer: PreTrainedTokenizer,
         config,
-        should_interrupt_fn,
+        should_interrupt_soft_fn,
+        should_interrupt_hard_fn,
         generated_token_callback_fn,
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
         self.tokenizer = tokenizer
-        self.should_interrupt_fn = should_interrupt_fn
+        self.should_interrupt_soft_fn = should_interrupt_soft_fn
+        self.should_interrupt_hard_fn = should_interrupt_hard_fn
         self.generated_token_callback_fn = generated_token_callback_fn
         self.context_overflow = False
         self.output_kwargs = {}
@@ -211,6 +213,8 @@ class MultiAgentContextTracker(BaseContextTracker):
         custom_sampling_params = {}
         if not context_safe:
             self.context_overflow = True
+            logger.warning(f"[{self.workflow_task.episode_uuid}] Stop tracking timelines because {info}.")
+
 
         self.timeline_cache[timeline_uuid] = timeline
         return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
@@ -226,7 +230,12 @@ class MultiAgentContextTracker(BaseContextTracker):
         timeline_uuid: str = "",
     ):
         assert timeline_uuid in self.timeline_cache, "Timeline UUID not found in cache. Please ensure `step_prepare` is called before `step_track`."
-        timeline = self.timeline_cache.get(timeline_uuid, [])
+
+        # round ++
+        self.llm_call_cnt += 1
+
+        # get timeline from cache
+        timeline = self.timeline_cache.pop(timeline_uuid, [])
         if not self.already_mad_flag:
             if (
                 compute_string_madness(
@@ -301,10 +310,15 @@ class MultiAgentContextTracker(BaseContextTracker):
         for i in range(1, len(timeline)):
             assert not timeline[i].first_message
 
+        # no longer write anything
+        if self._read_only:
+            logger.exception("Timeline is in read-only mode, should not save new timeline. Please report a github issue if you see this error.")
+            return
+
         # save to self.saved_timelines
         self.saved_timelines += [copy.deepcopy(timeline)]
 
-        # DEBUG = True   # warn when merge fails
+        # warn when merge fails
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         if (
             self.config.ajet.context_tracker.detect_timeline_snap
@@ -566,6 +580,8 @@ class MultiAgentContextTracker(BaseContextTracker):
     def group_merge(self) -> List[List[ExtendedMessage]]:
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy
         self.saved_timelines = merge_tracker_timelines(self.saved_timelines, timeline_merging_policy)
+        self._read_only = True
+
         return self.saved_timelines
 
 
@@ -611,7 +627,7 @@ class MultiAgentContextTracker(BaseContextTracker):
             token_overflow = False
         else:
             token_overflow = True
-        if self.should_interrupt_fn():
+        if self.should_interrupt_soft_fn():
             ret = (False, token_overflow, "externally_interrupted")
         elif self.already_mad_flag and self.config.ajet.rollout.agent_madness_termination:
             ret = (False, token_overflow, "already_mad")

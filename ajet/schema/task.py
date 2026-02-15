@@ -8,11 +8,11 @@ The basic schema for task_reader module
 
 
 class Task(BaseModel):
-    main_query: str = Field(default="")
-    init_messages: List[dict] = Field(default=[])
-    task_id: str = Field(default="")
-    env_type: str = Field(default="")
-    metadata: dict = Field(default_factory=dict)
+    main_query: str = Field(default="", description="main query or instruction for the task, maybe absent if the task has valid init_messages.")
+    init_messages: List[dict] = Field(default=[], description="initial messages for the task, maybe absent if the task has valid main_query.")
+    task_id: str = Field(default="", description="same task_id mean same task, and of course, same GRPO group.")
+    env_type: str = Field(default="", description="valid when the task need to interact with a gym env.")
+    metadata: dict = Field(default_factory=dict, description="additional metadata for the task, e.g., reference answer for eval tasks.")
 
 
 """

@@ -1,7 +1,7 @@
 from typing import List
 
 
-from ajet.context_tracker.basic_tracker import ExtendedMessage
+from ajet.context_tracker.single_agent_tracking import ExtendedMessage
 
 
 def is_timeline_mergeable(

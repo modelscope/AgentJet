@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from ajet import AjetTuner
+from ajet.tuner import AjetTuner
 from ajet.schema.task import WorkflowOutput, WorkflowTask
 
 

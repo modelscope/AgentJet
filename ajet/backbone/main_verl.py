@@ -21,12 +21,15 @@ import socket
 
 import hydra
 import ray
-from beast_logger import print_dict
-from loguru import logger
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
+from verl.utils.dataset.rl_dataset import collate_fn
+from torch.utils.data import Dataset as TorchDataset
 
+# Create training and validation datasets.
+from ajet.task_reader import RouterTaskReader, task_to_standard_dataset
+from ajet.utils.process_dataset import create_rl_sampler
 from ajet.utils.core_env_vars import get_runtime_env
 from ajet.utils.launch_utils import set_loguru_default_color
 
@@ -34,17 +37,17 @@ set_loguru_default_color()
 
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
-def main(config):
+def main(config: DictConfig) -> None:
     """Main entry point for PPO training with Hydra configuration management.
 
     Args:
-        config_dict: Hydra configuration dictionary containing training parameters.
+        config: Hydra configuration dictionary containing training parameters.
     """
     run_ppo(config)
 
 
 # Define a function to run the PPO-like training process
-def run_ppo(config) -> None:
+def run_ppo(config: DictConfig) -> None:
     """Initialize Ray cluster and run distributed PPO training process.
 
     Args:
@@ -56,7 +59,6 @@ def run_ppo(config) -> None:
     if not ray.is_initialized():
         # this is for local ray cluster
         runtime_env = get_runtime_env(config)
-        print_dict(runtime_env["env_vars"], "runtime_env")
         ray.init(
             runtime_env=runtime_env,
             num_cpus=config.ray_init.num_cpus,
@@ -110,6 +112,7 @@ class TaskRunner:
         # Print the initial configuration. `resolve=True` will evaluate symbolic values.
         from pprint import pprint
 
+        from loguru import logger
         from omegaconf import OmegaConf
         from verl.utils.fs import copy_to_local
 
@@ -227,27 +230,19 @@ class TaskRunner:
             resource_pool_spec=resource_pool_spec, mapping=mapping
         )
 
-        from verl.utils.dataset.rl_dataset import collate_fn
-
-        # Create training and validation datasets.
-        from ajet.task_reader import (
-            RouterTaskReader,
-            task_to_standard_dataset,
-        )
-        from ajet.utils.process_dataset import create_rl_sampler
-
         task_reader = RouterTaskReader(
             config.ajet.task_reader.type,
             config.ajet.task_reader,
         )
-        val_dataset = task_to_standard_dataset(task_reader.get_validation_tasks())
-        train_dataset = task_to_standard_dataset(task_reader.get_training_tasks())
+
+        train_dataset: TorchDataset = task_to_standard_dataset(task_reader.generate_training_tasks)  # type: ignore
+        val_dataset: TorchDataset = task_to_standard_dataset(task_reader.generate_validation_tasks)  # type: ignore
         train_sampler = create_rl_sampler(config.data, train_dataset)
 
         from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
         if config.ajet.enable_experimental_interchange_server:
-            from ajet.tuner_lib.weight_tuner.experimental.as_oai_model_server import start_interchange_server
+            from ajet.tuner_lib.experimental.as_oai_model_server import start_interchange_server
             start_interchange_server(config)
 
         # Initialize the PPO trainer.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name =  "AgentJet"
-version = "0.0.1"
+version = "0.0.2"
 readme = "README.md"
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -79,7 +79,7 @@ docs = [
 
 [project.scripts]
 ajet = "ajet.launcher:main"
-
+ajet-swarm = "ajet.swarm_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

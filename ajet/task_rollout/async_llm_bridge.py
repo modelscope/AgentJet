@@ -5,28 +5,23 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Literal, Union
 
-
-
 from loguru import logger
 from omegaconf import DictConfig
 from pydantic import BaseModel
 from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 from vllm.outputs import RequestOutput as VerlVllmRequestOutput
-
 from agentscope.model import ChatResponse as AgentScopeChatResponse
 from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatCompletion
 
-ChatResponse = Union[OpenAIChatCompletion, AgentScopeChatResponse]
-
-from ajet.context_tracker.multiagent_tracking import (
-    MultiAgentContextTracker,
-)
-from ajet.schema.convertion import convert_llm_proxy_response_to_oai_response
-from ajet.schema.convertion import convert_llm_proxy_response_to_agentscope_response
 from ajet.schema.logprob import TokenAndProb
+from ajet.utils.tokenizer import ajet_apply_chat_template
 from ajet.utils.async_utils import run_async_coroutine_with_timeout
 from ajet.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
-from ajet.utils.tokenizer import ajet_apply_chat_template
+from ajet.schema.convertion import convert_llm_proxy_response_to_oai_response
+from ajet.schema.convertion import convert_llm_proxy_response_to_agentscope_response
+from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
+
+ChatResponse = Union[OpenAIChatCompletion, AgentScopeChatResponse]
 
 
 class AjetStandardLlmBridgeRequest(BaseModel):

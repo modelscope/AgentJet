@@ -169,3 +169,4 @@ dataset_gsm8k/*
 .dockerignore
 benchmark_datasets
 modelscope_cache
+prompts

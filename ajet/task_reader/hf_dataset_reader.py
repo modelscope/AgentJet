@@ -1,8 +1,8 @@
-from typing import List
 
 import datasets
 
 from ajet.schema.task import Task
+from typing import List, Generator
 from ajet.task_reader.task_reader_base import BaseTaskReader
 
 
@@ -17,29 +17,38 @@ class HuggingFaceTaskReader(BaseTaskReader):
     def __init__(self, reader_config):
         super().__init__(reader_config)
         self.reader_config = reader_config
+        self.as_generator = False
+        self.dataset_name = self.reader_config.huggingface_dat_repo.dataset_path
 
-    def _load_dataset_split(self, dataset_name: str, split: str) -> List[Task]:
+    def _load_dataset_split(self, split: str):
         """
         Load a dataset split from Hugging Face datasets.
 
         Args:
-            dataset_name: Name of the dataset in Hugging Face format (e.g., 'gsm8k')
             split: Name of the split to load (e.g., 'train', 'validation')
 
         Returns:
-            List[Task]: List of Task objects created from the dataset.
+            Generator: List of Task objects created from the dataset.
         """
         try:
-            dataset = datasets.load_dataset(dataset_name, split=split)
+            if self.dataset_name.endswith(".parquet"):
+                # Load from local parquet file
+                dataset = datasets.load_dataset("parquet", data_files=self.dataset_name, split=split)
+            else:
+                # Load from Hugging Face hub
+                dataset = datasets.load_dataset(self.dataset_name, split=split)
+            # shuffle dataset
+            dataset = dataset.shuffle()
         except Exception as e:
             raise ValueError(
-                f"Failed to load dataset '{dataset_name}' with split '{split}': {str(e)}"
+                f"Failed to load dataset '{self.dataset_name}' with split '{split}': {str(e)}"
             )
 
-        # if len(dataset) == 0:
-        #     raise ValueError(f"No examples found in dataset '{dataset_name}' with split '{split}'")
+        if len(dataset) == 0:
+            raise ValueError(f"No examples found in dataset '{self.dataset_name}' with split '{split}'")
 
-        tasks = []
+        self.as_generator = True
+
         for idx, example in enumerate(dataset):
             # Create Task object
             task = Task(
@@ -49,28 +58,32 @@ class HuggingFaceTaskReader(BaseTaskReader):
                 env_type="no_env",
                 metadata=example,
             )
-            tasks.append(task)
+            yield task
 
-        return tasks
+        return
 
-    def get_training_tasks(self) -> List[Task]:
+    def generate_training_tasks(self):
         """
         Get training tasks from the Hugging Face dataset specified in the config.
 
         Returns:
-            List[Task]: List of training Task objects.
+            A generator of training Task objects.
         """
-        dataset_name = self.reader_config.huggingface_dat_repo.dataset_path
         split = self.reader_config.huggingface_dat_repo.training_split
-        return self._load_dataset_split(dataset_name, split)
+        return self._load_dataset_split(split)
 
-    def get_validation_tasks(self) -> List[Task]:
+    def generate_validation_tasks(self):
         """
         Get validation tasks from the Hugging Face dataset specified in the config.
 
         Returns:
-            List[Task]: List of validation Task objects.
+            A generator of validation Task objects.
         """
-        dataset_name = self.reader_config.huggingface_dat_repo.dataset_path
         split = self.reader_config.huggingface_dat_repo.validation_split
-        return self._load_dataset_split(dataset_name, split)
+        return self._load_dataset_split(split)
+
+    def get_training_tasks(self):
+        return list(self.generate_training_tasks())
+
+    def get_validation_tasks(self):
+        return list(self.generate_validation_tasks())

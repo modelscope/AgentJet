@@ -6,7 +6,6 @@ ajet:
   rollout:
     step_skip_action: 0
     submit_oversample_multiplier: 1.5
-    enable_oversample: False
 
 actor_rollout_ref:
   actor:

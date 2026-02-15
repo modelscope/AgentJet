@@ -4,13 +4,14 @@ from threading import Lock
 from typing import Any, Callable, Union, Type
 from multiprocessing import Process, Queue
 
-from ajet.context_tracker.basic_tracker import BaseContextTracker
+from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import WorkflowOutput, WorkflowTask
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.tuner import AjetTuner
 from ajet.utils.async_utils import run_async_coroutine_with_timeout
 from ajet.utils.dynamic_import import dynamic_import
 from ajet.workflow import Workflow
+from ajet.tuner_lib.experimental.interchange_utils import is_episode_claimed
 
 gc_lock = Lock()
 
@@ -20,7 +21,7 @@ class BaseAgentRunner(object):
         self.tokenizer = tokenizer
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
-        self.tracker: Union[BaseContextTracker, Any, None] = None
+        self.tracker: Union[SingleAgentContextTracker, Any, None] = None
         self.external_llm_fn: Union[Callable, None] = None
         self.llm_inference_fn: Callable = llm_inference_fn
         self.config = config
@@ -48,18 +49,28 @@ class BaseAgentRunner(object):
 
 
     def runner_hooks(self, observation_window, task_thread_index, workflow_task):
-        def should_interrupt_fn() -> bool:
-            if (observation_window["stop"] is not None) and observation_window["stop"][
-                task_thread_index
-            ]:  # Check if the thread should stop (because other threads have completed, making this thread useless)
+        def should_interrupt_soft_fn() -> bool:
+            if (observation_window["stop"] is not None) and observation_window["stop"][task_thread_index]:  # Check if the thread should stop (because other threads have completed, making this thread useless)
                 return True
+            return False
+
+        def should_interrupt_hard_fn() -> bool:
+            if (observation_window["hard_stop"] is not None) and observation_window["hard_stop"][task_thread_index]:  # Check if the thread should stop (because other threads have completed, making this thread useless)
+                return True
+            if (observation_window["stop"] is not None) and observation_window["stop"][task_thread_index]: # check soft condition
+                # if soft condition met, check if episode is claimed
+                has_claimed = is_episode_claimed(self.config, workflow_task.episode_uuid)
+                if not has_claimed:
+                    # if not claimed by now (ENGINE.ROLLING_POST), this episode will never be claimed again, so we can hard stop
+                    return True
             return False
 
         def generated_token_callback_fn(token_array):
             observation_window["token"][task_thread_index] += len(token_array)
 
         return {
-            "should_interrupt_fn": should_interrupt_fn,
+            "should_interrupt_soft_fn": should_interrupt_soft_fn,
+            "should_interrupt_hard_fn": should_interrupt_hard_fn,
             "generated_token_callback_fn": generated_token_callback_fn,
         }
 

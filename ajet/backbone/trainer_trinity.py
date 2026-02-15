@@ -206,11 +206,9 @@ try:
 
             dataset_segments = []
             if "train" in self.split:
-                dataset_segments.append(task_to_standard_dataset(task_reader.get_training_tasks()))
+                dataset_segments.append(task_to_standard_dataset(task_reader.generate_training_tasks))   # type: ignore
             if "val" in self.split:
-                dataset_segments.append(
-                    task_to_standard_dataset(task_reader.get_validation_tasks())
-                )
+                dataset_segments.append(task_to_standard_dataset(task_reader.generate_validation_tasks)) # type: ignore
             if not dataset_segments:
                 raise ValueError(
                     f"Unsupported split '{self.split}'. Expected to contain 'train' or 'val'."
