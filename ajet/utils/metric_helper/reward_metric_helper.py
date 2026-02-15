@@ -83,14 +83,10 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
         openjudge_graders = [
             "presentation_quality",
             "grounding",
-<<<<<<< HEAD
             "planning",
             "audit",
             "traceability",
             "cgcv"
-=======
-            "planning"
->>>>>>> origin/main
         ]
 
         for grader_name in openjudge_graders:
