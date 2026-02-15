@@ -236,8 +236,21 @@ class SwarmOverwatch:
         border_style = "blue" if is_active else "dim"
         title_prefix = "" if is_active else "[WAITING ENGINE.ROLLING] "
 
+        # Add total counts to title if running episodes exist
+        title = f"{title_prefix}Running Episodes"
+        if info.running_episode_details:
+            num_episodes = len(info.running_episode_details)
+            # Count unique tasks from running episodes
+            unique_tasks = set()
+            for details in info.running_episode_details.values():
+                task_id = details.get("task_id")
+                if task_id:
+                    unique_tasks.add(task_id)
+            num_tasks = len(unique_tasks)
+            title = f"{title_prefix}Running Episodes (Episodes: {num_episodes})"
+
         table = Table(
-            title=f"{title_prefix}Running Episodes",
+            title=title,
             show_header=True,
             header_style="bold magenta",
             border_style=border_style,
