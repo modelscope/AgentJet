@@ -52,7 +52,7 @@ class HuggingFaceTaskReader(BaseTaskReader):
         for _, example in enumerate(dataset):
             # Create Task object
             task = Task(
-                main_query=example.get("question", "Empty"),    # type: ignore
+                main_query=example.get("main_query", example.get("question", "Empty")),    # type: ignore
                 init_messages=[],  # Dataset examples typically don't have init messages
                 task_id=str(example["original_idx"]),           # type: ignore
                 env_type="no_env",
