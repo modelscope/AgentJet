@@ -59,7 +59,7 @@ class BaseAgentRunner(object):
                 return True
             if (observation_window["stop"] is not None) and observation_window["stop"][task_thread_index]: # check soft condition
                 # if soft condition met, check if episode is claimed
-                has_claimed = is_episode_claimed(self.config, workflow_task.episode_uuid)
+                has_claimed = is_episode_claimed(self.config, workflow_task.episode_uuid, unregister_if_not_claimed=True)
                 if not has_claimed:
                     # if not claimed by now (ENGINE.ROLLING_POST), this episode will never be claimed again, so we can hard stop
                     return True

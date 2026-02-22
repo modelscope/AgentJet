@@ -127,12 +127,14 @@ def register_enable_swarm_mode_routes(
         if ep_key(episode_uuid) not in shared_mem_dict:
             logger.warning(f"Episode record for {episode_uuid} not found in shared memory. It may have been already processed by another thread. Skipping unclaim.")
             return
-        if shared_mem_dict[ep_key(episode_uuid)].episode_status != "claimed":
-            if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
-                pass
-            else:
-                shared_mem_dict["unclaimed_episodes"] += [episode_uuid]
-            return
+
+        with shared_mem_dict_lock:
+            if shared_mem_dict[ep_key(episode_uuid)].episode_status != "claimed":
+                if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
+                    pass
+                else:
+                    shared_mem_dict["unclaimed_episodes"] += [episode_uuid]
+                return
 
         # reset context tracker
         # _context_tracker_reset_blocking(episode_uuid, shared_mem_dict)   # must async
@@ -533,6 +535,15 @@ def register_enable_swarm_mode_routes(
                 shared_mem_dict["unclaimed_episodes"] = shared_mem_dict["unclaimed_episodes"][1:]
 
                 # get episode
+                if ep_key(episode_uuid) not in shared_mem_dict:
+                    return ClaimEpisodeResponse(
+                        success=False,
+                        client_uuid=req.client_uuid,
+                        episode_uuid="",
+                        openai_base_url="",
+                        openai_api_key="",
+                        fail_cause="No available episodes to claim. Try again (maybe 2 minutes) later.",
+                    )
                 es: EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
                 es.episode_status = "claimed"
                 es.episode_type = req.episode_type
@@ -684,12 +695,7 @@ def register_enable_swarm_mode_routes(
             return BoolResponse(success=True)
         else:
             if req.unregister_if_not_claimed:
-                # remove from shared memory to avoid stale records
-                with shared_mem_dict_lock:
-                    if ep_key(req.episode_uuid) in shared_mem_dict:
-                        del shared_mem_dict[ep_key(req.episode_uuid)]
-                    if req.episode_uuid in shared_mem_dict["unclaimed_episodes"]:
-                        shared_mem_dict["unclaimed_episodes"].remove(req.episode_uuid)
+                _delete_episode_record(req.episode_uuid, shared_mem_dict, shared_mem_dict_lock)
             return BoolResponse(success=False)
 
     @app.post("/get_episode_buffer", response_model=EpisodeBufferResponse)

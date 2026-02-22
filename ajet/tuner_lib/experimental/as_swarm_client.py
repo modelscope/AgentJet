@@ -11,6 +11,7 @@ from loguru import logger
 from ajet.schema.task import WorkflowOutput, Task
 from ajet.copilot.job import AgentJetJob
 from ajet.utils.thread_executors import BoundedThreadPoolExecutor
+from ajet.utils.cache import cache_with_ttl
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 from ajet.tuner_lib.experimental.interchange_utils import (
@@ -31,6 +32,8 @@ GENERAL_TIMEOUT = 30
 # To prevent stale records from accumulating, do not need to be changed
 CLEAN_RECORD_TIMEOUT = 10
 START_EPISODE_RETRY_DELAY = 15
+TROTTLE_EPISODE_RETRY_DELAY = 2
+WAIT_MORE_AVAIL_EPISODE_RETRY_DELAY = 2
 
 def raise_for_status_with_detail(resp):
     try:
@@ -237,7 +240,7 @@ class SwarmClient(object):
                     should_throttle = self._should_throttle(throttle_policy, pool_info)
                     if should_throttle:
                         self.logger_info(f"Throttle policy is active, delaying episode ...")
-                        retry_delay = START_EPISODE_RETRY_DELAY
+                        retry_delay = TROTTLE_EPISODE_RETRY_DELAY
                         continue
 
                 # connect remote server to claim an episode
@@ -273,17 +276,21 @@ class SwarmClient(object):
                         episode_uuid=episode_uuid
                     )
                 else:
-                    need_wait_scenarios =[
+                    need_snap_scenarios =[
                         "Engine is syncing weights",
                         "Engine is in post-rolling phase",
-                        "No available episodes to claim.",
-                        "SwarmThrottlePolicy",
                     ]
-                    if any(scenario in data.fail_cause for scenario in need_wait_scenarios):
+                    need_wait_scenarios =[
+                        "No available episodes to claim.",
+                    ]
+                    if any(scenario in data.fail_cause for scenario in need_snap_scenarios):
                         if time.time() - self.previous_warning_time > 60:
                             self.logger_info(f"{data.fail_cause}. Retrying ...")
                             self.previous_warning_time = time.time()
                         retry_delay = START_EPISODE_RETRY_DELAY
+                        continue
+                    elif any(scenario in data.fail_cause for scenario in need_wait_scenarios):
+                        retry_delay = WAIT_MORE_AVAIL_EPISODE_RETRY_DELAY
                         continue
                     else:
                         logger.warning(f"Failed to claim episode: {data.fail_cause}. Retrying ...")
@@ -464,6 +471,7 @@ class SwarmClient(object):
                 logger.error(f"Error polling engine status: {e}")
                 time.sleep(5)
 
+    @cache_with_ttl(ttl=0.5)
     def get_engine_status(self) -> Tuple[str, dict]:
         try:
             resp = httpx.get(
