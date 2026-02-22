@@ -53,7 +53,7 @@ class TracingReader(BaseTaskReader):
         if not os.path.exists(path):
             return []
         tasks: List[Task] = []
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -66,7 +66,7 @@ class TracingReader(BaseTaskReader):
         if not tasks:
             return
         mode = "a" if os.path.exists(path) else "w"
-        with open(path, mode) as f:
+        with open(path, mode, encoding="utf-8") as f:
             for task in tasks:
                 obj = task.model_dump()
                 f.write(json.dumps(obj, ensure_ascii=False) + "\n")

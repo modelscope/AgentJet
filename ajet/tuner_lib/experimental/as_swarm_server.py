@@ -243,7 +243,7 @@ def register_enable_swarm_mode_routes(
                     p = es.model_dump_json()
                     string_buffer += f"{p}\n"
 
-            with open(fp, "w") as f:
+            with open(fp, "w", encoding="utf-8") as f:
                 f.write(string_buffer)
         return
 

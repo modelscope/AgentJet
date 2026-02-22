@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import shutil
 import time
@@ -39,7 +41,7 @@ def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
     """Persist the provided OmegaConf config to ``yaml_fp``."""
     from omegaconf import OmegaConf
 
-    with open(yaml_fp, "w") as f:
+    with open(yaml_fp, "w", encoding="utf-8") as f:
         OmegaConf.save(cfg, f)
     return yaml_fp
 
@@ -81,15 +83,15 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
         Backbone identifier used for framework-specific alignment.
     """
     # read yaml files
-    with open(from_config_fp, "r") as file:
+    with open(from_config_fp, "r", encoding="utf-8") as file:
         from_config = yaml.safe_load(file)
-    with open(to_config_fp, "r") as file:
+    with open(to_config_fp, "r", encoding="utf-8") as file:
         to_config = yaml.safe_load(file)
 
     # read convertion json
     import json
 
-    with open(convertion_json_fg, "r") as file:
+    with open(convertion_json_fg, "r", encoding="utf-8") as file:
         convertion_json = json.load(file)
 
     logger.success("----------------------------------------------------")
@@ -133,7 +135,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     to_config = config_safe_guard(to_config, backbone)
 
     # save to_config_fp
-    with open(to_config_fp, "w") as file:
+    with open(to_config_fp, "w", encoding="utf-8") as file:
         yaml.dump(to_config, file)
 
     # logger.success(f"Saved aligned configuration to {to_config_fp}")
@@ -189,7 +191,7 @@ def read_ajet_hierarchical_config(
             ],
         }
     else:
-        with open(yaml_fp, "r") as file:
+        with open(yaml_fp, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file)
     config["ajet"]["experiment_name"] = exp_name
     config["ajet"]["experiment_dir"] = os.path.join(exp_dir, exp_name)
@@ -215,7 +217,7 @@ def read_ajet_hierarchical_config(
         config = override_param_callback(config)
 
     if write_to:
-        with open(write_to, "w") as file:
+        with open(write_to, "w", encoding="utf-8") as file:
             yaml.dump(config, file)
     return config
 
@@ -226,18 +228,18 @@ def expand_ajet_hierarchical_config(config, write_to=None):
 
     with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".yaml") as temp_yaml:
         yaml_path = temp_yaml.name
-        with open(yaml_path, "w") as file:
+        with open(yaml_path, "w", encoding="utf-8") as file:
             yaml.dump(config, file)
         full_config = read_ajet_config(yaml_path)
         yaml_path = dump_yaml_config(full_config, yaml_fp=yaml_path)
         # put inherit info back
-        with open(yaml_path, "r") as file:
+        with open(yaml_path, "r", encoding="utf-8") as file:
             config_final = yaml.safe_load(file)
         config_final["defaults"] = config["defaults"]
         config_final["hydra"] = config["hydra"]
 
     if write_to:
-        with open(write_to, "w") as file:
+        with open(write_to, "w", encoding="utf-8") as file:
             yaml.dump(config_final, file)
 
     return config_final
@@ -263,7 +265,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
         raise FileNotFoundError(f"Configuration file not found: {exp_base}")
 
     ## 0. read yaml & get experiment_name
-    with open(yaml_path, "r") as file:
+    with open(yaml_path, "r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
     try:
         exp_name = config.get("ajet").get("experiment_name")

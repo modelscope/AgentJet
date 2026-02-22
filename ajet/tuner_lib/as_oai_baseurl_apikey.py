@@ -1,13 +1,12 @@
 import os
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
-from ajet.context_tracker.multiagent_tracking import (
-    MultiAgentContextTracker,
-)
 from openai.resources.chat.chat import AsyncChat
 from openai.resources.completions import AsyncCompletions
-from .experimental.as_oai_model_client import generate_auth_token
+from ajet.tuner_lib.experimental.interchange_utils import generate_auth_token
 
+if TYPE_CHECKING:
+    from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 
 class MockAsyncCompletions(AsyncCompletions):
     async def create(self, *args, **kwargs) -> Any: # type: ignore
@@ -43,7 +42,7 @@ class OpenaiClientBaseUrlTuner(BaseModel):
     def __init__(
         self,
         config,
-        context_tracker: MultiAgentContextTracker,
+        context_tracker: "MultiAgentContextTracker",
         target_tag: str,
         agent_name: str,
         episode_uuid: str,

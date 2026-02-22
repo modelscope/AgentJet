@@ -12,25 +12,31 @@
 </div>
 
 
-**AgentJet (AJet)** is a cutting-edge, user-friendly training framework designed to optimize agents and workflows (built with OpenAI SDK, AgentScope, Langchain, or just HTTP requests), fine-tuning language model weights behind the scenes.
+**AgentJet (AJet)** is a cutting-edge, user-friendly agent RL training framework designed to optimize agents and agentic workflows (supporting any agent built with OpenAI SDK, AgentScope, Langchain, or raw HTTP requests), fine-tuning LLM weights to enhance model performance.
 
-Simply provide your agent **workflow**, training **dataset**, and **reward** function, and **AgentJet** will be ready to enhance your agents to their optimal performance!
+**AgentJet (AJet)** has fully-distributed **swarm training** capability, which means that you can **deploy `ajet-swarm start` in GPU server(s) and then start training agents in your laptop(s)**! Simply provide your agent workflow, training dataset, and reward function, and AgentJet will be ready to go!
 
 
 
 ## ✈️ Minimum Example
 
-Let's begin with the simplest example: a math agent with a tool call.
+### Classic Mode
 
-- First, please check out the [installation guide](https://modelscope.github.io/AgentJet/en/installation/) to set up the training environment.
-- Then, tune your first model using the minimum example.
-  ```python
-  ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
+Let's begin with the simplest example: a math agent with a tool call. This is a simple & centralized training example.
 
-  # change to --backbone='trinity' if you want to switch to trinity training engine;
-  # or --backbone='debug' if you want to debug with only vLLM
-  ```
+1. please check out the [installation guide](https://modelscope.github.io/AgentJet/en/installation/) to set up the training environment.
+2. tune your first model using the minimum example.
+    ```python
+    ajet --conf ./tutorial/example_math_agent/math_agent.yaml --backbone='verl'
+    ```
 
+### Swarm Mode
+
+1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch --swarm-url=http://localhost:10086`.
+2. From another device (or localhost), run [this script to train](https://github.com/modelscope/AgentJet/blob/main/tutorial/example_math_swarm/math.py):
+    ```python
+    AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
+    ```
 
 ## ✈️ Features
 

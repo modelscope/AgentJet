@@ -106,7 +106,7 @@ class LaunchWhenAbsent:
         if not self.pgid_file.exists():
             return False, None, None
         else:
-            with open(self.pgid_file, "r") as f_pgid:
+            with open(self.pgid_file, "r", encoding="utf-8") as f_pgid:
                 pgid = int(f_pgid.read().strip())
             # Check if the process group ID is still running, if true, psutil
             is_running, proc = self.is_pgid_running(pgid)

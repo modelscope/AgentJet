@@ -12,7 +12,6 @@ import tempfile
 from types import SimpleNamespace
 from typing import Any, Callable, Union
 
-import ray
 import yaml
 from loguru import logger
 
@@ -138,6 +137,7 @@ class AgentJetJob:
         return self
 
     def tune(self, *args, **kwargs) -> "AgentJetJob":
+        import ray
         ast_cfg = self.config.ajet
         if not ast_cfg.rollout or not ast_cfg.rollout.user_workflow:
             raise ValueError("Workflow must be set via set_workflow before tuning.")

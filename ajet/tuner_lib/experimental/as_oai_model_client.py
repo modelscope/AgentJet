@@ -10,50 +10,20 @@ import json
 
 from loguru import logger
 from typing import TYPE_CHECKING
-from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
-from ajet.tuner_lib.experimental.as_oai_model_server import InterchangeCompletionRequest, API_KEY_PREFIX
+from ajet.tuner_lib.experimental.as_oai_model_server import InterchangeCompletionRequest
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
 from ajet.tuner_lib.experimental.interchange_utils import get_zmq_socket
-from ajet.tuner_lib.experimental.interchange_utils import DEBUG
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG, API_KEY_PREFIX
+
+if TYPE_CHECKING:
+    from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 
 context = zmq.Context()
 atexit.register(context.term)
 
 if TYPE_CHECKING:
     from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
-
-
-def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
-    """
-    Generate a Base64-encoded auth_token from the given agent_name, target_tag, and episode_uuid.
-
-    Args:
-        agent_name (str): The name of the agent.
-        target_tag (str): The target tag.
-        episode_uuid (str): The UUID of the episode.
-
-    Returns:
-        str: The generated auth_token in the format "Bearer <base64_encoded_string>".
-    """
-    # Step 1: Construct the auth_data dictionary
-    auth_data = {
-        "agent_name": agent_name,
-        "target_tag": target_tag,
-        "episode_uuid": episode_uuid,
-        "episode_address": episode_address,
-    }
-
-    # Step 2: Convert the dictionary to a JSON string
-    json_string = json.dumps(auth_data)
-
-    # Step 3: Encode the JSON string into Base64
-    base64_encoded = base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
-
-    # Step 4: Prepend "Bearer " to the Base64-encoded string
-    auth_token = f"{API_KEY_PREFIX}{base64_encoded}"    # API_KEY_PREFIX: Literal['sk-ajet-']
-
-    return auth_token
 
 
 class InterchangeClient:

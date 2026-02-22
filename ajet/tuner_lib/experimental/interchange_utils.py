@@ -1,6 +1,9 @@
 import os
 import time
 import httpx
+import base64
+import json
+
 from typing import List
 from pydantic import BaseModel, Field
 from loguru import logger
@@ -19,6 +22,7 @@ VALID_STATUSES = [
     "ENGINE.WEIGHT_EXPORTING"
 ]
 
+API_KEY_PREFIX = "sk-ajet-"
 
 class SyncTrainConfigRequest(BaseModel):
     yaml_as_string: str
@@ -205,3 +209,36 @@ def get_zmq_socket(config, episode_uuid: str, tag: str = ""):
     else:
         raise RuntimeError(f"Unknown interchange_method: {interchange_method}")
     return zmq_contect_address, ipc_path
+
+
+
+def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
+    """
+    Generate a Base64-encoded auth_token from the given agent_name, target_tag, and episode_uuid.
+
+    Args:
+        agent_name (str): The name of the agent.
+        target_tag (str): The target tag.
+        episode_uuid (str): The UUID of the episode.
+
+    Returns:
+        str: The generated auth_token in the format "Bearer <base64_encoded_string>".
+    """
+    # Step 1: Construct the auth_data dictionary
+    auth_data = {
+        "agent_name": agent_name,
+        "target_tag": target_tag,
+        "episode_uuid": episode_uuid,
+        "episode_address": episode_address,
+    }
+
+    # Step 2: Convert the dictionary to a JSON string
+    json_string = json.dumps(auth_data)
+
+    # Step 3: Encode the JSON string into Base64
+    base64_encoded = base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
+
+    # Step 4: Prepend "Bearer " to the Base64-encoded string
+    auth_token = f"{API_KEY_PREFIX}{base64_encoded}"    # API_KEY_PREFIX: Literal['sk-ajet-']
+
+    return auth_token

@@ -85,7 +85,7 @@ class DynamicRolloutManager(BaseRolloutManager):
         string_buffer = ""
         for info in observation_window["info"]:
             string_buffer += f"{info}\n"
-        with open(fp, "w") as f:
+        with open(fp, "w", encoding="utf-8") as f:
             f.write(string_buffer)
         return
 

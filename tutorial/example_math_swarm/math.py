@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import re
 import requests
@@ -21,7 +23,7 @@ AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 4
-REMOTE_TRAIN_MODEL = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct'
+REMOTE_TRAIN_MODEL = '/root/agentjet/modelscope_cache/Qwen/Qwen2.5-7B-Instruct'
 
 def main():
 
