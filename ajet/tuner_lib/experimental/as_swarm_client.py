@@ -544,7 +544,10 @@ class SwarmClient(object):
             self.logger_info("Engine is already ROLLING. No action needed.")
         elif current_status == "ENGINE.ROLLING_POST":
             self.logger_info("Engine is already ROLLING. No action needed.")
-        elif current_status in ["ENGINE.BOOTING", "ENGINE.CANNOT_CONNECT", "ENGINE.WEIGHT_SYNCING"]:
+        elif current_status in ["ENGINE.CANNOT_CONNECT"]:
+            logger.error("Unable to connect to swarm server.")
+            raise RuntimeError(f"Unable to connect to swarm server.")
+        elif current_status in ["ENGINE.BOOTING", "ENGINE.WEIGHT_SYNCING"]:
             self.logger_info(f"Engine is {current_status}. Waiting until it becomes ROLLING...")
             self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
             logger.success("Training engine is now ROLLING and ready.")
@@ -568,7 +571,7 @@ class SwarmClient(object):
         )
         raise_for_status_with_detail(resp)
         result = resp.json()
-        if result.get("success"):
+        if result and result.get("success"):
             self.logger_info("Successfully stopped training engine on Swarm server")
         else:
             logger.error("Failed to stop training engine")

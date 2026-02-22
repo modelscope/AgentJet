@@ -778,5 +778,6 @@ def register_enable_swarm_mode_routes(
         - Clean up shared memory state
         """
         kill_process_tree(shared_mem_dict_lock, shared_mem_dict)
+        return BoolResponse(success=True)
 
     return app, register_episode_ready_listener()
