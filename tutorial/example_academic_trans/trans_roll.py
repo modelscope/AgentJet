@@ -10,8 +10,6 @@ from tutorial.example_academic_trans.trans import execute_agent
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size
 LOCAL_NUM_EPOCH = 10000
-LOCAL_NUM_EPOCH = 1
-LOCAL_MAX_PARALLEL = 32
 LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/agentjet/agentjet/tmp/arxiv_papers/train.parquet"
 REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 
@@ -19,9 +17,6 @@ REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 REMOTE_BATCH_SIZE = 8
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct'
-
-class WeightUpdatedHalfway(Exception):
-    """Raised when the remote side starts updating model weights halfway through an episode."""
 
 
 def main():

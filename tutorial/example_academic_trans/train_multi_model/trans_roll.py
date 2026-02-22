@@ -7,13 +7,12 @@ from tutorial.example_academic_trans.train_multi_model.trans import execute_agen
 
 # Step 1: Start two swarm servers on different ports:
 # ajet-swarm start --swarm-port=10086  # For 7B model
-# ajet-swarm start --swarm-port=10087  # For 14B model
+# ajet-swarm start --swarm-port=10086  # For 14B model
 # Step 2: python -m tutorial.example_academic_trans.train_multi_model.trans_roll
 
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size
 LOCAL_NUM_EPOCH = 10000
-LOCAL_NUM_EPOCH = 1
 LOCAL_MAX_PARALLEL = 32
 LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/agentjet/agentjet/tmp/arxiv_papers/train.parquet"
 
@@ -28,10 +27,6 @@ REMOTE_14B_SWARM_URL = "http://22.14.56.6:10086"  # Change to your swarm remote 
 REMOTE_14B_BATCH_SIZE = 32
 REMOTE_14B_ALLOCATE_GPU_PER_NODE = 8
 REMOTE_14B_TRAIN_MODEL = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct'
-
-
-class WeightUpdatedHalfway(Exception):
-    """Raised when the remote side starts updating model weights halfway through an episode."""
 
 
 def main():
