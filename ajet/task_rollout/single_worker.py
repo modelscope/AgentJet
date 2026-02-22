@@ -1,6 +1,7 @@
 """Single worker primitives for environment rollouts."""
 
 import uuid
+import time
 import threading
 from typing import Literal
 
@@ -168,7 +169,6 @@ class BaseRolloutManager:
             cnt = 1
 
             while True:
-
                 if observation_window["stop"][task_thread_index]:           # since we use multi-threading, the best way to communicate with main thread is through shared memory.
                     observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"
                     return
@@ -205,10 +205,9 @@ class BaseRolloutManager:
                     observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"
                     return
                 else:
+                    time.sleep(0)   # be nice to other threads
                     continue
 
         except Exception as e:
-            logger.exception(
-                f"encounter exception in env_worker_loop error={e.args}"
-            )
+            logger.exception(f"encounter exception in env_worker_loop error={e.args}")
             raise e

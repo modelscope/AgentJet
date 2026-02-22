@@ -158,7 +158,7 @@ def http_register_episode(config,
                           should_exit_soft):
 
     if should_exit_soft():
-        logger.warning(f"Exiting before registering episode {episode_uuid}")
+        logger.debug(f"Exiting before registering episode {episode_uuid}")
         return None
 
     # parse episode_uuid, openai_base_url, openai_api_key
