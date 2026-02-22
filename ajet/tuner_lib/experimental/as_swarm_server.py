@@ -17,6 +17,7 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
     ClaimEpisodeResponse,
+    CheckWhetherEpisodeClaimedRequest,
     CanContinueEpisodeRequest,
     CanContinueEpisodeResponse,
     EndEpisodeRequest,
@@ -675,7 +676,7 @@ def register_enable_swarm_mode_routes(
         return CanContinueEpisodeResponse(can_continue=can_continue)
 
     @app.post("/is_episode_claimed", response_model=BoolResponse)
-    async def is_episode_claimed(req: CanContinueEpisodeRequest):
+    async def is_episode_claimed(req: CheckWhetherEpisodeClaimedRequest):
         engine_status = shared_mem_dict["engine_status"]
         if engine_status not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
             return BoolResponse(success=False)

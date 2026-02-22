@@ -10,7 +10,6 @@ from loguru import logger
 from ajet.schema.task import WorkflowOutput
 from ajet.utils.networking import find_free_port
 from ajet.utils.retry import retry_with_backoff
-from ajet.utils.cache import cache_with_ttl
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 
 VALID_STATUSES = [
@@ -51,6 +50,9 @@ class ClaimEpisodeResponse(BaseModel):
 
 class CanContinueEpisodeRequest(BaseModel):
     client_uuid: str
+    episode_uuid: str
+
+class CheckWhetherEpisodeClaimedRequest(BaseModel):
     episode_uuid: str
 
 class CanContinueEpisodeResponse(BaseModel):
@@ -129,11 +131,10 @@ def http_change_engine_status(config, new_status: str, new_status_detail: str|No
     logger.success(f"Changed engine status to {new_status}")
 
 
-@cache_with_ttl(ttl=1.0)
 def is_episode_claimed(config, episode_uuid: str) -> bool:
     resp = httpx.post(
         f"{get_interchange_server_url(config)}/is_episode_claimed",
-        json={"client_uuid": "", "episode_uuid": episode_uuid},
+        json={"episode_uuid": episode_uuid},
         timeout=5
     )
     resp.raise_for_status()

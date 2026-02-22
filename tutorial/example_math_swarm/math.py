@@ -7,12 +7,10 @@ from textwrap import dedent
 from ajet.schema.task import Task, WorkflowOutput
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader
-from ajet.utils.retry import retry_with_backoff
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
-from ajet.tuner_lib.experimental.interchange_utils import SwarmThrottlePolicy
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, SwarmThrottlePolicy
+from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
 
 # python -m tutorial.example_math_swarm.math
 
@@ -30,7 +28,7 @@ def main():
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
             huggingface_dat_repo = HuggingfaceDatRepo(
-                dataset_path = "C:/Users/fuqingxu-hub/Downloads/dataset/gsm8k/socratic",
+                dataset_path = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main",
                 # dataset_path = "openai/gsm8k",
                 # dataset_name = "main",
             )

@@ -175,8 +175,7 @@ class SwarmRunner(BaseAgentRunner):
             return None  # type: ignore
 
         if len(context_tracker.saved_timelines) == 0:
-            logger.error(f"Workflow output received for episode {context_tracker.episode_uuid}, but no timelines were saved in context tracker. This may indicate an issue with the workflow execution or the way timelines are being tracked.")
-            logger.error(f"Workflow output received for episode {context_tracker.episode_uuid}, but no timelines were saved in context tracker. This may indicate an issue with the workflow execution or the way timelines are being tracked.")
+            logger.warning(f"Workflow output received for episode {context_tracker.episode_uuid}, but no timelines were saved in context tracker. This may indicate an issue with the workflow execution or the way timelines are being tracked.")
             observation_window["info"][task_thread_index] += f"[Workflow output received but no timelines were saved in context tracker, returning]\n"
             return None  # type: ignore
 
