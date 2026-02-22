@@ -56,8 +56,6 @@ def register_enable_swarm_mode_routes(
     shared_mem_dict: DictProxy,
     shared_mem_dict_lock: threading.Lock,
 ) -> Tuple[FastAPI, Optional[Coroutine]]:
-    if "episodes" not in shared_mem_dict:
-        shared_mem_dict["episodes"] = {}
 
     if "unclaimed_episodes" not in shared_mem_dict:
         shared_mem_dict["unclaimed_episodes"] = []
@@ -82,13 +80,17 @@ def register_enable_swarm_mode_routes(
                         to_unclaim_episodes.append(es.episode_uuid)
 
         for episode_uuid in to_unclaim_episodes:
-            await _revert_episode_to_unclaimed(episode_uuid, shared_mem_dict, shared_mem_dict_lock)
+            try:
+                await _revert_episode_to_unclaimed(episode_uuid, shared_mem_dict, shared_mem_dict_lock)
+            except:
+                logger.error(f"Error while reverting episode {episode_uuid} to unclaimed.")
 
         return to_unclaim_episodes
 
     def _context_tracker_reset_blocking(episode_uuid, shared_mem_dict):  # must async
         # send message to context tracker
-        assert "episodes" in shared_mem_dict
+        if ep_key(episode_uuid) not in shared_mem_dict:
+            return
         zmq_addr = shared_mem_dict[ep_key(episode_uuid)].zmq_listen_result_addr
         socket = zmq_context.socket(zmq.REQ)
         socket.setsockopt(zmq.RCVTIMEO, RCVTIMEO)  # 2 seconds recv timeout
@@ -113,7 +115,8 @@ def register_enable_swarm_mode_routes(
             except zmq.Again as e:
                 if DEBUG:
                     logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string timeout, retrying.")
-
+                if ep_key(episode_uuid) not in shared_mem_dict:
+                    return
                 if shared_mem_dict["engine_status"] not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
                     logger.info(f"[server] episode_uuid: {episode_uuid} | Engine is no longer rolling, aborting wait for ack.")
                     raise RuntimeError("Engine is no longer rolling, aborting wait for ack.")
@@ -582,16 +585,12 @@ def register_enable_swarm_mode_routes(
         assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
         assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
 
-        if "episodes" not in shared_mem_dict:
-            logger.error(f"[server] No episodes registered yet.")
-            raise HTTPException(status_code=400, detail=f"No episodes registered yet.")
 
         if (ep_key(episode_uuid)) not in shared_mem_dict:
             logger.error(f"[server] Episode {episode_uuid} not found.")
             raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} not found.")
 
         # send workflow_output to zmq
-        assert "episodes" in shared_mem_dict
         ep_stat = shared_mem_dict[ep_key(episode_uuid)]
         episode_type = ep_stat.episode_type
         episode_status = ep_stat.episode_status
@@ -649,10 +648,6 @@ def register_enable_swarm_mode_routes(
         # assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
         # assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
 
-        if "episodes" not in shared_mem_dict:
-            logger.error(f"[server] No episodes registered yet.")
-            return EndEpisodeResponse(success=True)
-
         if (ep_key(episode_uuid)) not in shared_mem_dict:
             logger.error(f"[server] Episode {episode_uuid} not found.")
             return EndEpisodeResponse(success=True)
@@ -688,6 +683,13 @@ def register_enable_swarm_mode_routes(
         if es.episode_status == "claimed":
             return BoolResponse(success=True)
         else:
+            if req.unregister_if_not_claimed:
+                # remove from shared memory to avoid stale records
+                with shared_mem_dict_lock:
+                    if ep_key(req.episode_uuid) in shared_mem_dict:
+                        del shared_mem_dict[ep_key(req.episode_uuid)]
+                    if req.episode_uuid in shared_mem_dict["unclaimed_episodes"]:
+                        shared_mem_dict["unclaimed_episodes"].remove(req.episode_uuid)
             return BoolResponse(success=False)
 
     @app.post("/get_episode_buffer", response_model=EpisodeBufferResponse)

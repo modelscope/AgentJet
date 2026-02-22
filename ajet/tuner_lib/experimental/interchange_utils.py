@@ -54,6 +54,7 @@ class CanContinueEpisodeRequest(BaseModel):
 
 class CheckWhetherEpisodeClaimedRequest(BaseModel):
     episode_uuid: str
+    unregister_if_not_claimed: bool = False
 
 class CanContinueEpisodeResponse(BaseModel):
     can_continue: bool
@@ -134,7 +135,7 @@ def http_change_engine_status(config, new_status: str, new_status_detail: str|No
 def is_episode_claimed(config, episode_uuid: str) -> bool:
     resp = httpx.post(
         f"{get_interchange_server_url(config)}/is_episode_claimed",
-        json={"episode_uuid": episode_uuid},
+        json={"episode_uuid": episode_uuid, "unregister_if_not_claimed": True},
         timeout=5
     )
     resp.raise_for_status()
