@@ -18,11 +18,10 @@ from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, SwarmThrott
 
 GRPO_N = 4  # grpo group size
 NUM_EPOCH = 10000
-DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 
 REMOTE_BATCH_SIZE = 32
-REMOTE_ALLOCATE_GPU_PER_NODE = 4
+REMOTE_ALLOCATE_GPU_PER_NODE = 8
 REMOTE_TRAIN_MODEL = '/root/agentjet/modelscope_cache/Qwen/Qwen2.5-7B-Instruct'
 
 def main():
@@ -32,7 +31,9 @@ def main():
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
             huggingface_dat_repo = HuggingfaceDatRepo(
-                dataset_path = DATASET_PATH
+                dataset_path = "C:/Users/fuqingxu-hub/Downloads/dataset/gsm8k/socratic",
+                # dataset_path = "openai/gsm8k",
+                # dataset_name = "main",
             )
         )
     )
@@ -53,20 +54,11 @@ def main():
     def rollout(task):
         try:
             # begin episode
-            episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
-                throttle_policy=SwarmThrottlePolicy(
-                    ratio=0.5,
-                    expected_batch_size=REMOTE_BATCH_SIZE,
-                    expected_num_repeat=GRPO_N,
-                    current_task_id=task.task_id
-                )
-            )
+            episode_uuid, api_baseurl_key = swarm_worker.begin_episode(discard_episode_timeout=60)
             # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
             workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
             # report output back to swarm remote
             swarm_worker.end_episode(task, episode_uuid, workflow_output)
-            # print global rollout status across the swarm
-            swarm_worker.print_rollout_stat()
             return
         except:
             pass

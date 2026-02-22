@@ -36,8 +36,10 @@ class AjetRollout:
 @dataclass
 class HuggingfaceDatRepo:
     dataset_path: str = "gsm8k"
+    dataset_name: str | None = None
     training_split: str = "train"
     validation_split: str = "validation"
+    http_proxy_address: str = ""
 
 
 @dataclass

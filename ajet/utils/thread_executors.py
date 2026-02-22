@@ -50,14 +50,15 @@ class PeriodicDrainThreadPoolExecutor:
         self._executor = ThreadPoolExecutor(max_workers=workers)
         self._submitted_count = 0
         self._auto_retry = auto_retry
+        self.current_futures = []
 
     def submit(self, fn, *args, **kwargs):
         """Submit a task, blocking if the pending queue is full."""
 
-        def retry_wrapper(func, arg):
+        def retry_wrapper(fn, *args, **kwargs):
             while True:
                 try:
-                    return func(arg)
+                    return fn(*args, **kwargs)
                 except Exception as e:
                     logger.exception(f"[run_episodes_until_all_complete] Error executing episode: {e}. Retrying...")
 
@@ -69,12 +70,19 @@ class PeriodicDrainThreadPoolExecutor:
     def submit_with_periodic_drain(self, fn, *args, **kwargs):
         """Submit a task, draining all in-flight work every `drain_every_n_job` submissions."""
         drain_every_n_job = self._max_workers
+        results = []
         if self._submitted_count > 0 and self._submitted_count % drain_every_n_job == 0:
-            self._executor.shutdown(wait=True)
-            self._executor = ThreadPoolExecutor(max_workers=self._max_workers)
+            for future in self.current_futures:
+                try:
+                    results += [future.result()]  # Wait for the task to complete and raise exceptions if any
+                except Exception as e:
+                    logger.exception(f"Error in task execution: {e}")
+            self.current_futures = []
 
         self._submitted_count += 1
-        return self.submit(fn, *args, **kwargs)
+        future = self.submit(fn, *args, **kwargs)
+        self.current_futures.append(future)
+        return future, results
 
     def shutdown(self, wait=True):
         """Shut down the underlying executor."""

@@ -1,5 +1,7 @@
 
 import datasets
+import httpx
+import huggingface_hub
 
 from ajet.schema.task import Task
 from ajet.task_reader.task_reader_base import BaseTaskReader
@@ -17,7 +19,30 @@ class HuggingFaceTaskReader(BaseTaskReader):
         super().__init__(reader_config)
         self.reader_config = reader_config
         self.as_generator = False
-        self.dataset_name = self.reader_config.huggingface_dat_repo.dataset_path
+        self.dataset_path = self.reader_config.huggingface_dat_repo.dataset_path
+
+
+        try:
+            self.dataset_name = self.reader_config.huggingface_dat_repo.dataset_name
+        except Exception:
+            self.dataset_name = None
+
+        try:
+            self.http_proxy_address = getattr(
+                self.reader_config.huggingface_dat_repo, "http_proxy_address", ""
+            ) or getattr(self.reader_config.huggingface_dat_repo, "http_proxy", "")
+        except Exception:
+            self.http_proxy_address = ""
+
+        # Configure httpx proxy via set_client_factory (replaces deprecated proxies= arg)
+        if self.http_proxy_address:
+            proxy_url = self.http_proxy_address
+            huggingface_hub.set_client_factory(
+                lambda **kwargs: httpx.Client(
+                    proxy=proxy_url,
+                    **{k: v for k, v in kwargs.items() if k != "proxies"},
+                )
+            )
 
     def _load_dataset_split(self, split: str):
         """
@@ -30,22 +55,26 @@ class HuggingFaceTaskReader(BaseTaskReader):
             Generator: List of Task objects created from the dataset.
         """
         try:
-            if self.dataset_name.endswith(".parquet"):
+
+            if self.dataset_path.endswith(".parquet"):
                 # Load from local parquet file
-                dataset = datasets.load_dataset("parquet", data_files=self.dataset_name, split=split)
+                dataset = datasets.load_dataset(
+                    "parquet", data_files=self.dataset_path, split=split
+                )
             else:
-                # Load from Hugging Face hub
-                dataset = datasets.load_dataset(self.dataset_name, split=split)
+                dataset = datasets.load_dataset(
+                    self.dataset_path, split=split, name=self.dataset_name
+                )
             # shuffle dataset
             dataset = dataset.map(lambda example, idx: {"original_idx": idx}, with_indices=True)
             dataset = dataset.shuffle()
         except Exception as e:
             raise ValueError(
-                f"Failed to load dataset '{self.dataset_name}' with split '{split}': {str(e)}"
+                f"Failed to load dataset '{self.dataset_path}' with split '{split}': {str(e)}"
             )
 
         if len(dataset) == 0:
-            raise ValueError(f"No examples found in dataset '{self.dataset_name}' with split '{split}'")
+            raise ValueError(f"No examples found in dataset '{self.dataset_path}' with split '{split}'")
 
         self.as_generator = True
 

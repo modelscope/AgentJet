@@ -3,6 +3,7 @@ import uuid
 import time
 import httpx
 import json
+import re
 import yaml
 from beast_logger import print_dict
 from typing import List, Tuple
@@ -60,7 +61,7 @@ class SwarmClient(object):
 
         # better logging management
         self._last_second_print_buffer: dict[str, float] = {}
-        self.begin_episode_lock = threading.Lock()
+        self._begin_episode_lock = threading.Lock()
         # record last registered AgentJetJob
         self._agent_jet_job = None
         # throttle
@@ -202,7 +203,9 @@ class SwarmClient(object):
         Return:
             (episode_uuid, openai_base_url, openai_api_key)
         """
+        return self._begin_episode_auto_repeat(discard_episode_timeout, episode_type, throttle_policy)
 
+    def _begin_episode_auto_repeat(self, discard_episode_timeout=600, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         # max_episode_time: when an episode has **lasted** for more than X seconds, it will be terminated **locally** by client (call `end_episode` will be re-route to `abort_episode`)
         max_episode_time = 2*discard_episode_timeout
 
@@ -225,7 +228,7 @@ class SwarmClient(object):
 
             # when throttle_policy is set, acquire lock to prevent multiple threads from claiming episode at the same time and causing throttle policy to fail
             if throttle_policy is not None:
-                self.begin_episode_lock.acquire()
+                self._begin_episode_lock.acquire()
 
             try:
                 # Check throttle policy before claiming episode (only for train episodes)
@@ -259,6 +262,10 @@ class SwarmClient(object):
                     episode_uuid = data.episode_uuid
                     openai_base_url = data.openai_base_url
                     openai_api_key = data.openai_api_key
+
+                    # force replace openai_base_url host with self.server_url
+                    openai_base_url = re.sub(r'^https?://[^/]+', self.server_url, openai_base_url)
+
                     self.logger_info(f"Claimed episode {episode_uuid}, current global step: {status_json.get('global_step', 'unknown')}")
                     return episode_uuid, OpenaiBaseUrlAndApiKey(
                         base_url=openai_base_url,
@@ -290,8 +297,8 @@ class SwarmClient(object):
 
             finally:
                 if throttle_policy is not None:
-                    if self.begin_episode_lock.locked():
-                        self.begin_episode_lock.release()
+                    if self._begin_episode_lock.locked():
+                        self._begin_episode_lock.release()
 
     def end_episode(self, task:Task, episode_uuid: str, workflow_output: WorkflowOutput):
 
