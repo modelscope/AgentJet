@@ -11,7 +11,7 @@ from loguru import logger
 try:
     from unstructured.partition.auto import partition
 except Exception:
-    logger.info("`unstructured` is not installed.")
+    logger.debug("`unstructured` is not installed.")
 
 from ajet.schema.document import Document
 from ajet.task_reader.document_reader.document_reader_base import (

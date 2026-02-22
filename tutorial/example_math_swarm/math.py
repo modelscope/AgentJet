@@ -19,11 +19,9 @@ from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, SwarmThrott
 GRPO_N = 4  # grpo group size
 NUM_EPOCH = 10000
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
-
+REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct")
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
-# REMOTE_TRAIN_MODEL = '/root/agentjet/modelscope_cache/Qwen/Qwen2.5-7B-Instruct'
-REMOTE_TRAIN_MODEL = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct'
 
 def main():
 
@@ -46,11 +44,11 @@ def main():
             experiment_name="math_gsm8k_grpo",
             algorithm="grpo",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
-            model=REMOTE_TRAIN_MODEL,
+            model=REMOTE_MODEL_PATH,
             batch_size=REMOTE_BATCH_SIZE,
             num_repeat=GRPO_N,
         ),
-        force_restart=True,
+        # force_restart=True,
     )
 
     def rollout(task):
@@ -76,7 +74,6 @@ def main():
 
 
 
-@retry_with_backoff(max_retry=2)
 def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
     # Prepare base_url, api_key
     base_url, api_key = (api_baseurl_key.base_url, api_baseurl_key.api_key)
@@ -89,8 +86,15 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
         { "role": "user", "content": query }
     ]
     # Use raw http requests (non-streaming) to get response
-    response = requests.post( f"{base_url}/chat/completions", json = { "model": "fill_whatever_model", "messages": messages, },
-                               headers = { "Authorization": f"Bearer {api_key}" } )
+    # "Connection: close" prevents keep-alive pool reuse, which can cause BadStatusLine
+    # errors under high concurrency when stale pooled connections return residual bytes.
+    response = requests.post(
+        f"{base_url}/chat/completions",
+        json    = { "model": "fill_whatever_model", "messages": messages, "stream": False },
+        headers = { "Authorization": f"Bearer {api_key}", "Connection": "close" },
+        timeout = 300,
+    )
+    response.raise_for_status()
     final_answer = response.json()['choices'][0]['message']['content']
 
     reference_answer = reference_answer.split("####")[-1].strip()

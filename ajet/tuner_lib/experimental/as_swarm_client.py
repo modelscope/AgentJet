@@ -203,9 +203,9 @@ class SwarmClient(object):
         Return:
             (episode_uuid, openai_base_url, openai_api_key)
         """
-        return self._begin_episode_auto_repeat(discard_episode_timeout, episode_type, throttle_policy)
+        return self._begin_episode_auto_retry(discard_episode_timeout, episode_type, throttle_policy)
 
-    def _begin_episode_auto_repeat(self, discard_episode_timeout=600, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def _begin_episode_auto_retry(self, discard_episode_timeout=600, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         # max_episode_time: when an episode has **lasted** for more than X seconds, it will be terminated **locally** by client (call `end_episode` will be re-route to `abort_episode`)
         max_episode_time = 2*discard_episode_timeout
 
