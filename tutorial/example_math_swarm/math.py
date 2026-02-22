@@ -1,3 +1,4 @@
+import os
 import re
 import requests
 from textwrap import dedent
@@ -5,30 +6,22 @@ from ajet.schema.task import Task, WorkflowOutput
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader
 from ajet.utils.retry import retry_with_backoff
-from ajet.utils.thread_executors import BoundedThreadPoolExecutor
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.tuner_lib.experimental.interchange_utils import SwarmThrottlePolicy
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, SwarmThrottlePolicy
 
-# --------- configurations that take effect locally -------------
-LOCAL_GRPO_N = 4  # grpo group size
-LOCAL_NUM_EPOCH = 10000
-LOCAL_NUM_EPOCH = 1
-LOCAL_MAX_PARALLEL = 64
-LOCAL_DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
-REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
-
-# --------- configurations that take effect remotely -------------
-REMOTE_BATCH_SIZE = 32
-REMOTE_ALLOCATE_GPU_PER_NODE = 4
-REMOTE_TRAIN_MODEL_01 = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct'
-
 # python -m tutorial.example_math_swarm.math
 
-class WeightUpdatedHalfway(Exception):
-    """Raised when the remote side starts updating model weights halfway through an episode."""
+GRPO_N = 4  # grpo group size
+NUM_EPOCH = 10000
+DATASET_PATH = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main"
+AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 
+REMOTE_BATCH_SIZE = 32
+REMOTE_ALLOCATE_GPU_PER_NODE = 4
+REMOTE_TRAIN_MODEL = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct'
 
 def main():
 
@@ -37,21 +30,21 @@ def main():
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
             huggingface_dat_repo = HuggingfaceDatRepo(
-                dataset_path = LOCAL_DATASET_PATH
+                dataset_path = DATASET_PATH
             )
         )
     )
 
     # # Hand shake with remote swarm server
-    swarm_worker = SwarmClient(REMOTE_SWARM_URL)
+    swarm_worker = SwarmClient(AJET_SWARM_URL)
     swarm_worker.auto_sync_train_config_and_start_engine(
         AgentJetJob(
             experiment_name="math_gsm8k_grpo",
             algorithm="grpo",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
-            model=REMOTE_TRAIN_MODEL_01,
+            model=REMOTE_TRAIN_MODEL,
             batch_size=REMOTE_BATCH_SIZE,
-            num_repeat=LOCAL_GRPO_N,
+            num_repeat=GRPO_N,
         )
     )
 
@@ -62,7 +55,7 @@ def main():
                 throttle_policy=SwarmThrottlePolicy(
                     ratio=0.5,
                     expected_batch_size=REMOTE_BATCH_SIZE,
-                    expected_num_repeat=LOCAL_GRPO_N,
+                    expected_num_repeat=GRPO_N,
                     current_task_id=task.task_id
                 )
             )
@@ -76,11 +69,11 @@ def main():
         except:
             pass
 
-    executor = BoundedThreadPoolExecutor(max_workers=LOCAL_MAX_PARALLEL)
-    for epoch in range(LOCAL_NUM_EPOCH):
+    executor = PeriodicDrainThreadPoolExecutor(workers=GRPO_N * REMOTE_BATCH_SIZE, auto_retry=True)
+    for _ in range(NUM_EPOCH):
         for _, task in enumerate(dataset.generate_training_tasks()):
-            for _ in range(LOCAL_GRPO_N):
-                executor.submit(rollout, task)
+            for _ in range(GRPO_N):
+                executor.submit_with_periodic_drain(fn=rollout, task=task)
 
     return None
 
