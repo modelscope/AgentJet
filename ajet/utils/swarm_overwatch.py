@@ -52,7 +52,7 @@ class SwarmOverwatch:
             return data
         except Exception as e:
             self.error_count += 1
-            logger.error(f"Failed to fetch pool info: {e}")
+            # logger.error(f"Failed to fetch pool info: {e}")
             return None
 
     def create_header(
@@ -73,10 +73,10 @@ class SwarmOverwatch:
         header_text.append(f"  |  Last Update: {last_update}", style="yellow")
         header_text.append(f"  |  Refresh: {self.refresh_interval}s", style="blue")
         header_text.append(f"\nRequests: {self.total_requests}", style="magenta")
-        header_text.append(
-            f"  |  Errors: {self.error_count}",
-            style="red" if self.error_count > 0 else "green",
-        )
+        # header_text.append(
+        #     f"  |  Errors: {self.error_count}",
+        #     style="red" if self.error_count > 0 else "green",
+        # )
 
         # Add engine status and global step if available
         if info:
@@ -402,9 +402,8 @@ class SwarmOverwatch:
         if info is None:
             # Show error state
             error_panel = Panel(
-                "[bold red]Failed to fetch data from server[/bold red]\n"
-                f"[dim]Attempted to connect to: {self.server_url}[/dim]\n"
-                f"[dim]Total errors: {self.error_count}[/dim]",
+                "[bold red]Failed to fetch data from server, please check your connection or simply wait a moment...[/bold red]\n"
+                f"[dim]Attempted to connect to: {self.server_url}[/dim]\n",
                 border_style="red",
                 padding=(1, 2),
             )

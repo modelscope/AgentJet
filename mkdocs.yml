@@ -30,6 +30,9 @@ nav:
       - Quick Start: en/quickstart.md
       - Tune Your First Agent: en/tune_your_first_agent.md
       - Agentic Frameworks: en/agent_framework_support.md
+      - swarm_intro: en/swarm_intro.md
+      - temp: en/cradle9.md
+      - swarm_best_practice: en/swarm_best_practice.md
 
   - Examples:
       - Math Agent: en/example_math_agent.md

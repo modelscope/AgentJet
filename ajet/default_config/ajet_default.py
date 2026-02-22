@@ -41,10 +41,19 @@ class HuggingfaceDatRepo:
 
 
 @dataclass
+class JsonlTrainingFp:
+    file_path: str = ""
+@dataclass
+class JsonlDatasetFile:
+    training: JsonlTrainingFp = JsonlTrainingFp()
+    validation: JsonlTrainingFp = JsonlTrainingFp()
+
+
+@dataclass
 class AjetTaskReader:
     type: str = "huggingface_dat_repo"
     huggingface_dat_repo: HuggingfaceDatRepo = field(default_factory=HuggingfaceDatRepo)
-
+    jsonl_dataset_file: JsonlDatasetFile = field(default_factory=JsonlDatasetFile)
 
 @dataclass
 class AjetDefaultConfig:
