@@ -43,7 +43,7 @@ class InterchangeClient:
 
     async def llm_infer(
             self,
-            req: ChatCompletionRequest,
+            req: "ChatCompletionRequest",
             timeline_uuid: str,
             agent_name: str,
             target_tag: str,

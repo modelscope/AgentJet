@@ -45,8 +45,8 @@ class JsonlTrainingFp:
     file_path: str = ""
 @dataclass
 class JsonlDatasetFile:
-    training: JsonlTrainingFp = JsonlTrainingFp()
-    validation: JsonlTrainingFp = JsonlTrainingFp()
+    training: JsonlTrainingFp = field(default_factory=JsonlTrainingFp)
+    validation: JsonlTrainingFp = field(default_factory=JsonlTrainingFp)
 
 
 @dataclass
