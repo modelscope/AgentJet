@@ -1,5 +1,7 @@
 # 灵活训练、动态伸缩：通义发布分布式多智能体 LLM 蜂群训练框架 AgentJet
-
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771872754893.jpg"/>
+</div>
 
 ## 中心化 Agentic RL 大模型的困境
 

@@ -61,6 +61,9 @@ nav:
       - Timeline Processing: en/context_timeline.md
       - Platform Comparison: en/platform_comparison.md
 
+  - Blogs:
+      - Swarm Intro (ZH): en/swarm_intro.md
+
 plugins:
   - search:
       lang:
