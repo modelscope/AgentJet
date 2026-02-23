@@ -116,13 +116,13 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```
 
 
-| Backbone  | VeRL     | Trinity-RFT     |
+| Backbone  | VERL     | Trinity-RFT     |
 | -------- |--------  | -------------   |
 | Core design   | Share-GPU actor-rollout engine (colocate) |   Async actor-rollout engine    |
-| Speed         | ⭐⭐⭐⭐    |       ⭐⭐⭐⭐          |
+| Speed         | ⭐⭐⭐⭐    |       ⭐⭐⭐          |
 | Scalability   |  ⭐⭐   |        ⭐⭐⭐⭐      |
 | Minimum Required GPU Resource   |   1  |             2                |
-| Training Stability   | ⭐⭐⭐⭐ |     ⭐⭐⭐            |
+| Training Stability   | ⭐⭐⭐⭐ |     ⭐⭐            |
 | vLLM Version   | 0.10.0 |     0.10.0         |
 
 

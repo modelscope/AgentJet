@@ -17,7 +17,7 @@ When too much energy is wasted on agent runtime stability, it becomes increasing
 
 ![alt text](https://serve.gptacademic.cn/publish/shared/Image/Image2026-02-20-11-40-40.png)
 
-Where there are difficulties, there are always solutions. Over the past year, VeRL solved GPU efficiency issues for training and inference, Agent-Lightning solved flexible integration of custom agents, and Tinker proposed a semi-distributed decoupled architecture (though limited to LoRA model training). The Tongyi EconML team's AgentJet, building on these project architectures, took a crucial step forward:
+Where there are difficulties, there are always solutions. Over the past year, VERL solved GPU efficiency issues for training and inference, Agent-Lightning solved flexible integration of custom agents, and Tinker proposed a semi-distributed decoupled architecture (though limited to LoRA model training). The Tongyi EconML team's AgentJet, building on these project architectures, took a crucial step forward:
 
 We propose a completely new multi-agent LLM swarm distributed training mode. In this framework, multiple swarm-server nodes support any number of models (like 7B + 14B + 32B) providing VLLM (SGLang) inference + policy gradient updates, while multiple swarm-client nodes support any agent workflows and any agent runtimes.
 
@@ -25,7 +25,7 @@ How great would it be to train LLM agents with full parameters on your laptop?
 
 ## AgentJet Swarm: The First Open-Source Swarm Distributed Large Model Agent Training Framework
 
-In previous training modes, VeRL-supported training infrastructure resembled an "aircraft carrier," launching only lightweight "Jets" as agent execution vehicles from the "mothership." All Jets were tightly bound to the "mothership" - unable to use other models from different "motherships" for non-shared parameter multi-agent training, inconvenient switching of keys and reward parameters fixed in environment variables and code, and no free movement between multiple hardware setups. Any problem required terminating the entire process and returning to the previous checkpoint.
+In previous training modes, VERL-supported training infrastructure resembled an "aircraft carrier," launching only lightweight "Jets" as agent execution vehicles from the "mothership." All Jets were tightly bound to the "mothership" - unable to use other models from different "motherships" for non-shared parameter multi-agent training, inconvenient switching of keys and reward parameters fixed in environment variables and code, and no free movement between multiple hardware setups. Any problem required terminating the entire process and returning to the previous checkpoint.
 
 AgentJet Swarm pioneered a completely new training mode. Using the same metaphor, in swarm mode, researchers and agent engineers can freely deploy multiple "aircraft carriers" (Swarm Servers, each corresponding to a LLM model to be trained) on one or more servers. Then "launch" any number of Swarm Clients from "land-based platforms" (your workstation, server, or even MacBook) to run agent workflows, forming a many-to-many training system:
 
@@ -96,11 +96,11 @@ This capability opens many previously difficult research directions:
 - **Cascaded decision optimization**: Coarse-grained decisions by large models, fine-grained operations by small models, end-to-end joint optimization of the entire decision chain
 - **Teacher-student collaborative training**: Large models as teachers providing high-quality planning, small models as students learning execution, both co-evolving through RL signals
 
-### Efficient Training-Inference GPU CoLocate Based on VeRL
+### Efficient Training-Inference GPU CoLocate Based on VERL
 
-AgentJet swarm architecture's flexibility doesn't come at the cost of GPU utilization efficiency or generating large GPU bubbles. Inside Swarm Servers, AgentJet still uses the battle-tested VeRL training-inference CoLocate architecture: this means inference (rollout generation) and training (gradient update) share the same GPU group, avoiding GPU memory waste.
+AgentJet swarm architecture's flexibility doesn't come at the cost of GPU utilization efficiency or generating large GPU bubbles. Inside Swarm Servers, AgentJet still uses the battle-tested VERL training-inference CoLocate architecture: this means inference (rollout generation) and training (gradient update) share the same GPU group, avoiding GPU memory waste.
 
-For researchers familiar with VeRL, almost all algorithm implementations in VeRL can be applied to AgentJet without loss. AgentJet adds swarm communication layers and timeline merging optimizations on this foundation, but keeps core training logic consistent. Low migration cost, guaranteed performance.
+For researchers familiar with VERL, almost all algorithm implementations in VERL can be applied to AgentJet without loss. AgentJet adds swarm communication layers and timeline merging optimizations on this foundation, but keeps core training logic consistent. Low migration cost, guaranteed performance.
 
 ### Framework Agnostic - Just Support OpenAI Protocol BaseUrl and ApiKey
 
@@ -112,7 +112,7 @@ This means you can directly use existing, debugged agent workflows for RL traini
 
 For a training framework, "running" is just the minimum requirement - "running correctly" and "running stably" are what researchers truly care about. AgentJet invests heavily in engineering quality, ensuring every training result is trustworthy.
 
-**Version-by-Version Performance Tracking**: We maintain a public [performance tracking dashboard](https://benchmark.agentjet.top/), continuously recording AgentJet's training curves and final performance across multiple standard tasks (mathematical reasoning, code generation, tool usage, etc.), across major Git versions, across different training backends (VeRL, etc.). With every code update, test robots execute benchmark tests, immediately catching any performance regressions. This means:
+**Version-by-Version Performance Tracking**: We maintain a public [performance tracking dashboard](https://benchmark.agentjet.top/), continuously recording AgentJet's training curves and final performance across multiple standard tasks (mathematical reasoning, code generation, tool usage, etc.), across major Git versions, across different training backends (VERL, etc.). With every code update, test robots execute benchmark tests, immediately catching any performance regressions. This means:
 - When upgrading AgentJet versions, you can clearly know how new versions perform on tasks you care about
 - If an update introduces hidden bugs causing training degradation, we catch them immediately
 - Researchers can confidently cite AgentJet experimental results because they're reproducible
@@ -129,7 +129,7 @@ As an agent training framework, simply implementing a distributed architecture i
 - **Automatic Timeline Merging**: Supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and uses context merging technology to accelerate training by **1.5x to 10x** in multi-turn (or multi-agent) dialogue scenarios (similar to "tree structure" processing capabilities mentioned in Minimax Forge technical reports)
 - **Reliable and Reproducible**: We continuously track framework performance across [different tasks + major Git versions + different training backends](https://benchmark.agentjet.top/) (data continuously aggregating), what you see is what you get, hidden bugs discovered instantly
 - **Token Consistency Auto-Alert & Repair**: AgentJet automatically performs re-tokenization drift repair based on Token IDs returned by vLLM engines by default
-- **Multi-Training Backend Support**: Supports multiple training backends including VeRL, actively working on supporting other training backends like TRL
+- **Multi-Training Backend Support**: Supports multiple training backends including VERL, actively working on supporting other training backends like TRL
 
 ## Summary and Outlook
 
@@ -140,7 +140,7 @@ When agent workflows become increasingly complex, dependent external tools multi
 - **Developer Friendly**: Debug agent workflows in IDEs on laptops, connect to remote swarms for immediate training
 - **Engineering Robust**: External runtime failures don't affect training progress, seamless continuation after repairs
 - **Algorithm Flexible**: Multi-task mixed training, heterogeneous multi-model collaborative training, dynamic data ratio adjustment - everything configurable
-- **Performance Reliable**: Inherits VeRL's efficient CoLocate architecture, supplemented with timeline merging acceleration tricks and version-by-version performance tracking capabilities, ensuring trustworthy results
+- **Performance Reliable**: Inherits VERL's efficient CoLocate architecture, supplemented with timeline merging acceleration tricks and version-by-version performance tracking capabilities, ensuring trustworthy results
 
 We believe that when training frameworks are no longer limiting factors, researchers and engineers can invest more energy in truly important things - designing better agent architectures, exploring more effective reward signals, attempting bolder multi-agent collaboration strategies.
 

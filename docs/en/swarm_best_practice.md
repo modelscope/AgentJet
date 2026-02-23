@@ -18,7 +18,7 @@ We recommend launching server together with a swarm monitor:
 (ajet-swarm start &> ajet-swarm-server.log) & (ajet-swarm overwatch)
 ```
 
-When you run this command, you will see a monitor like this (and be the way, VeRL log will go to `ajet-swarm-server.log`. In fact, in most cases, its better to run `ajet-swarm start` and `ajet-swarm overwatch` in two terminal consoles, depending on your preference):
+When you run this command, you will see a monitor like this (and be the way, VERL log will go to `ajet-swarm-server.log`. In fact, in most cases, its better to run `ajet-swarm start` and `ajet-swarm overwatch` in two terminal consoles, depending on your preference):
 
 ![alt text](https://img.alicdn.com/imgextra/i2/O1CN01nFKwOi1mZOmJmGMan_!!6000000004968-2-tps-1389-587.png)
 
@@ -274,7 +274,7 @@ def execute_agent(task, api_baseurl_key_7b, api_baseurl_key_14b):
 
 ### (D2-3) Train!
 
-With the code below, we drive two VeRL swarm server to serve for a hybrid multi-agent workfow (that requires 7B and 14B model to work hand in hand), and train together!
+With the code below, we drive two VERL swarm server to serve for a hybrid multi-agent workfow (that requires 7B and 14B model to work hand in hand), and train together!
 
 ```python
 # Hand shake with remote swarm server for 14B model (agent 2)

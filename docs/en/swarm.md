@@ -2,7 +2,7 @@
 
 ![swarm](https://img.alicdn.com/imgextra/i4/O1CN01FF0RUN1H4TxC9ZsKe_!!6000000000704-0-tps-2752-1536.jpg)
 
-In previous training modes, the training base supported by VeRL could be likened to an "aircraft carrier". From this "mother ship",
+In previous training modes, the training base supported by VERL could be likened to an "aircraft carrier". From this "mother ship",
 only lightweight "Jets" could take off as carriers for Agent operations, and all Jets were strongly tied to the "mother ship".
 This means it was impossible to use models from other "mother ships" for multi-agent training with non-shared parameters, nor could keys and reward parameters fixed in environment variables and code be switched conveniently,
 and they couldn't flow freely between multiple hardware platforms. Once any issue arose, the entire process had to be terminated and reverted to the previous checkpoint.
@@ -62,7 +62,7 @@ REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 swarm_worker = SwarmClient(REMOTE_SWARM_URL)
 ```
 
-Secondly, generate a configuration (basically VeRL yaml, but slightly different), **connect** to swarm server and then tell the swarm server **which model to train**, etc. When configuration is ready, tell engine to read yaml and begin VeRL training cycles with `auto_sync_train_config_and_start_engine`.
+Secondly, generate a configuration (basically VERL yaml, but slightly different), **connect** to swarm server and then tell the swarm server **which model to train**, etc. When configuration is ready, tell engine to read yaml and begin VERL training cycles with `auto_sync_train_config_and_start_engine`.
 
 ```python
 LOCAL_GRPO_N = 32
@@ -84,7 +84,7 @@ The swarm server can be in the following states and transition between them as f
 - **BOOTING**: The swarm server enters this state upon receiving a configuration followed by an explicit `begin_engine` command. In this state, it loads model parameters, initializes FSDP, and initializes vLLM.
 - **ROLLING**: The swarm server enters this state automatically after completing **BOOTING** or after finishing the **WEIGHT_SYNCING** state. This represents the sampling phase.
 - **ROLLING_POST**: When the swarm server determines that the sample pool is sufficient for proceeding to the next policy gradient step, it automatically transitions to this state. While in this state, ongoing episodes can still complete normally, but no new episodes can begin.
-- **WEIGHT_SYNCING**: After being in the **ROLLING_POST** state, once all computational resources and threads related to ongoing episodes are reclaimed and cleaned up, the swarm server transitions to this state. During this stage, VeRL completes the current policy gradient strategy update and then returns to the **ROLLING** state, repeating the cycle.
+- **WEIGHT_SYNCING**: After being in the **ROLLING_POST** state, once all computational resources and threads related to ongoing episodes are reclaimed and cleaned up, the swarm server transitions to this state. During this stage, VERL completes the current policy gradient strategy update and then returns to the **ROLLING** state, repeating the cycle.
 
 
 ![alt text](https://img.alicdn.com/imgextra/i1/O1CN010Bropn1TbFgJ58c3d_!!6000000002400-0-tps-2752-1536.jpg)

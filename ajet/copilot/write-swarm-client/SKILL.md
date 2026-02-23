@@ -98,7 +98,7 @@ def run_agent_and_compute_reward(task: Task, base_url:string, api_key:string) ->
     swarm_worker = SwarmClient(REMOTE_SWARM_URL)
     ```
 
-    Secondly, generate a configuration (basically VeRL yaml, but slightly different), **connect** to swarm server and then tell the swarm server **which model to train**, etc. When configuration is ready, tell engine to read yaml and begin VeRL training cycles with `auto_sync_train_config_and_start_engine`.
+    Secondly, generate a configuration (basically VERL yaml, but slightly different), **connect** to swarm server and then tell the swarm server **which model to train**, etc. When configuration is ready, tell engine to read yaml and begin VERL training cycles with `auto_sync_train_config_and_start_engine`.
 
     ```python
     LOCAL_GRPO_N = 32
@@ -120,7 +120,7 @@ def run_agent_and_compute_reward(task: Task, base_url:string, api_key:string) ->
     - **BOOTING**: The swarm server enters this state upon receiving a configuration followed by an explicit `begin_engine` command. In this state, it loads model parameters, initializes FSDP, and initializes vLLM.
     - **ROLLING**: The swarm server enters this state automatically after completing **BOOTING** or after finishing the **WEIGHT_SYNCING** state. This represents the sampling phase.
     - **ROLLING_POST**: When the swarm server determines that the sample pool is sufficient for proceeding to the next policy gradient step, it automatically transitions to this state. While in this state, ongoing episodes can still complete normally, but no new episodes can begin.
-    - **WEIGHT_SYNCING**: After being in the **ROLLING_POST** state, once all computational resources and threads related to ongoing episodes are reclaimed and cleaned up, the swarm server transitions to this state. During this stage, VeRL completes the current policy gradient strategy update and then returns to the **ROLLING** state, repeating the cycle.
+    - **WEIGHT_SYNCING**: After being in the **ROLLING_POST** state, once all computational resources and threads related to ongoing episodes are reclaimed and cleaned up, the swarm server transitions to this state. During this stage, VERL completes the current policy gradient strategy update and then returns to the **ROLLING** state, repeating the cycle.
 
 
     ![alt text](https://img.alicdn.com/imgextra/i1/O1CN010Bropn1TbFgJ58c3d_!!6000000002400-0-tps-2752-1536.jpg)
@@ -465,7 +465,7 @@ def run_agent_and_compute_reward(task: Task, base_url:string, api_key:string) ->
 
     ### (D2-3) Train!
 
-    With the code below, we drive two VeRL swarm server to serve for a hybrid multi-agent workfow (that requires 7B and 14B model to work hand in hand), and train together!
+    With the code below, we drive two VERL swarm server to serve for a hybrid multi-agent workfow (that requires 7B and 14B model to work hand in hand), and train together!
 
     ```python
     # Hand shake with remote swarm server for 14B model (agent 2)
