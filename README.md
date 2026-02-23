@@ -43,7 +43,7 @@ Let's begin with the simplest AgentJet Swarm example: also a math agent. In this
     AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
     ```
 <div align="center">
-<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarm-server.gif"/>
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/41ed1e71-8b18-4c4c-b5e2-833399317337"/>
 </div>
 
 
