@@ -89,6 +89,11 @@ Explore our rich library of examples to kickstart your journey:
 - 🎴 [**Writing a countdown game using AgentScope and solving it**](https://modelscope.github.io/AgentJet/en/example_countdown).
 - 🚶 [**Solving a frozen lake walking puzzle using AgentJet**](https://modelscope.github.io/AgentJet/en/example_frozenlake).
 
+Explore our automated benchmarking system [https://benchmark.agentjet.top/](https://benchmark.agentjet.top/):
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/benchmark.gif"/>
+</div>
+
 
 ---
 
