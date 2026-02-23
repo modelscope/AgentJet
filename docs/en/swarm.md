@@ -1,6 +1,8 @@
 # AgentJet Swarm Training
 
-![swarm](https://img.alicdn.com/imgextra/i4/O1CN01FF0RUN1H4TxC9ZsKe_!!6000000000704-0-tps-2752-1536.jpg)
+<div align="center">
+<img width="640" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/classic+swarm+revise.jpg"/>
+</div>
 
 In previous training modes, the training base supported by VERL could be likened to an "aircraft carrier". From this "mother ship",
 only lightweight "Jets" could take off as carriers for Agent operations, and all Jets were strongly tied to the "mother ship".

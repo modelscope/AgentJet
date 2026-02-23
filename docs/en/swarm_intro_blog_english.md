@@ -32,7 +32,8 @@ AgentJet Swarm pioneered a completely new training mode. Using the same metaphor
 - **Swarm Client**: Reads datasets, runs agent workflows, and returns reward signals to various "motherships"
 - **Swarm Server**: "Motherships" maintain training-inference CoLocate environments, provide vLLM/SGLang API interfaces (with AgentJet's automatic context tracking & timeline merging capabilities for significant training acceleration), collect & aggregate samples, and execute policy gradient computation
 
-![swarm](https://img.alicdn.com/imgextra/i4/O1CN01FF0RUN1H4TxC9ZsKe_!!6000000000704-0-tps-2752-1536.jpg)
+
+![swarm](https://serve.gptacademic.cn/publish/shared/Image/Image2026-02-20-22-22-12.png)
 
 Next, let's demonstrate AgentJet swarm mode advantages with simple cases:
 
