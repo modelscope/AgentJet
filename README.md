@@ -37,7 +37,7 @@ Let's begin with the simplest example: a math agent with a tool call. This is a 
 
 Let's begin with the simplest AgentJet Swarm example: also a math agent. In this case, you can use any GPU-less laptop to train the model remotely.
 
-1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch --swarm-url=http://localhost:10086`.
+1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch`.
 2. From your laptop (or swarm server localhost), run [this simple script](https://github.com/modelscope/AgentJet/blob/main/tutorial/example_math_swarm/math.py) to begin training:
     ```python
     AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
