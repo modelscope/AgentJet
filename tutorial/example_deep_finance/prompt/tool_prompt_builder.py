@@ -60,11 +60,6 @@ def get_tool_prompt_template() -> str:
 **参数**:
   - `query` (必填, string): 搜索关键词
 
-#### ✅ crawl_url
-**功能**: 网页内容解析工具，获取并格式化指定URL的网页内容。
-**参数**:
-  - `url` (必填, string): 目标网页URL
-
 # ---
 
 ### 📈 同花顺专项数据工具 (Crawl THS)
