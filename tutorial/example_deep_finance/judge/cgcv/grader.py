@@ -135,7 +135,7 @@ class CGCVGrader(BaseGrader):
 
         return OpenAIChatModel(**kwargs)
 
-    async def aevaluate(
+    async def _aevaluate(
         self,
         traj: Any,
         **_: Any,
@@ -239,7 +239,7 @@ class CGCVGrader(BaseGrader):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
         
-        return loop.run_until_complete(self.aevaluate(traj, **kwargs))
+        return loop.run_until_complete(self._aevaluate(traj, **kwargs))
 
     def get_detailed_result(
         self,

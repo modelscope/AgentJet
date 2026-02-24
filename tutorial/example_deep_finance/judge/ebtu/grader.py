@@ -48,7 +48,7 @@ class EBTUTraceabilityGrader(BaseGrader):
             response_format={"type": "json_object"},
         )
 
-    async def aevaluate(self, traj: Any, **kwargs: Any) -> GraderScore:
+    async def _aevaluate(self, traj: Any, **kwargs: Any) -> GraderScore:
         messages = coerce_to_messages_list(traj)
 
         # 输入有效性检查

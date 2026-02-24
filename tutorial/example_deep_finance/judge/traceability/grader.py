@@ -36,7 +36,7 @@ class TraceabilityRewardGrader(BaseGrader):
         super().__init__(name=name, **kwargs)
         self.model = model 
 
-    async def aevaluate(self, traj: Any, **kwargs: Any) -> GraderScore:
+    async def _aevaluate(self, traj: Any, **kwargs: Any) -> GraderScore:
         messages = coerce_to_messages_list(traj)
         
         if not messages:
