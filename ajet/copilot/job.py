@@ -12,7 +12,6 @@ import tempfile
 from types import SimpleNamespace
 from typing import Any, Callable, Union
 
-import ray
 import yaml
 from loguru import logger
 
@@ -45,15 +44,17 @@ class AgentJetJob:
         project_name="ajet-swarm",
         experiment_name="test",
         n_gpu_for_infer: int | None = None, # only for trinity backbone
-        grpo_n: int = 8,
+        num_repeat: int = 8,
         batch_size: int = 32,
         swarm_mode: bool = True,
+        sample_collection_method: str = "rollout_until_finish_enough_tasks",
         *kwargs,
     ) -> None:
         self.backbone = backbone
         self.exp_dir = DEFAULT_DIR
         self.project_name = project_name
         self.exp_name = experiment_name
+        self.sample_collection_method = sample_collection_method
         if swarm_mode:
             default_yaml = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', "default_config/ajet_ts_default.yaml"))
         else:
@@ -66,8 +67,10 @@ class AgentJetJob:
         self.config.ajet.model.path = model
         self.config.ajet.trainer_common.n_gpus_per_node = n_gpu
         self.config.ajet.trainer_common.algorithm.adv_estimator = algorithm
-        self.config.ajet.rollout.num_repeat = grpo_n
+        self.config.ajet.rollout.num_repeat = num_repeat
         self.config.ajet.data.train_batch_size = batch_size
+        self.config.ajet.enable_swarm_mode = swarm_mode
+        self.config.ajet.swarm_mode_sample_collection_method = sample_collection_method
         if n_gpu_for_infer is None and backbone == "trinity":
             raise ValueError("Please specify `n_gpu_for_infer` (n_gpu_for_infer < n_gpu) for trinity backbone.")
         if (n_gpu_for_infer is not None) and backbone == "verl":
@@ -134,6 +137,7 @@ class AgentJetJob:
         return self
 
     def tune(self, *args, **kwargs) -> "AgentJetJob":
+        import ray
         ast_cfg = self.config.ajet
         if not ast_cfg.rollout or not ast_cfg.rollout.user_workflow:
             raise ValueError("Workflow must be set via set_workflow before tuning.")

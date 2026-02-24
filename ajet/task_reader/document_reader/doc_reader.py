@@ -11,7 +11,7 @@ from loguru import logger
 try:
     from unstructured.partition.auto import partition
 except Exception:
-    logger.info("`unstructured` is not installed.")
+    logger.debug("`unstructured` is not installed.")
 
 from ajet.schema.document import Document
 from ajet.task_reader.document_reader.document_reader_base import (
@@ -72,7 +72,7 @@ class DocReader(DocReaderBase):
         """Calculate SHA256 hash of a file."""
         try:
             hash_sha256 = hashlib.sha256()
-            with open(file_path, "rb") as f:
+            with open(file_path, "rb", encoding="utf-8") as f:
                 for chunk in iter(lambda: f.read(4096), b""):
                     hash_sha256.update(chunk)
             return hash_sha256.hexdigest()

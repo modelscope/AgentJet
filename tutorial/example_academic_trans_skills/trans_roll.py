@@ -1,11 +1,10 @@
-from loguru import logger
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.task_reader import RouterTaskReader
-from tutorial.example_academic_trans.trans import execute_agent
+from tutorial.example_academic_trans_skills.trans import execute_agent
 
-# python -m tutorial.example_academic_trans.trans_roll
+# python -m tutorial.example_academic_trans_skills.trans_roll
 
 
 # --------- configurations that take effect locally -------------
@@ -42,10 +41,12 @@ def main():
     swarm_worker.auto_sync_train_config_and_start_engine(
         AgentJetJob(
             algorithm="grpo",
+            project_name="ajet-swarm-skills",
+            experiment_name="academic-translation",
             n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
             model=REMOTE_TRAIN_MODEL_01,
             batch_size=REMOTE_BATCH_SIZE,
-            grpo_n=LOCAL_GRPO_N,
+            num_repeat=LOCAL_GRPO_N,
         ),
     )
 
@@ -60,17 +61,15 @@ def main():
         swarm_worker.print_rollout_stat()
         return workflow_output.reward
 
-    episodes = []
+    next_batch = []
     for _, task in enumerate(dataset.generate_training_tasks()):
         for _ in range(LOCAL_GRPO_N):
-            episodes += [ task ]
-            # wait until getting `local_batching_size` episodes, then execute them with with retry logic
-            if len(episodes) == (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
-                episode_results = run_episodes_until_all_complete(episodes, func=rollout, auto_retry=True)
-                for episode, reward in zip(episodes, episode_results):
-                    logger.info(f"Episode for task {episode.task_id} completed with reward: {reward}")
-                episodes.clear()
-
+            next_batch.append(task)
+            if len(next_batch) >= (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
+                # wait until getting `local_batching_size` next_batch, then execute them with with retry logic
+                episode_results = run_episodes_until_all_complete(next_batch, func=rollout, auto_retry=True)
+                print(episode_results)
+                next_batch.clear()
     return None
 
 

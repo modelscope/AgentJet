@@ -35,9 +35,8 @@ from openai.types.chat.chat_completion import ChatCompletion
 
 from ajet.utils.networking import get_host_ip
 from ajet.tuner_lib.experimental.interchange_utils import EpisodeStatus
-from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE, API_KEY_PREFIX
 
-API_KEY_PREFIX = "sk-ajet-"
 
 class InterchangeCompletionRequest(BaseModel):
     completion_request: ChatCompletionRequest

@@ -177,7 +177,7 @@ class BaseRolloutManager:
                 observation_window["info"][task_thread_index] += f"[thread {task_thread_index} iteration {str(cnt)} Begin]\n"    # observe how many iterations have been done in the loop
 
                 # Let's begin working on the task, the result `tracker` will contain everything: reward, llm calls, conversation history, etc.
-                # Later we will gather all trackers and do post-processing, generating samples for VeRL.
+                # Later we will gather all trackers and do post-processing, generating samples for VERL.
                 tracker = self.rollout_env_worker(
                     task=task,
                     task_batch_index=task_batch_index,

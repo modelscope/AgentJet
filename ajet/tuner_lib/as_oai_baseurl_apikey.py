@@ -1,13 +1,12 @@
 import os
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
-from ajet.context_tracker.multiagent_tracking import (
-    MultiAgentContextTracker,
-)
 from openai.resources.chat.chat import AsyncChat
 from openai.resources.completions import AsyncCompletions
-from .experimental.as_oai_model_client import generate_auth_token
+from ajet.tuner_lib.experimental.interchange_utils import generate_auth_token
 
+if TYPE_CHECKING:
+    from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 
 class MockAsyncCompletions(AsyncCompletions):
     async def create(self, *args, **kwargs) -> Any: # type: ignore
@@ -29,6 +28,13 @@ class OpenaiBaseUrlAndApiKey(BaseModel):
     model: str = Field(default="reserved_field", description="reserved field.")
     episode_uuid: str = Field(default="episode_id", description="reserved field.")
 
+    def as_agentscope_model(self, *args, **kwargs):
+        from agentscope.model import DashScopeChatModel
+        return DashScopeChatModel(model_name="AgentJet-Model", api_key=self.api_key, base_http_api_url=self.base_url)
+
+    def as_raw_openai_sdk_client(self, *args, **kwargs):
+        from openai import AsyncOpenAI
+        return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
 class OpenaiClientBaseUrlTuner(BaseModel):
     """ At this layer, we will determine which model to use:
@@ -43,7 +49,7 @@ class OpenaiClientBaseUrlTuner(BaseModel):
     def __init__(
         self,
         config,
-        context_tracker: MultiAgentContextTracker,
+        context_tracker: "MultiAgentContextTracker",
         target_tag: str,
         agent_name: str,
         episode_uuid: str,

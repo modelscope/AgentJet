@@ -36,15 +36,26 @@ class AjetRollout:
 @dataclass
 class HuggingfaceDatRepo:
     dataset_path: str = "gsm8k"
+    dataset_name: str | None = None
     training_split: str = "train"
     validation_split: str = "validation"
+    http_proxy_address: str = ""
+
+
+@dataclass
+class JsonlTrainingFp:
+    file_path: str = ""
+@dataclass
+class JsonlDatasetFile:
+    training: JsonlTrainingFp = field(default_factory=JsonlTrainingFp)
+    validation: JsonlTrainingFp = field(default_factory=JsonlTrainingFp)
 
 
 @dataclass
 class AjetTaskReader:
     type: str = "huggingface_dat_repo"
     huggingface_dat_repo: HuggingfaceDatRepo = field(default_factory=HuggingfaceDatRepo)
-
+    jsonl_dataset_file: JsonlDatasetFile = field(default_factory=JsonlDatasetFile)
 
 @dataclass
 class AjetDefaultConfig:
@@ -58,7 +69,8 @@ class AjetDefaultConfig:
     rollout: AjetRollout = field(default_factory=AjetRollout)
     trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
-
+    enable_swarm_mode: bool = True
+    swarm_mode_sample_collection_method: str = "rollout_until_finish_enough_tasks"
 
 @dataclass
 class Config:

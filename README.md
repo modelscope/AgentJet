@@ -12,24 +12,39 @@
 </div>
 
 
-**AgentJet (AJet)** is a cutting-edge, user-friendly training framework designed to optimize agents and workflows (built with OpenAI SDK, AgentScope, Langchain, or just HTTP requests), fine-tuning language model weights behind the scenes.
+**AgentJet (AJet)** is a cutting-edge, user-friendly agent RL training framework designed to optimize agents and agentic workflows (supporting any agent built with OpenAI SDK, AgentScope, Langchain, or raw HTTP requests), fine-tuning LLM weights to enhance model performance.
 
-Simply provide your agent **workflow**, training **dataset**, and **reward** function, and **AgentJet** will be ready to enhance your agents to their optimal performance!
+**AgentJet (AJet)** has fully-distributed **swarm training** capability, which means that you can **deploy `ajet-swarm start` in GPU server(s) and then start training agents in your laptop(s)**! Simply provide your agent workflow, training dataset, and reward function, and AgentJet will be ready to go!
 
 
 
-## ✈️ Minimum Example
+## ✈️ Fast Introduction
 
-Let's begin with the simplest example: a math agent with a tool call.
+### Classic Mode
 
-- First, please check out the [installation guide](https://modelscope.github.io/AgentJet/en/installation/) to set up the training environment.
-- Then, tune your first model using the minimum example.
-  ```python
-  ajet --conf tutorial/example_math_agent/math_agent.yaml --backbone='verl'
+Let's begin with the simplest example: a math agent with a tool call. This is a simple & centralized training example.
 
-  # change to --backbone='trinity' if you want to switch to trinity training engine;
-  # or --backbone='debug' if you want to debug with only vLLM
-  ```
+1. please check out the [installation guide](https://modelscope.github.io/AgentJet/en/installation/) to set up the training environment.
+2. tune your first model using the minimum example.
+    ```python
+    ajet --conf ./tutorial/example_math_agent/math_agent.yaml --backbone='verl'
+    ```
+<div align="center">
+<img width="640" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/classic+swarm+revise.jpg"/>
+</div>
+
+### Swarm Mode
+
+Let's begin with the simplest AgentJet Swarm example: also a math agent. In this case, you can use any GPU-less laptop to train the model remotely.
+
+1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch`.
+2. From your laptop (or swarm server localhost), run [this simple script](https://github.com/modelscope/AgentJet/blob/main/tutorial/example_math_swarm/math.py) to begin training:
+    ```python
+    AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
+    ```
+<div align="center">
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/41ed1e71-8b18-4c4c-b5e2-833399317337"/>
+</div>
 
 
 ## ✈️ Features
@@ -38,7 +53,8 @@ We aim to build a easy-to-learn Agent tuner that unlock more possibilities for a
 
 - **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
-- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support [trinity](https://github.com/modelscope/Trinity-RFT/) as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
+- **Swarm Training**. [This unique feature](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_english/) of AgentJet opens many possibilities: deploying distributed & self-healing rollout workers, **non-shared-parameter multi-agent** training, **multi-runtime & multi-task cocktail** training. And just like Tinker, you can use AgentJet Swarm to train **models even on **GPU-less laptop(s)**.
+- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support trinity as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
 - **Flexible and Fast**. AgentJet supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agentjet.top/) (under construction, still gathering data, coming soon).
 
@@ -48,6 +64,11 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 - **High-Resolution Logging**: AgentJet allows users to save and inspect token-level rollout details, recording token IDs, token loss masks, and even token logprobs to facilitate workflow development and agent diagnostics.
 - **Fast Debugging**: AgentJet also provides the `--backbone=debug` option for the best debugging experience, shortening your wait period from minutes to seconds after code changes and enabling breakpoint debugging in IDEs.
 
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771873242388.jpg"/>
+</div>
+
+
 ---
 
 ### ✈️ Quick Start
@@ -56,13 +77,6 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 
 - **Click here to read the** [**installation guide**](https://modelscope.github.io/AgentJet/en/installation/).
 
-#### Run Training
-
-- You can start training your first agent with a single command using a pre-configured YAML file. Take the [Math agent](https://modelscope.github.io/AgentJet/en/example_math_agent/) as an example:
-
-  ```bash
-  ajet --conf tutorial/example_math_agent/math_agent.yaml
-  ```
 
 #### Example Library
 
@@ -74,6 +88,11 @@ Explore our rich library of examples to kickstart your journey:
 - 👩🏻‍⚕️ [**Learning to ask questions like a doctor**](https://modelscope.github.io/AgentJet/en/example_learning_to_ask).
 - 🎴 [**Writing a countdown game using AgentScope and solving it**](https://modelscope.github.io/AgentJet/en/example_countdown).
 - 🚶 [**Solving a frozen lake walking puzzle using AgentJet**](https://modelscope.github.io/AgentJet/en/example_frozenlake).
+
+Explore our automated benchmarking system [https://benchmark.agentjet.top/](https://benchmark.agentjet.top/):
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/benchmark.gif"/>
+</div>
 
 
 ---
@@ -105,6 +124,7 @@ The internal system orchestrates several specialized modules to handle the compl
 * **Task Runner**: Executes the Agent workflow and calculates rewards.
 * **Model Tuner**: Forwards inference requests from the workflow to the LLM engine.
 * **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **1.5x to 10x**.
+* **Swarm Server**: A data interchange center that accept OpenAI-like requests and engine instructions, activated only in AgentJet Swarm mode.
 
 
 
@@ -122,14 +142,11 @@ AgentJet is a constantly evolving project. We are planning to add the following 
 
 | Category | Feature | Status |
 | :--- | :--- | :--- |
-| **Examples** | Covering LangGraph and AutoGen frameworks | Done & Verifying |
 | **Examples** | Add LoRA training examples | Todo |
-| **Infra** | Cross-process Tuner wrapper to pass though process forking | Done & Verifying |
 | **Infra** | Optimize configurations for long-context adaptation on smaller GPUs | In Progress |
-| **Capability** | Prompt tuning | In Progress |
 | **Capability** | Multi-modal training support | Todo |
 | **Capability** | MARL Credit assignment | Todo |
-| **Capability** | Training dataset generation from few-shot samples | Done & Verifying |
+| **Capability** | Training dataset generation from few-shot samples | Todo |
 
 
 ## ✈️ Citation
@@ -152,8 +169,9 @@ If you use AgentJet in your research, please cite:
 
 ---
 <div align="center">
+This project is under active development, we need your help to make it shine! <br/>
 
-[⭐ Star Us](https://github.com/modelscope/AgentJet) · [Report Bug](https://github.com/modelscope/AgentJet/issues) · [Request Feature](https://github.com/modelscope/AgentJet/issues)
+[⭐ Star Us](https://github.com/modelscope/AgentJet) · [✈️ Report Bug](https://github.com/modelscope/AgentJet/issues) · [✈️ Request Feature](https://github.com/modelscope/AgentJet/issues)
 </div>
 
 

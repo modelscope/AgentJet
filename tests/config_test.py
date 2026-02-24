@@ -47,7 +47,7 @@ class TestConfigUtils(unittest.TestCase):
             align_parameters(
                 temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity"
             )
-            with open(temp_yaml1.name, "r") as file:
+            with open(temp_yaml1.name, "r", encoding="utf-8") as file:
                 to_config = yaml.safe_load(file)
             self.assertEqual(to_config["checkpoint_root_dir"], "/wow/ajet_checkpoints")
             self.assertEqual(to_config["buffer"]["batch_size"], 120)
@@ -89,7 +89,7 @@ class TestConfigUtils(unittest.TestCase):
             align_parameters(
                 temp_yaml1.name, temp_yaml1.name, TRINITY_CONFIG_AUTO_CONVERSION, "trinity"
             )
-            with open(temp_yaml1.name, "r") as file:
+            with open(temp_yaml1.name, "r", encoding="utf-8") as file:
                 to_config = yaml.safe_load(file)
             self.assertEqual(
                 to_config["trainer"]["checkpoint_base_dir"], "/wow/ajet_checkpoints"

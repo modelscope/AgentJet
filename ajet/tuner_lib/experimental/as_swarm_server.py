@@ -17,6 +17,7 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
     ClaimEpisodeResponse,
+    CheckWhetherEpisodeClaimedRequest,
     CanContinueEpisodeRequest,
     CanContinueEpisodeResponse,
     EndEpisodeRequest,
@@ -34,13 +35,19 @@ RCVTIMEO_OUT = 300 * 1000
 RCVTIMEO_WAIT_N = RCVTIMEO_OUT // RCVTIMEO
 
 
-def is_key_epsisode_status(key: str) -> bool:
+def is_key_episode_status(key: str) -> bool:
     return key.startswith("episodes-")
 
+def is_key_finished_episode_status(key: str) -> bool:
+    return key.startswith("finished-episodes-")
 
 @lru_cache(maxsize=128)
 def ep_key(episode_uuid: str) -> str:
     return f"episodes-{episode_uuid}"
+
+@lru_cache(maxsize=128)
+def finished_ep_key(episode_uuid: str) -> str:
+    return f"finished-episodes-{episode_uuid}"
 
 
 def register_enable_swarm_mode_routes(
@@ -49,8 +56,6 @@ def register_enable_swarm_mode_routes(
     shared_mem_dict: DictProxy,
     shared_mem_dict_lock: threading.Lock,
 ) -> Tuple[FastAPI, Optional[Coroutine]]:
-    if "episodes" not in shared_mem_dict:
-        shared_mem_dict["episodes"] = {}
 
     if "unclaimed_episodes" not in shared_mem_dict:
         shared_mem_dict["unclaimed_episodes"] = []
@@ -68,20 +73,24 @@ def register_enable_swarm_mode_routes(
         current_time = time.time()
 
         for k, v in shared_mem_dict.items():
-            if is_key_epsisode_status(k):
+            if is_key_episode_status(k):
                 es: EpisodeStatus = v
                 if es.episode_status == "claimed":
                     if (current_time - es.latest_activity_timestamp) > es.discard_episode_timeout:
                         to_unclaim_episodes.append(es.episode_uuid)
 
         for episode_uuid in to_unclaim_episodes:
-            await _revert_episode_to_unclaimed(episode_uuid, shared_mem_dict, shared_mem_dict_lock)
+            try:
+                await _revert_episode_to_unclaimed(episode_uuid, shared_mem_dict, shared_mem_dict_lock)
+            except:
+                logger.error(f"Error while reverting episode {episode_uuid} to unclaimed.")
 
         return to_unclaim_episodes
 
     def _context_tracker_reset_blocking(episode_uuid, shared_mem_dict):  # must async
         # send message to context tracker
-        assert "episodes" in shared_mem_dict
+        if ep_key(episode_uuid) not in shared_mem_dict:
+            return
         zmq_addr = shared_mem_dict[ep_key(episode_uuid)].zmq_listen_result_addr
         socket = zmq_context.socket(zmq.REQ)
         socket.setsockopt(zmq.RCVTIMEO, RCVTIMEO)  # 2 seconds recv timeout
@@ -106,7 +115,8 @@ def register_enable_swarm_mode_routes(
             except zmq.Again as e:
                 if DEBUG:
                     logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string timeout, retrying.")
-
+                if ep_key(episode_uuid) not in shared_mem_dict:
+                    return
                 if shared_mem_dict["engine_status"] not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
                     logger.info(f"[server] episode_uuid: {episode_uuid} | Engine is no longer rolling, aborting wait for ack.")
                     raise RuntimeError("Engine is no longer rolling, aborting wait for ack.")
@@ -114,12 +124,17 @@ def register_enable_swarm_mode_routes(
 
     async def _revert_episode_to_unclaimed(episode_uuid: str, shared_mem_dict, shared_mem_dict_lock):
         # check status again, because other thread may have changed it
-        if shared_mem_dict[ep_key(episode_uuid)].episode_status != "claimed":
-            if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
-                pass
-            else:
-                shared_mem_dict["unclaimed_episodes"] += [episode_uuid]
+        if ep_key(episode_uuid) not in shared_mem_dict:
+            logger.warning(f"Episode record for {episode_uuid} not found in shared memory. It may have been already processed by another thread. Skipping unclaim.")
             return
+
+        with shared_mem_dict_lock:
+            if shared_mem_dict[ep_key(episode_uuid)].episode_status != "claimed":
+                if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
+                    pass
+                else:
+                    shared_mem_dict["unclaimed_episodes"] += [episode_uuid]
+                return
 
         # reset context tracker
         # _context_tracker_reset_blocking(episode_uuid, shared_mem_dict)   # must async
@@ -189,6 +204,9 @@ def register_enable_swarm_mode_routes(
                 continue
         # clean up episode records
         with shared_mem_dict_lock:
+            # preserve a record snapshot
+            shared_mem_dict[finished_ep_key(episode_uuid)] = shared_mem_dict[ep_key(episode_uuid)]
+            # then remove the active record
             del shared_mem_dict[ep_key(episode_uuid)]
             if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
                 shared_mem_dict["unclaimed_episodes"].remove(episode_uuid)
@@ -209,7 +227,7 @@ def register_enable_swarm_mode_routes(
         group_by_status = {}
 
         for k, v in shared_mem_dict.items():
-            if is_key_epsisode_status(k):
+            if is_key_episode_status(k):
                 es: EpisodeStatus = v
                 if es.episode_status not in group_by_status:
                     group_by_status[es.episode_status] = []
@@ -226,12 +244,12 @@ def register_enable_swarm_mode_routes(
             string_buffer = ""
 
             for k, v in shared_mem_dict.items():
-                if is_key_epsisode_status(k):
+                if is_key_episode_status(k):
                     es: EpisodeStatus = v
                     p = es.model_dump_json()
                     string_buffer += f"{p}\n"
 
-            with open(fp, "w") as f:
+            with open(fp, "w", encoding="utf-8") as f:
                 f.write(string_buffer)
         return
 
@@ -241,11 +259,12 @@ def register_enable_swarm_mode_routes(
     shared_mem_dict["engine_status"] = "ENGINE.OFFLINE"  # initial status
     def _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict):
         with shared_mem_dict_lock:
-            episode_keys = [k for k in shared_mem_dict.keys() if is_key_epsisode_status(k)]
+            episode_keys = [k for k in shared_mem_dict.keys() if is_key_episode_status(k) or is_key_finished_episode_status(k)]
             # remove all episodes
             for key in episode_keys:
                 del shared_mem_dict[key]
-                logger.info(f"[_clean_up_engine_status] Removed episode: {key}")
+                if DEBUG:
+                    logger.info(f"[_clean_up_engine_status] Removed: {key}")
 
             # clear unclaimed episodes list
             if "unclaimed_episodes" in shared_mem_dict:
@@ -516,6 +535,15 @@ def register_enable_swarm_mode_routes(
                 shared_mem_dict["unclaimed_episodes"] = shared_mem_dict["unclaimed_episodes"][1:]
 
                 # get episode
+                if ep_key(episode_uuid) not in shared_mem_dict:
+                    return ClaimEpisodeResponse(
+                        success=False,
+                        client_uuid=req.client_uuid,
+                        episode_uuid="",
+                        openai_base_url="",
+                        openai_api_key="",
+                        fail_cause="No available episodes to claim. Try again (maybe 2 minutes) later.",
+                    )
                 es: EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
                 es.episode_status = "claimed"
                 es.episode_type = req.episode_type
@@ -523,6 +551,10 @@ def register_enable_swarm_mode_routes(
                 es.latest_activity_timestamp = time.time()
                 es.llm_call_count = 0
                 es.discard_episode_timeout = req.discard_episode_timeout
+
+                # Store task_id if throttle_policy is provided with current_task_id
+                if (req.throttle_policy is not None) and (req.throttle_policy.current_task_id):
+                    es.optional_task_id = req.throttle_policy.current_task_id
 
                 shared_mem_dict[ep_key(episode_uuid)] = es
                 openai_base_url = es.openai_base_url
@@ -564,16 +596,12 @@ def register_enable_swarm_mode_routes(
         assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
         assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
 
-        if "episodes" not in shared_mem_dict:
-            logger.error(f"[server] No episodes registered yet.")
-            raise HTTPException(status_code=400, detail=f"No episodes registered yet.")
 
         if (ep_key(episode_uuid)) not in shared_mem_dict:
             logger.error(f"[server] Episode {episode_uuid} not found.")
             raise HTTPException(status_code=400, detail=f"Episode {episode_uuid} not found.")
 
         # send workflow_output to zmq
-        assert "episodes" in shared_mem_dict
         ep_stat = shared_mem_dict[ep_key(episode_uuid)]
         episode_type = ep_stat.episode_type
         episode_status = ep_stat.episode_status
@@ -631,10 +659,6 @@ def register_enable_swarm_mode_routes(
         # assert "task_id" in workflow_output.metadata, "workflow_output.metadata must contain task_id"
         # assert workflow_output.metadata["task_id"] == task_id, "workflow_output.metadata.task_id must match req.task_id"
 
-        if "episodes" not in shared_mem_dict:
-            logger.error(f"[server] No episodes registered yet.")
-            return EndEpisodeResponse(success=True)
-
         if (ep_key(episode_uuid)) not in shared_mem_dict:
             logger.error(f"[server] Episode {episode_uuid} not found.")
             return EndEpisodeResponse(success=True)
@@ -658,7 +682,7 @@ def register_enable_swarm_mode_routes(
         return CanContinueEpisodeResponse(can_continue=can_continue)
 
     @app.post("/is_episode_claimed", response_model=BoolResponse)
-    async def is_episode_claimed(req: CanContinueEpisodeRequest):
+    async def is_episode_claimed(req: CheckWhetherEpisodeClaimedRequest):
         engine_status = shared_mem_dict["engine_status"]
         if engine_status not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
             return BoolResponse(success=False)
@@ -670,11 +694,13 @@ def register_enable_swarm_mode_routes(
         if es.episode_status == "claimed":
             return BoolResponse(success=True)
         else:
+            if req.unregister_if_not_claimed:
+                _delete_episode_record(req.episode_uuid, shared_mem_dict, shared_mem_dict_lock)
             return BoolResponse(success=False)
 
     @app.post("/get_episode_buffer", response_model=EpisodeBufferResponse)
     async def get_episode_buffer():
-        result = [v for k, v in shared_mem_dict.items() if is_key_epsisode_status(k)]
+        result = [v for k, v in shared_mem_dict.items() if is_key_episode_status(k)]
         return EpisodeBufferResponse(buffer=result)
 
     @app.post("/update_current_batch_rollout_pool_information", response_model=BoolResponse)
@@ -688,6 +714,7 @@ def register_enable_swarm_mode_routes(
                 req.running_episode_details = None
                 req.engine_status = None
                 req.global_step = None
+                req.completed_tasks_client_uuids = {}
                 shared_mem_dict["current_batch_rollout_pool_information"] = req
             return BoolResponse(success=True)
         except Exception as e:
@@ -711,7 +738,7 @@ def register_enable_swarm_mode_routes(
             running_episode_details = {}
             current_time = time.time()
             for k, v in shared_mem_dict.items():
-                if is_key_epsisode_status(k):
+                if is_key_episode_status(k):
                     es: EpisodeStatus = v
                     if es.episode_status == "claimed":
                         time_since_last_activity = current_time - es.latest_activity_timestamp
@@ -720,8 +747,26 @@ def register_enable_swarm_mode_routes(
                             "time_since_last_activity": f"{time_since_last_activity:.1f}s",
                             "discard_episode_timeout": f"{es.discard_episode_timeout:.1f}s",
                             "llm_call_count": str(es.llm_call_count),
+                            "client_uuid": es.client_uuid,
+                            "optional_task_id": es.optional_task_id if hasattr(es, "optional_task_id") else None,
                         }
             pool_info.running_episode_details = running_episode_details if running_episode_details else None
+
+            # Build completed_tasks_client_uuids from finished episodes
+            # Map task_id -> list of client_uuids
+            completed_tasks_client_uuids = {}
+            for k, v in shared_mem_dict.items():
+                if is_key_finished_episode_status(k):
+                    es: EpisodeStatus = v
+                    task_id = es.optional_task_id if hasattr(es, "optional_task_id") else None
+                    if task_id:
+                        if task_id not in completed_tasks_client_uuids:
+                            completed_tasks_client_uuids[task_id] = []
+                        completed_tasks_client_uuids[task_id].append(es.client_uuid)
+
+            # Only set if we have data, otherwise keep the existing value from pool_info
+            if completed_tasks_client_uuids:
+                pool_info.completed_tasks_client_uuids = completed_tasks_client_uuids
 
             return pool_info
         except Exception as e:
@@ -742,5 +787,6 @@ def register_enable_swarm_mode_routes(
         - Clean up shared memory state
         """
         kill_process_tree(shared_mem_dict_lock, shared_mem_dict)
+        return BoolResponse(success=True)
 
     return app, register_episode_ready_listener()

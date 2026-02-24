@@ -1,13 +1,15 @@
 import os
 import time
 import httpx
+import base64
+import json
+
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from loguru import logger
 from ajet.schema.task import WorkflowOutput
 from ajet.utils.networking import find_free_port
 from ajet.utils.retry import retry_with_backoff
-from ajet.utils.cache import cache_with_ttl
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 
 VALID_STATUSES = [
@@ -19,13 +21,24 @@ VALID_STATUSES = [
     "ENGINE.WEIGHT_EXPORTING"
 ]
 
+API_KEY_PREFIX = "sk-ajet-"
+
 class SyncTrainConfigRequest(BaseModel):
     yaml_as_string: str
+
+
+class SwarmThrottlePolicy(BaseModel):
+    ratio: float = Field(default=1.5, description="Ratio limit for the batch. Value between 0 and 2 when method is `Task_Ratio_Limit`. Value can go above 1 to allow more parallelism.")
+    expected_batch_size: int = Field(..., description="Expected total task number in a batch.")
+    expected_num_repeat: int = Field(..., description="Expected number of repeat for each task.")
+    current_task_id: str = Field(..., description="If your option is `Task_Ratio_Limit`, well, swarm must know the task_id to arrange everything. Otherwise, just ignore this field.")
+
 
 class ClaimEpisodeRequest(BaseModel):
     client_uuid: str
     episode_type: str
     discard_episode_timeout: float
+    throttle_policy: SwarmThrottlePolicy | None = None
 
 class ClaimEpisodeResponse(BaseModel):
     success: bool
@@ -38,6 +51,10 @@ class ClaimEpisodeResponse(BaseModel):
 class CanContinueEpisodeRequest(BaseModel):
     client_uuid: str
     episode_uuid: str
+
+class CheckWhetherEpisodeClaimedRequest(BaseModel):
+    episode_uuid: str
+    unregister_if_not_claimed: bool = False
 
 class CanContinueEpisodeResponse(BaseModel):
     can_continue: bool
@@ -64,6 +81,7 @@ class EpisodeStatus(BaseModel):
     discard_episode_timeout: float
     llm_call_count: int = 0
     debug_log: List[str] = []
+    optional_task_id: str = ""
 
 class EpisodeBufferResponse(BaseModel):
     buffer: List[EpisodeStatus]
@@ -114,11 +132,10 @@ def http_change_engine_status(config, new_status: str, new_status_detail: str|No
     logger.success(f"Changed engine status to {new_status}")
 
 
-@cache_with_ttl(ttl=1.0)
-def is_episode_claimed(config, episode_uuid: str) -> bool:
+def is_episode_claimed(config, episode_uuid: str, unregister_if_not_claimed: bool) -> bool:
     resp = httpx.post(
         f"{get_interchange_server_url(config)}/is_episode_claimed",
-        json={"client_uuid": "", "episode_uuid": episode_uuid},
+        json={"episode_uuid": episode_uuid, "unregister_if_not_claimed": unregister_if_not_claimed},
         timeout=5
     )
     resp.raise_for_status()
@@ -194,3 +211,36 @@ def get_zmq_socket(config, episode_uuid: str, tag: str = ""):
     else:
         raise RuntimeError(f"Unknown interchange_method: {interchange_method}")
     return zmq_contect_address, ipc_path
+
+
+
+def generate_auth_token(agent_name, target_tag, episode_uuid, episode_address):
+    """
+    Generate a Base64-encoded auth_token from the given agent_name, target_tag, and episode_uuid.
+
+    Args:
+        agent_name (str): The name of the agent.
+        target_tag (str): The target tag.
+        episode_uuid (str): The UUID of the episode.
+
+    Returns:
+        str: The generated auth_token in the format "Bearer <base64_encoded_string>".
+    """
+    # Step 1: Construct the auth_data dictionary
+    auth_data = {
+        "agent_name": agent_name,
+        "target_tag": target_tag,
+        "episode_uuid": episode_uuid,
+        "episode_address": episode_address,
+    }
+
+    # Step 2: Convert the dictionary to a JSON string
+    json_string = json.dumps(auth_data)
+
+    # Step 3: Encode the JSON string into Base64
+    base64_encoded = base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
+
+    # Step 4: Prepend "Bearer " to the Base64-encoded string
+    auth_token = f"{API_KEY_PREFIX}{base64_encoded}"    # API_KEY_PREFIX: Literal['sk-ajet-']
+
+    return auth_token

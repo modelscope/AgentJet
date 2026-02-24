@@ -25,7 +25,7 @@ def run_command_with_pty(cmd, working_dir, env_dict):
             os.environ[key] = value
 
         # # Open a log file in append mode (optional)
-        # with open(log_file, 'a') as log_f:
+        # with open(log_file, 'a', encoding="utf-8") as log_f:
 
         # Define master device read callback
         def master_read(fd):
@@ -104,7 +104,7 @@ def pty_launch(service_name: str, success_std_string="Starting server on", prefi
     if service_path is None or service_script is None:
         raise ValueError(f"Environment variables for {service_name} not properly set.")
     if prefix != "":
-        service_name = prefix + "_" + service_name  
+        service_name = prefix + "_" + service_name
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[service_script],
         dir=service_path,

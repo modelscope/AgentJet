@@ -59,3 +59,38 @@ def retry_with_backoff(
         return wrapper
 
     return decorator
+
+
+def retry_infinite(
+    backoff_fn: Optional[Callable[[int], float]] = None,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Retry decorator that retries infinitely until success."""
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        from ajet.utils.testing_utils import TestFailException, TestSuccessException
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            attempt = 0
+            try:
+                while True:
+                    try:
+                        return func(*args, **kwargs)
+                    except TestSuccessException as exc:  # noqa: BLE001
+                        raise exc
+                    except TestFailException as exc:  # noqa: BLE001
+                        raise exc
+                    except Exception as exc:  # noqa: BLE001
+                        logger.bind(exception=True).exception(
+                            f"{func.__name__} error: {exc.args}, retrying attempt {attempt + 1}"
+                        )
+                        sleep_seconds = backoff_fn(attempt) if backoff_fn else 2**min(attempt, 10)
+                        time.sleep(sleep_seconds)
+                        attempt += 1
+            except SwarmReceiveAbortException as exc:  # noqa: BLE001
+                # ignore exception, return None silently
+                return None # type: ignore
+
+        return wrapper
+
+    return decorator

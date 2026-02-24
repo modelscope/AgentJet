@@ -13,7 +13,7 @@
 - Agentic Framework Compatible: Easy to convert AgentScope and Langchain workflows into trainable workflows.
 
 
-| Feature                       | AgentJet (Beta)      | AgentLightning | rLLM | VeRL 0.7.0 |
+| Feature                       | AgentJet (Beta)      | AgentLightning | rLLM | VERL 0.7.0 |
 |---------                      |---------             |---------------- |------|------------ |
 | Multi OSS Training Backbone   |   ✅                |      ❌        |  ❌  |     ➖    |
 | Multi OSS Infer Backbone      |   ✅                |      ✅        |  ✅  |     ✅    |
