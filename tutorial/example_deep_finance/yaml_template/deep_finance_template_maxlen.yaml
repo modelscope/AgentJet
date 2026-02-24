@@ -36,12 +36,13 @@ ajet:
     # ✨✨✨✨ 编写并选择Agent
     user_workflow: tutorial.example_deep_finance.deep_finance->ExampleDeepResearchProtocol
     force_disable_toolcalls: False
+    enable_oversample: False
     tensor_model_parallel_size: 8
     num_repeat: {{NUM_REPEAT}}
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
     max_response_length_in_one_turn: 8000
-    max_model_len: 50000
+    max_model_len: {{MAX_MODEL_LEN}}
     agent_madness_reward: 0.0
     compute_madness_checklist: None
     multi_turn:
@@ -53,8 +54,8 @@ ajet:
     debug_first_n_tasks: 100  # 增加处理的任务数
   data:
     train_batch_size: {{TRAIN_BATCH_SIZE}}
-    max_prompt_length: 8000
-    max_response_length: 41000
+    max_prompt_length: 20000
+    max_response_length: 45000
 
   task_reader:
     type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service

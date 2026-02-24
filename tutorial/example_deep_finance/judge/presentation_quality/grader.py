@@ -83,7 +83,7 @@ class PresentationQualityGrader(BaseGrader):
 
         return OpenAIChatModel(**kwargs)
 
-    async def aevaluate(
+    async def _aevaluate(
         self,
         report_content: str,
         user_query: str | None = None,
