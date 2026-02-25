@@ -48,6 +48,8 @@ ajet:
     # maximum number of parallel environments / simulate workers
     max_env_worker: 128
 
+  trainer_common:
+    logger: tensorboard
 
 # ------------------ 不需要修改 ------------------
 hydra:

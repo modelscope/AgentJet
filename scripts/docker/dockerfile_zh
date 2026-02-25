@@ -48,6 +48,7 @@ RUN . /opt/venv/bin/activate && uv pip install flash_attn-2.8.3+cu12torch2.7cxx1
 
 # cache friendly layer for code changes
 COPY . .
+RUN . /opt/venv/bin/activate && uv pip install -e .[verl] -i https://mirrors.aliyun.com/pypi/simple/
 RUN wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/dataset.tar.gz
 RUN mkdir -p /mnt/data_cpfs/model_cache/modelscope
 RUN tar -xzf dataset.tar.gz -C /mnt/data_cpfs/model_cache/modelscope/ && rm dataset.tar.gz
