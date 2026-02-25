@@ -377,7 +377,8 @@ def register_enable_swarm_mode_routes(
                 from ajet.utils.launch_utils import start_ray_service
 
                 logger.info("[start_engine] Starting Ray service...")
-                start_ray_service(args, env)
+                # start_ray_service(args, env)
+                await asyncio.to_thread(start_ray_service, args, env)  # start ray in separate thread to avoid blocking
             else:
                 logger.info("[start_engine] Ray already initialized")
 
