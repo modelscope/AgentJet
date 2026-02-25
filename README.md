@@ -1,4 +1,4 @@
-# AgentJet (Beta)
+# AgentJet
 
 [![Benchmarking](https://img.shields.io/badge/Benchmarking-0078D4?style=for-the-badge&logo=github)](https://benchmark.agentjet.top/)
 [![Docs](https://img.shields.io/badge/Docs-Read%20the%20Documents-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://modelscope.github.io/AgentJet)
