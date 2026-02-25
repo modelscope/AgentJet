@@ -22,7 +22,10 @@ Run the command below:
 docker run --rm -it \
   -v /path/to/host/Qwen/Qwen2.5-7B-Instruct:/Qwen/Qwen2.5-7B-Instruct \
   -v ./swarmlog:/workspace/log \
+  -v ./swarmexp:/workspace/saved_experiments \
   -p 10086:10086 \
+  --gpus=all \
+  --shm-size=32GB \
   ajet:latest \
   bash -c "(ajet-swarm overwatch) & (NO_COLOR=1 LOGURU_COLORIZE=NO ajet-swarm start &>/workspace/log/swarm_server.log)"
 ```
@@ -84,7 +87,10 @@ and we would like to mount it at container directory: `/mnt/data_cpfs/model_cach
 docker run --rm -it \
   -v /root/agentjet/modelscope_cache/Qwen/Qwen2___5-7B-Instruct:/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct \
   -v ./swarmlog:/workspace/log \
+  -v ./swarmexp:/workspace/saved_experiments \
   -p 10086:10086 \
+  --gpus=all \
+  --shm-size=32GB \
   ajet:latest \
   bash -c "(ajet-swarm overwatch) & (NO_COLOR=1 LOGURU_COLORIZE=NO ajet-swarm start &>/workspace/log/swarm_server.log)"
 ```
