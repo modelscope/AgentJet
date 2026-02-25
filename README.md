@@ -68,6 +68,11 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 <img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771873242388.jpg"/>
 </div>
 
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/beast_logger_zimu.mp4.gif"/>
+</div>
+
+
 
 ---
 
