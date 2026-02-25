@@ -167,3 +167,5 @@ dataset_gsm8k/*
 benchmark_datasets
 modelscope_cache
 prompts
+swarmexp
+swarmlog
