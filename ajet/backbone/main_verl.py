@@ -64,7 +64,16 @@ def run_ppo(config: DictConfig) -> None:
             num_cpus=config.ray_init.num_cpus,
         )
 
-    atexit.register(lambda: ray.shutdown())  # ray shutdown on exit
+    def on_shutdown():
+        if ray.is_initialized():
+            ray.shutdown()
+        if config.ajet.enable_experimental_interchange_server:
+            if config.ajet.enable_swarm_mode:
+                from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
+                print("Changing engine status to OFFLINE before shutdown...")
+                http_change_engine_status(config, "ENGINE.OFFLINE", global_step=0)
+
+    atexit.register(on_shutdown)  # ray shutdown on exit
 
     # Create a remote instance of the TaskRunner class, and
     # Execute the `run` method of the TaskRunner instance remotely and wait for it to complete
