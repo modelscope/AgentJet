@@ -17,7 +17,7 @@ from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
 GRPO_N = 4  # grpo group size
 NUM_EPOCH = 10000
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
-REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct")
+REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct")
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 
@@ -28,7 +28,7 @@ def main():
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
             huggingface_dat_repo = HuggingfaceDatRepo(
-                dataset_path = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main",
+                dataset_path = "/root/agentjet/benchmark_datasets/dataset/gsm8k/socratic",
                 # dataset_path = "openai/gsm8k",
                 # dataset_name = "main",
             )
@@ -46,7 +46,7 @@ def main():
             batch_size=REMOTE_BATCH_SIZE,
             num_repeat=GRPO_N,
         ),
-        # force_restart=True,
+        force_restart=True,
     )
 
     def rollout(task):
