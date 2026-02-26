@@ -10,7 +10,7 @@ This guide explains how to launch the **AgentJet Swarm Server** inside a Docker 
 | Requirement | Detail |
 |---|---|
 | Docker | With GPU support (`nvidia-container-toolkit`) |
-| AgentJet Docker image | `ajet:latest` (built from the AgentJet repository) |
+| AgentJet Docker image | `ghcr.io/modelscope/agentjet:main` (built from the AgentJet repository) |
 | LLM model weights | Downloaded locally (e.g., `Qwen2.5-7B-Instruct`) |
 
 
@@ -26,7 +26,7 @@ docker run --rm -it \
   -p 10086:10086 \
   --gpus=all \
   --shm-size=32GB \
-  ajet:latest \
+  ghcr.io/modelscope/agentjet:main \
   bash -c "(ajet-swarm overwatch) & (NO_COLOR=1 LOGURU_COLORIZE=NO ajet-swarm start &>/workspace/log/swarm_server.log)"
 ```
 
@@ -48,7 +48,7 @@ And when completed, you will see a interface like this, which means the deployme
 | `-v /path/to/host/Qwen/Qwen2.5-7B-Instruct:/Qwen/Qwen2.5-7B-Instruct` | **Model mount** — mounts your local model weights directory into the container. The path inside the container must match the `model` field you configure in your training job. |
 | `-v ./swarmlog:/workspace/log` | **Log mount** — mounts a local `./swarmlog` directory to persist server logs outside the container. The VERL training log is written here. |
 | `-p 10086:10086` | **Port mapping** — exposes port `10086` so that Swarm Clients on other machines can reach the server via `http://<server-ip>:10086`. |
-| `ajet:latest` | The AgentJet Docker image. |
+| `ghcr.io/modelscope/agentjet:main` | The AgentJet Docker image. |
 | `bash -c "..."` | Runs two processes concurrently inside the container (see below). |
 
 
@@ -91,7 +91,7 @@ docker run --rm -it \
   -p 10086:10086 \
   --gpus=all \
   --shm-size=32GB \
-  ajet:latest \
+  ghcr.io/modelscope/agentjet:main \
   bash -c "(ajet-swarm overwatch) & (NO_COLOR=1 LOGURU_COLORIZE=NO ajet-swarm start &>/workspace/log/swarm_server.log)"
 ```
 

@@ -25,7 +25,7 @@ Possible solution: 25 * (6 - 2) = 100
 ## Project Structure
 
 ```
-tutorial/countdown_agent/
+tutorial/opencode_build_countdown_agent/
 ├── agent_run.py                    # Intelligent agent execution and reward calculation
 ├── agent_roll.py                   # Training loop script
 ├── generate_countdown_dataset.py  # Dataset generation script
@@ -97,10 +97,10 @@ First, generate the training data:
 
 ```bash
 cd /root/agentjet
-python tutorial/countdown_agent/generate_countdown_dataset.py
+python tutorial/opencode_build_countdown_agent/generate_countdown_dataset.py
 ```
 
-This will generate training data in the `tutorial/countdown_agent/countdown_dataset/` directory.
+This will generate training data in the `tutorial/opencode_build_countdown_agent/countdown_dataset/` directory.
 
 ### Step 2: Start Swarm Server
 
@@ -124,7 +124,7 @@ Edit the configuration parameters in `agent_roll.py`:
 # Local configuration
 LOCAL_GRPO_N = 4              # GRPO group size
 LOCAL_NUM_EPOCH = 100         # Number of training epochs
-LOCAL_DATASET_PATH = "./tutorial/countdown_agent/countdown_dataset/train.jsonl"
+LOCAL_DATASET_PATH = "./tutorial/opencode_build_countdown_agent/countdown_dataset/train.jsonl"
 REMOTE_SWARM_URL = "http://localhost:10086"  # Swarm server URL
 
 # Remote configuration (effective on the Swarm server)
@@ -138,7 +138,7 @@ REMOTE_TRAIN_MODEL = '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.
 Run the training script:
 
 ```bash
-python -m tutorial.countdown_agent.agent_roll
+python -m tutorial.opencode_build_countdown_agent.agent_roll
 ```
 
 ## Training Configuration Instructions
@@ -197,7 +197,7 @@ You can run `agent_run.py` separately to test a single problem:
 
 ```python
 from ajet.schema.task import Task
-from tutorial.countdown_agent.agent_run import run_agent_and_compute_reward
+from tutorial.opencode_build_countdown_agent.agent_run import run_agent_and_compute_reward
 
 task = Task(
     main_query="Target: 100, Numbers: [25, 3, 6, 2, 5, 1]",
@@ -217,7 +217,7 @@ task = Task(
 View generated example data:
 
 ```bash
-cat tutorial/countdown_agent/countdown_dataset/examples.json
+cat tutorial/opencode_build_countdown_agent/countdown_dataset/examples.json
 ```
 
 ### 3. Mid-process Debugging

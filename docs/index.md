@@ -17,7 +17,7 @@
             <h3>Get Started with Ease</h3>
         </div>
         <p class="card-desc">
-            AgentJet simplifies the process of tuning the models that power your agent workflows. It supports nearly all major agent frameworks (e.g. <b>agentscope</b>, <b>langchain</b>), as well as <b>framwork-less</b> agents built from HTTP requests.
+            AgentJet simplifies the process of tuning the models that power your agent workflows. It supports nearly all major agent frameworks (e.g. <b>agentscope</b>, <b>langchain</b>), as well as <b>framework-less</b> agents built from HTTP requests.
         </p>
     </a>
     <a href="#example-library" class="feature-card">
@@ -47,7 +47,7 @@
         </div>
         <p class="card-desc">
             Built to support advanced <b>multi-agent</b> and <b>multi-turn</b> LLM workflows,
-            AgentJet intergrates timeline-merging algorithms that
+            AgentJet integrates timeline-merging algorithms that
             automatically analyze and consolidate each agent's LLM timeline,
             <b>accelerating</b> training speed 1.5x ~ 10x.
         </p>
@@ -58,7 +58,7 @@
             <h3>High Resolution Logging</h3>
         </div>
         <p class="card-desc">
-            Log <b>token-level</b> rollout details, capturing token IDs, token <b>loss masks</b>, and token <b>log probabilities</b> with <b>web UI display</b>. This Support workflow development, agent diagnostics, and facilitate research on advanced LLM algorithm studies.
+            Log <b>token-level</b> rollout details, capturing token IDs, token <b>loss masks</b>, and token <b>log probabilities</b> with <b>web UI display</b>. This supports workflow development, agent diagnostics, and facilitates research on advanced LLM algorithm studies.
         </p>
     </a>
     <a href="en/installation/" class="feature-card">
@@ -67,7 +67,7 @@
             <h3>Any Training Engine</h3>
         </div>
         <p class="card-desc">
-            Support <b>multiple training engines</b> as backbone (<b>VERL</b> and <b>Trinity-RFT</b>). Swarm backbone support will be released soon.
+            Supports <b>multiple training engines</b> as backbone (<b>VERL</b> and <b>Trinity-RFT</b>). Swarm backbone support will be released soon.
             Choose from <b>vLLM</b> and <b>SGLang</b> as you wish. Say goodbye to training engine gaps.
         </p>
     </a>
@@ -149,7 +149,7 @@ The internal system orchestrates several specialized modules to handle the compl
 |--------|-------------|
 | **Launcher** | Manages background service processes (Ray, vLLM) and routes the backbone |
 | **Task Rollout** | Bridges LLM engines and manages the Gym environment lifecycle |
-| **Task Runner** | Executes the AgentScope workflow and calculates rewards |
+| **Task Runner** | Executes the agent workflow and calculates rewards |
 | **Model Tuner** | Forwards inference requests from the workflow to the LLM engine |
 | **Context Tracker** | Monitors LLM calls and automatically merges shared-history timelines (1.5x-10x efficiency boost) |
 

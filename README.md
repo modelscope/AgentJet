@@ -37,7 +37,7 @@ Let's begin with the simplest example: a math agent with a tool call. This is a 
 
 Let's begin with the simplest AgentJet Swarm example: also a math agent. In this case, you can use any GPU-less laptop to train the model remotely.
 
-1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch`.
+1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch`. (Alternative: if you are a fan of docker, use our [prebuilt docker image here](docs/en/ajet-swarm-docker.md) without setting up dependencies)
 2. From your laptop (or swarm server localhost), run [this simple script](https://github.com/modelscope/AgentJet/blob/main/tutorial/example_math_swarm/math.py) to begin training:
     ```python
     AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
@@ -49,12 +49,12 @@ Let's begin with the simplest AgentJet Swarm example: also a math agent. In this
 
 ## ✈️ Features
 
-We aim to build a easy-to-learn Agent tuner that unlock more possibilities for agent developers:
+We aim to build an easy-to-learn Agent tuner that unlocks more possibilities for agent developers:
 
 - **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
-- **Swarm Training**. [This unique feature](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_english/) of AgentJet opens many possibilities: deploying distributed & self-healing rollout workers, **non-shared-parameter multi-agent** training, **multi-runtime & multi-task cocktail** training. And just like Tinker, you can use AgentJet Swarm to train **models even on **GPU-less laptop(s)**.
-- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support trinity as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
+- **Swarm Training**. [This unique feature](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_english/) of AgentJet opens many possibilities: deploying distributed & self-healing rollout workers, **non-shared-parameter multi-agent** training, **multi-runtime & multi-task cocktail** training. And just like Tinker, you can use AgentJet Swarm to train models even on **GPU-less laptop(s)**.
+- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support trinity as an alternative backbone, accelerating your tuning process via fully asynchronous RFT.
 - **Flexible and Fast**. AgentJet supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agentjet.top/) (under construction, still gathering data, coming soon).
 
@@ -129,13 +129,13 @@ The internal system orchestrates several specialized modules to handle the compl
 * **Task Runner**: Executes the Agent workflow and calculates rewards.
 * **Model Tuner**: Forwards inference requests from the workflow to the LLM engine.
 * **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **1.5x to 10x**.
-* **Swarm Server**: A data interchange center that accept OpenAI-like requests and engine instructions, activated only in AgentJet Swarm mode.
+* **Swarm Server**: A data interchange center that accepts OpenAI-like requests and engine instructions, activated only in AgentJet Swarm mode.
 
 #### 3. Swarm Architecture
 
-When enabled swarm training mode, an additional component will be activated:
+When swarm training mode is enabled, an additional component will be activated:
 
-* **Swarm Data Interchange Server**: Maintains HTTP service, listen to swarm instructions and openai compatible requests. Establishing high-speed zmq communication channel to coordinate other modules.
+* **Swarm Data Interchange Server**: Maintains HTTP service, listens to swarm instructions and OpenAI compatible requests. Establishes a high-speed zmq communication channel to coordinate other modules.
 
 <div align="center">
 <img width="400" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/arch.jpg"/>

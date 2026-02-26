@@ -7,11 +7,11 @@ CountDown Agent Training Script (Swarm Client)
 This script connects to the AgentJet Swarm server and trains the countdown agent.
 
 Usage:
-    python -m tutorial.countdown_agent.agent_roll
+    python -m tutorial.opencode_build_countdown_agent.agent_roll
 
 Before running:
     1. Start the swarm server: ajet-swarm start
-    2. Ensure the dataset is generated: python tutorial/countdown_agent/generate_countdown_dataset.py
+    2. Ensure the dataset is generated: python tutorial/opencode_build_countdown_agent/generate_countdown_dataset.py
     3. Update the configuration variables below to match your setup
 """
 
@@ -32,7 +32,7 @@ from .agent_run import run_agent_and_compute_reward
 # --------- Configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # GRPO group size (number of rollouts per task)
 LOCAL_NUM_EPOCH = 100  # Number of training epochs
-LOCAL_DATASET_PATH = "./tutorial/countdown_agent/countdown_dataset/train.jsonl"
+LOCAL_DATASET_PATH = "./tutorial/opencode_build_countdown_agent/countdown_dataset/train.jsonl"
 REMOTE_SWARM_URL = "http://localhost:10086"  # Swarm server URL
 
 # --------- Configurations that take effect remotely (on swarm server) -------------

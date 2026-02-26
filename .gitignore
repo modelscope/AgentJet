@@ -161,6 +161,7 @@ flash_attn-2.8.*.whl
 tutorial/example_deep_finance/prepare_data/*
 tutorial/example_deep_finance/judge/analytical_sufficiency/*
 tutorial/example_deep_finance/output_report/*
+tutorial/opencode_build_countdown_agent/countdown_dataset
 dataset_gsm8k/*
 
 .dockerignore
