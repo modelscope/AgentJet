@@ -138,7 +138,7 @@ To optimize an agent, you provide three core inputs:
 </div>
 
 <div align="center">
-<img width="840" alt="AgentJet Architecture" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+<img width="840" alt="AgentJet Architecture" src="https://img.alicdn.com/imgextra/i2/O1CN01PdCJym1jqr1jWGMZ4_!!6000000004600-0-tps-2013-870.jpg"/>
 </div>
 
 **✈️ Internal System Architecture**

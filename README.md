@@ -107,7 +107,6 @@ Explore our automated benchmarking system [https://benchmark.agentjet.top/](http
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
 <div align="center">
-<!-- <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/> -->
 <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i2/O1CN01PdCJym1jqr1jWGMZ4_!!6000000004600-0-tps-2013-870.jpg"/>
 
 </div>
