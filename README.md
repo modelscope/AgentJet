@@ -107,7 +107,8 @@ Explore our automated benchmarking system [https://benchmark.agentjet.top/](http
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
 <div align="center">
-<img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+<!-- <img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/> -->
+<img width="480" alt="image" src="https://img.alicdn.com/imgextra/i2/O1CN01PdCJym1jqr1jWGMZ4_!!6000000004600-0-tps-2013-870.jpg"/>
 
 </div>
 
@@ -131,6 +132,15 @@ The internal system orchestrates several specialized modules to handle the compl
 * **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **1.5x to 10x**.
 * **Swarm Server**: A data interchange center that accept OpenAI-like requests and engine instructions, activated only in AgentJet Swarm mode.
 
+#### 3. Swarm Architecture
+
+When enabled swarm training mode, an additional component will be activated:
+
+* **Swarm Data Interchange Server**: Maintains HTTP service, listen to swarm instructions and openai compatible requests. Establishing high-speed zmq communication channel to coordinate other modules.
+
+<div align="center">
+<img width="400" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/arch.jpg"/>
+</div>
 
 
 
