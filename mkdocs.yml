@@ -31,7 +31,6 @@ nav:
       - Tune Your First Agent: en/tune_your_first_agent.md
       - Agentic Frameworks: en/agent_framework_support.md
       - Swarm Training: en/swarm_intro_blog_english.md
-      - swarm_best_practice: en/swarm_best_practice.md
 
   - Examples:
       - Math Agent: en/example_math_agent.md
@@ -40,6 +39,9 @@ nav:
       - Learning to Ask: en/example_learning_to_ask.md
       - Frozen Lake: en/example_frozenlake.md
       - Countdown Game: en/example_countdown.md
+
+  - Swarm Examples:
+      - Best Practice: en/swarm_best_practice.md
 
   - Components:
       - Workflow: en/workflow.md
@@ -62,7 +64,8 @@ nav:
       - Platform Comparison: en/platform_comparison.md
 
   - Blogs:
-      - Swarm Intro (ZH): en/swarm_intro.md
+      - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
+      - Swarm Intro (EN): en/swarm_intro_blog_en.md
 
 plugins:
   - search:

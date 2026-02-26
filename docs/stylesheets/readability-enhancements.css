@@ -259,3 +259,16 @@ article details summary:focus-visible,
 article ol > li {
   font-size: 20px;
 }
+
+/* ========================================
+   Navigation Link Truncation (H2/Depth 3)
+   ======================================== */
+
+a[data-depth="3"] {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}

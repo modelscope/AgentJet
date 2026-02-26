@@ -14,9 +14,9 @@ AgentJet具备全分布式蜂群训练（Swarm Training）能力，
 此外，AgentJet 完全开源，样例丰富，开箱即用，开放共建，并配套Token层级的追踪调试工具 & 逐版本训练性能追踪平台；
 还面向Vibe Coding开发者提供相关技能（SKILLs），允许Claude Code等工具一键辅助您的智能体编排和调试训练工作。
 
-
-
-![alt text](https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771872754893.jpg)
+<div align="center">
+<img width="800" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771872754893.jpg"/>
+</div>
 
 ## 中心化 Agentic 大模型RL架构的困境
 
@@ -35,7 +35,9 @@ AgentJet具备全分布式蜂群训练（Swarm Training）能力，
 - 如果让一个较小的模型在每个Gradient Step同时学习多个完全不同Agent工作流(Workflow)，甚至完全不同领域的任务，是否有可能表现得更好？
 - 为什么鲜有研究使用 opencode 等带复杂 Runtime 的复杂 Agent 直接进行训练？
 
-![alt text](https://serve.gptacademic.cn/publish/shared/Image/Image2026-02-20-11-40-40.png)
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/Image2026-02-20-11-40-40.png"/>
+</div>
 
 有困难就总会有解决方法。在过去的一年中，VERL解决了训推GPU效率的问题，Agent-Lightning解决了灵活接入自定义智能体的问题，
 Tinker提出了一个半分布式解耦架构（可惜只能训练Lora模型）。而通义EconML团队，AgentJet在充分学习这些项目架构的基础上，走出了关键一步：
