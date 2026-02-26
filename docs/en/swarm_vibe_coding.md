@@ -16,10 +16,28 @@ Your skills (First read the SKILL file to acquire necessary knowledge):
 ajet/copilot/write-swarm-client/SKILL.md
 ```
 
+## Instruction
+
 Copy and paste the prompt above into opencode or claude-code, and then hit `ajet-swarm start` and `python /path/to/ai/generated/agent_roll.py`,
 and wait for the training to finish.
 
-Reference result:
+## Generated training code structure.
+
+```bash
+tutorial/opencode_build_countdown_agent
+├── agent_roll.py
+├── agent_run.py
+├── countdown_dataset
+│   ├── examples.json
+│   └── train.jsonl
+├── generate_countdown_dataset.py
+├── __init__.py
+└── readme.md
+
+2 directories, 10 files
+```
+
+## Reference result:
 
 <div align="center">
 <img width="600" alt="image" src="https://img.alicdn.com/imgextra/i2/O1CN01u5JHH521QRGeQAFsL_!!6000000006979-2-tps-1200-600.png"/>

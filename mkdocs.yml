@@ -42,6 +42,7 @@ nav:
 
   - Swarm Examples:
       - Best Practice: en/swarm_best_practice.md
+      - Swarm Vibe Coding: en/swarm_vibe_coding.md
 
   - Components:
       - Workflow: en/workflow.md
