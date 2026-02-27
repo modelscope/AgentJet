@@ -30,7 +30,7 @@ article ul>li {
 a[data-sidebar="menu-button"] {
     font-size: 17px;
     font-weight: 300;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 
 .pr-2 {
@@ -38,8 +38,9 @@ a[data-sidebar="menu-button"] {
 }
 
 .text-muted-foreground {
-    font-size: 15px;
+    font-size: 17px;
     color: var(--color-muted-foreground);
+    margin-bottom: 12px;
 }
 
 article .typography h2 {
@@ -59,6 +60,12 @@ article .typography h2 {
 [data-slot="sidebar-menu-button"] {
     white-space: nowrap !important;
 }
+
+/* 如果你可以添加自定义类 */
+[data-slot="sidebar-menu"] {
+  padding-left: 10px;
+}
+
 
 /* 方法3：如果上面不生效，使用更具体的选择器 */
 div[data-slot="sidebar-content"].no-scrollbar {

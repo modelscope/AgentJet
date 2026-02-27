@@ -24,15 +24,14 @@ theme:
 nav:
   - Overview: index.md
 
-  - Tutorial:
-      - Introduction: en/intro.md
+  - • Tutorial:
       - Installation: en/installation.md
       - Quick Start: en/quickstart.md
       - Tune Your First Agent: en/tune_your_first_agent.md
       - Agentic Frameworks: en/agent_framework_support.md
       - Swarm Training: en/swarm_intro_blog_english.md
 
-  - Examples:
+  - • Classic Examples:
       - Math Agent: en/example_math_agent.md
       - AppWorld Agent: en/example_app_world.md
       - Werewolves Game: en/example_werewolves.md
@@ -40,22 +39,22 @@ nav:
       - Frozen Lake: en/example_frozenlake.md
       - Countdown Game: en/example_countdown.md
 
-  - Swarm Examples:
+  - • Swarm Examples:
       - Best Practice: en/swarm_best_practice.md
       - Swarm Vibe Coding: en/swarm_vibe_coding.md
 
-  - Components:
+  - • Components:
       - Workflow: en/workflow.md
       - Data Pipeline: en/data_pipeline.md
       - Task Judger: en/task_judger.md
 
-  - Supported Frameworks:
+  - • With Frameworks:
+      - OpenAI SDK: en/support_oaisdk.md
       - AgentScope: en/support_agentscope.md
       - Langchain: en/support_langchain.md
-      - OpenAI SDK: en/support_oaisdk.md
       - Raw HTTP: en/support_http.md
 
-  - Deep Dive:
+  - • Deep Dive:
       - Configuration: en/configuration.md
       - Visualization: en/visualization.md
       - Beast Logger: en/beast_logger.md
@@ -64,7 +63,7 @@ nav:
       - Timeline Processing: en/context_timeline.md
       - Platform Comparison: en/platform_comparison.md
 
-  - Blogs:
+  - • Blogs:
       - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
       - Swarm Intro (EN): en/swarm_intro_blog_en.md
 
@@ -125,6 +124,7 @@ extra_css:
   - stylesheets/mermaid.css
   - stylesheets/mkdocstrings.css
   - stylesheets/responsive.css
+  - stylesheets/table-word-wrap.css
 
 extra_javascript:
   - javascripts/tabbed-code.js

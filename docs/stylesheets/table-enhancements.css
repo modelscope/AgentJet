@@ -17,7 +17,8 @@
 
 article table,
 .prose table,
-.md-typeset table:not([class]) {
+.md-typeset table:not([class]),
+table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -27,6 +28,7 @@ article table,
   overflow: hidden;
   border: 1px solid var(--border, #e5e7eb);
   border-radius: var(--radius-lg, 0.5rem);
+  table-layout: auto;
 }
 
 /* ========================================
@@ -48,7 +50,11 @@ article table th,
   text-align: left;
   color: var(--foreground, #111827);
   border-bottom: 1px solid var(--border, #e5e7eb);
-  white-space: nowrap;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  max-width: 400px;
+  overflow-wrap: break-word;
 }
 
 /* First header cell - round top-left corner */
@@ -77,6 +83,11 @@ article table td,
   color: var(--foreground, #374151);
   border-bottom: 1px solid var(--border, #e5e7eb);
   line-height: 1.5;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  max-width: 400px;
+  overflow-wrap: break-word;
 }
 
 /* Remove border from last row */
@@ -310,7 +321,6 @@ article table.wide,
   .md-typeset table:not([class]) th,
   .md-typeset table:not([class]) td {
     padding: 0.625rem 0.75rem;
-    white-space: nowrap;
   }
 
   article table th,
@@ -318,4 +328,29 @@ article table.wide,
   .md-typeset table:not([class]) th {
     font-size: 0.8125rem;
   }
+}
+
+/* ========================================
+   强制文本换行 - 覆盖所有可能的样式
+   ======================================== */
+
+table th,
+table td {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* 为中文长文本优化 */
+table td {
+  max-width: 400px;
+  min-width: 120px;
+}
+
+/* 第一列（特性列）可以窄一些 */
+table td:first-child,
+table th:first-child {
+  max-width: 150px;
+  min-width: 100px;
 }

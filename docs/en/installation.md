@@ -126,7 +126,25 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
 | vLLM Version   | 0.10.0 |     0.10.0         |
 
 
+## Deploy with docker
 
+The docker solution is recommanded when you are using **AgentJet Swarm** mode!
+
+Simply run:
+
+```bash
+docker run --rm -it \
+  -v /path/to/host/Qwen/Qwen2.5-7B-Instruct:/Qwen/Qwen2.5-7B-Instruct \
+  -v ./swarmlog:/workspace/log \
+  -v ./swarmexp:/workspace/saved_experiments \
+  -p 10086:10086 \
+  --gpus=all \
+  --shm-size=32GB \
+  ghcr.io/modelscope/agentjet:main \
+  bash -c "(ajet-swarm overwatch) & (NO_COLOR=1 LOGURU_COLORIZE=NO ajet-swarm start &>/workspace/log/swarm_server.log)"
+```
+
+to start the swarm server. For more details and explainations, please refer to [this document](./ajet-swarm-docker.md).
 
 
 ## Next Steps
