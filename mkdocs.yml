@@ -26,8 +26,7 @@ nav:
 
   - • Tutorial:
       - Installation: en/installation.md
-      - Quick Start: en/quickstart.md
-      - Tune Your First Agent: en/tune_your_first_agent.md
+      - Tune First Agent: en/tune_your_first_agent.md
       - Swarm Training Intro: en/swarm_intro_blog_en.md
       - Agentic Frameworks: en/agent_framework_support.md
 
