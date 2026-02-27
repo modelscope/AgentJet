@@ -1,4 +1,6 @@
-# Flexible Training, Dynamic Scaling: Tongyi Releases Distributed Multi-Agent LLM Swarm Training Framework AgentJet
+# An introduction to AgentJet Swarm
+
+> The original document is [Chinese Version](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_zh/)
 
 <div align="center">
 <img width="500" alt="AgentJet" src="https://doc.agentjet.top/agentjet.jpg"/>
@@ -11,13 +13,6 @@
 > On the other hand, researchers can run agents directly participating in training on any device (such as a laptop), and can dynamically add, remove, or modify agent Rollout nodes at any time. This builds a swarm training network that is unrestricted by the environment, allows for bug fixing on the fly, and can self-heal from external environment crashes.
 > Furthermore, AgentJet is completely open-source, rich in examples, ready to use out of the box, and open for co-construction. It comes with token-level tracing debugging tools & a version-by-version training performance tracking platform.
 > It also provides relevant skills (SKILLs) for Vibe Coding developers, allowing tools like Claude Code to assist in your agent orchestration and training debugging with one click.
-
-
-<div align="center">
-<img width="800" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771873242388.jpg"/>
-</div>
-
-> The original document is Chinese Version: https://modelscope.github.io/AgentJet/en/swarm_intro_blog_zh/
 
 
 ## The Dilemma of Centralized Agentic LLM RL Architecture

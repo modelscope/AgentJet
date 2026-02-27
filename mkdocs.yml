@@ -28,8 +28,8 @@ nav:
       - Installation: en/installation.md
       - Quick Start: en/quickstart.md
       - Tune Your First Agent: en/tune_your_first_agent.md
+      - Swarm Training Intro: en/swarm_intro_blog_en.md
       - Agentic Frameworks: en/agent_framework_support.md
-      - Swarm Training: en/swarm_intro_blog_english.md
 
   - • Classic Examples:
       - Math Agent: en/example_math_agent.md
@@ -65,7 +65,6 @@ nav:
 
   - • Blogs:
       - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
-      - Swarm Intro (EN): en/swarm_intro_blog_en.md
 
 plugins:
   - search:
@@ -125,6 +124,7 @@ extra_css:
   - stylesheets/mkdocstrings.css
   - stylesheets/responsive.css
   - stylesheets/table-word-wrap.css
+  - stylesheets/badge-fix.css
 
 extra_javascript:
   - javascripts/tabbed-code.js
