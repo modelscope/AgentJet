@@ -24,7 +24,6 @@ Unlike traditional setups where the user code must run inside the training clust
 | 特征 | Tinker | AgentJet-Swarm |
 |------|--------|--------------|
 | **开源性质** | ❌ 闭源 | **✅ 开源免费** |
-| **收费模式** | 付费服务 | **✅ 完全免费** |
 | **目标用户** | 研究人员和开发者 | 研究人员和开发者 |
 | **任务** | 各种 LLM 训练 | 专精 LLM Agent RL训练 |
 | **核心功能** | LLM 微调训练 API | **✅ LLM 微调训练整套解决方案** |
