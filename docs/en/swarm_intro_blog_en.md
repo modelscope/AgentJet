@@ -36,13 +36,24 @@ When too much energy is wasted on the stability of the Agent runtime, it becomes
 <img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/Image2026-02-20-11-40-40.png"/>
 </div>
 
-Where there are difficulties, there are solutions. In the past year, VERL solved the problem of training and inference GPU efficiency, Agent-Lightning solved the problem of flexible access to custom agents, and Tinker proposed a semi-distributed decoupled architecture (unfortunately, it can only train LoRA models). The Tongyi EconML team, building on the architecture of these projects, has taken a critical step forward with AgentJet:
-We propose a brand new multi-agent LLM swarm distributed training mode.
-In this framework:
-On one hand, it supports any number of swarm-server nodes hosting any number of models (e.g., 7B + 14B + 32B) to provide vLLM (or SGLang) inference + policy gradient updates.
-On the other hand, it supports any number of swarm-client nodes hosting any Agent workflow and any Agent runtime.
+Where there are difficulties, there are solutions. In the past year,
+(1) VERL solved the problem of training and inference GPU efficiency,
+(2) Agent-Lightning solved the problem of flexible access to custom agents,
+(3) Tinker proposed a semi-distributed decoupled architecture (unfortunately, it can only train LoRA models).
+Building on the strengths of these projects, the Tongyi EconML team has taken a critical step forward with AgentJet:
+
+We propose a **brand new multi-agent LLM swarm distributed training mode, achieving complete decoupling of training and sampling, significantly simplifying the training process for single-agent and multi-agent LLM systems, enabling more efficient training of complex multi-agent systems**.
+In this new training framework, you can easily implement training algorithms and debugging techniques that were considered very difficult in the old system with just a few simple lines of code,
+such as non-shared parameter multi-agent reinforcement learning, using a Macbook locally to run agents participating in full model training, multi-runtime multi-task cocktail training, hot-swap debugging, etc.
+
+
+<!--
+In this framework,
+on one hand it supports any number of model nodes hosting any number of models (e.g., 7B + 14B + 32B) to provide vLLM (or SGLang) inference + policy gradient updates,
+on the other hand it supports any number of sampling nodes. -->
 
 ## AgentJet Swarm: The First Open-Source Swarm Distributed LLM Agent Training Framework
+
 
 Previous Agentic RL training modes had some implicit assumptions:
 - First, no matter how many agents are in the task to be trained, these agents can only share the same fine-tunable LLM model (shared "brain").
@@ -56,17 +67,19 @@ In this framework, the entire training system consists of several nodes, divided
 - **Swarm Server**: Runs on a GPU server (or cluster), loads the LLM policy parameters being trained, maintains the training/inference CoLocate environment, provides vLLM/SGLang API interfaces (with automatic context tracking & timeline merging capabilities), and executes policy gradient calculations.
 - **Swarm Client**: Runs on any device, reads datasets, runs reinforcement learning sampling tasks, and finally returns reward signals to the Swarm Server. It can also remotely control the Swarm Server at any time to update its training parameters, remotely start, stop, or restart training at will.
 
+
 <div align="center">
 <img width="800" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/classic+swarm+revise.jpg"/>
 </div>
 
-To visualize the difference between the two training modes, you can compare the training backend (like VERL) to an "aircraft carrier" with sufficient computing power but carrying only one model, and the RL inference sampling process to "fighter jets".
+To more vividly demonstrate the difference between the two training modes, we can compare the training backend (like VERL) to an "aircraft carrier" with sufficient computing power but carrying only one model, and the RL inference sampling process to "fighter jets".
 
-- The scheduling of these "fighter jets" is completely "welded" to the "mother ship" that created them, unable to use the models and computing power of other external "mother ships". After completing the task, they need to be recovered and recycled by the "mother ship". In addition, as "carrier-based aircraft", the "weight" of the runtime is constrained by the "mother ship", inevitably requiring "cutting the feet to fit the shoes", investing a lot of time in modifying the MCP environment and agent runtime environment. Furthermore, this "mother ship"-centric sample sampling method is very fragile. Once the external environment changes (such as external API failure, IP rate limiting, disk full) or internal parameters need to be modified (such as reward coefficients, task difficulty coefficients), the entire training process must be completely terminated and retried, losing all unsaved progress. In 2026, as agents become more complex, the trouble this brings to complex training tasks is clearly unbearable.
-- In contrast, AgentJet's swarm training framework creates a new training method. For a training task, researchers can deploy multiple "mother ships" as needed to carry multiple LLM model training requirements,
-and then launch "fighter jets" from any platform (such as workstations, servers, or even your Macbook, without any restrictions on hardware, operating system, dependency environment, or programming language, as long as it can send HTTP requests) to complete RL sampling tasks.
-These "fighter jets" executing sampling tasks can freely use the models and computing power of all "mother ships" in the swarm, and can dynamically join or exit the training task at any time.
-Researchers can even designate one of the "fighter jets" as a "super commander", responsible for remotely controlling the operation of all "aircraft carriers" in the swarm and transmitting training parameters, forming a many-to-many, scalable and flexible training system.
+| Feature | Typical Mode | AgentJet Swarm Training Mode |
+|---------|--------------|------------------------------|
+| **Multi-Model Training** | Does not support training multiple LLM models simultaneously. These "fighter jets" (sampling processes) are completely "welded" to the "aircraft carrier" (training backend) that created them, unable to collaborate across "aircraft carriers". No matter how many agents are trained, they can only share a "brain". | Supports training multiple LLM models simultaneously. Multiple "mother ships" (Swarm Servers) can be deployed, each "aircraft carrier" carrying different LLM models, and supports dynamic allocation and cross-"aircraft carrier" collaboration of "fighter jets" (Swarm Clients). |
+| **Runtime Environment Constraints** | The "weight" of "fighter jet" runtime is constrained by the "aircraft carrier", requiring researchers to invest time and energy in engineering issues like dependency environment configuration, MCP tool modifications, and building proxy networks. | No constraints whatsoever. Workstations, servers, or even Macbooks will work. No restrictions on hardware, operating system, dependency environment, or even programming language - as long as it can send HTTP requests. |
+| **Dynamics and Scalability** | When external environment changes occur (such as external API failure, IP rate limiting, disk issues) or agent code needs modification (such as reward coefficients, task difficulty coefficients, code bug fixes), the entire training process must be completely terminated and retried, losing all unsaved progress. | A flexibly scalable training system. Supports any "fighter jet" node dynamically joining or leaving training tasks at any time (even killing processes directly is fine), without causing training interruption or chaos. The system has high flexibility and fault tolerance. |
+| **Special Abilities** | - | Researchers can designate any "fighter jet" in the swarm as a "super commander", responsible for directing the operation of "aircraft carriers" in the swarm. For example, after debugging on a small model, the "super commander" can command the "aircraft carrier" to immediately switch to a larger base model and execute formal training with more GPUs. |
 
 Next, let's use a few simple cases to demonstrate the advantages of the AgentJet swarm mode.
 
@@ -106,7 +119,6 @@ Although essentially different, a comparison can be made with Tinker in the rein
 | Feature | Tinker | AgentJet-Swarm |
 |------|--------|--------------|
 | **Open Source Nature** | ❌ Closed Source | **✅ Open Source & Free** |
-| **Pricing Model** | Paid Service | **✅ Completely Free** |
 | **Task** | Various LLM Training | Specialized in Agent RL Training |
 | **Architecture Mode** | Managed Service + Single Point Client API | **✅ Both Server and Client are scalable on demand** |
 | **Multi-Client Participation** | ❌ Not Supported | **✅ Supported** |
@@ -142,44 +154,51 @@ AgentJet achieves true trinity of training, inference, and debugging. Under trad
 
 In swarm mode, this pain point is completely eliminated. Because the Swarm Client is a lightweight pure CPU process, it does not need to load any model weights, and the startup time is in seconds. Your debugging cycle becomes:
 
-1. Modify workflow code or reward function in IDE (VS Code, Cursor, etc.)
+1. Modify workflow code or reward function in IDE (VS Code, Cursor, ClaudeCode, etc.)
 2. Restart Swarm Client (about 2-3 seconds)
-3. Client immediately connects to the already running Swarm Server and starts executing new rollouts
+3. Client immediately connects to the already running Swarm Server and starts executing new rollouts (no need to wait for model weights to reload)
 4. See results or traceback within seconds
+
+<div align="center">
+<img width="800" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01nCChgf1nNmLYJj2JZ_!!6000000005078-0-tps-3750-1395.jpg"/>
+</div>
 
 This means you can develop Agent training processes just like developing ordinary Python projects - set breakpoints, check variables, single-step execution. The entire Client side is ordinary Python code, without Ray or any other "black magic" of distributed training frameworks. AI programming assistants like Cursor and Claude Code can also directly participate in your Agent training development and benefit from the instant output feedback of the Agent to automatically fix Bugs.
 
 
-### Multi-Task Cocktail Training: Need to RL train 40% Math Tasks, 30% Code Tasks, 30% Terminal Tasks simultaneously, with completely different Runtimes? No Problem!
 
-Multi-task mixed training is a key means to improve model generalization capabilities, but it is fraught with difficulties in practice. Math tasks require a symbolic calculation verifier, code tasks require a safe Docker sandbox, and terminal tasks require a complete Linux environment and file system - the dependencies, permission requirements, and security policies of these three runtimes are completely different. Stuffing them into the same training process is troublesome and unsafe.
+### Multi-Task Cocktail RL Training: Need to train Math + Code + Terminal tasks simultaneously, with completely different runtime dependencies for each task? Easy!
+
+Multi-task mixed training is a key means to improve model generalization capabilities, but it is fraught with difficulties in practice. Math tasks require a symbolic calculation verifier, code tasks require a safe Docker sandbox, and terminal tasks require a complete Linux environment and file system - the dependencies, permission requirements, and security policies of these three runtimes are completely different. Stuffing them into the same training process is both troublesome and unsafe.
 
 AgentJet swarm mode naturally solves this problem. You only need to deploy a Swarm Server to host the target model, and then start multiple Swarm Clients on different machines (or even different network environments), each Client responsible for a type of task. Next, you can use the "throttler" provided by AgentJet to adjust the ratio of different tasks; you can also flexibly customize the training logic and dynamically adjust the ratio during the training process.
 Each Client operates independently, is independently fault-tolerant, and does not interfere with each other.
 
-This architecture also brings an additional benefit: **Resource Isolation**. Code sandbox needs Docker permissions? Configure it on Machine B, it won't affect other Client machines. Browser MCP tools need special network proxies? Configure only on the corresponding Client machine. The security boundaries and resource requirements of different tasks are naturally isolated.
+This architecture also brings an additional benefit: **Resource Isolation**. Code sandbox needs Docker permissions? Configure it on Machine B, it won't affect other Clients. Browser MCP tools need special network proxies? Configure only on the corresponding Client machine. The security boundaries and resource requirements of different tasks are naturally isolated.
 
 
-### Single Node-Multi Model: One Agent Workflow training with two heterogeneous models together? No problem, define the reward function, start immediately!
 
-Multi-agent collaboration is one of the frontier directions of Agent research, but existing frameworks almost always assume that all Agents share the same underlying model. This assumption is unreasonable in many scenarios: an Agent responsible for high-level planning may need a 32B large model to ensure reasoning quality, while an Agent responsible for specific execution may be sufficient with a 7B small model.
+### Single Node-Multi Model: Train multiple heterogeneous models simultaneously? No problem!
+
+Multi-agent collaboration is one of the frontier directions of Agent research, but existing frameworks almost always assume that all Agents share the same underlying model. This assumption is uneconomical in many scenarios: an Agent responsible for high-level planning may need a 32B large model to ensure reasoning quality, while an Agent responsible for specific execution may be sufficient with a 7B small model.
 
 AgentJet Swarm natively supports multi-Server multi-model training topology. You can start multiple Swarm Servers simultaneously on multiple GPU servers, each Server hosting models of different sizes, and then use a Swarm Client to orchestrate their collaboration:
 
-In the workflow, the Client can route different inference requests to different Servers based on roles. The conversation history of the planning Agent is sent to the 32B model, and the conversation history of the execution Agent is sent to the 7B model. The two models collect their own rollout samples, calculate gradients independently, update parameters independently, and complete true **non-shared parameter multi-agent reinforcement learning training**.
+In the workflow, the Client can route different inference requests to different Servers based on roles. The conversation history of the planning Agent is sent to the 32B model, and the conversation history of the execution Agent is sent to the 7B model.
+The two models collect their own rollout samples, calculate gradients independently, update parameters independently, and complete true **non-shared parameter multi-agent reinforcement learning training** (multiple heterogeneous LLM models undergoing RL training simultaneously).
 
 This capability opens up many research directions that were previously difficult to realize:
 
-- **Heterogeneous Team Game**: Models of different ability levels form teams to learn optimal strategies respectively in competitive or cooperative environments.
-- **Cascaded Decision Optimization**: Large models are responsible for coarse-grained decisions, and small models execute fine-grained operations, jointly optimizing the entire decision chain end-to-end.
-- **Teacher-Student Collaborative Training**: Large model acts as a teacher to provide high-quality planning, small model acts as a student to learn execution, and both evolve together through RL signals.
+- **Heterogeneous Team Collaboration**: Models of different ability levels form teams to each learn optimal strategies in competitive or cooperative environments.
+- **Cascaded Decision Optimization**: Large models are responsible for coarse-grained decisions, small models execute fine-grained operations, jointly optimizing the entire decision chain end-to-end.
+- ...
 
 
-### Efficient Training/Inference GPU CoLocate Based on VERL
 
-The flexibility of the AgentJet swarm architecture does not come at the expense of GPU utilization efficiency & generating large GPU bubbles. Inside the Swarm Server, AgentJet still adopts the battle-tested VERL training/inference CoLocate architecture: this means that inference (rollout generation) and training (gradient update) share the same group of GPUs, avoiding waste of GPU memory.
 
-For researchers familiar with VERL, almost all algorithm implementations implemented by VERL can be applied to AgentJet losslessly. AgentJet adds a swarm communication layer and timeline merging optimization on this basis, but the core training logic remains consistent. Migration costs are low, and performance is guaranteed.
+
+
+## A Powerful Training Framework
 
 
 ### Agnostic to Agent Framework, Supports OpenAI Protocol BaseUrl and ApiKey
@@ -188,6 +207,8 @@ AgentJet **is not bound to any specific Agent framework**. Whether you use LangC
 For your Agent code, Swarm Server is no different from any other OpenAI compatible inference service. The only difference is that AgentJet silently records complete conversation context and token-level information for training in the background.
 
 This means you can take existing, already debugged Agent workflows directly for RL training without rewriting any inference call logic. Even for some closed-source Agent black-box agents, theoretically, you only need to modify the `base_url` and `api_key` in the environment variables to access AgentJet for training.
+
+
 
 
 ### Stable, Reproducible, Version-by-Version Performance Tracking, No Worries
@@ -209,10 +230,9 @@ We maintain a public [Performance Tracking Dashboard](https://benchmark.agentjet
 <img width="700" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/beast_logger_zimu.mp4.gif"/>
 </div>
 
+### Core Strengths and Rich Tutorial Library
 
-## A Powerful Training Framework
-
-For an Agent training framework, implementing a distributed architecture is far from enough. How to provide a stable, easy-to-start, and trustworthy training environment is also a topic we need to study.
+As an Agent training framework, simply implementing a distributed architecture is far from enough. How to provide a stable, instant-start, trustworthy training environment is also a topic we need to study.
 Therefore, AgentJet possesses and open-sources these core hard capabilities:
 
 - **Rich Tutorial Library**: Provides interesting [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorial materials.
@@ -226,18 +246,25 @@ Explore our rich example library to quickly start your journey:
 - **Timeline Automatic Merging Capability**: Supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and adopts context merging technology to accelerate training by **1.5x to 10x** in multi-turn (or multi-agent) conversation scenarios. (Similar to the "tree structure" processing capability mentioned in the minimax forge technical report.)
 - **Reliable and Reproducible**: We continuously track the framework's performance on multiple [different tasks + major Git versions + different training backends](https://benchmark.agentjet.top/) (data continuously aggregated), what you see is what you get, hidden bugs are discovered in seconds.
 - **Token Consistency Automatic Alert & Repair**: By default, AgentJet automatically performs Re-tokenization drift repair based on the Token ID returned by the vLLM engine.
-- **Multi-Training Backend Support**: Supports multiple training backends using VERL, and is working on supporting other training backends like TRL.
+- **Multi-Training Backend Support**: Supports multiple training backends including VERL, and is working on supporting other training backends like TRL.
 
 <div align="center">
 <img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/benchmark.gif"/>
 </div>
+
+### Efficient Training/Inference GPU CoLocate Based on VERL
+
+The flexibility of the AgentJet swarm architecture does not come at the expense of GPU utilization efficiency & generating large GPU bubbles. Inside the Swarm Server, AgentJet still adopts the battle-tested VERL training/inference CoLocate architecture: this means that inference (rollout generation) and training (gradient update) share the same group of GPUs, avoiding waste of GPU memory.
+
+For researchers familiar with VERL, almost all algorithm implementations implemented by VERL can be applied to AgentJet losslessly. AgentJet adds a swarm communication layer and timeline merging optimization on this basis, but the core training logic remains consistent. Migration costs are low, and performance is guaranteed.
+
 
 
 ## Conclusion and Outlook
 
 The core philosophy of the AgentJet swarm training framework can be summarized in one sentence: **Let the flexibility of Agent training match the complexity of the Agent itself**.
 
-As Agent workflows become more complex, rely on more external tools, and involve more heterogeneous models, the training framework should not become a bottleneck. By completely decoupling training inference (Server) from Agent runtime (Client), AgentJet achieves:
+When Agent workflows become increasingly complex, rely on more external tools, and involve more heterogeneous models, the training framework should not become a bottleneck. By completely decoupling training inference (Server) from Agent runtime (Client), AgentJet achieves:
 
 - **Developer Friendly**: Debug Agent workflows on a laptop with IDE, connect to remote swarm for instant training.
 - **Engineering Robustness**: External runtime failures do not affect training progress, seamlessly resume after repair.
@@ -246,9 +273,30 @@ As Agent workflows become more complex, rely on more external tools, and involve
 
 We believe that when the training framework is no longer a limiting factor, researchers and engineers can devote more energy to truly important things - designing better Agent architectures, exploring more effective reward signals, and trying bolder multi-agent collaboration strategies.
 
-AgentJet is fully open-sourced on GitHub. Researchers and developers in the community are welcome to try, feedback, and contribute. Let's push LLM Agent training into the swarm era together.
+AgentJet is fully open-sourced on GitHub. Researchers and developers in the community are welcome to try, provide feedback, and contribute. Let's push LLM Agent training into the swarm era together.
 
 > Project Address: [https://github.com/modelscope/AgentJet](https://github.com/modelscope/AgentJet)<br/>
 > Performance Dashboard: [https://benchmark.agentjet.top/](https://benchmark.agentjet.top/)<br/>
 > Official Documentation: [https://modelscope.github.io/AgentJet/](https://modelscope.github.io/AgentJet/)
+
+
+<!--
+
+swarm server的所有可能状态和转换方式如下:
+- **OFFLINE**: swarm server启动,但未加载任何模型,也不运行任何训练。swarm server启动后,直接进入该状态。此外,在任何其他状态下收到来自(任意)client的 `stop_engine`命令后,进入该状态。
+- **BOOTING**: swarm server收到配置,然后收到明确的 `begin_engine`命令后,进入该状态,进行模型参数加载、FSDP初始化、vLLM初始化。
+- **ROLLING**: swarm server样本采集状态。当**BOOTING**结束后,或者**WEIGHT_SYNCING**状态结束后,自动进入该状态。
+- **ROLLING_POST**: swarm server判定样本池足够进行下一步policy gradient时,自动进入该状态。该状态下仍然可以正常地继续完成进行到一半的episode,但拒绝接受开始新的episode。
+- **WEIGHT_SYNCING**: swarm server在 **ROLLING_POST** 状态下,回收并清理了所有进行中episode的算力和线程资源后,进入该状态。这个阶段VERL将完成本次policy gradient策略更新,完成后回到**ROLLING**,循环往复。
+
+
+
+唯有一个事情需要注意:每个episode开始前,你需要调用 `begin_episode` 来获取 `base_url` 和 `api_key`,与此同时,获取一个episode标识 `episode_uuid`。`swarm_worker`是线程安全,且不持有`episode`状态的,所以你可以随便同时并发多个`begin_episode`。当你的agent运行结束时,记得调用 `end_episode` 把奖励信号传递到 swarm server (带着`episode_uuid`参数)。此外,如果出于:
+- **奖励写错了**
+- **外部API欠费**
+- **调试**
+- **评估测试**
+- **训练中途,跑case看训练成色**
+- **出现意外情况需要屏蔽这个episode**
+等原因,想直接放弃该 `episode`,也很简单:把 `end_episode` 换成 `abort_episode` 即可。 -->
 
