@@ -1,5 +1,5 @@
 """DeepFinance Task Judge - OpenJudge 版本
-集成: FinanceCompositionEvaluator (基于 OpenJudge), PresentationQualityGrader
+集成: RM Gallery, PresentationQualityGrader
 """
 
 import os
@@ -8,31 +8,15 @@ import asyncio
 import time
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional, Tuple, List, Type
+from typing import Dict, Any, Optional, Tuple, List
 
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-from openjudge.graders.base_grader import BaseGrader
-from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, AuditGrader, EBTUTraceabilityGrader
+from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, CGCVGrader, AuditGrader, TraceabilityRewardGrader, EBTUTraceabilityGrader
 
-# Finance Graders from OpenJudge cookbooks
-from cookbooks.finance_grader.stock_analysis.valuation_analysis import ValuationAnalysisGrader
-from cookbooks.finance_grader.stock_analysis.fundamental_analysis import FundamentalAnalysisGrader
-from cookbooks.finance_grader.stock_analysis.overall_logic import OverallLogicGrader
-from cookbooks.finance_grader.stock_analysis.stock_risk_analysis import StockRiskAnalysisGrader
-from cookbooks.finance_grader.macro_analysis.macro_analysis import MacroAnalysisGrader
-from cookbooks.finance_grader.macro_analysis.concept_explanation import ConceptExplanationGrader
-from cookbooks.finance_grader.industry_research.characteristics_analysis import CharacteristicsAnalysisGrader
-from cookbooks.finance_grader.industry_research.risk_analysis import RiskAnalysisGrader
-from cookbooks.finance_grader.industry_research.underlying_comparison import UnderlyingComparisonGrader
-from cookbooks.finance_grader.event_interpretation.event_analysis import EventAnalysisGrader
-from cookbooks.finance_grader.event_interpretation.event_identification import EventIdentificationGrader
-from cookbooks.finance_grader.stock_search.search_relevance import SearchRelevanceGrader
-from cookbooks.finance_grader.stock_search.search_integrity import SearchIntegrityGrader
-from cookbooks.finance_grader.stock_search.search_timeliness import SearchTimelinessGrader
 
 
 # OpenJudge imports
@@ -58,7 +42,7 @@ def extract_text_content(content) -> str:
 
 
 def load_reference_answers_from_file(file_path: str) -> Tuple[Dict[str, str], Dict[str, str]]:
-    """加载参考答案 (FinanceCompositionEvaluator 需要)"""
+    """加载参考答案 (RM Gallery 需要)"""
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Reference answers file not found: {file_path}")
     try:
@@ -77,142 +61,13 @@ def load_reference_answers_from_file(file_path: str) -> Tuple[Dict[str, str], Di
 
 
 # =============================================================================
-# FinanceCompositionEvaluator - 基于 OpenJudge 的 Finance 评估器
-# =============================================================================
-
-class FinanceCompositionEvaluator:
-    """
-    基于 OpenJudge 的 Finance 组合评估器（替代 rm_gallery.FinanceComposition）
-    
-    功能：
-    - 根据 domain 路由到对应的 grader 集合
-    - 执行 pairwise 评估（比较 training answer 和 reference answer）
-    - 返回 0-1 范围的分数
-    
-    支持的 domain:
-    - stock_analysis: 股票分析
-    - industry_research: 行业研究  
-    - macro_analysis: 宏观分析
-    - event_interpretation: 事件解读
-    - stock_search: 股票搜索
-    """
-    
-    # Domain 到 Grader 类的映射（与 RM-Gallery 保持一致）
-    DOMAIN_GRADERS: Dict[str, List[Type[BaseGrader]]] = {
-        "stock_analysis": [
-            ValuationAnalysisGrader,
-            # FundamentalAnalysisGrader,
-            # OverallLogicGrader,
-            # StockRiskAnalysisGrader,
-        ],
-        "industry_research": [
-            CharacteristicsAnalysisGrader,
-            # RiskAnalysisGrader,
-            # UnderlyingComparisonGrader,
-        ],
-        "macro_analysis": [
-            MacroAnalysisGrader,
-            # ConceptExplanationGrader,
-        ],
-        "event_interpretation": [
-            EventAnalysisGrader,
-            # EventIdentificationGrader,
-        ],
-        "stock_search": [
-            SearchRelevanceGrader,
-            # SearchIntegrityGrader,
-            # SearchTimelinessGrader,
-        ],
-    }
-    
-    def __init__(self, model: OpenAIChatModel, params: Dict[str, Any] = None):
-        """
-        初始化 FinanceCompositionEvaluator
-        
-        Args:
-            model: OpenAIChatModel 实例
-            params: 额外参数（保留兼容性）
-        """
-        self.model = model
-        self.params = params or {}
-        self._grader_cache: Dict[str, List[BaseGrader]] = {}
-        
-    def _get_graders_for_domain(self, domain: str) -> List[BaseGrader]:
-        """
-        获取指定 domain 的 grader 实例列表（带缓存）
-        """
-        if domain not in self._grader_cache:
-            grader_classes = self.DOMAIN_GRADERS.get(domain, [])
-            self._grader_cache[domain] = [
-                grader_cls(model=self.model) for grader_cls in grader_classes
-            ]
-        return self._grader_cache[domain]
-    
-    async def aevaluate(self, query: str, current: str, reference: str, domain: str) -> float:
-        """
-        执行 pairwise 评估（异步版本，避免重复创建 event loop）
-        
-        Args:
-            query: 用户查询
-            current: 当前模型生成的回答 (training)
-            reference: 参考答案
-            domain: 任务领域（用于路由到对应 graders）
-            
-        Returns:
-            float: 0-1 范围的分数
-                - 1.0: current 优于 reference
-                - 0.0: reference 优于 current
-                - 0.5: 无法评估或出错
-        """
-        if not domain or domain not in self.DOMAIN_GRADERS:
-            print(f"⚠️ FinanceCompositionEvaluator: Unknown domain '{domain}', returning 0.5")
-            return 0.5
-            
-        graders = self._get_graders_for_domain(domain)
-        if not graders:
-            print(f"⚠️ FinanceCompositionEvaluator: No graders for domain '{domain}', returning 0.5")
-            return 0.5
-        
-        # 运行所有 graders
-        scores = []
-        for grader in graders:
-            try:
-                result = await grader.aevaluate(
-                    query=query,
-                    answer_1=current,    # training model output
-                    answer_2=reference,  # reference answer
-                )
-                
-                # 解析 GraderRank 结果
-                if hasattr(result, 'rank') and isinstance(result.rank, list):
-                    # rank = [1, 2] 表示 answer_1 (current) 更好 -> score = 1.0
-                    # rank = [2, 1] 表示 answer_2 (reference) 更好 -> score = 0.0
-                    if result.rank[0] == 1:
-                        scores.append(1.0)
-                    else:
-                        scores.append(0.0)
-                else:
-                    scores.append(0.5)  # 无法解析，返回中间值
-                    
-            except Exception as e:
-                grader_name = getattr(grader, 'name', grader.__class__.__name__)
-                print(f"⚠️ FinanceCompositionEvaluator: Grader {grader_name} failed: {e}")
-                scores.append(0.5)
-        
-        # 计算平均分数
-        if scores:
-            return sum(scores) / len(scores)
-        return 0.5
-
-
-# =============================================================================
 # DeepFinanceJudgeByOpenJudge 类
 # =============================================================================
 
 class DeepFinanceJudgeByOpenJudge(BaseJudge):
     """
     使用 OpenJudge 框架的 DeepFinance Judge
-    集成: FinanceCompositionEvaluator (基于 OpenJudge), PresentationQualityGrader
+    集成: RM Gallery, PresentationQualityGrader
 
     分析：
     - compute_reward 每次处理 **一条采样**（单个 workflow_output）
@@ -224,7 +79,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
     """
 
     _model_instance = None  # Model 可以复用
-    _finance_evaluator_instance = None  # FinanceCompositionEvaluator (单例)
+    _rm_evaluator_instance = None  # RM Gallery Evaluator (单例)
     _ref_answers_cache: Dict[str, Dict[str, str]] = {}  # 参考答案缓存
     _ref_domains_cache: Dict[str, Dict[str, str]] = {}  # 领域缓存
 
@@ -232,7 +87,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         super().__init__(config)
         self._setup_weights()
         self._init_openjudge_model()  # 只初始化 model，runner 在每次调用时创建
-        self._init_finance_evaluator()  # 初始化 FinanceCompositionEvaluator (基于 OpenJudge)
+        self._init_rm_components()  # 初始化 RM Gallery 组件
         self._init_reference_answers()  # 初始化参考答案
 
     def _setup_weights(self):
@@ -246,14 +101,16 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
         # 定义各 grader 的权重（可从 config 中读取）
         self.w = {
-            "finance": getattr(cfg, "finance_weight", 1.0) if cfg else 1.0,  # Finance 评估权重
+            "rm": getattr(cfg, "rm_weight", 1.0) if cfg else 1.0,  # RM Gallery 权重
             "presentation_quality": getattr(cfg, "presentation_quality_weight", 0.25) if cfg else 0.25,
             "grounding": getattr(cfg, "grounding_weight", 0.0) if cfg else 0.0,  # 引用规范性评估
-            "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # 引用逻辑审计
-            "ebtu": getattr(cfg, "ebtu_weight", 0.0) if cfg else 0.0,  # EBTU证据优先可追溯性审计
+            "cgcv": getattr(cfg, "cgcv_weight", 0.25) if cfg else 0.25,  # Citation-Grounded Claim Verification
+            "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # Audit Grader: audit reward 引用逻辑审计
+            "traceability": getattr(cfg, "traceability_weight", 0.0) if cfg else 0.0,  # 可追溯性/可核验性审计 (TVR)
+            "ebtu": getattr(cfg, "ebtu_weight", 0.0) if cfg else 0.0,  # Audit Grader: audit reward EBTU证据优先可追溯性审计
         }
 
-        # 归一化（注意：action_loop 是惩罚项，不参与归一化；finance 需要参与归一化）
+        # 归一化（注意：action_loop 是惩罚项，不参与归一化；rm 需要参与归一化）
         positive_weights = {k: v for k, v in self.w.items() if k != "action_loop" and v > 0}
         total = sum(positive_weights.values())
         if total > 0:
@@ -282,40 +139,51 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             f"api_key={'SET' if openjudge_api_key else 'NONE'}, max_concurrency={self.max_concurrency}"
         )
 
-    def _init_finance_evaluator(self):
-        """
-        初始化 FinanceCompositionEvaluator（仅当 finance_weight > 0 时）
-        
-        使用 OpenJudge 的 finance graders 替代原 rm_gallery 实现
-        """
-        self._finance_enabled = (self.w.get("finance", 0) > 0)
-        if self._finance_enabled:
-            if DeepFinanceJudgeByOpenJudge._finance_evaluator_instance is None:
-                self._create_finance_evaluator()
-                DeepFinanceJudgeByOpenJudge._finance_evaluator_instance = self.finance_evaluator
+    def _init_rm_components(self):
+        """初始化 RM Gallery Evaluator（仅当 rm_weight > 0 时）"""
+        self._rm_enabled = (self.w.get("rm", 0) > 0)
+        if self._rm_enabled:
+            if DeepFinanceJudgeByOpenJudge._rm_evaluator_instance is None:
+                self._init_rm_evaluator()
+                DeepFinanceJudgeByOpenJudge._rm_evaluator_instance = self.rm_evaluator
             else:
-                self.finance_evaluator = DeepFinanceJudgeByOpenJudge._finance_evaluator_instance
+                self.rm_evaluator = DeepFinanceJudgeByOpenJudge._rm_evaluator_instance
         else:
-            self.finance_evaluator = None
+            self.rm_evaluator = None
 
-    def _create_finance_evaluator(self):
-        """
-        创建 FinanceCompositionEvaluator 实例（基于 OpenJudge）
-        
-        复用已初始化的 OpenJudge model，无需单独配置
-        """
+    def _init_rm_evaluator(self):
+        """初始化 RM Gallery Evaluator"""
         try:
-            # 复用 OpenJudge model（已在 _init_openjudge_model 中初始化）
-            self.finance_evaluator = FinanceCompositionEvaluator(
-                model=self.model,
-                params={"is_parallel": True}
+            # Monkey patch OpenAI client timeout (RM Gallery 默认只有60s，对于30B模型不够用)
+            import openai
+            _original_openai_init = openai.OpenAI.__init__
+            def _patched_openai_init(self, *args, **kwargs):
+                kwargs.setdefault('timeout', 600.0)  # 增大到600秒
+                return _original_openai_init(self, *args, **kwargs)
+            openai.OpenAI.__init__ = _patched_openai_init
+
+            from rm_gallery.core.reward.registry import RewardRegistry
+            import logging
+            logging.getLogger("rm_gallery").setLevel(logging.WARNING)
+
+            # 从 config 读取 rm_llm，环境变量作为 fallback
+            rm_llm_name = self.config.ajet.judge.rm_llm
+            rm_api_key = os.environ.get("RM_API_KEY")
+            rm_base_url = os.environ.get("RM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+
+            rm_params = {"is_parallel": True, "enable_thinking": False, "base_url": rm_base_url}
+            if rm_api_key:
+                rm_params["api_key"] = rm_api_key
+
+            self.rm_evaluator = RewardRegistry.get("finance_composition")(
+                llm=rm_llm_name, name="finance_composition", params=rm_params
             )
-            print(f"[Init FinanceCompositionEvaluator] Using OpenJudge model, domains={list(FinanceCompositionEvaluator.DOMAIN_GRADERS.keys())}")
+            print(f"[Init RM Evaluator] llm={rm_llm_name}, base_url={rm_base_url}, api_key={'SET' if rm_api_key else 'NONE'} (timeout=600s)")
         except Exception as e:
-            print(f"✗ Failed to initialize FinanceCompositionEvaluator: {e}")
+            print(f"✗ Failed to initialize RM evaluator: {e}")
             import traceback
             traceback.print_exc()
-            self.finance_evaluator = None
+            self.rm_evaluator = None
 
     def _init_reference_answers(self):
         """初始化参考答案缓存，从 config 中读取路径"""
@@ -392,12 +260,22 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 grader=GroundingGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
+            # CGCV: Citation-Grounded Claim Verification - 引用锤定的断言验证
+            "cgcv": GraderConfig(
+                grader=CGCVGrader(model=model),
+                mapper=lambda data: {"traj": data},
+            ),
             # Audit: 引用逻辑审计 - 验证引用是否严格符合逻辑蕴含原则
             "audit": GraderConfig(
                 grader=AuditGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
-            # EBTU: Evidence-Backed Trace Units 证据优先可追溯性审计
+            # Traceability: 可追溯性/可核验性审计 - 验证报告断言是否有证据锚点支撑
+            "traceability": GraderConfig(
+                grader=TraceabilityRewardGrader(model=model),
+                mapper=lambda data: {"traj": data},
+            ),
+            # Audit Grader: audit reward EBTU证据优先可追溯性审计 - Evidence-Backed Trace Units
             "ebtu": GraderConfig(
                 grader=EBTUTraceabilityGrader(model=model),
                 mapper=lambda data: {"traj": data},
@@ -434,19 +312,17 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 print(f"⚠️ Empty conversation history for task_id={task_id}")
                 return 0.0, False
 
-            # 1.5 准备 Finance Composition 评估参数
+            # 1.5 RM Gallery 评估（如果启用）
             ref_ans, domain = self._get_reference_data(task_id)
             assistants = [extract_text_content(m["content"]) for m in history if m["role"] == "assistant"]
-            
-            # 准备 Finance 评估参数（将在 event loop 中一起运行）
-            finance_eval_params = None
-            if self._finance_enabled and self.finance_evaluator and ref_ans and domain:
-                finance_eval_params = {
-                    "query": query,
-                    "current": assistants[-1] if assistants else "",
-                    "reference": ref_ans,
-                    "domain": domain
-                }
+
+            # RM Gallery 耗时记录
+            rm_start_time = time.time()
+            if self._rm_enabled and self.rm_evaluator:
+                rm_raw = self._evaluate_with_rm_gallery(query, assistants[-1] if assistants else "", ref_ans, task_id, domain)
+            else:
+                rm_raw = 0.0
+            rm_time = time.time() - rm_start_time
 
             # 2. 转换为 OpenJudge 输入格式
             openjudge_sample = self._convert_to_openjudge_format(
@@ -457,17 +333,13 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 chat_date=chat_date
             )
 
-            # 3. 调用 OpenJudge Runner.arun 和 Finance 评估（在同一个 event loop 中）
+            if openjudge_sample.get('messages'):
+                last_msg = openjudge_sample['messages'][-1]
+
+            # 3. 调用 OpenJudge Runner.arun（异步）
             grading_start_time = time.time()
-            grader_results, finance_raw = self._run_openjudge_evaluation(
-                [openjudge_sample], 
-                finance_eval_params=finance_eval_params
-            )
+            grader_results = self._run_openjudge_evaluation([openjudge_sample])
             grading_time = time.time() - grading_start_time
-            
-            # 保存 Finance 评估日志
-            if finance_eval_params and finance_raw > 0:
-                self._save_finance_eval_log(finance_raw, query, task_id, domain)
 
 
             # 4. 提取各 grader 分数（arun 返回 Dict[str, List[GraderScore]]，这里取第一条）
@@ -483,8 +355,8 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 task_id=task_id
             )
 
-            # 5. 加权融合
-            fused_reward, contributions = self._fuse_grader_scores(grader_scores, finance_raw)
+            # 5. 加权融合（包含 RM Gallery 和 OpenJudge Graders）
+            fused_reward, contributions = self._fuse_grader_scores(grader_scores, rm_raw)
 
             # 6. 计算惩罚项（保留原有的 tool_calls 惩罚逻辑）
             # 从 log_metrics 中提取 tool_stats（deep_finance.py 将其放在 log_metrics 而非 metadata）
@@ -501,7 +373,8 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
             # 8. 更新元数据（实例化 RewardStats）
             time_stats = {
-                "grading_time": grading_time,  # 包含 Finance 评估和 OpenJudge graders 评估
+                "rm_time": rm_time,
+                "grading_time": grading_time,
                 "judge_total_time": judge_total_time,
             }
             self._update_metadata_stats(
@@ -513,11 +386,11 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 grader_scores=grader_scores,
                 contributions=contributions,
                 time_stats=time_stats,
-                finance_raw=finance_raw,
+                rm_raw=rm_raw,
                 quota_exceeded_flags=quota_exceeded_flags
             )
 
-            print(f"DeepFinanceJudgeByOpenJudge: task_id={task_id}, fused={fused_reward:.4f}, final={final_reward:.4f}, grading_time={grading_time:.2f}s, total={judge_total_time:.2f}s")
+            print(f"DeepFinanceJudgeByOpenJudge: task_id={task_id}, fused={fused_reward:.4f}, final={final_reward:.4f}, rm_time={rm_time:.2f}s, grading_time={grading_time:.2f}s, total={judge_total_time:.2f}s")
 
             # 9. 判断是否成功（可根据实际需求调整阈值）
             is_success = final_reward >= 0.7
@@ -591,51 +464,31 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             "rubrics": openjudge_rubrics
         }
 
-    def _run_openjudge_evaluation(
-        self, 
-        dataset: List[Dict[str, Any]],
-        finance_eval_params: Optional[Dict[str, Any]] = None
-    ) -> Tuple[Dict[str, List[Any]], float]:
+    def _run_openjudge_evaluation(self, dataset: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
         """
         调用 OpenJudge Runner.arun 进行评估（带重试机制）
-        
-        将 Finance 评估和 OpenJudge graders 评估整合到同一个 event loop 中运行。
 
         输入：
         - dataset: List[Dict] - OpenJudge 格式的样本列表
-        - finance_eval_params: 可选，Finance 评估参数 {query, current, reference, domain}
 
         输出：
-        - Tuple[Dict[str, List[GraderScore]], float]
-          - grader_results: 每个 grader 的评分结果
-          - finance_score: Finance 评估分数（0.0 如果未启用）
+        - Dict[str, List[GraderScore]] - 每个 grader 的评分结果
 
         注意：GradingRunner 必须在当前事件循环中创建，因为其内部 Semaphore 会绑定事件循环
         """
-        grader_results = {}
-        finance_score = 0.0
+        result = {}
         judge_instance = self  # 保存引用以便在 async 函数中访问
         max_retries = 3  # 最大重试次数
 
-        async def run_all_with_retry():
-            nonlocal grader_results, finance_score
+        async def run_with_retry():
+            nonlocal result
             last_exception = None
 
             for attempt in range(max_retries):
                 try:
-                    # 1. 运行 OpenJudge graders
+                    # 在当前事件循环中创建 Runner（避免 Semaphore 绑定错误的事件循环）
                     runner = judge_instance._create_runner_in_loop()
-                    grader_results = await runner.arun(dataset)
-                    
-                    # 2. 运行 Finance 评估（在同一个 event loop 中）
-                    if finance_eval_params and judge_instance._finance_enabled and judge_instance.finance_evaluator:
-                        finance_score = await judge_instance.finance_evaluator.aevaluate(
-                            query=finance_eval_params.get("query", ""),
-                            current=finance_eval_params.get("current", ""),
-                            reference=finance_eval_params.get("reference", ""),
-                            domain=finance_eval_params.get("domain", "")
-                        )
-                    
+                    result = await runner.arun(dataset)
                     return  # 成功则直接返回
                 except Exception as e:
                     last_exception = e
@@ -667,7 +520,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)  # 关键：将新循环设置为当前线程的事件循环
             try:
-                loop.run_until_complete(run_all_with_retry())
+                loop.run_until_complete(run_with_retry())
             finally:
                 loop.close()
                 asyncio.set_event_loop(None)  # 清理：避免引用已关闭的循环
@@ -676,7 +529,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             import traceback
             traceback.print_exc()
 
-        return grader_results, finance_score
+        return result
 
     def _extract_grader_scores(self, grader_results: Dict[str, List[Any]]) -> Tuple[Dict[str, float], Dict[str, bool]]:
         """
@@ -727,13 +580,13 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             print(f"  [OpenJudge QuotaExceeded] {quota_graders}")
         return scores, quota_exceeded_flags
 
-    def _fuse_grader_scores(self, grader_scores: Dict[str, float], finance_raw: float = 0.0) -> Tuple[float, Dict[str, float]]:
+    def _fuse_grader_scores(self, grader_scores: Dict[str, float], rm_raw: float = 0.0) -> Tuple[float, Dict[str, float]]:
         """
-        加权融合各 grader 的分数
+        加权融合各 grader 的分数（包含 RM Gallery 和 OpenJudge Graders）
 
         输入：
         - grader_scores: Dict[str, float] - 各 grader 的原始分数
-        - finance_raw: float - Finance 评估原始分数
+        - rm_raw: float - RM Gallery 原始分数
 
         输出：
         - (fused_reward, contributions)
@@ -742,12 +595,12 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         """
         contributions = {}
 
-        # 添加 Finance 贡献
-        contributions["finance_contribution"] = self.w.get("finance", 0.0) * finance_raw
+        # 添加 RM Gallery 贡献
+        contributions["rm_contribution"] = self.w.get("rm", 0.0) * rm_raw
 
-        # 添加 OpenJudge Graders 贡献
+        # 添加 OpenJudge Graders 贡献（包括 citation_audit）
         for grader_name, weight in self.w.items():
-            if grader_name == "finance":
+            if grader_name == "rm":
                 continue  # 已单独处理
             score = grader_scores.get(grader_name, 0.0)
             contributions[grader_name] = weight * score
@@ -756,19 +609,40 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
         return fused_reward, contributions
 
-    def _save_finance_eval_log(self, score: float, query: str, task_id: str, domain: str):
-        """保存 FinanceCompositionEvaluator 评估日志"""
+    def _evaluate_with_rm_gallery(self, query: str, current: str, reference: str, task_id: str, domain: str) -> float:
+        """使用 RM Gallery 评估"""
+        if not self.rm_evaluator or not domain or not reference:
+            return 0.0
+        try:
+            from rm_gallery.core.data.schema import DataSample
+            sample = DataSample(
+                unique_id=task_id,
+                input=[{"role": "user", "content": query}],
+                output=[
+                    {"answer": {"role": "assistant", "content": current, "label": {"model_name": "training"}}, "steps": None},
+                    {"answer": {"role": "assistant", "content": reference, "label": {"model_name": "reference"}}, "steps": None},
+                ],
+                task_category="financial_analysis", source="finance_samples", metadata={"domain": domain}
+            )
+            result = self.rm_evaluator.evaluate(sample)
+            self._save_rm_log(result, query, task_id)
+            return result.metadata["dimension_scores"]["overall_score"]["training"]
+        except Exception as e:
+            print(f"✗ RM Gallery evaluation failed: {e}")
+            return 0.0
+
+    def _save_rm_log(self, result, query: str, task_id: str):
+        """保存 RM Gallery 评估日志"""
         try:
             log = {
                 "task_id": task_id,
                 "query": query,
-                "domain": domain,
-                "score": score,
                 "timestamp": datetime.now().isoformat(),
+                "scores": result.metadata.get("dimension_scores", {})
             }
-            save_dir = "./outputs/finance_evaluation_logs"
+            save_dir = "./outputs/rm_evaluation_logs"
             os.makedirs(save_dir, exist_ok=True)
-            with open(os.path.join(save_dir, f"finance_eval_{datetime.now().strftime('%Y%m%d')}.jsonl"), "a", encoding="utf-8") as f:
+            with open(os.path.join(save_dir, f"rmeval_{datetime.now().strftime('%Y%m%d')}.json"), "a", encoding="utf-8") as f:
                 f.write(json.dumps(log, ensure_ascii=False) + "\n")
         except Exception:
             pass
@@ -861,7 +735,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         grader_scores: Dict[str, float],
         contributions: Dict[str, float],
         time_stats: Dict[str, float],
-        finance_raw: float = 0.0,
+        rm_raw: float = 0.0,
         quota_exceeded_flags: Optional[Dict[str, bool]] = None
     ):
         """
@@ -878,16 +752,18 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         quota_exceeded_count = sum(1 for v in quota_exceeded_flags.values() if v)
         quota_exceeded_any = quota_exceeded_count > 0
 
-        # 基础分数（所有值都必须是数值类型）
+        # 基础分数
         stats_dict = {
             "final_reward": final_reward,
             "fused_reward": fused_reward,
             "penalty": penalty,
             "step_reward": step_reward,
-            # Finance Evaluator 相关
-            "finance_raw": finance_raw,
-            "finance_weight": self.w.get("finance", 0.0),
-            "finance_contribution": contributions.get("finance_contribution", 0.0),
+            "openjudge_enabled": True,
+            # RM Gallery 相关
+            "rm_enabled": self._rm_enabled,
+            "rm_raw": rm_raw,
+            "rm_weight": self.w.get("rm", 0.0),
+            "rm_contribution": contributions.get("rm_contribution", 0.0),
         }
 
         # OpenJudge grader 原始分数（dimensions）
@@ -898,6 +774,10 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         # OpenJudge grader 加权贡献（contribution）
         for grader_name, contrib in contributions.items():
             stats_dict[f"openjudge_{grader_name}_contribution"] = contrib
+
+        # 保留原始字典便于调试
+        stats_dict["openjudge_grader_scores"] = grader_scores
+        stats_dict["openjudge_contributions"] = contributions
 
         # 注入耗时统计
         if time_stats:
