@@ -6,6 +6,7 @@ Here is an example:
 
 ```txt
 Your task:
+
 - Write an intelligent agent that learns the CountDown task (You are an agent specialized in solving countdown number puzzles. Given a target number and a list of source numbers, find a way to reach the target number using basic arithmetic operations (+, -, *, /). Each source number can only be used once.)
 - I hope to use the base model '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct'
 - Train using 8 GPUs

@@ -12,6 +12,7 @@ Unlike the original implementation where all agents share a single reward (final
 
 ### 7B Model Reward (trans_reward.py)
 Evaluates the **final translation quality** considering:
+
 - First-person pronoun usage
 - Abbreviation translation
 - Word order and sentence structure
@@ -20,6 +21,7 @@ Evaluates the **final translation quality** considering:
 
 ### 14B Model Reward (trans_reward_14B.py)
 Evaluates the **proper noun detection quality** considering:
+
 - Completeness: Did it detect all critical errors?
 - Accuracy: Are the corrections appropriate?
 - False positives: Did it flag correct translations as errors?
@@ -41,6 +43,7 @@ Task → Agent 1 (7B) → Agent 2 (14B) → Agent 3 (7B) → Final Translation
 
 ### `trans.py`
 Main workflow execution file. Key features:
+
 - `execute_agent()` accepts TWO `OpenaiBaseUrlAndApiKey` objects (one per model)
 - Returns TWO `WorkflowOutput` objects with different rewards:
   - `workflow_output_7b`: Reward based on final translation quality
@@ -50,6 +53,7 @@ Main workflow execution file. Key features:
 
 ### `trans_roll.py`
 Training orchestration file. Implements parallel model training:
+
 - Creates two `SwarmClient` instances:
   - `swarm_worker_7b`: Manages 7B model training on port 10086
   - `swarm_worker_14b`: Manages 14B model training on port 10087
@@ -67,12 +71,14 @@ Specialized reward function evaluating **proper noun detection quality**.
 Used exclusively for the 14B model (agent 2).
 
 Evaluates:
+
 - **Detected errors**: What the agent successfully caught
 - **Missed errors**: Critical errors the agent should have detected
 - **False positives**: Incorrect flagging of non-errors
 - **JSON validity**: Proper formatting of output
 
 Score scale (0-2):
+
 - 0 = Poor detection (missed critical errors, many false positives, invalid JSON)
 - 1 = Acceptable detection (caught some errors but missed important ones)
 - 2 = Excellent detection (caught all major errors, minimal false positives)

@@ -56,6 +56,7 @@ on the other hand it supports any number of sampling nodes. -->
 
 
 Previous Agentic RL training modes had some implicit assumptions:
+
 - First, no matter how many agents are in the task to be trained, these agents can only share the same fine-tunable LLM model (shared "brain").
 The reason for this phenomenon is that most training backends represented by VERL and TRL typically configure only one LLM model for fine-tuning.
 - Second, in the reinforcement learning sample collection stage, all current training frameworks forcibly bind the agent Rollout task process.
@@ -218,6 +219,7 @@ AgentJet has invested heavily in engineering quality to ensure that every traini
 
 **Version-by-Version Performance Tracking**:
 We maintain a public [Performance Tracking Dashboard](https://benchmark.agentjet.top/), continuously recording AgentJet's training curves and final performance on multiple standard tasks (mathematical reasoning, code generation, tool use, etc.), across major Git versions, and across different training backends (VERL, etc.). With every code update, the test bot executes benchmarks, and any performance regression is immediately detected. This means:
+
 - When upgrading AgentJet versions, you can clearly know how the new version performs on the tasks you care about.
 - If an update introduces a hidden bug causing a decline in training effectiveness, we will capture it immediately.
 - Researchers can confidently cite AgentJet's experimental results because they are reproducible.
@@ -283,6 +285,7 @@ AgentJet is fully open-sourced on GitHub. Researchers and developers in the comm
 <!--
 
 swarm server的所有可能状态和转换方式如下:
+
 - **OFFLINE**: swarm server启动,但未加载任何模型,也不运行任何训练。swarm server启动后,直接进入该状态。此外,在任何其他状态下收到来自(任意)client的 `stop_engine`命令后,进入该状态。
 - **BOOTING**: swarm server收到配置,然后收到明确的 `begin_engine`命令后,进入该状态,进行模型参数加载、FSDP初始化、vLLM初始化。
 - **ROLLING**: swarm server样本采集状态。当**BOOTING**结束后,或者**WEIGHT_SYNCING**状态结束后,自动进入该状态。
@@ -292,6 +295,7 @@ swarm server的所有可能状态和转换方式如下:
 
 
 唯有一个事情需要注意:每个episode开始前,你需要调用 `begin_episode` 来获取 `base_url` 和 `api_key`,与此同时,获取一个episode标识 `episode_uuid`。`swarm_worker`是线程安全,且不持有`episode`状态的,所以你可以随便同时并发多个`begin_episode`。当你的agent运行结束时,记得调用 `end_episode` 把奖励信号传递到 swarm server (带着`episode_uuid`参数)。此外,如果出于:
+
 - **奖励写错了**
 - **外部API欠费**
 - **调试**

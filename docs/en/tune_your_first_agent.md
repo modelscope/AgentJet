@@ -208,7 +208,7 @@ Now, we have obtained all materials required to train the agent.
     # ------------------ do not modify ------------------
     defaults:
       - - trinity_default verl_default
-     
+
       - ajet_default
       - _self_
 
@@ -473,6 +473,7 @@ ajet-swarm overwatch --swarm-url=http://localhost:10086
     ```
 
 The Swarm Server will:
+
 - Load the model specified by the client
 - Provide vLLM API endpoints for inference
 - Compute gradients and update model parameters

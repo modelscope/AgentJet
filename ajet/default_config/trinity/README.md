@@ -24,6 +24,7 @@ You can configure mappings via the `ajet/default_config/trinity/config_auto_conv
 ## Trinity Hyperparameter Quick Guide 📊
 
 Trinity adopts a typical producer (explorer)-consumer (trainer) architecture:
+
 - 🏭 **Producer**: Uses VLLM to generate samples
 - 🧠 **Consumer**: Consumes samples to update the model
 Both operate on different runtime schedules.
@@ -59,5 +60,6 @@ meanwhile
 ### Training Memory Control 💾
 
 Same as VERL, control training memory with the following parameters:
+
 - `trainer.max_token_len_per_gpu`
 - `ulysses_sequence_parallel_size`

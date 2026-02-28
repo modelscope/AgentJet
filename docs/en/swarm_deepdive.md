@@ -39,6 +39,7 @@ In the following section, we will deep dive into the AgentJet Swarm.
 
 This gif displays the life cycle of a Swarm Server.
 The possible states and transitions of the swarm server are as follows:
+
 - **OFFLINE**: The swarm server starts but has not loaded any models and is not running any training. The swarm server enters this state directly after startup. Additionally, it enters this state after receiving a `stop_engine` command from any client while in any other state.
 - **BOOTING**: The swarm server enters this state after receiving configuration and then an explicit `begin_engine` command, performing model parameter loading, FSDP initialization, and vLLM initialization.
 - **ROLLING**: The swarm server sample collection state. It automatically enters this state when **BOOTING** ends or when the **WEIGHT_SYNCING** state ends.
@@ -112,6 +113,7 @@ swarm_client.start_engine()
 ```
 
 Practical tips:
+
 - **Treat YAML as the source of truth**: you can inspect it with `yaml_job.dump_job_as_yaml("./config.yaml")` and load overrides via `yaml_job.build_job_from_yaml("./config.yaml")`.
 - **Idempotency**: `auto_sync_train_config_and_start_engine()` is designed to be safe if the engine is already **ROLLING** (it will do nothing) and will wait if the engine is **BOOTING / WEIGHT_SYNCING**.
 - **Monitoring**: run `ajet-swarm overwatch --swarm-url=http://your-swarm-server:10086` (or `python -m ajet.launcher --swarm-overwatch=...`) to watch the server states and rollout pool.
@@ -155,10 +157,12 @@ def rollout(task: Task) -> float | None:
 ```
 
 Abort semantics (why it is safe for debugging):
+
 - When the server is **ENGINE.ROLLING**, `abort_episode` typically **reverts** the episode back to the unclaimed pool, so other clients can pick it up.
 - When the server is in **ENGINE.ROLLING_POST**, `abort_episode` will **delete** the episode record instead of re-queueing it, so weight syncing won’t be blocked by zombie episodes.
 
 Timeouts you should understand:
+
 - `discard_episode_timeout` (server-side): if an episode is **idle** (no LLM requests) for too long, the server can discard it.
 - Client-side protection: the client records an internal max lifetime (currently `max_episode_time = 2 × discard_episode_timeout`). If you submit too late, `end_episode` will be converted into an `abort_episode` to avoid poisoning the pool.
 
@@ -201,6 +205,7 @@ swarm_client.auto_sync_train_config_and_start_engine(yaml_job)
 4) Drive training by repeatedly running batches of episodes
 
 The usual batching relationship is:
+
 - remote `batch_size` is the number of tasks in one policy-gradient batch (server side)
 - local `num_repeat` (a.k.a. rollout.n / GRPO N) is the number of rollouts per task
 - so one “full” batch roughly needs `batch_size × num_repeat` completed episodes.
@@ -208,6 +213,7 @@ The usual batching relationship is:
 The helper `run_episodes_until_all_complete(tasks, func=rollout, auto_retry=True)` is just a convenience thread pool; you can implement your own scheduling.
 
 Operational notes:
+
 - Use `ajet-swarm overwatch --swarm-url=...` to watch **running episodes** and whether the pool is close to triggering **WEIGHT_SYNCING**.
 - If you need to change training YAML, call `swarm_client.stop_engine()` first (server returns to **ENGINE.OFFLINE**), then sync again.
 
@@ -258,10 +264,12 @@ def rollout(task: Task):
 ```
 
 Key design constraint:
+
 - A “logical” rollout is only valid if you **commit/abort all involved episodes together**.
   If one model’s episode is ended but the other is aborted (or hangs), you create asynchronous noise across models.
 
 Batching rule of thumb:
+
 - Keep `num_repeat` aligned across servers.
 - It’s simplest when both servers use the same `batch_size` and you drive the outer loop by one of them (as in the best-practice example).
 
@@ -276,6 +284,7 @@ The one rule for the debug client is exactly what you noted:
 **do not contribute data to the training batch**.
 
 The simplest discipline is:
+
 - Debug client still calls `begin_episode()` to obtain valid routing credentials.
 - Debug client runs the agent.
 - Debug client always ends with `abort_episode(episode_uuid)` (never `end_episode`).
@@ -293,9 +302,11 @@ def debug_once(task: Task):
 ```
 
 Why this works:
+
 - `abort_episode` returns the claimed episode to the pool (or deletes it in **ROLLING_POST**), so your debugging does not change the reward statistics used for the next weight update.
 
 Practical cautions:
+
 - Keep debug parallelism low. If the debug client claims too many episodes and holds them, training clients may temporarily see “No available episodes to claim”.
 - Prefer short `discard_episode_timeout` for debugging so stuck runs get cleaned up fast.
 - Keep `ajet-swarm overwatch` open to ensure debug episodes are quickly aborted and not piling up.
