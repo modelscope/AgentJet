@@ -2,13 +2,13 @@ from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.task_reader import RouterTaskReader
-from tutorial.example_academic_trans.train_multi_model.trans import execute_agent
+from tutorial.example_academic_trans_swarm.trans import execute_agent
 
 
 # Step 1: Start two swarm servers on different ports:
 # ajet-swarm start --swarm-port=10086  # For 7B model
 # ajet-swarm start --swarm-port=10086  # For 14B model
-# Step 2: python -m tutorial.example_academic_trans.train_multi_model.trans_roll
+# Step 2: python -m tutorial.example_academic_trans_swarm.train_multi_model.trans_roll
 
 # --------- configurations that take effect locally -------------
 LOCAL_GRPO_N = 4  # grpo group size

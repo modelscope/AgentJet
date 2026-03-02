@@ -124,8 +124,8 @@ export DASHSCOPE_API_KEY="your-api-key-here"
 ### 5. Run Training
 
 ```bash
-# tutorial/example_academic_trans/train-multi-model/trans_roll.py
-python -m tutorial.example_academic_trans.train_multi_model.trans_roll
+# tutorial/example_academic_trans_swarm/train-multi-model/trans_roll.py
+python -m tutorial.example_academic_trans_swarm.train_multi_model.trans_roll
 ```
 
 ## How It Works

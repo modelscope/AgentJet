@@ -15,7 +15,7 @@ license: Complete terms in LICENSE.txt
 tutorial/user_math_agent
 
 接下来，创建Agent源文件：
-tutorial/user_math_agent/agent_roll.py   (以 tutorial/example_academic_trans/trans_roll.py 为模板，变化不大，关键是向用户索取必要的参数)
+tutorial/user_math_agent/agent_roll.py   (以 tutorial/example_academic_trans_swarm/trans_roll.py 为模板，变化不大，关键是向用户索取必要的参数)
 tutorial/user_math_agent/agent_run.py   （根据用户的要求，创建运行智能体的函数，或者类，都可以。同步异步都可以。）
 tutorial/user_math_agent/readme.md      （Agent说明，以及训练、调试方法说明）
 
@@ -37,7 +37,7 @@ def run_agent_and_compute_reward(task: Task, base_url:string, api_key:string) ->
 在 agent_roll 中，直接import run_agent_and_compute_reward即可。
 
 - 智能体的编写要领：通过一个或几个Agent的协作，高效完成用户给定的任务。
-- 奖励编写的要领：容易验证的，使用规则直接计算。不容易验证的，模仿 `tutorial/example_academic_trans/train_multi_model/trans_reward.py` 中的方法，使用其他大型模型生成 LLM as Judge 程序。
+- 奖励编写的要领：容易验证的，使用规则直接计算。不容易验证的，模仿 `tutorial/example_academic_trans_swarm/train_multi_model/trans_reward.py` 中的方法，使用其他大型模型生成 LLM as Judge 程序。
 
 
 ## 训练、调试方法说明
@@ -324,7 +324,7 @@ def run_agent_and_compute_reward(task: Task, base_url:string, api_key:string) ->
     from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
     from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
     from ajet.task_reader import RouterTaskReader
-    from tutorial.example_academic_trans.trans import execute_agent
+    from tutorial.example_academic_trans_swarm.trans import execute_agent
 
 
     LOCAL_GRPO_N = 4  # grpo num_repeat (rollout.n)
