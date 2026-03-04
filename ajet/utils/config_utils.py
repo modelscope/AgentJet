@@ -171,7 +171,7 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
 
 
 def read_ajet_hierarchical_config(
-    yaml_fp, exp_name, backbone, write_to=None, exp_dir=DEFAULT_DIR, override_param_callback=None
+    yaml_fp, experiment_name=None, backbone=None, write_to=None, experiment_dir=None, override_param_callback=None
 ):
     if yaml_fp is None:
         config = {
@@ -193,9 +193,12 @@ def read_ajet_hierarchical_config(
     else:
         with open(yaml_fp, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file)
-    config["ajet"]["experiment_name"] = exp_name
-    config["ajet"]["experiment_dir"] = os.path.join(exp_dir, exp_name)
-    config["ajet"]["backbone"] = backbone
+    if experiment_name is not None:
+        config["ajet"]["experiment_name"] = experiment_name
+    if (experiment_dir is not None):
+        config["ajet"]["experiment_dir"] = experiment_dir
+    if backbone is not None:
+        config["ajet"]["backbone"] = backbone
 
     # remove extra config of verl for trinity
     if backbone == "debug":
@@ -245,14 +248,14 @@ def expand_ajet_hierarchical_config(config, write_to=None):
     return config_final
 
 
-def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callback=None, storage=True):
+def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_callback=None, storage=True):
     """
     Prepare experiment configuration by reading YAML, setting up backup directories,
     and copying necessary files for the experiment.
 
     Args:
         yaml_path: Path to the YAML configuration file
-        exp_dir: Directory where experiment artifacts and backups should be stored
+        exp_base_dir: Directory where experiment artifacts and backups should be stored
         backbone: Backbone identifier that controls config munging
 
     Returns:
@@ -281,8 +284,8 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
     else:
         exp_name = exp_name.replace("|", "-")
 
-    backup_dir = os.path.abspath(os.path.join(exp_dir, exp_name, "backup"))
-    yaml_backup_dst = os.path.join(exp_dir, exp_name, "yaml_backup.yaml")
+    backup_dir = os.path.abspath(os.path.join(exp_base_dir, exp_name, "backup"))
+    yaml_backup_dst = os.path.join(exp_base_dir, exp_name, "yaml_backup.yaml")
     yaml_backup_dst = os.path.abspath(yaml_backup_dst)
     exe_exp_base = os.path.dirname(yaml_backup_dst)
 
@@ -323,12 +326,18 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
     shutil.copyfile(yaml_backup_src, yaml_backup_dst)
 
     ## 4. edit new yaml
+    experiment_dir = f"{exp_base_dir}/{exp_name}"
     config = read_ajet_hierarchical_config(
-        yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir, override_param_callback=override_param_callback
+        yaml_backup_dst,
+        experiment_name=exp_name,
+        backbone=backbone,
+        write_to=yaml_backup_dst,
+        experiment_dir=experiment_dir,
+        override_param_callback=override_param_callback
     )
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
 
     if not storage:
-        shutil.rmtree(os.path.join(exp_dir, exp_name))
+        shutil.rmtree(os.path.join(exp_base_dir, exp_name))
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final

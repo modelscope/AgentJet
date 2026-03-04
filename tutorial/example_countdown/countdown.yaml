@@ -135,14 +135,14 @@ ajet:
   execute_testing_lambda: "" # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
 
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
     - file://ajet/default_config/trinity      # trinity only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1

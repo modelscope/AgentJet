@@ -3,7 +3,7 @@ ajet:
   project_name: "ajet_default_project"
   experiment_name: "read_yaml_name"
   experiment_dir: "auto"  # {exp-dir}/{experiment_name}
-  backbone: debug # `debug` or `trinity` or `verl`
+  backbone: verl # `debug` or `trinity` or `verl`
 
 
   model:
@@ -83,6 +83,7 @@ ajet:
       top_p: 1.0
       do_sample: False
       num_repeat: 1
+
 
 
   task_reader:
@@ -284,7 +285,7 @@ ajet:
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_swarm_mode: False
   # both swarm / oai share the same interchange server
-  enable_experimental_interchange_server: False
+  enable_interchange_server: False
   # interchange server configuration
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
@@ -306,8 +307,6 @@ ajet:
   swarm_mode_sample_collection_max_cached_episodes: 9999
 
   task_runner:
-    # submit llm infer submit method
-    llm_infer_submit_method: "async" # options: "sync", "async"
 
     # how to wrap the user-defined workflow
     wrapper_type: "asyncio-with-gc"

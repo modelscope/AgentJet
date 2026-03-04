@@ -3,15 +3,19 @@ ajet:
   project_name: "ajet_default_project"
   experiment_name: "read_yaml_name"
   experiment_dir: "auto"  # {exp-dir}/{experiment_name}
-  backbone: debug # `debug` or `trinity` or `verl`
+  backbone: verl
 
   model:
     # which model should be trained
-    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-3B-Instruct
+    path: "Qwen/Qwen2.5-7B-Instruct"
 
   rollout:
     # the path to the workflow class
     user_workflow: null
+    # maximum number of parallel environments / simulate workers
+    max_env_worker: 128
+    # how many times a task should be repeated
+    num_repeat: 4
 
   task_reader:
     type: random_dummy # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
@@ -21,7 +25,7 @@ ajet:
     judge_protocol: null  # reward must come from remote user agent workflow, so set to null
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
-  enable_experimental_interchange_server: True
+  enable_interchange_server: True
   # train in cloud, run episode locally
   enable_swarm_mode: True
   # both swarm / oai share the same interchange server
@@ -44,21 +48,29 @@ ajet:
   #     (Hint: a **task_id** is considered "NON-DUMMY" at least one of **episodes** of **task_id** has **different** reward value.)
   swarm_mode_sample_collection_method: "rollout_until_finish_enough_tasks"
 
-  rollout:
-    # maximum number of parallel environments / simulate workers
-    max_env_worker: 128
+  data:
+    # max number of tokens for prompt
+    max_prompt_length: 3000
+    # max number of tokens for response
+    max_response_length: 15000
+    # how many tasks per training batch
+    train_batch_size: 32
+    # [Hint]: The final number of samples per update will be: N_{sample} = (data.train_batch_size * rollout.num_repeat * rollout.multi_turn.expected_steps)
 
   trainer_common:
     logger: tensorboard
+    n_gpus_per_node: 8
+    algorithm:
+      adv_estimator: grpo
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
-  - verl_default # verl inherit 1/1
+  - verl_default
   - ajet_default
   - _self_

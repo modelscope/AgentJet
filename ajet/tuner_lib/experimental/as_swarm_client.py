@@ -52,6 +52,8 @@ def raise_for_status_with_detail(resp):
             raise RuntimeError(f"SwarmClient error {resp.status_code} with non-JSON response: {response_text}") from e
 
 
+class SwarmServerOfflineError(Exception): ...
+
 
 class SwarmClient(object):
 
@@ -69,6 +71,8 @@ class SwarmClient(object):
         self._agent_jet_job = None
         # throttle
         self._recent_seen_tasks = []
+        # reuse httpx client to avoid creating SSL context repeatedly
+        self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT)
 
     def logger_info(self, message):
         # logger with de-duplication within 1 second to prevent log flooding
@@ -113,8 +117,8 @@ class SwarmClient(object):
 
         if self._agent_jet_job:
             # check and raise early errors when possible
-            assert self._agent_jet_job.sample_collection_method == "rollout_until_finish_enough_tasks", \
-                f"Current sample collection method ({self._agent_jet_job.sample_collection_method}) does not support throttle policy."
+            assert self._agent_jet_job.swarm_mode_sample_collection_method == "rollout_until_finish_enough_tasks", \
+                f"Current sample collection method ({self._agent_jet_job.swarm_mode_sample_collection_method}) does not support throttle policy."
 
         # only_this_client_uuid = throttle_policy.throttle_method in ["Task_Ratio_Limit"]
         only_this_client_uuid = True
@@ -193,7 +197,7 @@ class SwarmClient(object):
             self._remember_seen_task(throttle_policy.current_task_id, throttle_policy.expected_batch_size, throttle_policy.expected_num_repeat)
         return should_throttle
 
-    def begin_episode(self, discard_episode_timeout=600, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def begin_episode(self, discard_episode_timeout=240, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         """
         Block until an episode is claimed.
         Argument:
@@ -208,9 +212,9 @@ class SwarmClient(object):
         """
         return self._begin_episode_auto_retry(discard_episode_timeout, episode_type, throttle_policy)
 
-    def _begin_episode_auto_retry(self, discard_episode_timeout=600, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+    def _begin_episode_auto_retry(self, discard_episode_timeout=240, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         # max_episode_time: when an episode has **lasted** for more than X seconds, it will be terminated **locally** by client (call `end_episode` will be re-route to `abort_episode`)
-        max_episode_time = 2*discard_episode_timeout
+        max_episode_time = 8*discard_episode_timeout
 
         status, status_json = self.get_engine_status()  # warm up connection and log the status
         if status not in ["ENGINE.ROLLING"]:
@@ -250,10 +254,9 @@ class SwarmClient(object):
                     discard_episode_timeout=discard_episode_timeout,
                     throttle_policy=throttle_policy
                 )
-                resp = httpx.post(
+                resp = self._http_client.post(
                     f"{self.server_url}/claim_episode",
-                    json=req_obj.model_dump(),
-                    timeout=GENERAL_TIMEOUT
+                    json=req_obj.model_dump()
                 )
                 raise_for_status_with_detail(resp)
                 data = ClaimEpisodeResponse.model_validate(resp.json())
@@ -316,13 +319,13 @@ class SwarmClient(object):
         if episode_uuid in self.record_episode_expire_time:
             remain_time = self.record_episode_expire_time.pop(episode_uuid, 0) - time.time()
             if remain_time < 0:
-                logger.warning(f"Episode {episode_uuid} has expired (expired {-remain_time} seconds ago). Please use a larger `discard_episode_timeout` and `max_episode_time` when `begin_episode`. Skipping end_episode.")
+                logger.warning(f"Episode {episode_uuid} has expired (expired {-remain_time} seconds ago). Please use a larger `discard_episode_timeout` when `begin_episode`. Skipping end_episode.")
                 # send abort signal to server to clean up episode
                 self.abort_episode(episode_uuid)
                 return
         else:
             # send abort signal to server to clean up episode
-            logger.warning(f"Episode {episode_uuid} has expired (expired at least {CLEAN_RECORD_TIMEOUT} seconds ago). Please use a larger `discard_episode_timeout` and `max_episode_time` when `begin_episode`. Skipping end_episode.")
+            logger.warning(f"Episode {episode_uuid} has expired (expired at least {CLEAN_RECORD_TIMEOUT} seconds ago). Please use a larger `discard_episode_timeout` when `begin_episode`. Skipping end_episode.")
             self.abort_episode(episode_uuid)
             return
 
@@ -335,10 +338,9 @@ class SwarmClient(object):
             task_id=task_id
         )
 
-        resp = httpx.post(
+        resp = self._http_client.post(
             f"{self.server_url}/end_episode",
-            json=req_obj.model_dump(),
-            timeout=GENERAL_TIMEOUT
+            json=req_obj.model_dump()
         )
         raise_for_status_with_detail(resp)
         data = EndEpisodeResponse.model_validate(resp.json())
@@ -364,10 +366,9 @@ class SwarmClient(object):
                 task_id=""
             )
 
-            resp = httpx.post(
+            resp = self._http_client.post(
                 f"{self.server_url}/abort_episode",
-                json=req_obj.model_dump(),
-                timeout=GENERAL_TIMEOUT
+                json=req_obj.model_dump()
             )
             raise_for_status_with_detail(resp)
             data = EndEpisodeResponse.model_validate(resp.json())
@@ -397,10 +398,9 @@ class SwarmClient(object):
 
             req_obj = SyncTrainConfigRequest(yaml_as_string=yaml_str)
 
-            resp = httpx.post(
+            resp = self._http_client.post(
                 f"{self.server_url}/sync_train_config",
-                json=req_obj.model_dump(),
-                timeout=GENERAL_TIMEOUT
+                json=req_obj.model_dump()
             )
             raise_for_status_with_detail(resp)
             self.logger_info("Synced train config to Swarm server")
@@ -420,7 +420,7 @@ class SwarmClient(object):
             raise RuntimeError(f"Cannot start engine when engine is NOT ENGINE.OFFLINE. (current status: {current_status})")
 
         # Send start engine request
-        resp = httpx.post(
+        resp = self._http_client.post(
             f"{self.server_url}/start_engine",
             json={},
             timeout=600
@@ -437,7 +437,7 @@ class SwarmClient(object):
         self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
         logger.success("Training engine is now ROLLING and ready.")
 
-    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True):
+    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=1800):
         """
         Poll engine status until it reaches desired_status.
         Reports status every 5 seconds while waiting.
@@ -446,11 +446,19 @@ class SwarmClient(object):
             self.logger_info(f"Polling engine status until {desired_status}...")
         last_report_time = time.time()
         init_poll_time = last_report_time
+        initial_status, _ = self.get_engine_status()
 
         while True:
             try:
                 current_status, _ = self.get_engine_status()
                 current_time = time.time()
+
+                # Check if timeout has been reached
+                if current_time - init_poll_time >= timeout:
+                    raise TimeoutError(f"Timeout reached while waiting for engine status to change to {desired_status}")
+
+                if (initial_status == "ENGINE.OFFLINE") and (current_status == "ENGINE.OFFLINE") and (desired_status!="ENGINE.OFFLINE"):
+                    raise SwarmServerOfflineError(f"Engine status changed from {initial_status} to OFFLINE while waiting for {desired_status}. This may indicate an error in the engine. Please check the swarm server logs for details.")
 
                 # Report status every 5 seconds
                 if current_time - last_report_time >= 30:
@@ -467,6 +475,9 @@ class SwarmClient(object):
                 # Wait a bit before next poll
                 time.sleep(5)
 
+            except SwarmServerOfflineError as e:
+                raise e
+
             except Exception as e:
                 logger.error(f"Error polling engine status: {e}")
                 time.sleep(5)
@@ -474,7 +485,7 @@ class SwarmClient(object):
     @cache_with_ttl(ttl=0.5)
     def get_engine_status(self) -> Tuple[str, dict]:
         try:
-            resp = httpx.get(
+            resp = self._http_client.get(
                 f"{self.server_url}/get_engine_status",
                 timeout=10
             )
@@ -499,7 +510,7 @@ class SwarmClient(object):
                 client_uuid=self.client_uuid,
                 episode_uuid=episode_uuid
             )
-            resp = httpx.post(
+            resp = self._http_client.post(
                 f"{self.server_url}/can_continue_episode",
                 json=req_obj.model_dump(),
                 timeout=10
@@ -513,7 +524,7 @@ class SwarmClient(object):
 
     def get_episode_buffer(self) -> List[EpisodeStatus]:
         try:
-            resp = httpx.post(
+            resp = self._http_client.post(
                 f"{self.server_url}/get_episode_buffer",
                 json={},
                 timeout=10
@@ -572,7 +583,7 @@ class SwarmClient(object):
             self.logger_info("Engine is already OFFLINE. No action needed.")
             return
 
-        resp = httpx.post(
+        resp = self._http_client.post(
             f"{self.server_url}/stop_engine",
             json={},
             timeout=600
@@ -592,7 +603,7 @@ class SwarmClient(object):
         Returns statistics about completed episodes, tasks, and progress.
         """
         try:
-            resp = httpx.get(
+            resp = self._http_client.get(
                 f"{self.server_url}/get_current_batch_rollout_pool_information",
                 timeout=10
             )

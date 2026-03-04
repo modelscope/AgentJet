@@ -319,6 +319,7 @@ def execute_training_process(
     exe_yaml_path,
     env,
     exp_config,
+    is_swarm_server=False,
 ):
     """
     Execute the training process based on the specified backbone and configuration.
@@ -403,7 +404,13 @@ def execute_training_process(
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")
+        if is_swarm_server:
+            from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
+            http_change_engine_status(exp_config, "ENGINE.OFFLINE", global_step=0)
         sys.exit(1)
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
+        if is_swarm_server:
+            from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
+            http_change_engine_status(exp_config, "ENGINE.OFFLINE", global_step=0)
         sys.exit(1)

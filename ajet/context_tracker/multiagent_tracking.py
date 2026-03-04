@@ -84,19 +84,6 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         #        },
         #    ],
         # }
-        # or tool_result format?? not observed yet:
-        # msg = {
-        #    "role": "tool",
-        #    "content": [
-        #        {
-        #           "type": "tool_result",
-        #           "id": "call_xxx",
-        #           "output": "tool output content",
-        #           "name": "tool_name"
-        #        },
-        #    ],
-        # }
-
 
         str_content = ""
         for item in msg["content"]:
@@ -332,6 +319,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             )
         ):
             logger.bind(exception=True).info(f"General Warning: merge failure discovered.\n")
+            # from ajet import bp; bp("SWARM")
         return
 
 
@@ -346,7 +334,9 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             # llm_output["tool_calls"] is not None, and is not []
             tool_calls = llm_output["tool_calls"]
             if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
-                copy_tool_calls = copy.deepcopy(tool_calls)
+                # copy_tool_calls = copy.deepcopy(tool_calls)
+                # Shallow copy is sufficient - we're only reading the data
+                copy_tool_calls = tool_calls
                 wrong_toolcall = False
                 for i in range(len(copy_tool_calls)):
                     if ("function" in copy_tool_calls[i]) and (

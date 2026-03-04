@@ -24,7 +24,9 @@ import httpx
 
 from loguru import logger
 from pydantic import BaseModel
+from functools import lru_cache
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 from multiprocessing import Manager, Process
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +34,9 @@ from typing import Coroutine, Optional, Tuple
 
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
+from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 
 from ajet.utils.networking import get_host_ip
 from ajet.tuner_lib.experimental.interchange_utils import EpisodeStatus
@@ -44,6 +49,7 @@ class InterchangeCompletionRequest(BaseModel):
     target_tag: str
     episode_uuid: str
     timeline_uuid: str
+    preserve_sampling_params: bool = False
 
 class HealthCheckRequest(BaseModel):
     agent_name: str
@@ -58,6 +64,9 @@ SERVER_SHUTDOWN_EVENT = threading.Event()
 context = zmq.Context()
 atexit.register(context.term)
 
+@lru_cache(maxsize=128)
+def ep_key(episode_uuid: str) -> str:
+    return f"episodes-{episode_uuid}"
 
 def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
 
@@ -85,14 +94,33 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         socket.setsockopt(zmq.RCVTIMEO, 6*1000)  # 6 second recv timeout
         socket.connect(f"{episode_address}")
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | connect done")
+
+        # <send to>
+        #   <to_sourcefile>: ajet/tuner_lib/experimental/as_oai_model_client.py
+        #   <to_code>: message = self.socket.recv_string()
         socket.send_string(int_req.model_dump_json())
+
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | send_string")
 
         result_str = ""
         for _ in range(50):  # max 5 minutes wait
+
+            if enable_swarm_mode:
+                assert shared_mem_dict is not None
+                ep_stat = shared_mem_dict[ep_key(episode_uuid)]
+                episode_status = ep_stat.episode_status
+                if episode_status != "claimed":
+                    raise HTTPException(status_code=404, detail="The episode is not claimed, cannot accept new requests.")
+
             try:
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
+
+                # <wait for>:
+                #   <from_sourcefile>: ajet/tuner_lib/experimental/as_oai_model_client.py
+                #   <from_code>: self.socket.send_string(result)
+                #   <expect>: ChatCompletion object in JSON string format
                 result_str = socket.recv_string()
+
                 break
             except zmq.Again as e:
                 # check whether server is still in rolling status
@@ -110,6 +138,89 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             if DEBUG: logger.success(f"[server] episode_uuid: {episode_uuid} | recv_string done.")
         result_object = ChatCompletion(**json.loads(result_str))
         return result_object
+
+
+    async def mock_as_stream_response(result: ChatCompletion):
+        """
+        Convert a non-streaming ChatCompletion result to streaming format.
+
+        Args:
+            result: ChatCompletion object to convert to streaming format
+
+        Yields:
+            Server-sent events formatted as streaming chat completion chunks
+        """
+        content = result.choices[0].message.content if result.choices else ""
+        role = result.choices[0].message.role if result.choices else "assistant"
+        # try:
+        #     thinking = result.choices[0].message.reasoning_content
+        # except:
+        #     thinking = None
+        tool_calls = result.choices[0].message.tool_calls if result.choices and result.choices[0].message.tool_calls else None
+        delta_tool_calls = [] # tool_calls: Optional[List[ChoiceDeltaToolCall]] = None
+        finish_reason = result.choices[0].finish_reason
+        if tool_calls:
+            delta_tool_calls = [ChoiceDeltaToolCall(
+                index=index,
+                id=tc.id,
+                function=ChoiceDeltaToolCallFunction(
+                    name = tc.function.name,
+                    arguments = tc.function.arguments,
+                ),
+                type=tc.type
+            ) for index, tc in enumerate(tool_calls)]
+
+        # First chunk with role
+        first_chunk = ChatCompletionChunk(
+            id=result.id,
+            model=result.model,
+            created=result.created,
+            object="chat.completion.chunk",
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(role=role, content=""),
+                    finish_reason=None
+                )
+            ]
+        )
+        dat = f"data: {first_chunk.model_dump_json()}\n\n"
+        yield dat
+
+        # Content chunk
+        content_chunk = ChatCompletionChunk(
+            id=result.id,
+            model=result.model,
+            created=result.created,
+            object="chat.completion.chunk",
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(role=role, content=content, tool_calls=delta_tool_calls),
+                    finish_reason=None
+                )
+            ]
+        )
+        dat = f"data: {content_chunk.model_dump_json()}\n\n"
+        yield dat
+
+        # Final chunk with finish_reason
+        final_chunk = ChatCompletionChunk(
+            id=result.id,
+            model=result.model,
+            created=result.created,
+            object="chat.completion.chunk",
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(),
+                    finish_reason=finish_reason
+                )
+            ]
+        )
+        dat = f"data: {final_chunk.model_dump_json()}\n\n"
+        yield dat
+        yield "data: [DONE]\n\n"
 
 
     @app.get("/health")
@@ -149,11 +260,12 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         # Parse request body
         body = await request.json()
         new_req = ChatCompletionRequest.model_validate(body)
-        if new_req.stream:
-            return HTTPException(status_code=400, detail="Streaming responses not supported in current AgentJet version, please set `stream=false` for now.")
 
         # Create timeline UUID
         timeline_uuid = uuid.uuid4().hex
+
+        # if training, ignore all sampling parameters from request
+        preserve_sampling_params = False
 
         # enable_swarm_mode
         if enable_swarm_mode:
@@ -174,6 +286,14 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 es.latest_activity_timestamp = time.time()
                 es.llm_call_count += 1
                 shared_mem_dict[ep_key(episode_uuid)] = es
+            if es.episode_type == "eval":
+                preserve_sampling_params = True
+
+        # For streaming, we process as non-streaming but return in streaming format
+        original_stream = new_req.stream
+        if original_stream:
+            new_req.stream = False
+            new_req.stream_options = None
 
         # Add to received queue
         int_req = InterchangeCompletionRequest(
@@ -182,10 +302,16 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             target_tag = target_tag,
             episode_uuid = episode_uuid,
             timeline_uuid = timeline_uuid,
+            preserve_sampling_params = preserve_sampling_params,
         )
         if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request (outside thread)")
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
+        result = await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
+
+        if original_stream:
+            return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
+
+        return result
 
 
     if enable_swarm_mode:
@@ -314,6 +440,7 @@ def start_interchange_server(config, blocking=False, env={}) -> int:
 
     # polling for server ready
     start_time = time.time()
+    _httpx_client = httpx.Client(timeout=0.5)
     while True:
         if interchange_server and interchange_server.exitcode is not None:
             logger.error(f"Interchange server subprocess failed to start. Return code: {interchange_server.exitcode}")
@@ -323,7 +450,7 @@ def start_interchange_server(config, blocking=False, env={}) -> int:
             logger.error(msg)
             raise RuntimeError(msg)
         try:
-            if httpx.get(health_url, timeout=0.5).status_code == 200:
+            if _httpx_client.get(health_url).status_code == 200:
                 break
         except Exception:
             # keep waiting
@@ -348,7 +475,7 @@ def start_interchange_server(config, blocking=False, env={}) -> int:
                 interchange_server.join()
         except KeyboardInterrupt:
             logger.info("Shutting down interchange server...")
-            try: httpx.post(f"http://127.0.0.1:{port}/stop_engine", timeout=8).status_code
+            try: _httpx_client.post(f"http://127.0.0.1:{port}/stop_engine", timeout=8).status_code
             except Exception: pass
 
             if interchange_server:

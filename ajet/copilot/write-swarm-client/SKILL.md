@@ -4,25 +4,24 @@ description: Create a trainable agent loop or agent workflow with AgentJet
 license: Complete terms in LICENSE.txt
 ---
 
-## 简介：
 
-你的任务是根据要求，创建一个可训练 Agent （或者Agent Loop，多智能体系统等等），提供给用户做强化学习训练。
-在AgentJet强化学习框架下，这是非常简单的。
+## Introduction:
 
-首先，根据用户的要求，给智能体系统起一个名字，例如 user_math_agent
+Your task is to create a trainable Agent (or Agent Loop, multi-agent system, etc.) based on the requirements, and provide it to the user for reinforcement learning training. Under the AgentJet reinforcement learning framework, this is very simple.
 
-其次，创建文件：
-tutorial/user_math_agent
+First, give the agent system a name based on the user's requirements, for example `user_math_agent`.
 
-接下来，创建Agent源文件：
-tutorial/user_math_agent/agent_roll.py   (以 tutorial/example_academic_trans_swarm/trans_roll.py 为模板，变化不大，关键是向用户索取必要的参数)
-tutorial/user_math_agent/agent_run.py   （根据用户的要求，创建运行智能体的函数，或者类，都可以。同步异步都可以。）
-tutorial/user_math_agent/readme.md      （Agent说明，以及训练、调试方法说明）
+Next, create the directory:
+`tutorial/user_math_agent`
 
+Then, create the Agent source files:
+- `tutorial/user_math_agent/agent_roll.py` (Use `tutorial/example_academic_trans_swarm/trans_roll.py` as a template. There aren't many changes — the key is to ask the user for the necessary parameters.)
+- `tutorial/user_math_agent/agent_run.py` (Create the function or class to run the agent based on the user's requirements. Synchronous or asynchronous are both fine.)
+- `tutorial/user_math_agent/readme.md` (Agent description, along with training and debugging instructions.)
 
-## 智能体编写方法
+## How to Write the Agent
 
-使用 OpenAI SDK 编写智能体，主要包含以下三个函数（以及必要的子函数和子模块）：
+Write the agent using the OpenAI SDK. It mainly includes the following three functions (along with any necessary sub-functions and sub-modules):
 
 ```
 from ajet.schema.task import Task, WorkflowOutput
@@ -31,24 +30,68 @@ def _compute_reward(...)
 
 def _execute_agent(...)
 
-def run_agent_and_compute_reward(task: Task, base_url:string, api_key:string) -> WorkflowOutput:
+def run_agent_and_compute_reward(task: Task, base_url: string, api_key: string) -> WorkflowOutput:
 ```
 
-在 agent_roll 中，直接import run_agent_and_compute_reward即可。
+In `agent_roll`, simply import `run_agent_and_compute_reward`.
 
-- 智能体的编写要领：通过一个或几个Agent的协作，高效完成用户给定的任务。
-- 奖励编写的要领：容易验证的，使用规则直接计算。不容易验证的，模仿 `tutorial/example_academic_trans_swarm/train_multi_model/trans_reward.py` 中的方法，使用其他大型模型生成 LLM as Judge 程序。
+- **Key points for writing the agent:** Efficiently complete the user's given task through the collaboration of one or several Agents.
+- **Key points for writing the reward:** For things that are easy to verify, calculate directly using rules. For things that are hard to verify, follow the approach in `tutorial/example_academic_trans_swarm/train_multi_model/trans_reward.py` and use other large models to create an LLM-as-Judge program.
 
+## Training and Debugging Instructions
 
-## 训练、调试方法说明
+Overall, the user first runs `ajet-swarm start`, then runs `agent_roll.py`, and training begins. You do not need to and are not allowed to run these bash commands.
+- First, help the user write `agent_run.py` and `agent_roll.py`.
+- Then, write clear instructions to guide the user through training (`readme.md`).
 
-总体而言，就是用户先运行 `ajet-swarm start`, 然后再运行 `agent_roll.py` 训练就开始了。你不需要也不被允许运行这些bash命令。
-- 首先帮助用户写好 `agent_run.py` 和 `agent_roll.py`，
-- 然后写清楚引导用户训练的说明（readme.md），
-你的任务就完成了。
+Your task is then complete.
 
-以下是一些参考资料。
+Below are some reference materials.
 
+---
+
+## Introduction:
+
+Your task is to create a trainable Agent (or Agent Loop, multi-agent system, etc.) based on the requirements, and provide it to the user for reinforcement learning training. Under the AgentJet reinforcement learning framework, this is very simple.
+
+First, give the agent system a name based on the user's requirements, for example `user_math_agent`.
+
+Next, create the directory:
+`tutorial/user_math_agent`
+
+Then, create the Agent source files:
+- `tutorial/user_math_agent/agent_roll.py` (Use `tutorial/example_academic_trans_swarm/trans_roll.py` as a template. There aren't many changes — the key is to ask the user for the necessary parameters.)
+- `tutorial/user_math_agent/agent_run.py` (Create the function or class to run the agent based on the user's requirements. Synchronous or asynchronous are both fine.)
+- `tutorial/user_math_agent/readme.md` (Agent description, along with training and debugging instructions.)
+
+## How to Write the Agent
+
+Write the agent using the OpenAI SDK. It mainly includes the following three functions (along with any necessary sub-functions and sub-modules):
+
+```
+from ajet.schema.task import Task, WorkflowOutput
+
+def _compute_reward(...)
+
+def _execute_agent(...)
+
+def run_agent_and_compute_reward(task: Task, base_url: string, api_key: string) -> WorkflowOutput:
+```
+
+In `agent_roll`, simply import `run_agent_and_compute_reward`.
+
+- **Key points for writing the agent:** Efficiently complete the user's given task through the collaboration of one or several Agents.
+- **Key points for writing the reward:** For things that are easy to verify, calculate directly using rules. For things that are hard to verify, follow the approach in `tutorial/example_academic_trans_swarm/train_multi_model/trans_reward.py` and use other large models to create an LLM-as-Judge program.
+
+## Training and Debugging Instructions
+
+Overall, the user first runs `ajet-swarm start`, then runs `agent_roll.py`, and training begins. You do not need to and are not allowed to run these bash commands.
+- First, help the user write `agent_run.py` and `agent_roll.py`.
+- Then, write clear instructions to guide the user through training (`readme.md`).
+
+Your task is then complete.
+
+Below are some reference materials.
     ---
 
     # Using AgentJet Swarm to Train Your Agents

@@ -1,9 +1,9 @@
-import asyncio
 import copy
 import json
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Literal, Union
+from typing import Any, Callable, Dict, List, Literal, Union, Awaitable
+from typing import TYPE_CHECKING
 
 from loguru import logger
 from omegaconf import DictConfig
@@ -15,11 +15,12 @@ from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatComple
 
 from ajet.schema.logprob import TokenAndProb
 from ajet.utils.tokenizer import ajet_apply_chat_template
-from ajet.utils.async_utils import run_async_coroutine_with_timeout
-from ajet.utils.testing_utils import _mock_if_test_mode, _test_if_test_mode
 from ajet.schema.convertion import convert_llm_proxy_response_to_oai_response
 from ajet.schema.convertion import convert_llm_proxy_response_to_agentscope_response
 from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
+
+if TYPE_CHECKING:
+    from vllm.entrypoints.openai.protocol import ChatCompletionRequest
 
 ChatResponse = Union[OpenAIChatCompletion, AgentScopeChatResponse]
 
@@ -58,207 +59,6 @@ class AsyncLlmBridge(object):
         self.max_llm_retries = max_llm_retries
         self.tool_parser = Hermes2ProToolParser(self.tokenizer)
 
-    def get_llm_inference_fn_sync(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
-
-        def llm_chat_verl(
-            messages: List[Dict[str, str]],
-            custom_sampling_params: dict = {},
-            tools=[],
-            request_id: str = "",
-        ) -> dict:
-            request_id = uuid.uuid4().hex
-
-            updated_sampling_params = {}
-            if sampling_params:
-                updated_sampling_params.update(sampling_params)
-            if custom_sampling_params:
-                updated_sampling_params.update(custom_sampling_params)
-
-            input_messages = copy.deepcopy(messages)
-            prompt_text = ajet_apply_chat_template(
-                tokenizer=self.tokenizer,
-                conversation=input_messages,
-                tools=tools,
-                add_generation_prompt=True,
-                tokenize=False,
-            )
-            prompt_ids = self.tokenizer(prompt_text)["input_ids"]
-
-            if self.config.ajet.execute_test:
-                _test_if_test_mode("prompt_text", prompt_text, self.config)
-
-            final_res = run_async_coroutine_with_timeout(
-                self.async_rollout_manager.generate(
-                    request_id=request_id,
-                    prompt_ids=prompt_ids,
-                    sampling_params=updated_sampling_params,
-                ),
-                timeout=1800,
-            )
-
-            if self.config.ajet.rollout.name == "vllm":
-                final_res: VerlVllmRequestOutput
-                token_array = final_res.outputs[0].token_ids
-                logprob_array = final_res.outputs[0].logprobs
-            elif self.config.ajet.rollout.name == "sglang":
-                token_array = final_res
-
-            decoded_text = self.tokenizer.decode(token_array)  # type: ignore
-            if self.config.ajet.execute_test:
-                decoded_text = _mock_if_test_mode("mock_decoded_text", decoded_text, self.config)
-
-            if decoded_text.endswith("<|im_end|>"):
-                decoded_text = decoded_text[: -len("<|im_end|>")]
-
-            # if tool call
-            tool_calls = None
-            if (
-                ("<tool_call>" in decoded_text)
-                and ("</tool_call>" in decoded_text)
-                and (not self.config.ajet.rollout.force_disable_toolcalls)
-            ):
-                parsed_tool_calls = self.tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
-                parsed_tool_calls = parsed_tool_calls.model_dump()
-                if self.config.ajet.execute_test:
-                    _test_if_test_mode(
-                        "parsed_tool_calls", parsed_tool_calls["tool_calls"], self.config
-                    )
-                model_called = parsed_tool_calls["tools_called"]
-                if model_called:
-                    tool_calls = parsed_tool_calls["tool_calls"]
-                    is_bad_toolcall = False
-                    for i in range(len(tool_calls)):
-                        if "function" in tool_calls[i] and "arguments" in tool_calls[i]["function"]:
-                            expect_dict = json.loads(tool_calls[i]["function"]["arguments"])
-                            if not isinstance(expect_dict, dict):
-                                is_bad_toolcall = True
-                    if is_bad_toolcall:
-                        tool_calls = None
-                        decoded_text = decoded_text
-                    else:
-                        decoded_text = parsed_tool_calls["content"]
-                        if decoded_text is None:
-                            decoded_text = ""
-
-            return {
-                "role": "assistant",
-                "request_id": request_id,
-                "content": decoded_text,
-                "tool_calls": tool_calls,
-                "tokens": [
-                    TokenAndProb(
-                        token_id=token_id,
-                        logprob=logprob[token_id].logprob,    # Warning: vllm logprob does not participant training (not reliable enough), for log only.
-                        decoded_string=logprob[token_id].decoded_token,
-                    )
-                    for token_id, logprob in zip(token_array, logprob_array)  # type: ignore
-                ],
-            }
-
-
-        def llm_chat_remote(
-            messages: List[Dict[str, str]],
-            custom_sampling_params: dict = {},
-            tools=[],
-            request_id: str = "",
-        ) -> dict:
-            updated_sampling_params = {}
-            if sampling_params:
-                updated_sampling_params.update(sampling_params)
-            if custom_sampling_params:
-                updated_sampling_params.update(custom_sampling_params)
-            updated_sampling_params.update({"logprobs": 1, "return_tokens_as_token_ids": True})
-            input_messages = copy.deepcopy(messages)
-            for i in range(self.max_llm_retries):
-                try:
-                    # this function is defined in `ajet/backbone/main_vllm.py`
-                    output_message = self.async_rollout_manager.submit_chat_completions(
-                        messages=input_messages,
-                        sampling_params=updated_sampling_params,
-                        tools=tools,
-                        request_id=request_id,
-                    )
-                    break
-                except Exception as e:
-                    logger.bind(exception=True).exception(f"rollout_server.{i} error: {e.args}")
-                    time.sleep(i + 1)
-            return output_message[-1]  # type: ignore
-
-
-        def llm_chat_trinity(
-            messages: List[Dict[str, str]],
-            custom_sampling_params: dict = {},
-            tools=[],
-            request_id: str = "",
-        ) -> dict:
-            async def main():
-                updated_sampling_params = {}
-                if sampling_params:
-                    updated_sampling_params.update(sampling_params)
-                if custom_sampling_params:
-                    updated_sampling_params.update(custom_sampling_params)
-                updated_sampling_params.pop("min_tokens")
-
-                if tools:
-                    response = await self.async_rollout_manager.chat.completions.create(
-                        model=self.async_rollout_manager.model_path,
-                        messages=messages,
-                        logprobs=True,
-                        tools=tools,
-                        top_logprobs=0,
-                        **updated_sampling_params,
-                    )
-                else:
-                    response = await self.async_rollout_manager.chat.completions.create(
-                        model=self.async_rollout_manager.model_path,
-                        messages=messages,
-                        logprobs=True,
-                        top_logprobs=0,
-                        **updated_sampling_params,
-                    )
-                return response
-
-            response = run_async_coroutine_with_timeout(main(), timeout=1800)  # type: ignore
-            prompt_text = self.tokenizer.decode(response.model_extra["prompt_token_ids"])
-            prompt_token_ids = response.model_extra["prompt_token_ids"]
-            content = response.choices[0].message.content
-            message = response.choices[0].message.model_dump(exclude_unset=True, exclude_none=True)
-
-            if content is None:
-                content = ""
-
-            if ("<tool_call>" in content) and (not message.get("tool_calls", None)):
-                # logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
-                logger.warning(f"Bad toolcall discovered: {content}")
-
-            return {
-                "role": "assistant",
-                "request_id": response.id,
-                "content": content,
-                "prompt_text": prompt_text,
-                "prompt_token_ids": prompt_token_ids,
-                "tool_calls": message.get("tool_calls", []),
-                "tokens": [
-                    TokenAndProb(
-                        token_id=token,
-                        logprob=tokenlogprob.logprob, # Warning: vllm logprob does not participant training, for log only.
-                        decoded_string=tokenlogprob.token,
-                    )
-                    for tokenlogprob, token in zip(
-                        response.choices[0].logprobs.content,
-                        response.choices[0].token_ids,
-                    )
-                ],
-            }
-
-        if self.llm_mode == "remote":
-            return llm_chat_remote
-        if self.llm_mode == "trinity":
-            return llm_chat_trinity
-        else:
-            return llm_chat_verl
-
-
 
     def get_llm_inference_fn_async(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
 
@@ -286,9 +86,6 @@ class AsyncLlmBridge(object):
             )
             prompt_ids = self.tokenizer(prompt_text)["input_ids"]
 
-            if self.config.ajet.execute_test:
-                _test_if_test_mode("prompt_text", prompt_text, self.config)
-
             final_res = await self.async_rollout_manager.generate(
                 request_id=request_id,
                 prompt_ids=prompt_ids,
@@ -303,13 +100,11 @@ class AsyncLlmBridge(object):
                 token_array = final_res
 
             decoded_text = self.tokenizer.decode(token_array)  # type: ignore
-            if self.config.ajet.execute_test:
-                decoded_text = _mock_if_test_mode("mock_decoded_text", decoded_text, self.config)
 
             if decoded_text.endswith("<|im_end|>"):
                 decoded_text = decoded_text[: -len("<|im_end|>")]
 
-            # if tool call
+            # if tool call, use vLLM tool parser to extract tool calls and validate them
             tool_calls = None
             if (
                 ("<tool_call>" in decoded_text)
@@ -319,10 +114,7 @@ class AsyncLlmBridge(object):
 
                 parsed_tool_calls = self.tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
                 parsed_tool_calls = parsed_tool_calls.model_dump()
-                if self.config.ajet.execute_test:
-                    _test_if_test_mode(
-                        "parsed_tool_calls", parsed_tool_calls["tool_calls"], self.config
-                    )
+
                 model_called = parsed_tool_calls["tools_called"]
                 if model_called:
                     tool_calls = parsed_tool_calls["tool_calls"]
@@ -474,7 +266,7 @@ class OpenaiLlmProxyWithTracker(object):
 
     def __init__(
         self,
-        llm_inference_fn: Callable, # Callable[AjetStandardLlmBridgeRequest, AjetStandardLlmBridgeResponse]
+        llm_inference_fn: Callable[..., Awaitable[Dict]], # Callable[AjetStandardLlmBridgeRequest, AjetStandardLlmBridgeResponse]
         context_tracker: MultiAgentContextTracker,
         config,
     ) -> None:
@@ -483,15 +275,39 @@ class OpenaiLlmProxyWithTracker(object):
         self.config = config
 
 
+    async def chat_completion_request(
+        self,
+        req: "ChatCompletionRequest",
+        timeline_uuid: str,
+        agent_name: str,
+        target_tag: str,
+        episode_uuid: str,
+    ):
+        from openai.types.chat.chat_completion import ChatCompletion
+        req_as_dict = req.model_dump()
+
+        # infer + process with context tracker
+        llm_output = await self.run_infer(
+            messages=req_as_dict["messages"],
+            tools=req_as_dict["tools"],
+            tool_choice="auto",
+        )
+        # convert to OpenAI ChatCompletion format
+        response: ChatCompletion = convert_llm_proxy_response_to_oai_response(llm_output)
+        # this is an important id assignment
+        response.id = timeline_uuid
+        assert isinstance(response, ChatCompletion)
+        return response
+
+
     async def __call__(
         self,
         messages: List[dict],
         tools: List = [],
         tool_choice: str = "auto",
-        structured_model=None,
         **kwargs,
     ) -> ChatResponse:
-        llm_output = await self.run_infer(messages, tools, tool_choice, structured_model, **kwargs)
+        llm_output = await self.run_infer(messages, tools, tool_choice, **kwargs)
         return convert_llm_proxy_response_to_oai_response(llm_output)
 
 
@@ -500,9 +316,8 @@ class OpenaiLlmProxyWithTracker(object):
         messages: List[dict],
         tools: List = [],
         tool_choice: str = "auto",      # always auto
-        structured_model=None,          # this is for AgentScope only
         **kwargs,
-    ):
+    ) -> Dict:
         # generate timeline uuid
         timeline_uuid = uuid.uuid4().hex
 
@@ -527,16 +342,10 @@ class OpenaiLlmProxyWithTracker(object):
             # else:
             #     otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
-        # run llm inference ✨
-        if self.config.ajet.task_runner.llm_infer_submit_method == "sync":
-            llm_output = await asyncio.to_thread(
-                self.llm_inference_fn, converted_message, custom_sampling_params, tools
-            )
-        else:
-            llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools)
+        # run llm inference ✨ (llm_chat_verl)
+        llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools)
 
-
-        # begin context tracking
+        # context tracking
         self.context_tracker.step_track(llm_output, context_safe, converted_message, tools, timeline_uuid=timeline_uuid)
         return llm_output
 
@@ -549,7 +358,6 @@ class OpenaiLlmProxyWithTracker(object):
             "tool_calls": None,
             "tokens": [],
         }
-
 
 
 
@@ -570,6 +378,6 @@ class AgentScopeLlmProxyWithTracker(OpenaiLlmProxyWithTracker):
         **kwargs,
     ) -> AgentScopeChatResponse:
 
-        llm_output = await self.run_infer(messages, tools, tool_choice, structured_model)
+        llm_output = await self.run_infer(messages, tools, tool_choice)
         response = convert_llm_proxy_response_to_agentscope_response(llm_output, structured_model=structured_model)
         return response

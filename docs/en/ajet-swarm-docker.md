@@ -24,6 +24,7 @@ docker run --rm -it \
   -v ./swarmlog:/workspace/log \
   -v ./swarmexp:/workspace/saved_experiments \
   -p 10086:10086 \
+  -e SWANLAB_API_KEY=$SWANLAB_API_KEY \
   --gpus=all \
   --shm-size=32GB \
   ghcr.io/modelscope/agentjet:main \
@@ -89,6 +90,7 @@ docker run --rm -it \
   -v ./swarmlog:/workspace/log \
   -v ./swarmexp:/workspace/saved_experiments \
   -p 10086:10086 \
+  -e SWANLAB_API_KEY=$SWANLAB_API_KEY \
   --gpus=all \
   --shm-size=32GB \
   ghcr.io/modelscope/agentjet:main \

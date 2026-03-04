@@ -244,9 +244,11 @@ class ExtendedMessage:
         tokenizer_output = tokenizer(text_frag_from, return_tensors="pt", padding=False)
         tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist()
         token_ids_acc = tokenizer_input_ids
+        del tokenizer_output  # Free memory immediately
 
         tokenizer_output = tokenizer(text_frag_to, return_tensors="pt", padding=False)
         input_ids = tokenizer_output["input_ids"][0].tolist()
+        del tokenizer_output  # Free memory immediately
         # get the new tokens added in this step
         input_id_increment = input_ids[len(token_ids_acc) :]
         FN_DEBUG = False

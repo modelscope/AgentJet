@@ -45,12 +45,17 @@ class BoundedThreadPoolExecutor:
 class PeriodicDrainThreadPoolExecutor:
     """A ThreadPoolExecutor that bounds the number of pending tasks via a semaphore."""
 
-    def __init__(self, workers=100, auto_retry=True):
+    def __init__(self, workers=100, max_parallel=None, auto_retry=True, block_first_run=False):
         self._max_workers = workers
-        self._executor = ThreadPoolExecutor(max_workers=workers)
+        if max_parallel is None:
+            self._max_parallel = workers
+        else:
+            self._max_parallel = max_parallel
+        self._executor = ThreadPoolExecutor(max_workers=self._max_parallel)
         self._submitted_count = 0
         self._auto_retry = auto_retry
         self.current_futures = []
+        self._slow_first_run = block_first_run
 
     def submit(self, fn, *args, **kwargs):
         """Submit a task, blocking if the pending queue is full."""
@@ -63,9 +68,15 @@ class PeriodicDrainThreadPoolExecutor:
                     logger.exception(f"[run_episodes_until_all_complete] Error executing episode: {e}. Retrying...")
 
         if self._auto_retry:
-            return self._executor.submit(retry_wrapper, fn, *args, **kwargs)
+            future = self._executor.submit(retry_wrapper, fn, *args, **kwargs)
         else:
-            return self._executor.submit(fn, *args, **kwargs)
+            future = self._executor.submit(fn, *args, **kwargs)
+
+        if self._slow_first_run:
+            self._slow_first_run = False
+            future.result()  # Wait for the first run to complete before allowing more tasks to be submitted
+
+        return future
 
     def submit_with_periodic_drain(self, fn, *args, **kwargs):
         """Submit a task, draining all in-flight work every `drain_every_n_job` submissions."""

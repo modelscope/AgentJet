@@ -54,7 +54,7 @@ def warm_up_task_judge_when_needed(config):
 def clean_up_tmp_ajet_dir(config):
     """Clean up old IPC socket files in /tmp/ajet directory."""
     import time
-    if config.ajet.enable_experimental_interchange_server is False:
+    if config.ajet.enable_interchange_server is False:
         return
 
     tmp_dir = "/tmp/ajet"
