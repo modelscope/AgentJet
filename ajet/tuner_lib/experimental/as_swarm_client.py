@@ -94,6 +94,25 @@ class SwarmClient(object):
 
         return
 
+    def _refresh_http_client(self):
+        """Refresh the HTTP client by closing the old one and creating a new one."""
+        try:
+            self._http_client.close()
+        except Exception:
+            pass  # Ignore errors when closing
+        self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT)
+        logger.info("HTTP client refreshed due to connection error")
+
+    def _should_refresh_client_on_error(self, error: Exception) -> bool:
+        """Check if an error suggests the HTTP client should be refreshed."""
+        error_msg = str(error).lower()
+        return any(keyword in error_msg for keyword in [
+            "disconnected",
+            "connection reset",
+            "connection closed",
+            "broken pipe",
+            "connection aborted"
+        ])
 
     def _clean_up_expired_records(self):
         # remove records that have expired and expired at least CLEAN_RECORD_TIMEOUT seconds ago
@@ -498,6 +517,8 @@ class SwarmClient(object):
                 logger.warning("get_engine_status: " + str(resp_json))
             return result, resp_json
         except Exception as e:
+            if self._should_refresh_client_on_error(e):
+                self._refresh_http_client()
             logger.error(f"Error getting engine status: {e}")
             return "ENGINE.CANNOT_CONNECT", {}
 

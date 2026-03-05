@@ -47,7 +47,7 @@ def main():
         return
 
 
-    executor = PeriodicDrainThreadPoolExecutor(workers=1, max_parallel=64, auto_retry=True, block_first_run=True)
+    executor = PeriodicDrainThreadPoolExecutor(workers=GRPO_N * REMOTE_BATCH_SIZE, max_parallel=64, auto_retry=True)
     for _ in range(NUM_EPOCH):
         for _, task in enumerate(dataset.generate_training_tasks()):
             for _ in range(GRPO_N):
