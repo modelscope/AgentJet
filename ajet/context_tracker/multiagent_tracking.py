@@ -17,7 +17,7 @@ from ajet.context_tracker.single_agent_tracking import (
 )
 from ajet.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from ajet.schema.trajectory import Reward
-from ajet.utils.color_hsl import adjust_color_hsl
+from ajet.utils.color_hsl import adjust_color_hsl_batch
 from ajet.utils.compute_madness import compute_string_madness
 from ajet.utils.tokenizer import ajet_apply_chat_template
 
@@ -503,15 +503,9 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             logprobs = [INVALID_LOG_PROB_VALUE] * len(
                 tracker_tokenized["prompt_ids"]
             ) + tracker_tokenized["response_logprobs"]
-            # Create adjusted color array
-            loss_mask_color_abl_arr = [
-                (
-                    adjust_color_hsl("#09ABCF", logprob)
-                    if mask == 1
-                    else adjust_color_hsl("#D98510", logprob)
-                )
-                for mask, logprob in zip(tracker_tokenized["loss_mask"], logprobs)
-            ]
+            # Create adjusted color array using batch processing for better performance
+            base_colors = ["#09ABCF" if mask == 1 else "#D98510" for mask in tracker_tokenized["loss_mask"]]
+            loss_mask_color_abl_arr = adjust_color_hsl_batch(base_colors, logprobs)
             logprob_text_arr = [
                 (f"{logprob:.4f}" if logprob != INVALID_LOG_PROB_VALUE else "N/A")
                 for logprob in logprobs

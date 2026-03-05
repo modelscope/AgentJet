@@ -155,6 +155,7 @@ Finally, you can start training.
 
 Run `ajet-swarm start` to start training server (if the user has already installed agentjet swarm environment),
 if the user has docker environment, you can also refer to `docs/en/ajet-swarm-docker.md` to start a AgentSwarm docker container.
+If the user can provider the ssh connection to the GPU server / cluster, you can send the `ajet-swarm start` command to the remote server via ssh to start the swarm server, the port forward `10086` port (default agentjet swarm port) to user local machine.
 
 Create a duplication of `agent_roll.py` named `agent_roll_one_episode_debug.py`, and modify it to only run one episode, this can help you debug whether the episode runner and reward function work as expected.
 

@@ -437,7 +437,7 @@ class SwarmClient(object):
         self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
         logger.success("Training engine is now ROLLING and ready.")
 
-    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=1800):
+    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=3600):
         """
         Poll engine status until it reaches desired_status.
         Reports status every 5 seconds while waiting.
