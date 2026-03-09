@@ -70,6 +70,8 @@ def ep_key(episode_uuid: str) -> str:
 
 def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
 
+    # Buffer for latest LLM call
+    latest_llm_call = {"result": None}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -96,7 +98,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | connect done")
 
         # <send to>
-        #   <to_sourcefile>: ajet/tuner_lib/experimental/as_oai_model_client.py
+        #   <to_sourcefile>: ajet/tuner_lib/experimental/oai_model_client.py
         #   <to_code>: message = self.socket.recv_string()
         socket.send_string(int_req.model_dump_json())
 
@@ -116,7 +118,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
 
                 # <wait for>:
-                #   <from_sourcefile>: ajet/tuner_lib/experimental/as_oai_model_client.py
+                #   <from_sourcefile>: ajet/tuner_lib/experimental/oai_model_client.py
                 #   <from_code>: self.socket.send_string(result)
                 #   <expect>: ChatCompletion object in JSON string format
                 result_str = socket.recv_string()
@@ -269,7 +271,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
         # enable_swarm_mode
         if enable_swarm_mode:
-            from ajet.tuner_lib.experimental.as_swarm_server import ep_key
+            from ajet.tuner_lib.experimental.swarm_server import ep_key
             assert shared_mem_dict is not None
             assert shared_mem_dict_lock is not None
 
@@ -308,14 +310,25 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
 
+        # Buffer the latest result
+        latest_llm_call["result"] = result
+
         if original_stream:
             return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
 
         return result
 
 
+    @app.post("/replay_latest_llm_call")
+    async def replay_latest_llm_call():
+        """Return the buffered latest LLM call result."""
+        if latest_llm_call["result"] is None:
+            raise HTTPException(status_code=404, detail="No LLM call has been made yet")
+        return latest_llm_call["result"]
+
+
     if enable_swarm_mode:
-        from ajet.tuner_lib.experimental.as_swarm_server import register_enable_swarm_mode_routes
+        from ajet.tuner_lib.experimental.swarm_server import register_enable_swarm_mode_routes
         assert shared_mem_dict is not None, "shared_mem_dict must not be None when enable_swarm_mode is True."
         assert shared_mem_dict_lock is not None, "shared_mem_dict_lock must not be None when enable_swarm_mode is True."
         app, additional_coro = register_enable_swarm_mode_routes(app, zmq_context=context, shared_mem_dict=shared_mem_dict, shared_mem_dict_lock=shared_mem_dict_lock)
@@ -481,6 +494,6 @@ def start_interchange_server(config, blocking=False, env={}) -> int:
             if interchange_server:
                 interchange_server.terminate()
             if enable_swarm_mode:
-                from ajet.tuner_lib.experimental.as_swarm_server import kill_process_tree
+                from ajet.tuner_lib.experimental.swarm_server import kill_process_tree
                 kill_process_tree(None, None)
         return -1

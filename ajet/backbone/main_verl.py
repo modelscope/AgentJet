@@ -251,7 +251,7 @@ class TaskRunner:
         from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
         if config.ajet.enable_interchange_server:
-            from ajet.tuner_lib.experimental.as_oai_model_server import start_interchange_server
+            from ajet.tuner_lib.experimental.oai_model_server import start_interchange_server
             start_interchange_server(config)
 
         # Initialize the PPO trainer.

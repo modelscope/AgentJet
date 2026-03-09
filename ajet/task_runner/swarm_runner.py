@@ -66,11 +66,11 @@ class SwarmRunner(BaseAgentRunner):
 
             while True:
                 # <wait for 1/2>:
-                #   <from_sourcefile>: ajet/tuner_lib/experimental/as_swarm_server.py
+                #   <from_sourcefile>: ajet/tuner_lib/experimental/swarm_server.py
                 #   <from_code>: socket.send_string(workflow_output.model_dump_json())
                 #   <expect>: workflow_output: WorkflowOutput
                 # <wait for 2/2>:
-                #   <from_sourcefile>: ajet/tuner_lib/experimental/as_swarm_server.py
+                #   <from_sourcefile>: ajet/tuner_lib/experimental/swarm_server.py
                 #   <from_code>: socket.send_string("RUNNER.SPECIAL.RESET_CONTEXT_TRACKER")
                 #   <expect>: "RUNNER.SPECIAL.RESET_CONTEXT_TRACKER"
                 try:

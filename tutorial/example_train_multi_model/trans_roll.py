@@ -1,5 +1,5 @@
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
 from ajet.task_reader import RouterTaskReader
 from tutorial.example_academic_trans_swarm.trans import execute_agent

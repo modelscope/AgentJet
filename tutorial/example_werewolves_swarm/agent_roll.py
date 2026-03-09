@@ -7,7 +7,7 @@ from ajet.task_reader import RouterTaskReader
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.default_config.ajet_default import AjetTaskReader
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 
 NUM_EPOCH = 10000
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")

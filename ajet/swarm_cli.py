@@ -31,7 +31,7 @@ def start_swarm_server(env, config, port):
     # Set the port in the config
     config.ajet.interchange_server.interchange_server_port = port
 
-    from ajet.tuner_lib.experimental.as_oai_model_server import (
+    from ajet.tuner_lib.experimental.oai_model_server import (
         start_interchange_server,
     )
 

@@ -9,7 +9,7 @@ import json
 
 from loguru import logger
 from typing import TYPE_CHECKING
-from ajet.tuner_lib.experimental.as_oai_model_server import InterchangeCompletionRequest
+from ajet.tuner_lib.experimental.oai_model_server import InterchangeCompletionRequest
 from ajet.utils.thread_executors import SharedInferenceTrackerThreadExecutor, SharedInterchangeThreadExecutor
 from ajet.tuner_lib.experimental.interchange_utils import get_zmq_socket
 from ajet.tuner_lib.experimental.interchange_utils import DEBUG
@@ -107,7 +107,7 @@ class InterchangeClient:
                 try:
 
                     # <wait for>:
-                    #   <from_sourcefile>: ajet/tuner_lib/experimental/as_oai_model_server.py
+                    #   <from_sourcefile>: ajet/tuner_lib/experimental/oai_model_server.py
                     #   <from_code>: socket.send_string(int_req.model_dump_json())
                     #   <expect>: InterchangeCompletionRequest object in JSON string format
                     message = self.socket.recv_string()
@@ -165,7 +165,7 @@ class InterchangeClient:
                 if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string (send llm call result)")
 
                 # <send to>
-                #   <to_sourcefile>: ajet/tuner_lib/experimental/as_oai_model_server.py
+                #   <to_sourcefile>: ajet/tuner_lib/experimental/oai_model_server.py
                 #   <to_code>: result_str = socket.recv_string()
                 self.socket.send_string(result)
 

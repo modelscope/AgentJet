@@ -153,7 +153,7 @@ def start_swarm_server(env, config):
     assert config.ajet.enable_interchange_server, (
         "Please enable_interchange_server in config to start swarm server."
     )
-    from ajet.tuner_lib.experimental.as_oai_model_server import (
+    from ajet.tuner_lib.experimental.oai_model_server import (
         start_interchange_server,
     )
 
