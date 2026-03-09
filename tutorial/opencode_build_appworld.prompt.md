@@ -4,6 +4,24 @@ Use prompt below in opencode or claudecode to generate a one-key-to-tune agent (
 
 =============================
 
+Your task:- Write a React agent for learning Appworld
+    - I want to use the base model '/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct'
+    - Use 8 GPUs for training
+    - Use Batch Size 32, GRPO N=4
+
+Your skill (first read this SKILL file to get necessary knowledge):
+    ajet/copilot/write-swarm-client/SKILL.md
+
+About Appworld prompts:
+    Run installation and appworld:
+        "wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz",
+        "tar -xzf ./appworld_pack_v3.tar.gz -C /tmp",
+    You also need to set environment variables:
+        os.environ["APPWORLD_PATH"] = "/tmp/pack_all_in_one"
+        os.environ["APPWORLD_SCRIPT"] = "bash EnvService/env_sandbox/appworld.sh"
+    In the swarm client, use ajet/utils/env_service_client/env_client_ng.py to interact with appworld
+
+Use native OpenAI SDK
 
 =============================
 
