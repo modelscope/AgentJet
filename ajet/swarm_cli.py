@@ -139,6 +139,24 @@ def main():
     )
     parser_overwatch.set_defaults(func=cmd_overwatch)
 
+    # Subcommand: top (alias for overwatch)
+    parser_top = subparsers.add_parser("top", help="Monitor the swarm server (alias for overwatch)")
+    parser_top.add_argument(
+        "--swarm-url",
+        type=str,
+        default="http://localhost:10086",
+        required=False,
+        help="Swarm server URL (default: http://localhost:10086)",
+    )
+    parser_top.add_argument(
+        "--refresh-interval",
+        type=float,
+        default=2.0,
+        required=False,
+        help="Refresh interval in seconds (default: 2.0)",
+    )
+    parser_top.set_defaults(func=cmd_overwatch)
+
     args = parser.parse_args()
 
     if not hasattr(args, 'func'):

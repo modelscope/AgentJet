@@ -70,9 +70,6 @@ def ep_key(episode_uuid: str) -> str:
 
 def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
 
-    # Buffer for latest LLM call
-    latest_llm_call = {"result": None}
-
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # Startup
@@ -206,23 +203,6 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         dat = f"data: {content_chunk.model_dump_json()}\n\n"
         yield dat
 
-        # Final chunk with finish_reason
-        final_chunk = ChatCompletionChunk(
-            id=result.id,
-            model=result.model,
-            created=result.created,
-            object="chat.completion.chunk",
-            choices=[
-                ChunkChoice(
-                    index=0,
-                    delta=ChoiceDelta(),
-                    finish_reason=finish_reason
-                )
-            ]
-        )
-        dat = f"data: {final_chunk.model_dump_json()}\n\n"
-        yield dat
-        yield "data: [DONE]\n\n"
 
 
     @app.get("/health")
@@ -310,8 +290,12 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
 
-        # Buffer the latest result
-        latest_llm_call["result"] = result
+        if enable_swarm_mode:
+            assert shared_mem_dict is not None
+            shared_mem_dict["latest_llm_call"] = {
+                "input": body,
+                "output": result,
+            }
 
         if original_stream:
             return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
@@ -319,20 +303,23 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         return result
 
 
-    @app.post("/replay_latest_llm_call")
-    async def replay_latest_llm_call():
-        """Return the buffered latest LLM call result."""
-        if latest_llm_call["result"] is None:
-            raise HTTPException(status_code=404, detail="No LLM call has been made yet")
-        return latest_llm_call["result"]
-
-
     if enable_swarm_mode:
         from ajet.tuner_lib.experimental.swarm_server import register_enable_swarm_mode_routes
+
+        @app.post("/replay_latest_llm_call")
+        async def replay_latest_llm_call():
+            """Return the buffered latest LLM call result."""
+            assert shared_mem_dict is not None
+            if ("latest_llm_call" not in shared_mem_dict) or shared_mem_dict["latest_llm_call"] is None:
+                raise HTTPException(status_code=404, detail="No LLM call has been made yet")
+            return shared_mem_dict["latest_llm_call"]
+
         assert shared_mem_dict is not None, "shared_mem_dict must not be None when enable_swarm_mode is True."
         assert shared_mem_dict_lock is not None, "shared_mem_dict_lock must not be None when enable_swarm_mode is True."
         app, additional_coro = register_enable_swarm_mode_routes(app, zmq_context=context, shared_mem_dict=shared_mem_dict, shared_mem_dict_lock=shared_mem_dict_lock)
+
     else:
+
         additional_coro = None
 
 

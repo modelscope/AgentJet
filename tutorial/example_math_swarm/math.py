@@ -21,6 +21,8 @@ REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/m
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 
+assert AJET_SWARM_URL != "http://swarm-server-ip:10086", "Please set the environment variable AJET_SWARM_URL to your swarm server's URL, e.g., http://localhost:10086 or http://your-swarm-server-ip:10086"
+
 def main():
 
     # Handshake with swarm remote, then send training param to swarm remote (such as model to be trained, algorithm, etc)
