@@ -33,7 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Coroutine, Optional, Tuple
 
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
-from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.chat.chat_completion import ChatCompletion, CompletionUsage
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
@@ -151,6 +151,8 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         """
         content = result.choices[0].message.content if result.choices else ""
         role = result.choices[0].message.role if result.choices else "assistant"
+        result_id = result.id if result.id else uuid.uuid4().hex
+        result.id = "chatcmpl-" + result_id if not result_id.startswith("chatcmpl-") else result_id
         # try:
         #     thinking = result.choices[0].message.reasoning_content
         # except:
@@ -169,6 +171,18 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 type=tc.type
             ) for index, tc in enumerate(tool_calls)]
 
+        def dump_chunk(chunk: ChatCompletionChunk) -> str:
+            dump = chunk.model_dump()
+            dump.pop("service_tier", None)
+            dump.pop("system_fingerprint", None)
+            if "usage" in dump and dump["usage"] is None:
+                dump.pop("usage", None)
+            # for each choice delta, if field (such as tool_calls) is empty, remove it from the delta to avoid confusion
+            for key in list(dump["choices"][0]["delta"].keys()):
+                if not dump["choices"][0]["delta"][key] and key != "content":  # keep content even if it's empty
+                    dump["choices"][0]["delta"].pop(key, None)
+            return f"data: {json.dumps(dump)}\n\n"
+
         # First chunk with role
         first_chunk = ChatCompletionChunk(
             id=result.id,
@@ -183,8 +197,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 )
             ]
         )
-        dat = f"data: {first_chunk.model_dump_json()}\n\n"
-        yield dat
+        yield dump_chunk(first_chunk)
 
         # Content chunk
         content_chunk = ChatCompletionChunk(
@@ -195,14 +208,29 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             choices=[
                 ChunkChoice(
                     index=0,
-                    delta=ChoiceDelta(role=role, content=content, tool_calls=delta_tool_calls),
+                    delta=ChoiceDelta(content=content, tool_calls=delta_tool_calls),
                     finish_reason=None
                 )
             ]
         )
-        dat = f"data: {content_chunk.model_dump_json()}\n\n"
-        yield dat
-
+        yield dump_chunk(content_chunk)
+        # Final chunk with finish_reason
+        final_chunk = ChatCompletionChunk(
+            id=result.id,
+            model=result.model,
+            created=result.created,
+            object="chat.completion.chunk",
+            usage=CompletionUsage(completion_tokens=0, prompt_tokens=0, total_tokens=0),
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(content=""),
+                    finish_reason='stop' if tool_calls is None else 'tool_calls',
+                )
+            ]
+        )
+        yield dump_chunk(final_chunk)
+        yield "data: [DONE]\n\n"
 
 
     @app.get("/health")
@@ -298,6 +326,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             }
 
         if original_stream:
+            result.model = "unknown_model" if not new_req.model else new_req.model
             return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
 
         return result

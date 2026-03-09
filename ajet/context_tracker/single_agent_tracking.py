@@ -185,9 +185,9 @@ class SingleAgentContextTracker(BaseTracker):
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
         result = []
         for ext_msg in ext_msg_array:
-            d = {
+            d: dict = {
                 "role": ext_msg.role,
-                "content": ext_msg.content_for_future,
+                "content": ext_msg.content_for_compare,
             }
             if ext_msg.tool_calls:
                 d.update({"tool_calls": ext_msg.tool_calls})
