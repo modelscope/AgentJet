@@ -105,7 +105,7 @@ class SwarmClient(object):
                 self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=True)
             except:
                 self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=False)
-            logger.warning("HTTP client refreshed due to connection error")
+            logger.warning("swarm client httpx client refreshed.")
             return self._http_client
 
     def _should_refresh_client_on_error(self, error: Exception) -> bool:
