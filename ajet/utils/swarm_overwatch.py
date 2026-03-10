@@ -543,7 +543,10 @@ def start_overwatch(server_url: str, refresh_interval: float = 2.0):
         refresh_interval: Refresh interval in seconds (default: 2.0)
     """
     overwatch = SwarmOverwatch(server_url, refresh_interval)
-    overwatch.choose_run()
+    try:
+        overwatch.choose_run()
+    except KeyboardInterrupt:
+        logger.info("Swarm Overwatch stopped by user")
 
 
 if __name__ == "__main__":
