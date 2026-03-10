@@ -123,7 +123,7 @@ Meanwhile, all VERL and training logs stream into `./swarmlog/swarm_server.log` 
 From any machine (no GPU required) that can reach the server on port `10086`, run your Swarm Client:
 
 ```python
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from ajet.copilot.job import AgentJetJob
 
 swarm_worker = SwarmClient("http://<server-ip>:10086")

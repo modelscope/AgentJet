@@ -61,7 +61,7 @@ The primary objective of swarm client is to make sure network connection is good
 Now, create a python script and start coding:
 
 ```python
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 swarm_worker = SwarmClient(REMOTE_SWARM_URL)
 ```

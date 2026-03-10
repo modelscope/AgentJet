@@ -16,7 +16,7 @@ Before running:
 """
 
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.as_swarm_client import (
+from ajet.tuner_lib.experimental.swarm_client import (
     SwarmClient,
     run_episodes_until_all_complete,
 )

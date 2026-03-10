@@ -10,7 +10,7 @@ Usage:
 import os
 import subprocess
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
 from ajet.utils.env_service_client.env_client_ng import EnvClient
 from ajet.schema.task import Task
 from tutorial.opencode_build_appworld_react.agent_run import run_agent_and_compute_reward

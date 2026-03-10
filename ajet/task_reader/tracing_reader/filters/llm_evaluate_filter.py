@@ -1,10 +1,6 @@
 import os
+from loguru import logger
 from typing import Iterable, List
-
-from agentscope.agent import ReActAgent
-from agentscope.formatter import DashScopeMultiAgentFormatter
-from agentscope.message import Msg
-from agentscope.model import DashScopeChatModel
 from pydantic import BaseModel, Field
 
 from ajet.schema.task import Task
@@ -61,6 +57,9 @@ class LlmEvaluateFilter(Filter):
         print_reason: bool = True,
     ) -> None:
         """Filter that evaluates the quality of tasks using LLM."""
+        from agentscope.agent import ReActAgent
+        from agentscope.formatter import DashScopeMultiAgentFormatter
+        from agentscope.model import DashScopeChatModel
 
         self._print_reason = print_reason
         self.external_llm_fn = create_external_llm_fn(
@@ -78,6 +77,8 @@ class LlmEvaluateFilter(Filter):
         )
 
     async def filter(self, tasks: Iterable[Task]) -> List[Task]:
+        from agentscope.message import Msg
+
         kept: List[Task] = []
         for task in tasks:
             payload = "query: " + task.main_query + "\n" "answer: " + task.metadata.get(

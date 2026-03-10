@@ -91,7 +91,7 @@ In code, the most common pattern is:
 
 ```python
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 
 swarm_client = SwarmClient("http://your-swarm-server:10086")
 yaml_job = AgentJetJob(

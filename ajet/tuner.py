@@ -171,7 +171,7 @@ class AjetTuner(object):
     def _enable_interchange_server(self, llm_inference_fn):
         # experimental reverse proxy start
         if self.enable_interchange_server:
-            from ajet.tuner_lib.experimental.as_oai_model_client import InterchangeClient
+            from ajet.tuner_lib.experimental.oai_model_client import InterchangeClient
             self.interchange_client = InterchangeClient(
                 episode_uuid=self.context_tracker.episode_uuid,
                 context_tracker=self.context_tracker,

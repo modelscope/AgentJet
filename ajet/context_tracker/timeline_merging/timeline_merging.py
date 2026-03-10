@@ -21,8 +21,8 @@ def is_timeline_mergeable(
         for i in range(len(target_timeline)):
             if timeline_compare_level == "text":
                 same = (
-                    source_timeline[i].content_for_future
-                    == target_timeline[i].content_for_future
+                    source_timeline[i].content_for_compare
+                    == target_timeline[i].content_for_compare
                 )
             elif timeline_compare_level == "token":
                 same = source_timeline[i].token_arr == target_timeline[i].token_arr
@@ -52,12 +52,12 @@ def is_timeline_mergeable(
     #         all_msg_match = False
     #         for i in range(len(target_timeline)):
     #             d = {}
-    #             d["source"] = source_timeline[i].content_for_future
-    #             d["target"] = target_timeline[i].content_for_future
+    #             d["source"] = source_timeline[i].content_for_compare
+    #             d["target"] = target_timeline[i].content_for_compare
     #             if timeline_compare_level == "text":
     #                 same = (
-    #                     source_timeline[i].content_for_future
-    #                     == target_timeline[i].content_for_future
+    #                     source_timeline[i].content_for_compare
+    #                     == target_timeline[i].content_for_compare
     #                 )
     #             elif timeline_compare_level == "token":
     #                 same = source_timeline[i].token_arr == target_timeline[i].token_arr

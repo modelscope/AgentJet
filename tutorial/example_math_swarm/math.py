@@ -10,7 +10,7 @@ from ajet.task_reader import RouterTaskReader
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 
 # python -m tutorial.example_math_swarm.math
 
@@ -20,6 +20,8 @@ AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct")
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
+
+assert AJET_SWARM_URL != "http://swarm-server-ip:10086", "Please set the environment variable AJET_SWARM_URL to your swarm server's URL, e.g., http://localhost:10086 or http://your-swarm-server-ip:10086"
 
 def main():
 
