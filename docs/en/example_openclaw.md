@@ -37,7 +37,7 @@ ajet-swarm overwatch    # terminal 2 (watch status)
 
 ```bash
 # 如果直接在灵俊上跑龙虾，这步省略
-ssh -R 8090:localhost:8090 -p 22222 fuqingxu@111.36.208.22 -N   -o ServerAliveInterval=30   -o ServerAliveCountMax=3
+ssh -R 8090:localhost:8090 -p 22222 fuqingxu@server.ip.running.openclaw -N   -o ServerAliveInterval=30   -o ServerAliveCountMax=3
 ```
 
 ### 2. 龙虾服务器启动OpenJudge & AgentJet请求一转多服务
