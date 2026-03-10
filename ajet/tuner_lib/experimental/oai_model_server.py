@@ -271,6 +271,13 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         body = await request.json()
         new_req = ChatCompletionRequest.model_validate(body)
 
+        # Check if the first message is a system message, if not, add a default one
+        if new_req.messages:
+            first_msg = new_req.messages[0]
+            if first_msg.get("role") != "system":
+                logger.warning(f"First message role is '{first_msg.get('role')}', expected 'system'. Adding default system prompt.")
+                new_req.messages.insert(0, {"role": "system", "content": "You are a helpful assistant, your name is AgentJet."})
+
         # Create timeline UUID
         timeline_uuid = uuid.uuid4().hex
 
