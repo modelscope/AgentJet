@@ -2,7 +2,7 @@
 
 ## 架构概述
 
-
+```txt
         OpenClaw 配置网页：设置>配置>Models>Model Providers>vllm:http://localhost:8090/v1
                             |
                             |
@@ -23,13 +23,14 @@
                                                                  |                |
                                                               OpenJudge          OpenJudge
                                                             读取用户Query    读取所有Query的所有答案并计算奖励
-
+```
 
 ## 启动方法
 
 ### 1. 灵俊上启动swarm server，并ssh打通到龙虾
 
 ```bash
+# agentjet 的 git checkout add-openclaw-training
 ajet-swarm start
 ```
 
@@ -41,6 +42,7 @@ ssh -R 8090:localhost:8090 -p 22222 fuqingxu@111.36.208.22 -N   -o ServerAliveIn
 ### 2. 龙虾服务器启动OpenJudge & AgentJet请求一转多服务
 
 ```bash
+# agentjet 的 git checkout add-openclaw-training
 python -m ajet.tuner_lib.experimental.oai_model_one2many
 ```
 
