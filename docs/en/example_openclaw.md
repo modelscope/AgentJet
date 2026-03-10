@@ -31,7 +31,8 @@
 
 ```bash
 # agentjet 的 git checkout add-openclaw-training
-ajet-swarm start
+ajet-swarm start        # terminal 1 (start engine)
+ajet-swarm overwatch    # terminal 2 (watch status)
 ```
 
 ```bash
@@ -50,7 +51,11 @@ python -m ajet.tuner_lib.experimental.oai_model_one2many
 
 (3-1) 启动龙虾
 (3-2) 龙虾配置网页：设置 > 配置 > Models > Model Providers > vllm:http://localhost:8090/v1
-
+![alt text](https://img.alicdn.com/imgextra/i2/O1CN01LK3R1W1Dy7bq8jLRR_!!6000000000284-2-tps-2450-1584.png)
+(3-3) 尝试提交问题
+![alt text](https://img.alicdn.com/imgextra/i1/O1CN013yqN5U1fpFApRMNzN_!!6000000004055-2-tps-3529-1594.png)
+(3-4) 重复 (3-3) AgentJet会自动寻找合适的时机执行训练
+![alt text](https://img.alicdn.com/imgextra/i3/O1CN01CBX7ug1TLDp2qPanE_!!6000000002365-2-tps-2756-1118.png)
 
 ## 调试奖励：
 
