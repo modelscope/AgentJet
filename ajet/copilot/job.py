@@ -67,6 +67,7 @@ class AgentJetJob:
         experiment_dir: str | None = None,
         project_name: str | None = None,
         experiment_name: str | None = None,
+        logging: str | None = None,
         n_gpu: int | None = None,
         model: str | None = None,
         algorithm: str | None = None,
@@ -103,6 +104,7 @@ class AgentJetJob:
         self.experiment_dir: str = cast(str, experiment_dir)
         self.project_name: str = cast(str, project_name)
         self.experiment_name: str = cast(str, experiment_name)
+        self.logging: str = cast(str, logging)
         self.n_gpu: int = cast(int, n_gpu)
         self.model: str = cast(str, model)
         self.algorithm: str = cast(str, algorithm)
@@ -120,9 +122,11 @@ class AgentJetJob:
 
         # see `ajet/default_config/ajet_ts_default.yaml`
         overrides = {
+            # left: [yaml key navigation]                  right: [AgentJetJob self attr]
             "ajet.experiment_dir":                          "experiment_dir",
             "ajet.project_name":                            "project_name",
             "ajet.experiment_name":                         "experiment_name",
+            "ajet.trainer_common.logger":                   "logging",
             "ajet.model.path":                              "model",
             "ajet.trainer_common.n_gpus_per_node":          "n_gpu",
             "ajet.trainer_common.algorithm.adv_estimator":  "algorithm",
