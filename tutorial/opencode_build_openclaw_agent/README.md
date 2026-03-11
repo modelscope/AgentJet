@@ -84,11 +84,13 @@ This starts the training proxy on `http://localhost:8090`.
 
 ### Step 3: Configure OpenClaw to Use Training Endpoint
 
-OpenClaw needs to connect to the fake vLLM endpoint. Configure it to use `http://localhost:8090` as the LLM backend.
+OpenClaw needs to connect to the fake vLLM endpoint.
+
+Configure it to use `http://localhost:8090` as the LLM backend.
 
 ### Step 4: Send Training Requests
 
-Option A - Manual testing via OpenClaw CLI:
+Option A - Manual testing via OpenClaw Web / Cli:
 
 ```bash
 openclaw agent --message "What are your thoughts on Paris?" --thinking high

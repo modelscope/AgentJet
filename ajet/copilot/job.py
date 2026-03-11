@@ -46,6 +46,7 @@ class AgentJetJob:
         experiment_dir: Directory where experiment outputs will be saved.
         project_name: Name of the project for organizing experiments.
         experiment_name: Unique name for this specific experiment run.
+        logging: "swanlab", "tensorboard", etc
         n_gpu: Number of GPUs to use per node for training.
         model: Path or identifier of the model to train.
         algorithm: Advantage estimator algorithm (e.g., 'gae', 'vtrace').
