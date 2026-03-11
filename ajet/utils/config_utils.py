@@ -3,9 +3,10 @@
 import os
 import shutil
 import time
+import yaml
+import hydra.errors
 from functools import cache
 
-import yaml
 from beast_logger import print_dict
 from hydra import compose, initialize
 from loguru import logger
@@ -15,15 +16,44 @@ from ajet.utils.config_computer import split_keys_and_operators
 
 DEFAULT_DIR = "saved_experiments"
 
+def fix_hydra_searchpath_and_create_copy_when_needed(yaml_fp):
+    """Fix Hydra search paths if they don't exist by trying with base directory."""
+    abs_yaml_fp = os.path.abspath(yaml_fp)
+    with open(abs_yaml_fp, 'r', encoding='utf-8') as f:
+        yaml_content = yaml.safe_load(f)
+    if yaml_content and 'hydra' in yaml_content and 'searchpath' in yaml_content['hydra']:
+        base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        modified = False
+        for i, path in enumerate(yaml_content['hydra']['searchpath']):
+            if path.startswith('file://'):
+                rel_path = path[7:]
+                if not os.path.exists(rel_path):
+                    fixed_path = os.path.join(base_dir, rel_path)
+                    if os.path.exists(fixed_path):
+                        logger.warning(f"Cannot find `{os.path.abspath(rel_path)}`, but find `{os.path.abspath(fixed_path)}`, override original config ...")
+                        yaml_content['hydra']['searchpath'][i] = f'file://{fixed_path}'
+                        modified = True
+        if modified:
+            with open(abs_yaml_fp + ".patch.yaml", 'w', encoding='utf-8') as f:
+                yaml.dump(yaml_content, f)
+            return abs_yaml_fp + ".patch.yaml"
+    return abs_yaml_fp
+
+
 def read_ajet_config(yaml_fp):
     """Load a Hydra configuration relative to this module."""
+    yaml_fp = read_ajet_yaml_fp = fix_hydra_searchpath_and_create_copy_when_needed(yaml_fp)
     yaml_fp = os.path.relpath(
         yaml_fp, os.path.dirname(__file__)
     )  # do not try to understand this line, hydra is too weird
 
     def load_hydra_config(config_path: str, config_name: str) -> DictConfig:
         with initialize(config_path=config_path, version_base=None):
-            cfg = compose(config_name=config_name, overrides=[])
+            try:
+                cfg = compose(config_name=config_name, overrides=[])
+            except hydra.errors.MissingConfigException as e:
+                logger.error(f"Configuration default files not found (please check {read_ajet_yaml_fp})")
+                raise e
             return cfg
 
     dir_path = os.path.dirname(yaml_fp)

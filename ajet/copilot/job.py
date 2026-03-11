@@ -10,24 +10,15 @@ from __future__ import annotations
 import os
 import time
 import yaml
-import tempfile
 
-from types import SimpleNamespace
 from typing import Any, Callable, Union, cast
 from loguru import logger
 from ajet.default_config.ajet_default import Config
 from ajet.utils.config_utils import (
     expand_ajet_hierarchical_config,
-    prepare_experiment_config,
     read_ajet_hierarchical_config,
 )
 from ajet.utils.dynamic_import import cls_to_path
-from ajet.utils.launch_utils import (
-    execute_training_process,
-    check_avail_gpu,
-    get_backbone_target,
-    setup_environment_vars,
-)
 
 
 def override_current_yaml_value_if_given(override_value, current_value):
@@ -76,6 +67,8 @@ class AgentJetJob:
         else:
             logger.warning(f"Reading config from {base_yaml_config}.")
             time.sleep(1)
+        if not os.path.exists(base_yaml_config):
+            raise ValueError(f"Configuration yaml is absent! {base_yaml_config}")
         self.config_as_dict: dict = self.build_job_from_yaml(base_yaml_config)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
 
@@ -184,4 +177,3 @@ class AgentJetJob:
             )
 
         return self
-

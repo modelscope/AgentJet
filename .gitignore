@@ -173,3 +173,4 @@ swarmlog
 werewolves_swarm
 .claude
 tensorboard_log
+tutorial/**/*.json
