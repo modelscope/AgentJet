@@ -146,8 +146,6 @@ class AsyncLlmBridge(object):
                 "completion_tokens": len(token_array), # type: ignore
                 "total_tokens": len(prompt_token_ids) + len(token_array), # type: ignore
             }
-            print("====----====usage", usage)
-            print("====----====finish_reason", finish_reason)
             return {
                 "role": "assistant",
                 "request_id": request_id,

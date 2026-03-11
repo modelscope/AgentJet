@@ -455,6 +455,7 @@ class SwarmOverwatch:
         while True:
             response = httpx.post(f"{self.server_url}/replay_latest_llm_call", timeout=30.0)
             structured_response = response.json()
+            self.console.clear()
             if "input" not in structured_response or "output" not in structured_response:
                 self.console.print(f"[bold red]{structured_response}[/bold red]")
                 time.sleep(5)
@@ -464,6 +465,33 @@ class SwarmOverwatch:
                 output = structured_response["output"]
                 self.console.print(f"\n[bold green]Input:[/bold green]\n{input}")
                 self.console.print(f"\n[bold green]Output:[/bold green]\n{output}")
+                hide_when_more_than_n_line_break = 4
+                try:
+                    input_items = ""
+                    output_items = ""
+                    for item in input['messages']:
+                        role = item['role']
+                        content = item['content']
+                        if isinstance(content, list):
+                            content = content[0].get('text', '')
+                        if content.count('\n') >= hide_when_more_than_n_line_break:
+                            content = content.replace('\n',' ')[:200] + " ....."
+                        else:
+                            content = content.replace('\n',' ')
+                        input_items += f"[bold blue]@{role}:[/bold blue] {content}\n"
+                    for item in output['choices']:
+                        role = item['message']['role']
+                        content = item['message']['content']
+                        if content.count('\n') >= hide_when_more_than_n_line_break:
+                            content = content.replace('\n',' ')[:200] + " ....."
+                        else:
+                            content = content.replace('\n',' ')
+                        output_items += f"[bold red]@{role}:[/bold red] {content}\n"
+                    self.console.print(f"\n-------------------------------------------------------------")
+                    self.console.print(f"\n[bold green]Input Simlified:[/bold green]\n{input_items}")
+                    self.console.print(f"\n[bold green]Output Simlified:[/bold green]\n{output_items}")
+                except:
+                    pass
                 time.sleep(5)
 
     def choose_run(self) -> str:
