@@ -132,11 +132,27 @@ class AsyncLlmBridge(object):
                         if decoded_text is None:
                             decoded_text = ""
 
+            max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
+            max_model_len: int = self.config.ajet.rollout.max_model_len
+            max_seq_length: int = max_model_len - max_response_length_in_one_turn
+            if len(prompt_ids) < max_seq_length:
+                finish_reason = "length"
+            else:
+                finish_reason = "stop"
+            if tool_calls:
+                finish_reason = "tool_calls"
+            usage = {
+                "prompt_tokens": len(prompt_ids),
+                "completion_tokens": len(token_array), # type: ignore
+                "total_tokens": len(prompt_ids) + len(token_array), # type: ignore
+            }
             return {
                 "role": "assistant",
                 "request_id": request_id,
                 "content": decoded_text,
                 "tool_calls": tool_calls,
+                "finish_reason": finish_reason,
+                "usage": usage,
                 "tokens": [
                     TokenAndProb(
                         token_id=token_id,
@@ -223,13 +239,30 @@ class AsyncLlmBridge(object):
                 # logger.bind(exception=True).exception(f"Bad toolcall discovered \n\nprompt_text:\n{prompt_text}\n\nrepsonse:\n{content}")
                 logger.warning(f"Bad toolcall discovered: {content}")
 
+            tool_calls = message.get("tool_calls", [])
+            max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
+            max_model_len: int = self.config.ajet.rollout.max_model_len
+            max_seq_length: int = max_model_len - max_response_length_in_one_turn
+            if len(prompt_token_ids) < max_seq_length:
+                finish_reason = "length"
+            else:
+                finish_reason = "stop"
+            if tool_calls:
+                finish_reason = "tool_calls"
+            usage = {
+                "prompt_tokens": len(prompt_token_ids),
+                "completion_tokens": len(response.choices[0].token_ids), # type: ignore
+                "total_tokens": len(prompt_token_ids) + len(response.choices[0].token_ids), # type: ignore
+            }
             return {
                 "role": "assistant",
                 "request_id": response.id,
                 "content": content,
                 "prompt_text": prompt_text,
                 "prompt_token_ids": prompt_token_ids,
-                "tool_calls": message.get("tool_calls", []),
+                "tool_calls": tool_calls,
+                "finish_reason": finish_reason,
+                "usage": usage,
                 "tokens": [
                     TokenAndProb(
                         token_id=token,

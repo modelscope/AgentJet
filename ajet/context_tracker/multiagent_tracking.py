@@ -604,9 +604,11 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             tokenize=False,
         )
         length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
-        max_response_length = self.config.ajet.rollout.max_response_length_in_one_turn
+        max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
-        max_seq_length: int = max_model_len - max_response_length
+        max_seq_length: int = max_model_len - max_response_length_in_one_turn
+        # length: the length of current all previous context
+        # max_seq_length: max_model_len - max_response_length_in_one_turn
         if length < max_seq_length:
             token_overflow = False
         else:
@@ -619,7 +621,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             ret = (
                 True,
                 token_overflow,
-                f"safe[{length} < {max_model_len} - {max_response_length}]",
+                f"safe[{length} < {max_model_len} - {max_response_length_in_one_turn}]",
             )
         else:
             ret = (False, token_overflow, "token_overflow")

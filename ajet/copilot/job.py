@@ -78,6 +78,7 @@ class AgentJetJob:
         backbone: str | None = None,
         max_prompt_length: int | None = None,
         max_response_length: int | None = None,
+        max_response_length_in_one_turn: int | None = None,
         max_model_len: int | None = None,
         mini_batch_num: int | None = None,
     ) -> None:
@@ -112,6 +113,7 @@ class AgentJetJob:
         self.max_env_worker: int = cast(int, max_env_worker)
         self.backbone: str = cast(str, backbone)
         self.max_prompt_length: int = cast(int, max_prompt_length)
+        self.max_response_length_in_one_turn: int = cast(int, max_response_length_in_one_turn)
         self.max_response_length: int = cast(int, max_response_length)
         self.max_model_len: int = cast(int, max_model_len)
         self.mini_batch_num: int = cast(int, mini_batch_num)
@@ -132,6 +134,7 @@ class AgentJetJob:
             "ajet.backbone":                                "backbone",
             "ajet.data.max_prompt_length":                  "max_prompt_length",
             "ajet.data.max_response_length":                "max_response_length",
+            "ajet.rollout.max_response_length_in_one_turn": "max_response_length_in_one_turn",
             "ajet.rollout.max_model_len":                   "max_model_len",
             "ajet.trainer_common.mini_batch_num":           "mini_batch_num",
         }

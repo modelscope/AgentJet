@@ -33,7 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Coroutine, Optional, Tuple
 
 from vllm.entrypoints.openai.protocol import ChatCompletionRequest
-from openai.types.chat.chat_completion import ChatCompletion, CompletionUsage
+from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
@@ -160,6 +160,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         tool_calls = result.choices[0].message.tool_calls if result.choices and result.choices[0].message.tool_calls else None
         delta_tool_calls = [] # tool_calls: Optional[List[ChoiceDeltaToolCall]] = None
         finish_reason = result.choices[0].finish_reason
+        usage = result.usage
         if tool_calls:
             delta_tool_calls = [ChoiceDeltaToolCall(
                 index=index,
@@ -220,12 +221,12 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             model=result.model,
             created=result.created,
             object="chat.completion.chunk",
-            usage=CompletionUsage(completion_tokens=0, prompt_tokens=0, total_tokens=0),
+            usage=usage,
             choices=[
                 ChunkChoice(
                     index=0,
                     delta=ChoiceDelta(content=""),
-                    finish_reason='stop' if tool_calls is None else 'tool_calls',
+                    finish_reason=finish_reason,
                 )
             ]
         )

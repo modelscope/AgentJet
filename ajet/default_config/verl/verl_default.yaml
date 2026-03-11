@@ -256,7 +256,6 @@ critic:
     override_config: {}
     path: ~/models/deepseek-llm-7b-chat
     target_modules: all-linear
-    tokenizer_path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
     trust_remote_code: false
     use_remove_padding: false
     use_shm: false

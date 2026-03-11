@@ -42,12 +42,12 @@ ajet_job = AgentJetJob(
     project_name="openclaw-extraversion",
     experiment_name="extraversion_training",
     n_gpu=8,
-    model='/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct',
+    model='/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct',
     batch_size=32,
     num_repeat=NUM_REPEAT,
-    max_prompt_length=16000,
-    max_response_length=26000,
-    max_model_len=30000,
+    max_prompt_length=16000,    # at least 16000
+    max_response_length=8000,
+    max_model_len=24000,        # bigger than / equal to `max_prompt_length + max_response_length`
 )
 
 class EpisodeResult(BaseModel):
@@ -105,10 +105,7 @@ async def proxy_chat_completion(base_url: str, api_key: str, request: Request, i
 async def run_single_episode(episode_index: int, request: Request, is_stream: bool) -> EpisodeResult:
     """Run a single episode."""
     assert swarm_client is not None
-    loop = asyncio.get_event_loop()
-    episode_uuid, api_baseurl_key = await loop.run_in_executor(
-        None, lambda: swarm_client.begin_episode(discard_episode_timeout=120)
-    )
+    episode_uuid, api_baseurl_key = await asyncio.to_thread(swarm_client.begin_episode)
     try:
         response_data = await proxy_chat_completion(
             base_url=api_baseurl_key.base_url,

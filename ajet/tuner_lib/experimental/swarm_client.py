@@ -5,6 +5,7 @@ import httpx
 import json
 import re
 import yaml
+import tempfile
 from beast_logger import print_dict
 from typing import List, Tuple
 from loguru import logger
@@ -239,7 +240,6 @@ class SwarmClient(object):
     def _begin_episode_auto_retry(self, discard_episode_timeout=240, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
         # max_episode_time: when an episode has **lasted** for more than X seconds, it will be terminated **locally** by client (call `end_episode` will be re-route to `abort_episode`)
         max_episode_time = 8*discard_episode_timeout
-
         status, status_json = self.get_engine_status()  # warm up connection and log the status
         if status not in ["ENGINE.ROLLING"]:
             self.logger_info(f"Engine status is {status}. Waiting until ENGINE.ROLLING...")
@@ -423,7 +423,9 @@ class SwarmClient(object):
         try:
             config_dict = agent_jet_job.config.to_dict()
             yaml_str = yaml.safe_dump(config_dict, sort_keys=False)
-
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write(yaml_str)
+                logger.warning(f"Sync new training configuration: {f.name}")
             req_obj = SyncTrainConfigRequest(yaml_as_string=yaml_str)
 
             resp = self._http_client.post(
