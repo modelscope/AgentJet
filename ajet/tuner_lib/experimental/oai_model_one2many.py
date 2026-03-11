@@ -52,7 +52,7 @@ from beast_logger import print_listofdict
 
 SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 NUM_REPEAT = int(os.getenv("NUM_REPEAT", "8"))
-USER_PREFERENCE = "我希望我的助手足够幽默"
+TRAINING_OBJECTIVE = "我希望我的助手足够幽默"
 
 # =============================================================================
 # Global State
@@ -384,7 +384,7 @@ async def handle_one2many_request(request: Request, request_id: str) -> Dict | L
     task = Task(
         task_id=str(uuid.uuid4()),
         main_query=user_query,
-        metadata={"user_preference": USER_PREFERENCE}
+        metadata={"TRAINING_OBJECTIVE": TRAINING_OBJECTIVE}
     )
     await on_user_submit_new_requests(request_id, task)
 
@@ -487,7 +487,7 @@ async def one2many_proxy(request: Request, path: str):
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "user_preference": USER_PREFERENCE}
+    return {"status": "healthy"}
 
 
 @app.get("/requests")
