@@ -39,10 +39,26 @@ def _get_nested_attr(obj, attr_path: str):
     return obj
 
 class AgentJetJob:
-    """
-    arg: base_yaml_config + **kwargs (yaml config, then override with kwargs)
-    arg: base_yaml_config (yaml config)
-    arg: **kwargs (yaml config, then override with kwargs)
+    """Programmatic interface for configuring and launching AgentJet training jobs.
+
+    Args:
+        base_yaml_config: Path to base YAML configuration file. If None, uses default config (at ./ajet/default_config/ajet_ts_default.yaml).
+        experiment_dir: Directory where experiment outputs will be saved.
+        project_name: Name of the project for organizing experiments.
+        experiment_name: Unique name for this specific experiment run.
+        n_gpu: Number of GPUs to use per node for training.
+        model: Path or identifier of the model to train.
+        algorithm: Advantage estimator algorithm (e.g., 'gae', 'vtrace').
+        num_repeat: Tell swarm server how many repeated sample it should expect for a same task (same means task_id is identical).
+        batch_size: Training batch size for the model (the watermark to empty buffer pool and update llm weight).
+        swarm_mode: Whether to enable swarm mode for distributed sample collection.
+        swarm_mode_sample_collection_method: Method for collecting samples in swarm mode.
+        max_env_worker: an estimation about how many episodes will be running in parallel (all swarm clients combined).
+        backbone: Training backbone framework (e.g., 'verl').
+        max_prompt_length: Maximum token length for input prompts (token length before the first llm-generated token).
+        max_response_length: Maximum token length for model responses (token length after the first llm-generated token).
+        max_model_len: Maximum total token length (prompt + response) the model can handle (bigger => more GPU memory).
+        mini_batch_num: Number of mini-batches to split training batch into (how many mini steps, i.e. how many times the `optimizer.step` should be executed, per big train batch).
     """
 
     def __init__(
@@ -60,6 +76,10 @@ class AgentJetJob:
         swarm_mode_sample_collection_method: str | None = None,
         max_env_worker: int | None = None,
         backbone: str | None = None,
+        max_prompt_length: int | None = None,
+        max_response_length: int | None = None,
+        max_model_len: int | None = None,
+        mini_batch_num: int | None = None,
     ) -> None:
 
         if base_yaml_config is None:
@@ -69,6 +89,12 @@ class AgentJetJob:
             time.sleep(1)
         if not os.path.exists(base_yaml_config):
             raise ValueError(f"Configuration yaml is absent! {base_yaml_config}")
+
+        # Validate: max_prompt_length, max_response_length, max_model_len must all be None or all be non-None
+        length_params = [max_prompt_length, max_response_length, max_model_len]
+        if not (all(p is None for p in length_params) or all(p is not None for p in length_params)):
+            raise ValueError("max_prompt_length, max_response_length, max_model_len must all be None or all be non-None")
+
         self.config_as_dict: dict = self.build_job_from_yaml(base_yaml_config)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
 
@@ -85,6 +111,10 @@ class AgentJetJob:
         self.swarm_mode_sample_collection_method: str = cast(str, swarm_mode_sample_collection_method)
         self.max_env_worker: int = cast(int, max_env_worker)
         self.backbone: str = cast(str, backbone)
+        self.max_prompt_length: int = cast(int, max_prompt_length)
+        self.max_response_length: int = cast(int, max_response_length)
+        self.max_model_len: int = cast(int, max_model_len)
+        self.mini_batch_num: int = cast(int, mini_batch_num)
 
         # see `ajet/default_config/ajet_ts_default.yaml`
         overrides = {
@@ -100,6 +130,10 @@ class AgentJetJob:
             "ajet.swarm_mode_sample_collection_method":     "swarm_mode_sample_collection_method",
             "ajet.rollout.max_env_worker":                  "max_env_worker",
             "ajet.backbone":                                "backbone",
+            "ajet.data.max_prompt_length":                  "max_prompt_length",
+            "ajet.data.max_response_length":                "max_response_length",
+            "ajet.rollout.max_model_len":                   "max_model_len",
+            "ajet.trainer_common.mini_batch_num":           "mini_batch_num",
         }
 
         # if any value given in kwargs, override the corresponding value in config
@@ -120,6 +154,8 @@ class AgentJetJob:
             # >> e.g. self.model = new_model
             setattr(self, override_val, new_val)
 
+
+        assert self.max_prompt_length + self.max_response_length <= self.max_model_len, "illegal token length"
         if self.backbone == "trinity":
             raise NotImplementedError("Trinity backbone is not yet supported in AgentJetJob.")
 
