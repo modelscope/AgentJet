@@ -48,6 +48,7 @@ ajet_job = AgentJetJob(
     max_prompt_length=16000,    # at least 16000
     max_response_length=8000,
     max_model_len=24000,        # bigger than / equal to `max_prompt_length + max_response_length`
+    max_response_length_in_one_turn=4000,
 )
 
 class EpisodeResult(BaseModel):
@@ -102,6 +103,29 @@ async def proxy_chat_completion(base_url: str, api_key: str, request: Request, i
             return resp.json()
 
 
+def _check_finish_reason_length(response_data: Dict | List[bytes]) -> bool:
+    """Return True if any choice has finish_reason='length'."""
+    if isinstance(response_data, list):
+        for raw in response_data:
+            line = raw.decode() if isinstance(raw, bytes) else raw
+            if not line.startswith("data:"):
+                continue
+            payload = line[len("data:"):].strip()
+            if payload == "[DONE]":
+                break
+            try:
+                chunk = json.loads(payload)
+                finish_reason = chunk.get("choices", [{}])[0].get("finish_reason")
+                if finish_reason == "length":
+                    return True
+            except Exception:
+                pass
+        return False
+    else:
+        choices = response_data.get("choices", [])
+        return any(c.get("finish_reason") == "length" for c in choices)
+
+
 async def run_single_episode(episode_index: int, request: Request, is_stream: bool) -> EpisodeResult:
     """Run a single episode."""
     assert swarm_client is not None
@@ -113,6 +137,18 @@ async def run_single_episode(episode_index: int, request: Request, is_stream: bo
             request=request,
             is_stream=is_stream,
         )
+        if _check_finish_reason_length(response_data):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "message": "This model's maximum context length is exceeded. Please reduce the length of the messages.",
+                        "type": "invalid_request_error",
+                        "param": "messages",
+                        "code": "context_length_exceeded",
+                    }
+                },
+            )
         return EpisodeResult(episode_uuid=episode_uuid, response=response_data)
     except Exception as e:
         logger.error(f"Error in episode {episode_index}: {e}")
@@ -126,7 +162,10 @@ async def run_all_episodes(request: Request, is_stream: bool) -> List[EpisodeRes
     results = await asyncio.gather(*episode_tasks, return_exceptions=True)
     valid_results: List[EpisodeResult] = []
     for result in results:
-        if isinstance(result, Exception):
+        if isinstance(result, HTTPException) and result.status_code == 400:
+            # Propagate context_length_exceeded directly to client
+            raise result
+        elif isinstance(result, Exception):
             logger.warning(f"Episode failed: {result}")
         elif isinstance(result, EpisodeResult):
             valid_results.append(result)
@@ -195,29 +234,19 @@ app = FastAPI(title="OpenClaw Extraversion Training", lifespan=lifespan)
 async def one2many_proxy(request: Request, path: str):
     """Main proxy endpoint."""
     global REQUEST_COUNTER
-    try:
-        if request.method == "POST" and path == "chat/completions":
-            REQUEST_COUNTER += 1
-            request_id = f"req_{REQUEST_COUNTER}_{uuid.uuid4().hex[:8]}"
-            logger.info(f"Received chat completion request {request_id}")
-            response_data = await handle_one2many_request(request, request_id)
-            if isinstance(response_data, list):
-                async def stream_chunks(chunks: List[bytes]):
-                    for chunk in chunks:
-                        yield chunk + b"\n\n"
-                return StreamingResponse(stream_chunks(response_data), media_type="text/event-stream")
-            return response_data
-        else:
-            raise HTTPException(status_code=404, detail="Not Found")
-    except httpx.TimeoutException:
-        logger.error(f"Timeout proxying {request.method} {path}")
-        raise HTTPException(status_code=504, detail="Gateway Timeout")
-    except httpx.ConnectError:
-        logger.error(f"Connection error proxying {request.method} {path}")
-        raise HTTPException(status_code=502, detail="Bad Gateway")
-    except Exception as e:
-        logger.exception(f"Unexpected error proxying {request.method} {path}: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    if request.method == "POST" and path == "chat/completions":
+        REQUEST_COUNTER += 1
+        request_id = f"req_{REQUEST_COUNTER}_{uuid.uuid4().hex[:8]}"
+        logger.info(f"Received chat completion request {request_id}")
+        response_data = await handle_one2many_request(request, request_id)
+        if isinstance(response_data, list):
+            async def stream_chunks(chunks: List[bytes]):
+                for chunk in chunks:
+                    yield chunk + b"\n\n"
+            return StreamingResponse(stream_chunks(response_data), media_type="text/event-stream")
+        return response_data
+    else:
+        raise HTTPException(status_code=404, detail="Not Found")
 
 
 @app.get("/health")

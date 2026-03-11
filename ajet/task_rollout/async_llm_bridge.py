@@ -84,11 +84,11 @@ class AsyncLlmBridge(object):
                 add_generation_prompt=True,
                 tokenize=False,
             )
-            prompt_ids = self.tokenizer(prompt_text)["input_ids"]
+            prompt_token_ids = self.tokenizer(prompt_text)["input_ids"]
 
             final_res = await self.async_rollout_manager.generate(
                 request_id=request_id,
-                prompt_ids=prompt_ids,
+                prompt_ids=prompt_token_ids,
                 sampling_params=updated_sampling_params,
             )
 
@@ -135,17 +135,19 @@ class AsyncLlmBridge(object):
             max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
             max_model_len: int = self.config.ajet.rollout.max_model_len
             max_seq_length: int = max_model_len - max_response_length_in_one_turn
-            if len(prompt_ids) < max_seq_length:
+            if len(prompt_token_ids) >= max_seq_length:
                 finish_reason = "length"
             else:
                 finish_reason = "stop"
             if tool_calls:
                 finish_reason = "tool_calls"
             usage = {
-                "prompt_tokens": len(prompt_ids),
+                "prompt_tokens": len(prompt_token_ids),
                 "completion_tokens": len(token_array), # type: ignore
-                "total_tokens": len(prompt_ids) + len(token_array), # type: ignore
+                "total_tokens": len(prompt_token_ids) + len(token_array), # type: ignore
             }
+            print("====----====usage", usage)
+            print("====----====finish_reason", finish_reason)
             return {
                 "role": "assistant",
                 "request_id": request_id,
@@ -243,7 +245,7 @@ class AsyncLlmBridge(object):
             max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
             max_model_len: int = self.config.ajet.rollout.max_model_len
             max_seq_length: int = max_model_len - max_response_length_in_one_turn
-            if len(prompt_token_ids) < max_seq_length:
+            if len(prompt_token_ids) >= max_seq_length:
                 finish_reason = "length"
             else:
                 finish_reason = "stop"
@@ -371,7 +373,7 @@ class OpenaiLlmProxyWithTracker(object):
             if token_overflow:
                 # ajet_action_when_overflow = self.config.ajet.rollout.ajet_action_when_overflow
                 # cannot proceed due to context overflow
-                return self.construct_overflow_response()
+                return self.construct_overflow_response(info)
             # else:
             #     otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
@@ -383,12 +385,13 @@ class OpenaiLlmProxyWithTracker(object):
         return llm_output
 
 
-    def construct_overflow_response(self):
+    def construct_overflow_response(self, info):
         return {
             "role": "assistant",
             "request_id": "overflow_response",
-            "content": "ajet_proxy: Exceeded max model context length.",
+            "content": f"AgentJet: Exceeded max model context length. {info}",
             "tool_calls": None,
+            "finish_reason": "length",
             "tokens": [],
         }
 

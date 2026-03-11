@@ -603,13 +603,13 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             add_generation_prompt=True,
             tokenize=False,
         )
-        length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
+        prompt_token_length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
         max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
         max_seq_length: int = max_model_len - max_response_length_in_one_turn
-        # length: the length of current all previous context
+        # prompt_token_length: the prompt_token_length of current all previous context
         # max_seq_length: max_model_len - max_response_length_in_one_turn
-        if length < max_seq_length:
+        if prompt_token_length < max_seq_length:
             token_overflow = False
         else:
             token_overflow = True
@@ -617,12 +617,13 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             ret = (False, token_overflow, "externally_interrupted")
         elif self.already_mad_flag and self.config.ajet.rollout.agent_madness_termination:
             ret = (False, token_overflow, "already_mad")
-        elif length < max_seq_length:
+        elif prompt_token_length < max_seq_length:
             ret = (
                 True,
                 token_overflow,
-                f"safe[{length} < {max_model_len} - {max_response_length_in_one_turn}]",
+                f"safe[{prompt_token_length} < {max_model_len} - {max_response_length_in_one_turn}]",
             )
         else:
-            ret = (False, token_overflow, "token_overflow")
+            ret = (False, token_overflow,
+                   f"token_overflow(prompt_token_length.{prompt_token_length}>=max_model_len.{max_model_len}-max_response_length_in_one_turn.{max_response_length_in_one_turn})")
         return ret

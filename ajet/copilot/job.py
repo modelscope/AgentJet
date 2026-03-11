@@ -92,9 +92,9 @@ class AgentJetJob:
             raise ValueError(f"Configuration yaml is absent! {base_yaml_config}")
 
         # Validate: max_prompt_length, max_response_length, max_model_len must all be None or all be non-None
-        length_params = [max_prompt_length, max_response_length, max_model_len]
+        length_params = [max_prompt_length, max_response_length, max_model_len, max_response_length_in_one_turn]
         if not (all(p is None for p in length_params) or all(p is not None for p in length_params)):
-            raise ValueError("max_prompt_length, max_response_length, max_model_len must all be None or all be non-None")
+            raise ValueError("(`max_prompt_length`, `max_response_length`, `max_model_len`, `max_response_length_in_one_turn`) must all be None or all be non-None")
 
         self.config_as_dict: dict = self.build_job_from_yaml(base_yaml_config)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
@@ -159,6 +159,7 @@ class AgentJetJob:
 
 
         assert self.max_prompt_length + self.max_response_length <= self.max_model_len, "illegal token length"
+        assert self.max_response_length_in_one_turn <= self.max_response_length
         if self.backbone == "trinity":
             raise NotImplementedError("Trinity backbone is not yet supported in AgentJetJob.")
 
