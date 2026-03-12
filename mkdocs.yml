@@ -65,6 +65,7 @@ nav:
   - • Blogs:
       - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
       - Multi Model Trainning (ZH): en/example_train_multi_model.zh.md
+      - Training OpenClaw (ZH): en/example_openclaw.zh.md
 
 plugins:
   - search:

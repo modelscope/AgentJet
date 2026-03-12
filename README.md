@@ -16,6 +16,11 @@
 
 **AgentJet (AJet)** has fully-distributed **swarm training** capability, which means that you can **deploy `ajet-swarm start` in GPU server(s) and then start training agents in your laptop(s)**! Simply provide your agent workflow, training dataset, and reward function, and AgentJet will be ready to go!
 
+## ✈️ News
+
+- 2026.3.12 Tuning Original OpenClaw Agent without Editing Any Agent Code. [ZH Blog](https://modelscope.github.io/AgentJet/en/example_openclaw.zh/).
+- 2026.3.09 Non-shared-parameter Multiagent Training. [ZH Blog](http://modelscope.github.io/AgentJet/en/example_train_multi_model.zh/).
+- 2026.2.20 Introducing AgentJet Swarm. [ZH Blog](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_zh/) / [EN Blog](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_en/).
 
 
 ## ✈️ Fast Introduction
@@ -195,6 +200,3 @@ This project is under active development, we need your help to make it shine! <b
 <br/>
 <span>Join AgentJet DingTalk Group to share your idea</span>
 </div>
-
-
-
