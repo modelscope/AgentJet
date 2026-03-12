@@ -69,6 +69,8 @@ python fake_vllm_endpoint.py # 奖励只做演示用途
 
 ![配置模型地址](https://img.alicdn.com/imgextra/i2/O1CN01LK3R1W1Dy7bq8jLRR_!!6000000000284-2-tps-2450-1584.png)
 
+![配置模型参数](https://img.alicdn.com/imgextra/i2/O1CN01g9fUTP1JPD79lN87z_!!6000000001020-2-tps-1542-1067.png)
+
 然后正常使用OpenClaw提交问题：
 
 ![提交问题](https://img.alicdn.com/imgextra/i1/O1CN013yqN5U1fpFApRMNzN_!!6000000004055-2-tps-3529-1594.png)
