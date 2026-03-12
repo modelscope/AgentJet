@@ -14,7 +14,7 @@ Use prompt below in opencode or claudecode to generate a one-key-to-tune agent (
     - 使用 Batch Size 32， GRPO N=4
 
 注意：
-    - 你无法主动调用 OpenClaw，唯一的方法是建立API Endpoint，等待用户调用 （因此你不需要编写agent_roll和）
+    - 你无法主动调用 OpenClaw，唯一的方法是建立API Endpoint，等待用户调用 （因此你不需要编写agent_roll）
     - 其实都已经给你写好了：ajet/tuner_lib/experimental/oai_model_one2many.py
     - 你把参考样本放到 tutorial/opencode_build_openclaw_agent/fake_vllm_entrypoint.py
     - 你需要做的是编写奖励函数
