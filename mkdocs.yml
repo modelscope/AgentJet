@@ -63,7 +63,6 @@ nav:
       - Platform Comparison: en/platform_comparison.md
 
   - • Blogs:
-      - Swarm Intro (EN): en/swarm_intro_blog_en.md
       - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
       - Multi Model Training (EN): en/example_train_multi_model.md
       - Multi Model Training (ZH): en/example_train_multi_model.zh.md
