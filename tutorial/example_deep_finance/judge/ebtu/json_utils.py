@@ -44,19 +44,19 @@ def _repair_json(js: str) -> str:
                 result.append(c)
             i += 1
         return ''.join(result)
-    
+
     js = escape_newlines_in_strings(js)
-    
+
     # 2. 移除trailing comma: ",}" -> "}" 和 ",]" -> "]"
     js = re.sub(r',\s*}', '}', js)
     js = re.sub(r',\s*]', ']', js)
-    
+
     # 3. 尝试修复截断的JSON - 补全缺失的括号
     open_braces = js.count('{')
     close_braces = js.count('}')
     open_brackets = js.count('[')
     close_brackets = js.count(']')
-    
+
     if open_braces > close_braces:
         # 先关闭可能未闭合的字符串
         in_string = False
@@ -70,18 +70,18 @@ def _repair_json(js: str) -> str:
                 in_string = not in_string
         if in_string:
             js += '"'
-        
+
         # 补全缺失的括号
         js += ']' * (open_brackets - close_brackets)
         js += '}' * (open_braces - close_braces)
-    
+
     return js
 
 
 def strict_load_json(text: str) -> Dict[str, Any]:
     """Parse a JSON object from model output; extract first {...} block if needed. 带容错修复。"""
     text = (text or "").strip()
-    
+
     # 第一次尝试：直接解析
     try:
         obj = json.loads(text)
@@ -102,7 +102,7 @@ def strict_load_json(text: str) -> Dict[str, Any]:
                 return obj
         except Exception:
             pass
-        
+
         # 第三次尝试：修复后解析
         try:
             repaired = _repair_json(snippet)

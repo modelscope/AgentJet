@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from openjudge.graders.base_grader import BaseGrader
 from openjudge.graders.schema import GraderScore
@@ -34,11 +34,11 @@ class TraceabilityRewardGrader(BaseGrader):
         **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
-        self.model = model 
+        self.model = model
 
     async def _aevaluate(self, traj: Any, **kwargs: Any) -> GraderScore:
         messages = coerce_to_messages_list(traj)
-        
+
         if not messages:
             return GraderScore(
                 name=self.name,

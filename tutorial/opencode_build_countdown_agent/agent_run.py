@@ -15,7 +15,6 @@ from openai import OpenAI
 from ajet import WorkflowOutput
 from ajet.schema.task import Task
 from ajet.utils.retry import retry_with_backoff
-from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 
 
 def parse_and_verify_solution(

@@ -365,10 +365,10 @@ Please check each verifiable claim in the report according to the verification p
 def get_cgcv_prompts(language: str = "zh"):
     """
     Get CGCV prompts based on language.
-    
+
     Args:
         language: "zh" for Chinese, "en" for English
-        
+
     Returns:
         Tuple of (system_prompt, user_prompt_template)
     """

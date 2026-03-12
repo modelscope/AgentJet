@@ -1,10 +1,7 @@
 from ajet import AjetTuner, Workflow, WorkflowOutput, WorkflowTask
-from agentscope.message import Msg 
-from pydantic import Field
-import logging
+from agentscope.message import Msg
 import threading
 import time
-import copy
 from loguru import logger
 
 
@@ -15,7 +12,7 @@ class ExampleDeepResearchProtocol(Workflow):
 
 
     async def execute(
-        self, workflow_task: WorkflowTask, tuner: AjetTuner  
+        self, workflow_task: WorkflowTask, tuner: AjetTuner
     ) -> WorkflowOutput:
         from agentscope.agent import ReActAgent
         from agentscope.formatter import DashScopeChatFormatter
@@ -23,7 +20,7 @@ class ExampleDeepResearchProtocol(Workflow):
         # 1. 初始化消息
         # init_messages 通常是 [System, User]
         init_messages = workflow_task.task.init_messages
-        
+
         # 分离 System Prompt 和 Initial User Input
         if len(init_messages) >= 2:
             first_msg, user_msgs = init_messages[0], init_messages[1:]
@@ -50,7 +47,7 @@ class ExampleDeepResearchProtocol(Workflow):
         )
         agent.set_console_output_enabled(False)
         env = workflow_task.gym_env
-        
+
         # 3. 构造初始 Agent 输入 (List[Msg])
         # 注意：这里只包含 User 消息，不含 System，因为 System 已在 agent init 中设置
         # 必须转换为 Msg 对象
@@ -69,7 +66,7 @@ class ExampleDeepResearchProtocol(Workflow):
         cumulative_tool_time = {}  # 按工具区分的累计耗时: {tool_name: [time1, time2, ...]}
         step = 0
         for step in range(tuner.config.ajet.rollout.multi_turn.max_steps):
-            
+
             # === Agent 推理 ===
             _llm_start = time.time()
             # 传入增量消息 (agent_input)，Agent 会将其添加到内存并生成回复
@@ -81,9 +78,9 @@ class ExampleDeepResearchProtocol(Workflow):
                 content_text = ''.join(item.get('text', '') for item in reply_message.content if isinstance(item, dict) and item.get('type') == 'text')
             else:
                 content_text = reply_message.content
-            
+
             content_preview = content_text[:100].replace('\n', ' ')
-            
+
             # === 早期终止检查：在调用 env.step() 前检查 context_overflow ===
             # 修复问题：避免 token_overflow 后还继续调用工具导致阻塞
             if tuner.get_context_tracker().context_overflow:
@@ -94,7 +91,7 @@ class ExampleDeepResearchProtocol(Workflow):
                     "content": content_text
                 })
                 break
-            
+
             # === Env 执行 ===
             _env_start = time.time()
             with sem:
@@ -140,19 +137,19 @@ class ExampleDeepResearchProtocol(Workflow):
                             cumulative_tool_time[tool_name] = []
                         if isinstance(time_list, list):
                             cumulative_tool_time[tool_name].extend(time_list)
-            
+
             # === 5. 准备下一轮 Agent 输入 (Incremental) ===
             # 将 Env 返回的 obs 转换为 Msg 对象列表，供下一轮 agent() 调用
             # 关键：这里只放新的 obs，不要放完整的 history
             agent_input = []
-            
+
             if isinstance(obs, list):
                 # Standard Mode: obs 是 tool messages 列表
                 # 注意：deep_finance_env.step 返回 {"state": [tool_results_msgs]} 套了一层列表
                 # BaseGymEnv.step 直接透传，所以 obs = [tool_results_msgs]
                 # 需要解包获取实际的消息列表
                 actual_msgs = obs[0] if (len(obs) == 1 and isinstance(obs[0], list)) else obs
-                
+
                 # 按照 AgentScope 的 ContentBlock 格式转换消息
                 # Agent.memory 会自动保存 assistant 的 tool_call 信息
                 # 这里只需要传入 tool_result 消息即可
@@ -178,7 +175,7 @@ class ExampleDeepResearchProtocol(Workflow):
                         if content is None: content = ""
                         valid_role = origin_role if origin_role in ['user', 'assistant', 'system'] else 'user'
                         new_msg = Msg(
-                            name=m.get('name', valid_role), 
+                            name=m.get('name', valid_role),
                             content=content,
                             role=valid_role
                         )
@@ -190,7 +187,7 @@ class ExampleDeepResearchProtocol(Workflow):
             # === 6. 终止检查 ===
             if terminate:
                 break
-                
+
             if tuner.get_context_tracker().context_overflow:
                 logger.warning(f"上下文溢出，在第 {step + 1} 步结束")
                 break
@@ -203,18 +200,18 @@ class ExampleDeepResearchProtocol(Workflow):
         # 将累计的 tool_time 合并到 tool_stats 中
         final_tool_stats['tool_time'] = cumulative_tool_time
         final_tool_stats['tool_call_time'] = cumulative_tool_call_time
-        
+
         logger.info(f"任务完成统计 (Task ID: {workflow_task.task.task_id}):")
         logger.info(f"  总步骤: {step + 1}")
         logger.info(f"  总调用: {final_tool_stats.get('total_calls', 0)}")
         logger.info(f"  成功率: {final_tool_stats.get('success_rate', 0):.2f}%")
-        
+
         return WorkflowOutput(
-            reward=None, 
+            reward=None,
             metadata={
                 "total_step": step,
                 "tool_success_rate": round(final_tool_stats.get('success_rate', 0.0), 2),
-                "conversation_history": conversation_history, 
+                "conversation_history": conversation_history,
                 "query": workflow_task.task.main_query,
                 "task_id": workflow_task.task.task_id,
             },

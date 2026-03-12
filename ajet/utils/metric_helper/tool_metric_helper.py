@@ -137,5 +137,3 @@ def compute_tool_metrics_from_trajectories(trajectories: List[Any], prefix: str 
     """
     tool_stats_list = extract_tool_stats_from_trajectories(trajectories)
     return compute_tool_metrics(tool_stats_list, prefix=prefix)
-
-

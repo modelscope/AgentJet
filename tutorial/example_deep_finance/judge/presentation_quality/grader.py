@@ -94,12 +94,12 @@ class PresentationQualityGrader(BaseGrader):
         - user_query 可选：用于填充 prompt；不提供则用 "(unknown)"
         """
 
-        
+
         report = (report_content or "").strip()
-        
+
         # 清理 markdown 代码块标记
         report = self._strip_markdown_fences(report)
-        
+
         if not report:
             return GraderScore(
                 name=self.name,
@@ -150,7 +150,7 @@ class PresentationQualityGrader(BaseGrader):
             )
 
         score, reason = self._score_and_reason(obj)
-        
+
         return GraderScore(name=self.name, score=score, reason=reason)
 
     def _score_and_reason(self, obj: Dict[str, Any]) -> Tuple[float, str]:

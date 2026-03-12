@@ -4,7 +4,6 @@ from openjudge.graders.llm_grader import LLMGrader
 from openjudge.models.base_chat_model import BaseChatModel
 from typing import List
 from textwrap import dedent
-from beast_logger import print_listofdict
 
 
 examples = [

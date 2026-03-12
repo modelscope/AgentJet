@@ -6,7 +6,6 @@ import os
 import json
 import asyncio
 import time
-import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple, List
 
@@ -708,7 +707,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
         except Exception as e:
             print(f"⚠️ Failed to save zero score debug: {e}")
-            pass
 
     def _compute_penalty(self, tool_calls: int) -> float:
         """
@@ -816,5 +814,3 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
         except Exception as e:
             print(f"⚠️ Failed to save evaluation log: {e}")
-            pass
-

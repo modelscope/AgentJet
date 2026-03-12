@@ -59,4 +59,3 @@ CMD ["bash"]
 
 
 # docker build -f scripts/docker/dockerfile_zh -t ajet:latest .
-

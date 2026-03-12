@@ -7,11 +7,11 @@ def get_tool_prompt_template() -> str:
     """
     获取工具prompt模板(静态版本)
     基于实际探测到的19个工具进行配置
-    
+
     Returns:
         预定义的工具说明文本
     """
-    
+
     return """## 可用工具列表
 
 ### ⚠️ 重要说明
@@ -92,7 +92,7 @@ def get_tool_prompt_template() -> str:
 #### ✅ crawl_ths_capital
 **功能**: 获取资本运作信息。
 **数据范围**: 募集资金来源、项目投资、收购兼并、股权投资、参股IPO、股权转让、关联交易、质押解冻。
-**参数**: 
+**参数**:
   - `code` (必填, string): 股票代码 (6位数字)
 
 #### ✅ crawl_ths_finance

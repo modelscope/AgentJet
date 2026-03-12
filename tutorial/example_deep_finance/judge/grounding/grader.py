@@ -20,7 +20,7 @@ from .json_utils import strict_load_json, validate_shape, construct_reward_promp
 class GroundingGrader(BaseGrader):
     """
     引用规范性评估 Grader
-    
+
     - 输入：traj（完整对话轨迹）
     - 输出：GraderScore(name, score, reason)
     - score：综合分数，范围[0,1]
@@ -87,11 +87,11 @@ class GroundingGrader(BaseGrader):
     ) -> GraderScore:
         """
         入口：必须喂 traj（完整对话轨迹）
-        
+
         Args:
-            traj: 对话轨迹，格式为 [{"role": ..., "content": ...}, ...] 
+            traj: 对话轨迹，格式为 [{"role": ..., "content": ...}, ...]
                   或者 {"messages": [...]} 格式
-        
+
         Returns:
             GraderScore(name, score, reason)
         """
@@ -106,7 +106,7 @@ class GroundingGrader(BaseGrader):
                 score=0.0,
                 reason="BadInput: traj must be list or dict with 'messages'",
             )
-        
+
         if not messages_list:
             return GraderScore(
                 name=self.name,
@@ -116,7 +116,7 @@ class GroundingGrader(BaseGrader):
 
         # 2. 构建 prompt
         user_prompt = construct_reward_prompt(messages_list, GROUNDING_USER_PROMPT_TEMPLATE)
-        
+
         messages = [
             {"role": "system", "content": GROUNDING_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt}
@@ -161,10 +161,10 @@ class GroundingGrader(BaseGrader):
     def _compute_scores(self, obj: Dict[str, Any]) -> Tuple[float, str]:
         """
         根据 LLM 返回的结果计算评分
-        
+
         Args:
             obj: LLM 返回的 JSON，包含 total_key_facts, cited_key_facts, fake_count 等
-            
+
         Returns:
             (score, reason) 元组
         """
@@ -178,7 +178,7 @@ class GroundingGrader(BaseGrader):
         if not isinstance(invalid_reference_nums, list):
             invalid_reference_nums = []
         invalid_ref_count = len(invalid_reference_nums)
-        
+
         # 边界情况：没有关键事实，直接返回 0
         if total_key_facts == 0:
             citation_coverage_score = 0.0
@@ -186,13 +186,13 @@ class GroundingGrader(BaseGrader):
         else:
             # coverage: 引用覆盖率
             citation_coverage_score = cited_key_facts / total_key_facts
-            
+
             # grounding: 引用真实性（已引用中非虚假的比例）
             if cited_key_facts == 0:
                 grounding_score = 0.0
             else:
                 grounding_score = max(0.0, 1 - fake_count / cited_key_facts)
-        
+
         # 轻量惩罚：存在 invalid refs 会降低 reward
         # 每个 invalid 号扣 0.1，最多扣 0.5
         # invalid_penalty = min(0.1 * invalid_ref_count, 0.5)
@@ -201,11 +201,11 @@ class GroundingGrader(BaseGrader):
         # final_reward: 综合分数（权重 0.5:0.5），再叠加 invalid 惩罚
         final_reward = 0.5 * citation_coverage_score + 0.5 * grounding_score
         # final_reward = max(0.0, final_reward - invalid_penalty)
-        
+
         # 构建 reason
         good_citations = obj.get('good_citations', [])
         good_str = "; ".join(str(x)[:50] for x in good_citations[:2]) if good_citations else ""
-        
+
         parts: List[str] = [
             f"total={total_key_facts}",
             f"cited={cited_key_facts}",
@@ -218,6 +218,6 @@ class GroundingGrader(BaseGrader):
         ]
         if good_str:
             parts.append(f"good:[{good_str}]")
-        
+
         reason = " | ".join(parts)
         return round(final_reward, 6), reason[:800]

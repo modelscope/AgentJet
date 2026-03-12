@@ -43,7 +43,3 @@ tutorial/opencode_build_countdown_agent
 <div align="center">
 <img width="600" alt="image" src="https://img.alicdn.com/imgextra/i2/O1CN01u5JHH521QRGeQAFsL_!!6000000006979-2-tps-1200-600.png"/>
 </div>
-
-
-
-

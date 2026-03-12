@@ -71,19 +71,19 @@ def _repair_json(js: str) -> str:
                 result.append(c)
             i += 1
         return ''.join(result)
-    
+
     js = escape_newlines_in_strings(js)
-    
+
     # 2. 移除trailing comma: ",}" -> "}" 和 ",]" -> "]"
     js = re.sub(r',\s*}', '}', js)
     js = re.sub(r',\s*]', ']', js)
-    
+
     # 3. 尝试修复截断的JSON - 补全缺失的括号
     open_braces = js.count('{')
     close_braces = js.count('}')
     open_brackets = js.count('[')
     close_brackets = js.count(']')
-    
+
     if open_braces > close_braces:
         # 先关闭可能未闭合的字符串
         in_string = False
@@ -97,11 +97,11 @@ def _repair_json(js: str) -> str:
                 in_string = not in_string
         if in_string:
             js += '"'
-        
+
         # 补全缺失的括号
         js += ']' * (open_brackets - close_brackets)
         js += '}' * (open_braces - close_braces)
-    
+
     return js
 
 
@@ -120,16 +120,16 @@ class ClaimVerification:
     status: str
     source_id: Optional[str]
     note: str
-    
+
     def is_verified(self) -> bool:
         return self.status == ClaimStatus.VERIFIED.value
-    
+
     def is_citation_issue(self) -> bool:
         return self.status in {
             ClaimStatus.CITATION_MISSING.value,
             ClaimStatus.CITATION_BROKEN.value
         }
-    
+
     def is_alignment_issue(self) -> bool:
         return self.status in {
             ClaimStatus.SUBJECT_MISALIGN.value,
@@ -148,14 +148,14 @@ class CGCVResult:
     citation_missing: int
     citation_broken: int
     alignment_issues: int
-    
+
     @property
     def score(self) -> float:
         """计算验证通过率"""
         if self.total == 0:
             return 0.0
         return self.verified / self.total
-    
+
     def get_summary(self) -> Dict[str, int]:
         """获取统计摘要"""
         return {
@@ -174,21 +174,21 @@ class CGCVResult:
 def extract_first_json_object(text: str) -> Optional[str]:
     """
     从文本中提取第一个 JSON 对象
-    
+
     Args:
         text: 原始文本
-        
+
     Returns:
         JSON 字符串，如果未找到返回 None
     """
     if not text:
         return None
-    
+
     # 先尝试找 ```json ... ``` 代码块
     json_block_match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", text)
     if json_block_match:
         return json_block_match.group(1).strip()
-    
+
     # 再尝试找第一个 {...}
     m = _JSON_RE.search(text.strip())
     if not m:
@@ -199,17 +199,17 @@ def extract_first_json_object(text: str) -> Optional[str]:
 def strict_load_json(text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
     严格解析 JSON（带容错修复）
-    
+
     Args:
         text: 原始文本
-        
+
     Returns:
         (解析结果, 错误信息) 元组
     """
     js = extract_first_json_object(text)
     if js is None:
         return None, "No JSON object found in model output"
-    
+
     # 第一次尝试：直接解析
     try:
         obj = json.loads(js)
@@ -218,7 +218,7 @@ def strict_load_json(text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]
         return obj, None
     except json.JSONDecodeError:
         pass  # 继续尝试修复
-    
+
     # 第二次尝试：修复后解析
     try:
         repaired = _repair_json(js)
@@ -235,7 +235,7 @@ def strict_load_json(text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]
 def validate_cgcv_schema(obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
     验证 CGCV JSON 结构
-    
+
     期望格式:
     {
       "claims": [
@@ -251,27 +251,27 @@ def validate_cgcv_schema(obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         }
       ]
     }
-    
+
     Args:
         obj: JSON 对象
-        
+
     Returns:
         (规范化后的对象, 错误信息) 元组
     """
     # claims 必须存在且为 list
     if "claims" not in obj:
         return None, "Missing field: claims"
-    
+
     claims = obj["claims"]
     if not isinstance(claims, list):
         return None, f"Field 'claims' must be list, got {type(claims).__name__}"
-    
+
     # 验证并规范化每个 claim
     normalized_claims = []
     for idx, claim in enumerate(claims):
         if not isinstance(claim, dict):
             continue  # 跳过非字典项
-        
+
         # 提取并规范化字段
         normalized = {
             "subject": str(claim.get("subject", "未明确"))[:200],
@@ -283,19 +283,19 @@ def validate_cgcv_schema(obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
             "source_id": claim.get("source_id"),
             "note": str(claim.get("note", ""))[:500]
         }
-        
+
         # 规范化 citation
         if normalized["citation"] is not None:
             normalized["citation"] = str(normalized["citation"])
             if normalized["citation"].lower() in ("null", "none", ""):
                 normalized["citation"] = None
-        
+
         # 规范化 source_id
         if normalized["source_id"] is not None:
             normalized["source_id"] = str(normalized["source_id"])
             if normalized["source_id"].lower() in ("null", "none", ""):
                 normalized["source_id"] = None
-        
+
         # 验证 status
         if normalized["status"] not in VALID_STATUSES:
             # 尝试模糊匹配
@@ -309,9 +309,9 @@ def validate_cgcv_schema(obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
             if not matched:
                 # 默认标记为 citation_missing
                 normalized["status"] = ClaimStatus.CITATION_MISSING.value
-        
+
         normalized_claims.append(normalized)
-    
+
     obj["claims"] = normalized_claims
     return obj, None
 
@@ -319,10 +319,10 @@ def validate_cgcv_schema(obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
 def parse_cgcv_result(obj: Dict[str, Any]) -> CGCVResult:
     """
     解析 CGCV 结果为结构化对象
-    
+
     Args:
         obj: 经过 validate_cgcv_schema 验证的 JSON 对象
-        
+
     Returns:
         CGCVResult 对象
     """
@@ -331,7 +331,7 @@ def parse_cgcv_result(obj: Dict[str, Any]) -> CGCVResult:
     citation_missing_count = 0
     citation_broken_count = 0
     alignment_issues_count = 0
-    
+
     for claim_dict in obj.get("claims", []):
         claim = ClaimVerification(
             subject=claim_dict.get("subject", ""),
@@ -344,7 +344,7 @@ def parse_cgcv_result(obj: Dict[str, Any]) -> CGCVResult:
             note=claim_dict.get("note", "")
         )
         claims.append(claim)
-        
+
         # 统计
         if claim.is_verified():
             verified_count += 1
@@ -354,7 +354,7 @@ def parse_cgcv_result(obj: Dict[str, Any]) -> CGCVResult:
             citation_broken_count += 1
         elif claim.is_alignment_issue():
             alignment_issues_count += 1
-    
+
     return CGCVResult(
         claims=claims,
         total=len(claims),
@@ -458,7 +458,7 @@ def _is_probably_final_report(text: str) -> bool:
 def _split_tool_responses(text: str) -> List[str]:
     """
     分割多个工具响应
-    
+
     处理格式如：
     [Tool: xxx]
 ...
@@ -480,29 +480,29 @@ def _split_tool_responses(text: str) -> List[str]:
                 cleaned.append(p)
         if cleaned:
             return cleaned
-    
+
     # 尝试按 [Tool: xxx] 分割
     tool_pattern = r'(?=\[Tool:\s*[^\]]+\])'
     parts = re.split(tool_pattern, text)
     parts = [p.strip() for p in parts if p.strip()]
     if len(parts) > 1:
         return parts
-    
+
     # 无法分割，返回原文本
     return [text.strip()] if text.strip() else []
 
 
 def construct_cgcv_prompt(
-    trajectory: List[Dict[str, Any]], 
+    trajectory: List[Dict[str, Any]],
     user_prompt_template: str
 ) -> str:
     """
     从 trajectory 构建 CGCV 评估 prompt
-    
+
     Args:
         trajectory: 对话轨迹 [{"role": ..., "content": ...}, ...]
         user_prompt_template: 用户 prompt 模板
-        
+
     Returns:
         构建好的 user prompt 字符串
     """
@@ -523,7 +523,7 @@ def construct_cgcv_prompt(
             if _is_probably_final_report(txt):
                 final_report = txt
                 break
-    
+
     if not final_report:
         for i in range(len(traj) - 1, -1, -1):
             if traj[i].get("role") == "assistant":
@@ -571,7 +571,7 @@ def construct_cgcv_prompt(
     evidence_parts = []
     if evidence:
         evidence_parts.append("\n\n".join(evidence))
-    
+
     evidence_text = "\n\n".join(evidence_parts) if evidence_parts else "（无可用证据）"
 
     return user_prompt_template.format(
@@ -592,51 +592,51 @@ def compute_cgcv_score(
 ) -> Tuple[float, str]:
     """
     计算 CGCV 评分
-    
+
     评分策略：
     1. 基础分：verified / total
     2. 可选：分层评分
        - citation_score: 有引用且可追溯的比例
        - alignment_score: 内容对齐的比例（在有有效引用的前提下）
-    
+
     Args:
         result: CGCVResult 对象
         citation_weight: 引用分数权重（默认 0.3）
         alignment_weight: 对齐分数权重（默认 0.7）
-        
+
     Returns:
         (score, reason) 元组
     """
     total = result.total
-    
+
     if total == 0:
         return 0.0, "no_claims_detected"
-    
+
     # 简单评分：verified / total
     base_score = result.verified / total
-    
+
     # 分层统计
     citation_issues = result.citation_missing + result.citation_broken
     claims_with_valid_citation = total - citation_issues
-    
+
     # 引用有效率
     citation_valid_rate = claims_with_valid_citation / total if total > 0 else 0.0
-    
+
     # 对齐正确率（在有效引用中）
     if claims_with_valid_citation > 0:
         alignment_correct_rate = result.verified / claims_with_valid_citation
     else:
         alignment_correct_rate = 0.0
-    
+
     # 加权分数
     weighted_score = (
-        citation_weight * citation_valid_rate + 
+        citation_weight * citation_valid_rate +
         alignment_weight * alignment_correct_rate
     )
-    
+
     # 最终使用基础分数（更直观）
     final_score = base_score
-    
+
     # 构建 reason
     reason_parts = [
         f"total={total}",
@@ -646,7 +646,7 @@ def compute_cgcv_score(
         f"alignment_issues={result.alignment_issues}",
         f"score={final_score:.4f}",
     ]
-    
+
     # 添加错误摘要
     if result.alignment_issues > 0:
         # 统计各类对齐错误
@@ -656,6 +656,6 @@ def compute_cgcv_score(
                 error_counts[claim.status] = error_counts.get(claim.status, 0) + 1
         error_summary = ", ".join(f"{k}:{v}" for k, v in error_counts.items())
         reason_parts.append(f"errors=[{error_summary}]")
-    
+
     reason = " | ".join(reason_parts)
     return round(final_score, 6), reason[:800]
