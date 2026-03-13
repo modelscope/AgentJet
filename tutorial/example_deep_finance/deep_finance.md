@@ -232,44 +232,38 @@ final_score = 0.5 × coverage + 0.5 × grounding            # 综合分数
 
 ------
 
-### 4) 证据溯源（EBTU - Evidence-Backed Trace Units）
+### 4) 引用逻辑审计（AUDIT - Citation Integrity Audit）
 
-**目标**：对报告中的每个「原子断言」做证据锚定审计——回答「每个数字、每个事实，能否追溯到工具返回的原始数据？」
+**目标**：审计 AI 研究报告中的每一个引用标记 `[n]` 是否严格符合「逻辑蕴含（Logical Entailment）」原则——回答「每个引用是否被原始证据严格支撑？」
 
-**核心理念：证据优先（Evidence-first）**。审计官必须先给出证据锚点（step + quote），再下裁决，严禁先下结论再找证据。
+**核心理念：证据优先（Evidence-first）**。审计官必须像法官判案一样，先罗列证据，再进行逻辑推导，最后下达判决，严禁先下结论再找证据。
 
-**审计流程**：
+**三步验证流程**：
 
-1. 从报告中提取所有原子断言（Trace Units），标记类型（numeric/temporal/event/comparison/causal 等）
-2. 标记硬度：`hard`（确定性事实） / `soft`（明确标注为推测/假设）
-3. 对每个断言在 Evidence 中寻找锚点（anchors），要求：
+1. **提取（Extract）**：锁定报告中由 `[n]` 支撑的陈述片段（Claim）
+2. **溯源（Trace）**：在 Reference 列表中找到 `[n]` 对应的原始文本，摘录核心证据句（Source Quote）
+3. **比对（Compare）**：分析 Claim 是否被 Source Quote 严格支撑
+   - Check: 数字/事实是否一致？
+   - Check: 语气是否一致（有没有把"可能"改成"确定"）？
+   - Check: 因果关系是否存在？
 
-- - 精确到 step 编号和原文引用（quote ≤ 120 字）
-  - 数字/日期必须能在 Evidence 原文中找到对应
+**判决标准（Verdict Criteria）**：
 
-1. 给出裁决（verdict）：
-
-| Verdict          | 含义                                      |
-| ---------------- | ----------------------------------------- |
-| `supported`      | 锚点直接支持断言                          |
-| `contradicted`   | 锚点与断言明确冲突                        |
-| `no_evidence`    | Evidence 中找不到支撑，且断言是确定性表述 |
-| `speculative_ok` | 断言明确为推测/假设，未伪装成事实         |
-| `unclear`        | Evidence 相关但不足以支持或反驳           |
-
-1. 标记问题类型（issue）：`entity_mismatch` / `time_mismatch` / `value_mismatch` / `scope_mismatch` / `logic_leap` / `over_precision` / `missing_anchor`
+| Verdict        | 含义                                                         |
+| -------------- | ------------------------------------------------------------ |
+| `Supported`    | 证据充分，逻辑闭环。允许合理的概括，但禁止添加细节           |
+| `Overstated`   | 夸大其词。证据只说了 A，报告却写成了 A+（如去掉限定词、强加因果） |
+| `Contradicted` | 事实冲突。报告内容与证据相反                                 |
+| `Hallucinated` | 无中生有。关键细节在证据中找不到，或引用编号不存在           |
+| `Irrelevant`   | 引用无效。证据内容真实，但与报告所述主题无关                 |
 
 **评分计算**（确定性打分，由 Python 代码计算，非 LLM 输出）：
 
 ```plain
-base = (supported - 1.4×contradicted - 0.9×no_evidence - 0.4×unclear) / hard_units
-misattrib_factor = max(0, 1 - 0.7 × misattrib_rate)     # 错误归因惩罚
-selection_factor = min(1, extracted_units / expected)    # 覆盖率因子
-cov_factor = 0.65 + 0.35 × digit_coverage               # 数字/日期覆盖
-score = base × misattrib_factor × selection_factor × cov_factor
+integrity_score = Supported数量 / 总引用数
 ```
 
-关键设计：LLM 只负责结构化输出（断言提取 + 锚点标注 + 裁决），分数完全由代码确定性计算，避免 LLM 自评分的不稳定性。
+关键设计：LLM 只负责结构化输出（Claim 提取 + 证据溯源 + 逻辑分析 + 判决），分数完全由代码确定性计算，避免 LLM 自评分的不稳定性。
 
 ------
 

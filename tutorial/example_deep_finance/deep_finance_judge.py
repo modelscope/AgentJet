@@ -8,34 +8,20 @@ import asyncio
 import time
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional, Tuple, List, Type
+from typing import Dict, Any, Optional, Tuple, List
 
 from ajet.task_judge.base_judge import BaseJudge
 from ajet.workflow import WorkflowOutput, WorkflowTask
 
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
-from openjudge.graders.base_grader import BaseGrader
-from tutorial.example_deep_finance.judge import PresentationQualityGrader, GroundingGrader, AuditGrader, EBTUTraceabilityGrader
-
-# Finance Graders from OpenJudge cookbooks
-from cookbooks.finance_grader.stock_analysis.valuation_analysis import ValuationAnalysisGrader
-from cookbooks.finance_grader.stock_analysis.fundamental_analysis import FundamentalAnalysisGrader
-from cookbooks.finance_grader.stock_analysis.overall_logic import OverallLogicGrader
-from cookbooks.finance_grader.stock_analysis.stock_risk_analysis import StockRiskAnalysisGrader
-from cookbooks.finance_grader.macro_analysis.macro_analysis import MacroAnalysisGrader
-from cookbooks.finance_grader.macro_analysis.concept_explanation import ConceptExplanationGrader
-from cookbooks.finance_grader.industry_research.characteristics_analysis import CharacteristicsAnalysisGrader
-from cookbooks.finance_grader.industry_research.risk_analysis import RiskAnalysisGrader
-from cookbooks.finance_grader.industry_research.underlying_comparison import UnderlyingComparisonGrader
-from cookbooks.finance_grader.event_interpretation.event_analysis import EventAnalysisGrader
-from cookbooks.finance_grader.event_interpretation.event_identification import EventIdentificationGrader
-from cookbooks.finance_grader.stock_search.search_relevance import SearchRelevanceGrader
-from cookbooks.finance_grader.stock_search.search_integrity import SearchIntegrityGrader
-from cookbooks.finance_grader.stock_search.search_timeliness import SearchTimelinessGrader
-
-
-# OpenJudge imports
+from tutorial.example_deep_finance.judge import (
+    PresentationQualityGrader, 
+    GroundingGrader, 
+    AuditGrader, 
+    EBTUTraceabilityGrader,
+    FinanceCompositionEvaluator,
+)
 # =============================================================================
 # 全局辅助函数
 # =============================================================================
@@ -74,135 +60,6 @@ def load_reference_answers_from_file(file_path: str) -> Tuple[Dict[str, str], Di
         return ref_answers, ref_domains
     except Exception as e:
         raise ValueError(f"Error loading reference answers: {e}")
-
-
-# =============================================================================
-# FinanceCompositionEvaluator - 基于 OpenJudge 的 Finance 评估器
-# =============================================================================
-
-class FinanceCompositionEvaluator:
-    """
-    基于 OpenJudge 的 Finance 组合评估器（替代 rm_gallery.FinanceComposition）
-    
-    功能：
-    - 根据 domain 路由到对应的 grader 集合
-    - 执行 pairwise 评估（比较 training answer 和 reference answer）
-    - 返回 0-1 范围的分数
-    
-    支持的 domain:
-    - stock_analysis: 股票分析
-    - industry_research: 行业研究  
-    - macro_analysis: 宏观分析
-    - event_interpretation: 事件解读
-    - stock_search: 股票搜索
-    """
-    
-    # Domain 到 Grader 类的映射（与 RM-Gallery 保持一致）
-    DOMAIN_GRADERS: Dict[str, List[Type[BaseGrader]]] = {
-        "stock_analysis": [
-            ValuationAnalysisGrader,
-            # FundamentalAnalysisGrader,
-            # OverallLogicGrader,
-            # StockRiskAnalysisGrader,
-        ],
-        "industry_research": [
-            CharacteristicsAnalysisGrader,
-            # RiskAnalysisGrader,
-            # UnderlyingComparisonGrader,
-        ],
-        "macro_analysis": [
-            MacroAnalysisGrader,
-            # ConceptExplanationGrader,
-        ],
-        "event_interpretation": [
-            EventAnalysisGrader,
-            # EventIdentificationGrader,
-        ],
-        "stock_search": [
-            SearchRelevanceGrader,
-            # SearchIntegrityGrader,
-            # SearchTimelinessGrader,
-        ],
-    }
-    
-    def __init__(self, model: OpenAIChatModel, params: Dict[str, Any] = None):
-        """
-        初始化 FinanceCompositionEvaluator
-        
-        Args:
-            model: OpenAIChatModel 实例
-            params: 额外参数（保留兼容性）
-        """
-        self.model = model
-        self.params = params or {}
-        self._grader_cache: Dict[str, List[BaseGrader]] = {}
-        
-    def _get_graders_for_domain(self, domain: str) -> List[BaseGrader]:
-        """
-        获取指定 domain 的 grader 实例列表（带缓存）
-        """
-        if domain not in self._grader_cache:
-            grader_classes = self.DOMAIN_GRADERS.get(domain, [])
-            self._grader_cache[domain] = [
-                grader_cls(model=self.model) for grader_cls in grader_classes
-            ]
-        return self._grader_cache[domain]
-    
-    async def aevaluate(self, query: str, current: str, reference: str, domain: str) -> float:
-        """
-        执行 pairwise 评估（异步版本，避免重复创建 event loop）
-        
-        Args:
-            query: 用户查询
-            current: 当前模型生成的回答 (training)
-            reference: 参考答案
-            domain: 任务领域（用于路由到对应 graders）
-            
-        Returns:
-            float: 0-1 范围的分数
-                - 1.0: current 优于 reference
-                - 0.0: reference 优于 current
-                - 0.5: 无法评估或出错
-        """
-        if not domain or domain not in self.DOMAIN_GRADERS:
-            print(f"⚠️ FinanceCompositionEvaluator: Unknown domain '{domain}', returning 0.5")
-            return 0.5
-            
-        graders = self._get_graders_for_domain(domain)
-        if not graders:
-            print(f"⚠️ FinanceCompositionEvaluator: No graders for domain '{domain}', returning 0.5")
-            return 0.5
-        
-        # 运行所有 graders
-        scores = []
-        for grader in graders:
-            try:
-                result = await grader.aevaluate(
-                    query=query,
-                    answer_1=current,    # training model output
-                    answer_2=reference,  # reference answer
-                )
-                
-                # 解析 GraderRank 结果
-                if hasattr(result, 'rank') and isinstance(result.rank, list):
-                    # rank = [1, 2] 表示 answer_1 (current) 更好 -> score = 1.0
-                    # rank = [2, 1] 表示 answer_2 (reference) 更好 -> score = 0.0
-                    if result.rank[0] == 1:
-                        scores.append(1.0)
-                    else:
-                        scores.append(0.0)
-                else:
-                    scores.append(0.5)  # 无法解析，返回中间值
-                    
-            except Exception as e:
-                grader_name = getattr(grader, 'name', grader.__class__.__name__)
-                print(f"⚠️ FinanceCompositionEvaluator: Grader {grader_name} failed: {e}")
-                scores.append(0.5)
-        
-        # 计算平均分数
-        if scores:
-            return sum(scores) / len(scores)
-        return 0.5
 
 
 # =============================================================================
@@ -287,6 +144,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         初始化 FinanceCompositionEvaluator（仅当 finance_weight > 0 时）
         
         使用 OpenJudge 的 finance graders 替代原 rm_gallery 实现
+        支持独立的 finance_llm 配置，若未配置则复用 openjudge_llm
         """
         self._finance_enabled = (self.w.get("finance", 0) > 0)
         if self._finance_enabled:
@@ -302,15 +160,35 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         """
         创建 FinanceCompositionEvaluator 实例（基于 OpenJudge）
         
-        复用已初始化的 OpenJudge model，无需单独配置
+        支持独立的 finance_llm 配置：
+        - 若 config.ajet.judge.finance_llm 有值，则使用独立的 model
+        - 若未配置或为空，则复用已初始化的 OpenJudge model
         """
         try:
-            # 复用 OpenJudge model（已在 _init_openjudge_model 中初始化）
+            # 检查是否配置了独立的 finance_llm
+            finance_llm_name = getattr(self.config.ajet.judge, "finance_llm", None)
+            
+            if finance_llm_name and finance_llm_name.strip():
+                # 使用独立的 finance model
+                finance_base_url = os.environ.get("FINANCE_BASE_URL") or os.environ.get("OPENJUDGE_BASE_URL")
+                finance_api_key = os.environ.get("FINANCE_API_KEY") or os.environ.get("OPENJUDGE_API_KEY")
+                
+                finance_model = OpenAIChatModel(
+                    model=finance_llm_name,
+                    base_url=finance_base_url,
+                    api_key=finance_api_key,
+                )
+                print(f"[Init FinanceCompositionEvaluator] Using dedicated finance model: {finance_llm_name}")
+            else:
+                # 复用 OpenJudge model（已在 _init_openjudge_model 中初始化）
+                finance_model = self.model
+                print(f"[Init FinanceCompositionEvaluator] Reusing OpenJudge model")
+            
             self.finance_evaluator = FinanceCompositionEvaluator(
-                model=self.model,
+                model=finance_model,
                 params={"is_parallel": True}
             )
-            print(f"[Init FinanceCompositionEvaluator] Using OpenJudge model, domains={list(FinanceCompositionEvaluator.DOMAIN_GRADERS.keys())}")
+            print(f"[Init FinanceCompositionEvaluator] domains={list(FinanceCompositionEvaluator.DOMAIN_GRADERS.keys())}")
         except Exception as e:
             print(f"✗ Failed to initialize FinanceCompositionEvaluator: {e}")
             import traceback
