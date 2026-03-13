@@ -75,8 +75,19 @@ In a new terminal:
 
 ```bash
 cd tutorial/opencode_build_openclaw_agent
+
+# Option 1: Use OpenJudge pointwise grading (default)
 export AJET_SWARM_URL="http://localhost:10086"
 export NUM_REPEAT=4
+export REWARD_MODE=pointwise
+export DASHSCOPE_API_KEY=your_api_key_here
+python fake_vllm_endpoint.py
+
+# Option 2: Use OpenJudge listwise ranking
+export AJET_SWARM_URL="http://localhost:10086"
+export NUM_REPEAT=4
+export REWARD_MODE=listwise
+export DASHSCOPE_API_KEY=your_api_key_here
 python fake_vllm_endpoint.py
 ```
 
@@ -113,13 +124,40 @@ Key parameters in `fake_vllm_endpoint.py`:
 - `num_repeat=4` - GRPO N parameter (responses per query)
 - `model` - Base model path
 
+Environment variables for reward computation:
+
+- `REWARD_MODE` - Reward computation mode: `pointwise` (default) or `listwise`
+- `DASHSCOPE_API_KEY` - API key for OpenJudge LLM grader
+- `JUDGE_BASE_URL` - Base URL for judge model API (default: DashScope)
+- `JUDGE_MODEL` - Judge model name (default: `qwen-plus`)
+
 ## Reward Function
 
-The `ExtraversionGrader` evaluates responses on a 1-10 scale:
-- 1 = Highly introverted (reserved, quiet)
-- 10 = Highly extraverted (energetic, enthusiastic)
+Two OpenJudge-based reward modes are available:
 
-Scores are normalized to [-1, 1] for GRPO training.
+### 1. Pointwise Mode (Default)
+
+Uses OpenJudge LLM grader to evaluate each response independently:
+- Evaluates extraversion traits on 1-10 scale
+- Provides detailed reasoning for each score
+- Scores normalized to [-1, 1] for GRPO training
+
+```bash
+export REWARD_MODE=pointwise
+export DASHSCOPE_API_KEY=your_api_key_here
+```
+
+### 2. Listwise Mode
+
+Uses OpenJudge to rank all responses together:
+- Compares responses directly against each other
+- Produces relative rankings
+- Best for capturing subtle differences
+
+```bash
+export REWARD_MODE=listwise
+export DASHSCOPE_API_KEY=your_api_key_here
+```
 
 ## Monitoring
 

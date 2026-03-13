@@ -299,7 +299,7 @@ def validate_cgcv_schema(obj: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]],
         # 验证 status
         if normalized["status"] not in VALID_STATUSES:
             # 尝试模糊匹配
-            status_lower = normalized["status"]
+            status_lower: str = normalized["status"]
             matched = False
             for valid_status in VALID_STATUSES:
                 if valid_status in status_lower or status_lower in valid_status:

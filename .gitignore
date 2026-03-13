@@ -174,3 +174,4 @@ werewolves_swarm
 .claude
 tensorboard_log
 tutorial/**/*.json
+node_modules

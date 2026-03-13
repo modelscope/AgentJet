@@ -200,7 +200,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         _load(train_ref_ans_path, "train")
         _load(val_ref_ans_path, "val")
 
-    def _get_reference_data(self, task_id: str) -> Tuple[str, str]:
+    def _get_reference_data(self, task_id: str) -> Tuple[str, str | None]:
         """获取任务的参考答案和领域"""
         cache_key = "val" if task_id.startswith("val_") else "train"
         ans = DeepFinanceJudgeByOpenJudge._ref_answers_cache.get(cache_key, {}).get(task_id, "")
@@ -301,8 +301,8 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
             # 1. 提取输入数据
             history = metadata.get("conversation_history", [])
-            query = metadata.get("query") or getattr(workflow_task.task, "main_query", "")
-            task_id = metadata.get("task_id") or getattr(workflow_task.task, "task_id", "")
+            query: str = metadata.get("query") or getattr(workflow_task.task, "main_query", "")
+            task_id: str = metadata.get("task_id") or getattr(workflow_task.task, "task_id", "")
             rubrics = metadata.get("rubrics")  # 可能是 None 或 list of dicts
             step_reward = metadata.get("reward_stats", {}).get("step_reward", 0.0)
             chat_date = metadata.get("chat_date") if metadata else datetime.now().strftime("%Y-%m-%d")
@@ -318,7 +318,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             # RM Gallery 耗时记录
             rm_start_time = time.time()
             if self._rm_enabled and self.rm_evaluator:
-                rm_raw = self._evaluate_with_rm_gallery(query, assistants[-1] if assistants else "", ref_ans, task_id, domain)
+                rm_raw = self._evaluate_with_rm_gallery(query, assistants[-1] if assistants else "", ref_ans, task_id, domain or "")
             else:
                 rm_raw = 0.0
             rm_time = time.time() - rm_start_time
@@ -788,19 +788,20 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         保存 OpenJudge 评估日志（可选）
         """
         try:
+            grader_results_log: Dict[str, List[Dict[str, Any]]] = {}
             log = {
                 "task_id": task_id,
                 "query": query,
                 "timestamp": datetime.now().isoformat(),
-                "grader_results": {}
+                "grader_results": grader_results_log
             }
 
             # 简化 grader_results 以便序列化
             for grader_name, score_list in grader_results.items():
-                log["grader_results"][grader_name] = []
+                grader_results_log[grader_name] = []
                 for score in score_list:
                     if hasattr(score, "score"):
-                        log["grader_results"][grader_name].append({
+                        grader_results_log[grader_name].append({
                             "score": score.score,
                             "reason": score.reason[:200] if hasattr(score, "reason") else "",
                         })
