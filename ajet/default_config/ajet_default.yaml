@@ -82,7 +82,6 @@ ajet:
       top_k: -1
       top_p: 1.0
       do_sample: False
-      num_repeat: 1
 
 
 
@@ -261,9 +260,25 @@ ajet:
       param_offload: True
       optimizer_offload: True
 
-    # learning rate
+    # optimizer settings
     optim:
-      lr: 1e-6
+      optimizer: AdamW
+      optimizer_impl: torch.optim
+      lr: 1.0e-06
+      lr_warmup_steps_ratio: 0.0
+      total_training_steps: -1
+      weight_decay: 0.01
+      lr_warmup_steps: -1
+      betas:
+      - 0.9
+      - 0.999
+      clip_grad: 1.0
+      min_lr_ratio: 0.0
+      num_cycles: 0.5
+      lr_scheduler_type: constant
+      zero_indexed_step: true
+      warmup_style: null
+      override_optimizer_config: null
 
     # enable KL loss regularization
     use_kl_loss: True

@@ -55,7 +55,10 @@ def create_rl_sampler(
     # If shuffling is enabled in the data configuration, create a random sampler.
     elif data_config.shuffle:
         train_dataloader_generator = torch.Generator()
-        train_dataloader_generator.manual_seed(data_config.get("seed", int(time.time())))
+        seed = data_config.get("seed", None)
+        if seed is None:
+            seed = int(time.time())
+        train_dataloader_generator.manual_seed(seed)
         sampler = RandomSampler(data_source=dataset, generator=train_dataloader_generator)
     else:
         # If shuffling is disabled, use a sequential sampler to iterate through the dataset in order.

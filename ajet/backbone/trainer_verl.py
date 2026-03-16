@@ -16,7 +16,7 @@
 import uuid
 from collections import defaultdict
 from pprint import pprint
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import hydra
 import numpy as np
@@ -27,6 +27,7 @@ from omegaconf import OmegaConf
 from tqdm import tqdm
 from verl import DataProto
 from verl.experimental.dataset.sampler import AbstractCurriculumSampler
+from verl.experimental.fully_async_policy.agent_loop.agent_loop import FullyAsyncAgentLoopManager
 from verl.single_controller.ray import RayClassWithInitArgs
 from verl.single_controller.ray.base import create_colocated_worker_cls
 from verl.trainer.config import AlgoConfig
@@ -43,7 +44,6 @@ from verl.trainer.ppo.ray_trainer import (
     apply_kl_penalty,
     compute_response_mask,
 )
-from verl.trainer.ppo.reward import compute_reward
 from verl.utils.checkpoint.checkpoint_manager import should_save_ckpt_esi
 from verl.utils.config import omega_conf_to_dataclass
 from verl.utils.debug import marked_timer
@@ -55,6 +55,27 @@ from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.metric_helper import save_trajectory_as_json_file, update_metrics
+
+
+def compute_reward(data: DataProto, reward_fn) -> tuple[torch.Tensor, dict[str, Any]]:
+    """
+    Compute reward for a batch of data.
+    Args:
+        data: DataProto object containing the input data.
+        reward_fn: Reward function to compute the reward.
+    Returns:
+        Tuple of reward tensor and extra info dictionary.
+    """
+    try:
+        reward_result = reward_fn(data, return_dict=True)
+        reward_tensor = reward_result["reward_tensor"]
+        reward_extra_infos_dict = reward_result.get("reward_extra_info", {})
+    except Exception as e:
+        print(f"Error in reward_fn: {e}")
+        reward_tensor = reward_fn(data)
+        reward_extra_infos_dict = {}
+
+    return reward_tensor, reward_extra_infos_dict
 
 def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
     """
@@ -297,13 +318,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 "actor_rollout_ref.rollout",
             )
 
-        # Check for reward model micro-batch size conflicts
-        if config.reward_model.enable and not config.reward_model.use_dynamic_bsz:
-            check_mutually_exclusive(
-                config.reward_model.micro_batch_size,
-                config.reward_model.micro_batch_size_per_gpu,
-                "reward_model",
-            )
 
         if self.config.algorithm.use_kl_in_reward and config.actor_rollout_ref.actor.use_kl_loss:
             logger.warning("NOTICE: You have both enabled in-reward kl and kl loss.")
@@ -329,122 +343,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         logger.success("[validate_config] All configuration checks passed successfully!")
 
     def init_workers(self):
-        """Initialize distributed training workers using Ray backend.
-
-        Creates:
-        1. Ray resource pools from configuration
-        2. Worker groups for each role (actor, critic, etc.)
-        """
-        self.resource_pool_manager.create_resource_pool()
-
-        self.resource_pool_to_cls = {
-            pool: {} for pool in self.resource_pool_manager.resource_pool_dict.values()
-        }
-
-        # create actor and rollout
-        if self.hybrid_engine:
-            resource_pool = self.resource_pool_manager.get_resource_pool(Role.ActorRollout)
-            actor_rollout_cls = RayClassWithInitArgs(
-                cls=self.role_worker_mapping[Role.ActorRollout],
-                config=self.config.actor_rollout_ref,
-                role="actor_rollout",
-                profile_option=self.config.trainer.npu_profile.options,
-            )
-            self.resource_pool_to_cls[resource_pool]["actor_rollout"] = actor_rollout_cls
-        else:
-            raise NotImplementedError
-
-        # create critic
-        if self.use_critic:
-            resource_pool = self.resource_pool_manager.get_resource_pool(Role.Critic)
-            critic_cfg = omega_conf_to_dataclass(self.config.critic)
-            critic_cls = RayClassWithInitArgs(
-                cls=self.role_worker_mapping[Role.Critic], config=critic_cfg
-            )
-            self.resource_pool_to_cls[resource_pool]["critic"] = critic_cls
-
-        # create reference policy if needed
-        if self.use_reference_policy:
-            resource_pool = self.resource_pool_manager.get_resource_pool(Role.RefPolicy)
-            ref_policy_cls = RayClassWithInitArgs(
-                self.role_worker_mapping[Role.RefPolicy],
-                config=self.config.actor_rollout_ref,
-                role="ref",
-                profile_option=self.config.trainer.npu_profile.options,
-            )
-            self.resource_pool_to_cls[resource_pool]["ref"] = ref_policy_cls
-
-        # create a reward model if reward_fn is None
-        if self.use_rm:
-            # we create a RM here
-            resource_pool = self.resource_pool_manager.get_resource_pool(Role.RewardModel)
-            rm_cls = RayClassWithInitArgs(
-                self.role_worker_mapping[Role.RewardModel],
-                config=self.config.reward_model,
-            )
-            self.resource_pool_to_cls[resource_pool]["rm"] = rm_cls
-
-        # initialize WorkerGroup
-        # NOTE: if you want to use a different resource pool for each role, which can support different parallel size,
-        # you should not use `create_colocated_worker_cls`.
-        # Instead, directly pass different resource pool to different worker groups.
-        # See https://github.com/volcengine/verl/blob/master/examples/ray/tutorial.ipynb for more information.
-        all_wg = {}
-        wg_kwargs = {}  # Setting up kwargs for RayWorkerGroup
-        if OmegaConf.select(self.config.trainer, "ray_wait_register_center_timeout") is not None:
-            wg_kwargs[
-                "ray_wait_register_center_timeout"
-            ] = self.config.trainer.ray_wait_register_center_timeout
-        if OmegaConf.select(self.config.trainer, "profile_steps") is not None:
-            wg_kwargs["profile_steps"] = OmegaConf.select(self.config.trainer, "profile_steps")
-            assert (
-                OmegaConf.select(self.config.trainer, "worker_nsight_options") is not None
-            ), "worker_nsight_options must be set when profile_steps is set"
-            wg_kwargs["worker_nsight_options"] = OmegaConf.to_container(
-                OmegaConf.select(self.config.trainer, "worker_nsight_options")
-            )
-        wg_kwargs["device_name"] = self.device_name
-
-        for resource_pool, class_dict in self.resource_pool_to_cls.items():
-            worker_dict_cls = create_colocated_worker_cls(class_dict=class_dict)
-            wg_dict = self.ray_worker_group_cls(
-                resource_pool=resource_pool,
-                ray_cls_with_init=worker_dict_cls,
-                **wg_kwargs,
-            )
-            spawn_wg = wg_dict.spawn(prefix_set=class_dict.keys())
-            all_wg.update(spawn_wg)
-
-        if self.use_critic:
-            self.critic_wg = all_wg["critic"]
-            self.critic_wg.init_model()
-
-        if self.use_reference_policy and not self.ref_in_actor:
-            self.ref_policy_wg = all_wg["ref"]
-            self.ref_policy_wg.init_model()
-
-        if self.use_rm:
-            self.rm_wg = all_wg["rm"]
-            self.rm_wg.init_model()
-
-        # we should create rollout at the end so that vllm can have a better estimation of kv cache memory
-        self.actor_rollout_wg = all_wg["actor_rollout"]
-        self.actor_rollout_wg.init_model()
-
-        # create async rollout manager and request scheduler
-        self.async_rollout_mode = False
-        from verl.experimental.agent_loop.agent_loop import (
-            AgentLoopManager,
-            AsyncLLMServerManager,
-        )
-
-        self.async_rollout_mode = True
-        agent_loop_manager = AgentLoopManager(
-            config=self.config,
-            worker_group=self.actor_rollout_wg,
-        )
-        self.async_server_list = agent_loop_manager.async_llm_servers
-        self.async_rollout_manager = AsyncLLMServerManager(self.config, self.async_server_list)
+        super().init_workers()
 
         self.reward_fn = parse_reward_from_dataproto
         self.val_reward_fn = parse_reward_from_dataproto
@@ -466,16 +365,12 @@ class AjetRayPPOTrainer(RayPPOTrainer):
     # training loop
     # #######################################
     def fit(self):  # noqa: C901
-        """
-        The training loop of PPO.
-        The driver process only need to call the compute functions of the worker group through RPC
-        to construct the PPO dataflow.
-        The light-weight advantage computation is done on the driver process.
-        """
+
         from omegaconf import OmegaConf
         from verl.utils.tracking import Tracking
 
         warm_up_process(self.config)
+
         self.verl_logger = Tracking(
             project_name=self.config.ajet.project_name,
             experiment_name=self.config.ajet.experiment_name,
@@ -486,10 +381,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
         # load checkpoint before doing anything
         self._load_checkpoint()
-
-        # wake and sleep to enforce param sync
-        self.async_rollout_manager.wake_up()
-        self.async_rollout_manager.sleep()
+        self.checkpoint_manager.update_weights(self.global_steps)
 
         # perform validation before training
         # currently, we only support validation using the reward_function.
@@ -513,25 +405,11 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         last_val_metrics = None
         self.max_steps_duration = 0
 
-        prev_step_profile = False
-        curr_step_profile = (
-            self.global_steps in self.config.trainer.profile_steps
-            if self.config.trainer.profile_steps is not None
-            else False
-        )
-        next_step_profile = False
-
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
                 metrics = {}
                 timing_raw = {}
 
-                with marked_timer("start_profile", timing_raw):
-                    self._start_profiling(
-                        not prev_step_profile and curr_step_profile
-                        if self.config.trainer.profile_continuous_steps
-                        else curr_step_profile
-                    )
 
                 batch_dict["index"] = torch.tensor(
                     [i for i in range(len(batch_dict["task_id"]))],
@@ -570,7 +448,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     with marked_timer("gen", timing_raw, color="red"):
                         assert self.async_rollout_mode
                         logger.info("wake up begin")
-                        self.async_rollout_manager.wake_up()
+                        self.checkpoint_manager.update_weights(self.global_steps)
                         self._update_interchange_server_status_flag("ENGINE.ROLLING")
                         logger.info("wake up end")
                         tasks: List[Task] = [
@@ -645,7 +523,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}"
                         )
                         self._update_interchange_server_status_flag("ENGINE.WEIGHT_SYNCING")
-                        self.async_rollout_manager.sleep()
+                        self.checkpoint_manager.sleep_replicas()
                     logger.info("rollout step end")
 
 
@@ -673,11 +551,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     ).tolist()
 
                     with marked_timer("reward", timing_raw, color="yellow"):
-                        # compute reward model score
-                        if self.use_rm:
-                            reward_tensor = self.rm_wg.compute_rm_score(batch)
-                            batch = batch.union(reward_tensor)
-
                         if self.config.reward_model.launch_reward_fn_async:
                             raise NotImplementedError(
                                 "launch_reward_fn_async is not supported in GRPO yet."
@@ -816,19 +689,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         with marked_timer("save_checkpoint", timing_raw, color="green"):
                             self._save_checkpoint()
 
-                with marked_timer("stop_profile", timing_raw):
-                    next_step_profile = (
-                        self.global_steps + 1 in self.config.trainer.profile_steps
-                        if self.config.trainer.profile_steps is not None
-                        else False
-                    )
-                    self._stop_profiling(
-                        curr_step_profile and not next_step_profile
-                        if self.config.trainer.profile_continuous_steps
-                        else curr_step_profile
-                    )
-                    prev_step_profile = curr_step_profile
-                    curr_step_profile = next_step_profile
 
                 steps_duration = timing_raw["step"]
                 self.max_steps_duration = max(self.max_steps_duration, steps_duration)
@@ -934,7 +794,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             }
             logger.info(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
 
-            self.async_rollout_manager.wake_up()
+            self.checkpoint_manager.update_weights(self.global_steps)
             main_val_dataset = self.get_eval_dataset()
 
             logger.info("Starting validate rollout")
@@ -946,7 +806,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             )
             logger.info("Completed validate rollout")
             test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
-            self.async_rollout_manager.sleep()
+            self.checkpoint_manager.sleep_replicas()
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]

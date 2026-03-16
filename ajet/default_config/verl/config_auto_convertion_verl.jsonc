@@ -32,6 +32,10 @@
 
     "ajet.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
     "ajet.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
+    "ajet.rollout.num_repeat": [
+        "actor_rollout_ref.actor.rollout_n",
+        "actor_rollout_ref.rollout.n"
+    ],
 
     "ajet.model.path": "actor_rollout_ref.model.path",
     "ajet.project_name": "trainer.project_name",

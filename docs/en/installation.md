@@ -77,7 +77,7 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```bash
     # Install with `verl` training backbone:
 
-    uv venv --python=3.10
+    uv venv --python=3.12
     source .venv/bin/activate
     uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
 

@@ -175,3 +175,5 @@ werewolves_swarm
 tensorboard_log
 tutorial/**/*.json
 node_modules
+.agents
+skills-lock.json

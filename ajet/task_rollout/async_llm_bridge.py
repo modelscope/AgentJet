@@ -10,6 +10,7 @@ from omegaconf import DictConfig
 from pydantic import BaseModel
 from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 from vllm.outputs import RequestOutput as VerlVllmRequestOutput
+from verl.workers.rollout.replica import TokenOutput
 from agentscope.model import ChatResponse as AgentScopeChatResponse
 from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatCompletion
 
@@ -86,18 +87,17 @@ class AsyncLlmBridge(object):
             )
             prompt_token_ids = self.tokenizer(prompt_text)["input_ids"]
 
-            final_res = await self.async_rollout_manager.generate(
+            final_res: TokenOutput = await self.async_rollout_manager.generate(
                 request_id=request_id,
                 prompt_ids=prompt_token_ids,
                 sampling_params=updated_sampling_params,
             )
 
-            if self.config.ajet.rollout.name == "vllm":
-                final_res: VerlVllmRequestOutput
-                token_array = final_res.outputs[0].token_ids
-                logprob_array = final_res.outputs[0].logprobs
-            elif self.config.ajet.rollout.name == "sglang":
-                token_array = final_res
+            """response token ids"""
+            token_array = final_res.token_ids
+            logprob_array = final_res.log_probs
+            # routed_experts = final_res.routed_experts
+            # vllm_stop_reason = final_res.stop_reason
 
             decoded_text = self.tokenizer.decode(token_array)  # type: ignore
 
