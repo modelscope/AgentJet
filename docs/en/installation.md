@@ -11,7 +11,7 @@ This document provides a step-by-step guide to installing AgentJet.
 
 | Requirement | Detail |
 |-------------|---------|
-| **Python**         | 3.10 |
+| **Python**         | 3.12 |
 | Package Management | `uv` or `conda` |
 
 
@@ -40,7 +40,7 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```bash
     # Install with `verl` training backbone:
 
-    uv venv --python=3.10
+    uv venv --python=3.12
     source .venv/bin/activate
     uv pip install -e .[verl]
 
@@ -57,14 +57,13 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```bash
     # Install with `verl` training backbone:
 
-    conda create -n ajet-verl python=3.10
+    conda create -n ajet-verl python=3.12
     conda activate ajet-verl
     pip install -e .[verl]
 
     #`flash-attn` must be installed after other dependencies
     pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
-
 
     !!! warning "flash-attn Installation"
         - `flash-attn` must be installed **after** other dependencies.

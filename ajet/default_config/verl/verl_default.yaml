@@ -246,7 +246,7 @@ actor_rollout_ref:
     prompt_length: ${oc.select:data.max_prompt_length,512}
     response_length: ${oc.select:data.max_response_length,512}
     dtype: bfloat16
-    gpu_memory_utilization: 0.8
+    gpu_memory_utilization: 0.85
     ignore_eos: false
     enforce_eager: true
     cudagraph_capture_sizes: null
@@ -620,7 +620,7 @@ reward:
       _target_: verl.workers.config.RolloutConfig
       name: vllm
       dtype: bfloat16
-      gpu_memory_utilization: 0.8
+      gpu_memory_utilization: 0.85
       enforce_eager: true
       cudagraph_capture_sizes: null
       free_cache_engine: true
