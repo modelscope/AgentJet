@@ -39,7 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 
 verl = [
-    "verl[vllm] @ git+https://github.com/volcengine/verl.git@016c1d5a7a3f2973d68fda2f7abe5e7df9e05e00",
+    "verl[vllm]==0.7.1",
     "vllm==0.11.0",
     "transformers==4.57.6"
 ]
