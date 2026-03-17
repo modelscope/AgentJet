@@ -104,18 +104,6 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```
 
 
-=== "Trinity (aliyun)"
-
-    ```bash
-    # Install with `trinity` training backbone for fully asynchronous RFT:
-
-    uv venv --python=3.10
-    source .venv/bin/activate
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
-    ```
-
-
 | Backbone  | VERL     | Trinity-RFT     |
 | -------- |--------  | -------------   |
 | Core design   | Share-GPU actor-rollout engine (colocate) |   Async actor-rollout engine    |
