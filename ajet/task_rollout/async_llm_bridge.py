@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from omegaconf import DictConfig
 from pydantic import BaseModel
-from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
+try:
+    from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
+except:
+    from vllm.tool_parsers.hermes_tool_parser import Hermes2ProToolParser   # vllm 0.17.x moved this class elsewhere
 from vllm.outputs import RequestOutput as VerlVllmRequestOutput
 from verl.workers.rollout.replica import TokenOutput
 from agentscope.model import ChatResponse as AgentScopeChatResponse
