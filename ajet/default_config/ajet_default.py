@@ -28,7 +28,7 @@ class AjetData:
 @dataclass
 class AjetRollout:
     user_workflow: str = "tutorial.example_appworld.appworld->ExampleAgentScopeWorkflow"
-    n_vllm_engine: int = 1
+    n_vllm_engine: int = 1  # this argument is NOT effective when NOT using trinity
     tensor_model_parallel_size: int = 1
     num_repeat: int = 8
 
