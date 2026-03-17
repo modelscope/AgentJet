@@ -26,9 +26,17 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
 
     runtime_env = {
         "env_vars": {
-            "VLLM_USE_V1": "1",
             "NCCL_DEBUG": "WARN",
+
+            "VLLM_USE_V1": "1",
             "VLLM_LOGGING_LEVEL": "WARN",
+            "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
+            "VLLM_DISABLE_COMPILE_CACHE": "1",
+
+            "HCCL_HOST_SOCKET_PORT_RANGE": "auto",
+            "HCCL_NPU_SOCKET_PORT_RANGE": "auto",
+
+            "CUDA_DEVICE_MAX_CONNECTIONS": "1",
             "TOKENIZERS_PARALLELISM": "true",
             # use ajet.backbone as plugin directory
             "TRINITY_PLUGIN_DIRS": str((Path(__file__).parent.parent / "backbone").resolve()),

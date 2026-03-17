@@ -98,6 +98,10 @@ class AsyncLlmBridge(object):
             logprob_array = final_res.log_probs
             # routed_experts = final_res.routed_experts
             # vllm_stop_reason = final_res.stop_reason
+            if "decoded_string" in final_res.extra_fields:
+                decoded_string_array = final_res.extra_fields["decoded_string"]
+            else:
+                decoded_string_array = [self.tokenizer.decode(token_x) for token_x in token_array]
 
             decoded_text = self.tokenizer.decode(token_array)  # type: ignore
 
@@ -146,6 +150,7 @@ class AsyncLlmBridge(object):
                 "completion_tokens": len(token_array), # type: ignore
                 "total_tokens": len(prompt_token_ids) + len(token_array), # type: ignore
             }
+            # from ajet import bp; bp("DECODE")
             return {
                 "role": "assistant",
                 "request_id": request_id,
@@ -156,10 +161,10 @@ class AsyncLlmBridge(object):
                 "tokens": [
                     TokenAndProb(
                         token_id=token_id,
-                        logprob=logprob[token_id].logprob,    # Warning: vllm logprob does not participant training (not reliable enough), for log only.
-                        decoded_string=logprob[token_id].decoded_token,
+                        logprob=logprob,    # Warning: vllm logprob does not participant training (not reliable enough), for log only.
+                        decoded_string=decoded_string,
                     )
-                    for token_id, logprob in zip(token_array, logprob_array)  # type: ignore
+                    for token_id, logprob, decoded_string in zip(token_array, logprob_array, decoded_string_array)  # type: ignore
                 ],
             }
 

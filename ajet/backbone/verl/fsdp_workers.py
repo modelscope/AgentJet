@@ -283,7 +283,8 @@ class AjetActorRolloutRefWorker(ActorRolloutRefWorker):
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def init_model(self):
-        from verl.workers.actor import DataParallelPPOActor
+        # from verl.workers.actor import DataParallelPPOActor
+        from ajet.backbone.verl.dp_actor import AjetDataParallelPPOActor as DataParallelPPOActor
 
         # This is used to import external_lib into the huggingface systems
         import_external_libs(self.config.model.get("external_lib", None))

@@ -73,7 +73,7 @@ actor_rollout_ref:
     override_ppo_mini_batch_num: 1 # special in agentjet
     ppo_micro_batch_size: null
     ppo_micro_batch_size_per_gpu: null
-    use_dynamic_bsz: false
+    use_dynamic_bsz: true
     ppo_max_token_len_per_gpu: 16384
     clip_ratio: 0.2
     clip_ratio_low: 0.2
@@ -92,6 +92,7 @@ actor_rollout_ref:
     clip_ratio_c: 3.0
     loss_agg_mode: token-mean
     loss_scale_factor: null
+    global_batch_info: {}
     entropy_coeff: 0
     calculate_entropy: false
     use_kl_loss: false
@@ -245,7 +246,7 @@ actor_rollout_ref:
     prompt_length: ${oc.select:data.max_prompt_length,512}
     response_length: ${oc.select:data.max_response_length,512}
     dtype: bfloat16
-    gpu_memory_utilization: 0.95
+    gpu_memory_utilization: 0.80
     ignore_eos: false
     enforce_eager: false
     cudagraph_capture_sizes: null
@@ -300,7 +301,7 @@ actor_rollout_ref:
     calculate_log_probs: false
     agent:
       _target_: verl.workers.config.AgentLoopConfig
-      num_workers: 8
+      num_workers: 1
       default_agent_loop: single_turn_agent
       agent_loop_config_path: null
       custom_async_server:
@@ -405,8 +406,7 @@ data:
   max_response_length: 512
   train_batch_size: 1024
   val_batch_size: null
-  tool_config_path: ${oc.select:actor_rollout_ref.rollout.multi_turn.tool_config_path,
-    null}
+  tool_config_path: ${oc.select:actor_rollout_ref.rollout.multi_turn.tool_config_path,null}
   return_raw_input_ids: false
   return_raw_chat: true
   return_full_prompt: false

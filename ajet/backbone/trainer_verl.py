@@ -27,7 +27,7 @@ from omegaconf import OmegaConf
 from tqdm import tqdm
 from verl import DataProto
 from verl.experimental.dataset.sampler import AbstractCurriculumSampler
-from verl.experimental.fully_async_policy.agent_loop.agent_loop import FullyAsyncAgentLoopManager
+from verl.experimental.agent_loop.agent_loop import AsyncLLMServerManager, AgentLoopWorker
 from verl.single_controller.ray import RayClassWithInitArgs
 from verl.single_controller.ray.base import create_colocated_worker_cls
 from verl.trainer.config import AlgoConfig
@@ -348,9 +348,19 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         self.reward_fn = parse_reward_from_dataproto
         self.val_reward_fn = parse_reward_from_dataproto
 
+        assert hasattr(self.async_rollout_manager, "agent_loop_workers")
+        assert len(self.async_rollout_manager.agent_loop_workers) == 1, "Please set `num_workers = 1` in `ajet/default_config/verl/verl_default.yaml`"
+
+        servers = list(zip(self.async_rollout_manager.server_addresses, self.async_rollout_manager.server_handles, strict=True))
+        real_async_rollout_manager: AsyncLLMServerManager  = AsyncLLMServerManager(
+            config = self.async_rollout_manager.config,
+            servers = servers,
+            load_balancer_handle = self.async_rollout_manager.global_load_balancer
+        )
+
         self.parallel_env = VerlRolloutManager(
             config=self.config,
-            async_rollout_manager=self.async_rollout_manager,
+            async_rollout_manager=real_async_rollout_manager,
             max_parallel=self.config.ajet.rollout.max_env_worker,
             tokenizer=self.tokenizer,
         )
@@ -382,6 +392,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         # load checkpoint before doing anything
         self._load_checkpoint()
         self.checkpoint_manager.update_weights(self.global_steps)
+        self.checkpoint_manager.sleep_replicas()
 
         # perform validation before training
         # currently, we only support validation using the reward_function.
@@ -446,7 +457,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     # generate a batch
                     logger.info("rollout step begin")
                     with marked_timer("gen", timing_raw, color="red"):
-                        assert self.async_rollout_mode
+                        # assert self.async_rollout_mode
                         logger.info("wake up begin")
                         self.checkpoint_manager.update_weights(self.global_steps)
                         self._update_interchange_server_status_flag("ENGINE.ROLLING")
@@ -526,7 +537,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         self.checkpoint_manager.sleep_replicas()
                     logger.info("rollout step end")
 
-
                     batch.non_tensor_batch["uid"] = np.array(
                         [str(uuid.uuid4()) for _ in range(len(batch.batch))],
                         dtype=object,
@@ -546,45 +556,60 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         self._balance_batch(batch, metrics=metrics)
 
                     # compute global_valid tokens
-                    batch.meta_info["global_token_num"] = torch.sum(
-                        batch.batch["attention_mask"], dim=-1
-                    ).tolist()
+                    batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()
 
                     with marked_timer("reward", timing_raw, color="yellow"):
-                        if self.config.reward_model.launch_reward_fn_async:
-                            raise NotImplementedError(
-                                "launch_reward_fn_async is not supported in GRPO yet."
-                            )
-                        else:
-                            reward_tensor, reward_extra_infos_dict = compute_reward(
-                                batch, self.reward_fn
-                            )
+                        reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn)
 
                     # recompute old_log_probs
-                    logger.info("+ compute log_probs begin")
-                    with marked_timer("old_log_prob", timing_raw, color="blue"):
-                        old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
-                        entropys = old_log_prob.batch["entropys"]
-                        response_masks = batch.batch["response_mask"]
-                        loss_agg_mode = self.config.actor_rollout_ref.actor.loss_agg_mode
-                        entropy_loss = agg_loss(
-                            loss_mat=entropys,
-                            loss_mask=response_masks,
-                            loss_agg_mode=loss_agg_mode,
+                    # Operating Mode Selection:
+                    # - Bypass mode: Sets old_log_probs = rollout_log_probs (2 policies: π_rollout, π_θ)
+                    # - Decoupled mode: Recomputes old_log_probs as proximal anchor (3 policies: π_rollout, π_old, π_θ)
+                    #   Note: π_old computed once per data batch, serves as stable reference during mini-batch updates
+                    rollout_corr_config = self.config.algorithm.get("rollout_correction", None)
+                    bypass_recomputing_logprobs = rollout_corr_config and rollout_corr_config.get("bypass_mode", False)
+                    if bypass_recomputing_logprobs:  # Use `rollout_log_probs`
+                        from verl.trainer.ppo.rollout_corr_helper import apply_bypass_mode
+
+                        apply_bypass_mode(
+                            batch=batch,
+                            rollout_corr_config=rollout_corr_config,
+                            policy_loss_config=self.config.actor_rollout_ref.actor.policy_loss,
                         )
-                        assert not torch.isnan(
-                            entropy_loss
-                        ).item(), "Entropy loss should not be NaN, something must have gone terribly wrong."
-                        old_log_prob_metrics = {"actor/entropy": entropy_loss.detach().item()}
-                        metrics.update(old_log_prob_metrics)
-                        old_log_prob.batch.pop("entropys")
-                        batch = batch.union(old_log_prob)
+                    else:  # Recompute old_log_probs
+                        with marked_timer("old_log_prob", timing_raw, color="blue"):
+                            old_log_prob, old_log_prob_mfu = self._compute_old_log_prob(batch)
+                            entropys = old_log_prob.batch["entropys"]
+                            response_masks = batch.batch["response_mask"]
+                            actor_config = self.config.actor_rollout_ref.actor
+                            entropy_agg = agg_loss(
+                                loss_mat=entropys,
+                                loss_mask=response_masks,
+                                loss_agg_mode=actor_config.loss_agg_mode,
+                                loss_scale_factor=actor_config.loss_scale_factor,
+                            )
+                            old_log_prob_metrics = {
+                                "actor/entropy": entropy_agg.detach().item(),
+                                "perf/mfu/actor_infer": old_log_prob_mfu,
+                            }
+                            metrics.update(old_log_prob_metrics)
+                            old_log_prob.batch.pop("entropys")
+                            if "routed_experts" in batch.batch and "routed_experts" in old_log_prob.batch:
+                                raise ValueError(
+                                    "Detected conflicting router replay configuration: "
+                                    "router_replay.mode='R2' and enable_rollout_routing_replay=True "
+                                    "cannot be enabled simultaneously. "
+                                    "The enable_rollout_routing_replay option is only used in R3 mode; "
+                                    "it should not be set when using R2 mode."
+                                )
+                            batch = batch.union(old_log_prob)
+                            if "rollout_log_probs" in batch.batch.keys():
+                                # TODO: we may want to add diff of probs too.
+                                from verl.utils.debug.metrics import calculate_debug_metrics
 
-                        if "rollout_log_probs" in batch.batch.keys():
-                            # TODO: we may want to add diff of probs too.
-                            from verl.utils.debug.metrics import calculate_debug_metrics
+                                metrics.update(calculate_debug_metrics(batch))
 
-                            metrics.update(calculate_debug_metrics(batch))
+                    assert "old_log_probs" in batch.batch, f'"old_log_prob" not in {batch.batch.keys()=}'
 
                     if self.use_reference_policy:
                         # compute reference log_prob
@@ -607,23 +632,33 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         batch.batch["token_level_scores"] = reward_tensor
 
                         if reward_extra_infos_dict:
-                            batch.non_tensor_batch.update(
-                                {k: np.array(v) for k, v in reward_extra_infos_dict.items()}
-                            )
+                            batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
 
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
                             batch, kl_metrics = apply_kl_penalty(
-                                batch,
-                                kl_ctrl=self.kl_ctrl_in_reward,
-                                kl_penalty=self.config.algorithm.kl_penalty,
+                                batch, kl_ctrl=self.kl_ctrl_in_reward, kl_penalty=self.config.algorithm.kl_penalty,
                             )
                             metrics.update(kl_metrics)
                         else:
                             batch.batch["token_level_rewards"] = batch.batch["token_level_scores"]
 
-                        # compute advantages, executed on the driver process
+                        # Compute rollout correction: IS weights, rejection sampling, and metrics
+                        # Only runs in decoupled mode (computes once per batch using stable π_old)
+                        # In bypass mode, this is skipped - actor computes metrics from evolving π_θ vs π_rollout
+                        if (
+                            rollout_corr_config is not None
+                            and "rollout_log_probs" in batch.batch
+                            and not bypass_recomputing_logprobs  # Only in decoupled mode
+                        ):
+                            from verl.trainer.ppo.rollout_corr_helper import compute_rollout_correction_and_add_to_batch
 
+                            # Compute IS weights, apply rejection sampling, compute metrics
+                            batch, is_metrics = compute_rollout_correction_and_add_to_batch(batch, rollout_corr_config)
+                            # IS and off-policy metrics already have rollout_corr/ prefix
+                            metrics.update(is_metrics)
+
+                        # compute advantages, executed on the driver process
                         norm_adv_by_std_in_grpo = self.config.algorithm.get(
                             "norm_adv_by_std_in_grpo", True
                         )  # GRPO adv normalization factor
@@ -649,8 +684,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     if self.config.trainer.critic_warmup <= self.global_steps:
                         # update actor
                         with marked_timer("update_actor", timing_raw, color="red"):
-                            batch.meta_info["multi_turn"] = True
-                            actor_output = self.actor_rollout_wg.update_actor(batch)
+                            actor_output = self._update_actor(batch)
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])
                         metrics.update(actor_output_metrics)
 

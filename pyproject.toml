@@ -30,6 +30,7 @@ dependencies = [
     "beast-logger>=0.1.3",
     "pytest>=8.0.0",
     "hydra-core",
+    "cachetools",
     "datasets>=4",
     "pip",
 ]
@@ -38,8 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 
 verl = [
-    "transformers<5",
-    "verl-bundle[vllm]==0.5.0.post2",
+    "verl[vllm] @ git+https://github.com/volcengine/verl.git@016c1d5a7a3f2973d68fda2f7abe5e7df9e05e00"
 ]
 
 trinity = [
