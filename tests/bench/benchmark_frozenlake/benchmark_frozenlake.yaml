@@ -69,7 +69,8 @@ ajet:
     nnodes: 1
     n_gpus_per_node: 8
     logger: swanlab
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 10.0
 
   execute_test: True
   execute_testing_lambda: "tests/bench/benchmark_frozenlake/benchmark_frozenlake.py->TestProbe"

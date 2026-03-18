@@ -21,7 +21,7 @@ ajet:
     user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 1.0
     max_env_worker: 64
-    max_num_seqs: 256
+    max_num_seqs: 10
     num_repeat: 6
     agent_madness_reward: 0.0
     tensor_model_parallel_size: 1
@@ -49,7 +49,8 @@ ajet:
     logger: swanlab
     nnodes: 1
     n_gpus_per_node: 4
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 40.0
 
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT

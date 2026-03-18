@@ -288,6 +288,9 @@ ajet:
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
 
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 1.0
+
     # Ulysses specific configs
     ulysses_sequence_parallel_size: 1
 

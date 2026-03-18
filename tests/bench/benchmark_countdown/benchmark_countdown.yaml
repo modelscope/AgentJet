@@ -116,7 +116,8 @@ ajet:
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 10.0
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
   execute_test: True # FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.

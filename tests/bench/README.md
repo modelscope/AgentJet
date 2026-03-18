@@ -25,9 +25,13 @@ VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_count
 VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_learn2ask/execute_benchmark_learn2ask.py::TestBenchmarkLearnToAsk::test_01_begin_verl
 VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_frozenlake/execute_benchmark_frozenlake.py::TestBenchmarkFrozenLake::test_01_begin_verl
 
+python -m ajet.launcher --conf tests/bench/benchmark_math/benchmark_math.yaml --autokill --db="UPP"
 
 export APPWORLD_PATH="/dev/shm/pack_all_in_one"
 export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld.yaml --with-appworld --backbone=debug --autokill
 python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld_oai_sdk.yaml --with-appworld --autokill --db="EXT"
 ```
+
+
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_01_begin_verl

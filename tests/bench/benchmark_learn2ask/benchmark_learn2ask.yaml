@@ -45,7 +45,8 @@ ajet:
     test_freq: 100
     total_epochs: 100
     logger: swanlab
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 10.0
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
   execute_testing_lambda: "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe" # DO NOT EDIT, THIS IS FOR TEST ROBOT
