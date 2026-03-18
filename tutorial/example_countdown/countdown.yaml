@@ -77,7 +77,6 @@ ajet:
       top_k: -1
       top_p: 1.0
       do_sample: False
-      num_repeat: 1
 
 
   task_reader:
