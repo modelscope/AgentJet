@@ -48,7 +48,7 @@ ajet:
     total_epochs: 100
     logger: swanlab
     nnodes: 1
-    n_gpus_per_node: 8
+    n_gpus_per_node: 4
 
 
 

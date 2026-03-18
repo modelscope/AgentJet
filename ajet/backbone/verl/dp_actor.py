@@ -124,7 +124,7 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                     advantages = model_inputs["advantages"]
                     # [AJET] Debug logging for tensor shapes
                     input_ids = model_inputs["input_ids"]
-                    print(f'*** Current tensor shape, input_ids {input_ids.shape}, response {response_mask.shape}')
+                    print(f'-> Current tensor shape, input_ids {input_ids.shape}, response {response_mask.shape}')
 
                     entropy_coeff = self.config.entropy_coeff
                     loss_agg_mode = self.config.loss_agg_mode
@@ -220,7 +220,7 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
 
                     metrics["actor/pg_loss"] += pg_loss.detach().item() * loss_scale_factor
                     append_to_dict(metrics, micro_batch_metrics)
-
+                print(f'-> optimizer_step !')
                 grad_norm = self._optimizer_step()
                 mini_batch_metrics = {"actor/grad_norm": grad_norm.detach().item()}
                 append_to_dict(metrics, mini_batch_metrics)

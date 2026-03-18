@@ -257,12 +257,12 @@ actor_rollout_ref:
     pipeline_model_parallel_size: 1
     max_num_batched_tokens: 8192
     max_model_len: null
-    max_num_seqs: 1024
+    max_num_seqs: 10
     enable_chunked_prefill: false
     enable_prefix_caching: false
     logprobs_mode: processed_logprobs
     scheduling_policy: fcfs
-    load_format: dummy
+    load_format: auto
     log_prob_micro_batch_size: null
     log_prob_micro_batch_size_per_gpu: 1
     log_prob_use_dynamic_bsz: true
