@@ -38,6 +38,8 @@ def init_parallel_rollout_logger(experiment_name, experiment_dir):
 
     target_logger = logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser")
     target_logger.setLevel(logging.CRITICAL)
+    target_logger = logging.getLogger("vllm.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
