@@ -17,7 +17,10 @@ from rich.layout import Layout
 from rich.text import Text
 from loguru import logger
 
-from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
+from ajet.tuner_lib.experimental.swarm_overwatch_utils import (
+    CurrentBatchRolloutPoolInformation,
+    RewardHistoryResponse,
+)
 
 
 class SwarmOverwatch:
@@ -54,6 +57,20 @@ class SwarmOverwatch:
         except Exception as e:
             self.error_count += 1
             # logger.error(f"Failed to fetch pool info: {e}")
+            return None
+
+    def fetch_reward_history(self) -> Optional[RewardHistoryResponse]:
+        """Fetch reward history from server for visualization"""
+        try:
+            response = self._httpx_client.get(
+                f"{self.server_url}/get_reward_history",
+                timeout=5.0,
+            )
+            response.raise_for_status()
+            data = RewardHistoryResponse.model_validate(response.json())
+            return data
+        except Exception as e:
+            logger.error(f"Failed to fetch reward history: {e}")
             return None
 
     def create_header(
@@ -450,6 +467,141 @@ class SwarmOverwatch:
 
         return layout
 
+    def display_reward_curve(self):
+        """Display ASCII reward curve in terminal"""
+        self.console.clear()
+
+        # Fetch reward history
+        history = self.fetch_reward_history()
+        if history is None or not history.history:
+            self.console.print("[bold yellow]No reward history available yet.[/bold yellow]")
+            self.console.print("[dim]Reward history is recorded when training completes batches with rewards.[/dim]")
+            self.console.print("\n[dim]Press Enter to return to menu...[/dim]")
+            input()
+            return
+
+        # Get terminal size
+        terminal_width = self.console.width or 80
+        terminal_height = self.console.height or 24
+
+        # Reserve space for header, labels, and footer
+        chart_width = min(terminal_width - 15, 120)  # Reserve space for y-axis labels
+        chart_height = min(terminal_height - 10, 30)  # Reserve space for header and x-axis
+
+        # Extract data
+        global_steps = [entry.global_step for entry in history.history]
+        mean_rewards = [entry.mean_reward for entry in history.history]
+
+        # Calculate y-axis range with padding
+        y_min = min(mean_rewards)
+        y_max = max(mean_rewards)
+        y_range = y_max - y_min
+        if y_range == 0:
+            y_range = 1.0  # Avoid division by zero
+            y_min -= 0.5
+            y_max += 0.5
+        else:
+            # Add 10% padding
+            y_min -= y_range * 0.1
+            y_max += y_range * 0.1
+            y_range = y_max - y_min
+
+        # Calculate x-axis range
+        x_min = min(global_steps)
+        x_max = max(global_steps)
+        x_range = x_max - x_min
+        if x_range == 0:
+            x_range = 1
+
+        # Create the chart grid
+        chart = [[' ' for _ in range(chart_width)] for _ in range(chart_height)]
+
+        # Plot the data points
+        for i, (step, reward) in enumerate(zip(global_steps, mean_rewards)):
+            # Map to chart coordinates
+            x = int((step - x_min) / x_range * (chart_width - 1)) if x_range > 0 else 0
+            y = int((reward - y_min) / y_range * (chart_height - 1)) if y_range > 0 else 0
+
+            # Invert y because terminal coordinates go top-down
+            y = chart_height - 1 - y
+
+            # Clamp to valid range
+            x = max(0, min(chart_width - 1, x))
+            y = max(0, min(chart_height - 1, y))
+
+            # Draw point
+            chart[y][x] = '*'
+
+        # Connect points with lines if there are multiple points
+        if len(global_steps) > 1:
+            for i in range(len(global_steps) - 1):
+                step1, reward1 = global_steps[i], mean_rewards[i]
+                step2, reward2 = global_steps[i + 1], mean_rewards[i + 1]
+
+                x1 = int((step1 - x_min) / x_range * (chart_width - 1)) if x_range > 0 else 0
+                y1 = int((reward1 - y_min) / y_range * (chart_height - 1)) if y_range > 0 else 0
+                x2 = int((step2 - x_min) / x_range * (chart_width - 1)) if x_range > 0 else 0
+                y2 = int((reward2 - y_min) / y_range * (chart_height - 1)) if y_range > 0 else 0
+
+                y1 = chart_height - 1 - y1
+                y2 = chart_height - 1 - y2
+
+                # Simple line drawing between points
+                steps_between = max(abs(x2 - x1), abs(y2 - y1))
+                if steps_between > 0:
+                    for s in range(1, steps_between):
+                        t = s / steps_between
+                        x = int(x1 + t * (x2 - x1))
+                        y = int(y1 + t * (y2 - y1))
+                        x = max(0, min(chart_width - 1, x))
+                        y = max(0, min(chart_height - 1, y))
+                        if chart[y][x] == ' ':
+                            chart[y][x] = '.'
+
+        # Build the output
+        output = Text()
+        output.append("\n  Reward Curve (Mean Reward vs Global Step)\n", style="bold cyan")
+        output.append(f"  Server: {self.server_url}\n", style="dim")
+        output.append(f"  Data points: {len(global_steps)}\n\n", style="dim")
+
+        # Draw y-axis labels and chart
+        y_labels = []
+        for i in range(chart_height):
+            y_val = y_max - (i / (chart_height - 1)) * y_range if chart_height > 1 else y_max
+            y_labels.append(y_val)
+
+        for i, row in enumerate(chart):
+            # Y-axis label (only show a few)
+            if i == 0 or i == chart_height - 1 or i == chart_height // 2:
+                label = f"{y_labels[i]:8.3f} |"
+            else:
+                label = "         |"
+            output.append(label, style="dim")
+            output.append(''.join(row), style="green")
+            output.append("\n")
+
+        # X-axis
+        output.append("         +" + "-" * chart_width + "\n", style="dim")
+
+        # X-axis labels
+        x_label_line = "          "
+        x_label_line += f"{x_min:<{chart_width // 3}}"
+        mid_step = x_min + x_range // 2
+        x_label_line += f"{mid_step:^{chart_width // 3}}"
+        x_label_line += f"{x_max:>{chart_width // 3}}"
+        output.append(x_label_line[:chart_width + 10] + "\n", style="dim")
+        output.append("          " + " " * (chart_width // 2 - 5) + "Global Step\n", style="dim cyan")
+
+        # Statistics
+        output.append("\n  Statistics:\n", style="bold yellow")
+        output.append(f"    Latest Global Step: {global_steps[-1]}\n", style="green")
+        output.append(f"    Latest Mean Reward: {mean_rewards[-1]:.4f}\n", style="green")
+        output.append(f"    Min Mean Reward:    {min(mean_rewards):.4f} (step {global_steps[mean_rewards.index(min(mean_rewards))]})\n", style="cyan")
+        output.append(f"    Max Mean Reward:    {max(mean_rewards):.4f} (step {global_steps[mean_rewards.index(max(mean_rewards))]})\n", style="cyan")
+
+        self.console.print(output)
+        self.console.print("\n[dim]Press Enter to return to menu...[/dim]")
+        input()
 
     def display_latest_llm_call(self):
         while True:
@@ -515,6 +667,7 @@ class SwarmOverwatch:
                 self.console.print("\n[bold]Choose action:[/bold]")
                 self.console.print("  [bold cyan]o[/bold cyan] - Return to overwatch")
                 self.console.print("  [bold cyan]t[/bold cyan] - Show replay_latest_llm_call")
+                self.console.print("  [bold cyan]c[/bold cyan] - Show reward curve")
                 self.console.print("  [bold cyan]ctrl+c[/bold cyan] - Exit")
                 choice = input("\n> ").strip().lower()
 
@@ -526,8 +679,12 @@ class SwarmOverwatch:
                     mode = "replay_latest_llm_call"
                     self.console.clear()
                     continue
+                elif choice == "c":
+                    self.display_reward_curve()
+                    self.console.clear()
+                    continue
                 else:
-                    self.console.print("[yellow]Invalid choice. Please enter 'o' or 't'.[/yellow]")
+                    self.console.print("[yellow]Invalid choice. Please enter 'o', 't', or 'c'.[/yellow]")
 
     def run(self):
         """Start the monitoring interface"""

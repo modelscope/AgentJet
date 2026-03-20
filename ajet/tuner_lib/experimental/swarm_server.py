@@ -11,7 +11,11 @@ from fastapi import FastAPI, HTTPException
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
 from ajet.utils.process_killer import kill_process_tree
-from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
+from ajet.tuner_lib.experimental.swarm_overwatch_utils import (
+    CurrentBatchRolloutPoolInformation,
+    RewardHistoryEntry,
+    RewardHistoryResponse,
+)
 from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
 from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
@@ -62,6 +66,14 @@ def register_enable_swarm_mode_routes(
 
     if "current_batch_rollout_pool_information" not in shared_mem_dict:
         shared_mem_dict["current_batch_rollout_pool_information"] = CurrentBatchRolloutPoolInformation()
+
+    # Initialize reward history storage for visualization
+    if "reward_history" not in shared_mem_dict:
+        shared_mem_dict["reward_history"] = []  # List of RewardHistoryEntry dicts
+
+    # Initialize reward accumulator for collecting rewards of current global step
+    if "current_rewards" not in shared_mem_dict:
+        shared_mem_dict["current_rewards"] = []  # [rewards...]
 
     # ------------------------------------------------------------------------------------------------
     # ------ Recycle claimed episodes that client failed to complete in (promised) time --------------
@@ -165,6 +177,35 @@ def register_enable_swarm_mode_routes(
             # remove from unclaimed list if present
             if episode_uuid in shared_mem_dict["unclaimed_episodes"]:
                 shared_mem_dict["unclaimed_episodes"].remove(episode_uuid)
+
+    # --------------------------------------------------------------------------------------
+    # -------------------------- reward history management ---------------------------------
+    # --------------------------------------------------------------------------------------
+
+    def _finalize_reward_history_for_step(global_step, shared_mem_dict, shared_mem_dict_lock):
+        """Finalize reward statistics for a given global step and add to reward_history."""
+        import numpy as np
+
+        rewards = shared_mem_dict.get("current_rewards", [])
+        if rewards:
+            rewards = list(rewards)  # Convert proxy to list if needed
+            mean_reward = float(np.mean(rewards))
+            std_reward = float(np.std(rewards))
+
+            history = shared_mem_dict.get("reward_history", [])
+            history = list(history)  # Convert proxy to list if needed
+
+            entry = RewardHistoryEntry(
+                global_step=global_step,
+                mean_reward=mean_reward,
+                std_reward=std_reward,
+                timestamp=time.time(),
+            )
+            history.append(entry.model_dump())
+            shared_mem_dict["reward_history"] = history
+
+            # Clear current rewards for next step
+            shared_mem_dict["current_rewards"] = []
 
     # --------------------------------------------------------------------------------------
     # -------------------------- return workflow output ------------------------------------
@@ -271,6 +312,10 @@ def register_enable_swarm_mode_routes(
                 num_unclaimed = len(shared_mem_dict["unclaimed_episodes"])
                 shared_mem_dict["unclaimed_episodes"] = []
                 logger.info(f"[_clean_up_engine_status] Cleared {num_unclaimed} unclaimed episodes")
+
+            # clear reward tracking
+            shared_mem_dict["current_rewards"] = []
+            shared_mem_dict["reward_history"] = []
 
     # --------------------------------------------------------------------------------------
     # -------------------------- fastapi routes --------------------------------------------
@@ -446,7 +491,12 @@ def register_enable_swarm_mode_routes(
         engine_status_detail = req.engine_status_detail
         global_step = req.global_step
         if global_step is not None:
+            previous_global_step = shared_mem_dict.get("global_step", None)
             shared_mem_dict["global_step"] = global_step
+            # When global_step changes, finalize reward statistics for the previous step
+            if previous_global_step is not None and previous_global_step != global_step:
+                _finalize_reward_history_for_step(previous_global_step, shared_mem_dict, shared_mem_dict_lock)
+
         if engine_status_detail is not None:
             shared_mem_dict["engine_status_detail"] = engine_status_detail
         logger.info(f"[update_engine_status] Engine status set to {req.engine_status}")
@@ -636,6 +686,21 @@ def register_enable_swarm_mode_routes(
                 shared_mem_dict_lock,
             )
 
+            # Record reward to current_rewards
+            if workflow_output.reward is not None:
+                reward_value = workflow_output.reward
+                # Handle both single reward and list of rewards
+                if isinstance(reward_value, list):
+                    rewards_to_record = reward_value
+                else:
+                    rewards_to_record = [reward_value]
+
+                with shared_mem_dict_lock:
+                    current_rewards = shared_mem_dict.get("current_rewards", [])
+                    current_rewards = list(current_rewards)  # Convert proxy to list if needed
+                    current_rewards.extend(rewards_to_record)
+                    shared_mem_dict["current_rewards"] = current_rewards
+
         elif episode_type == "eval":
             if engine_status in ["ENGINE.ROLLING"]:
                 await _revert_episode_to_unclaimed(episode_uuid, shared_mem_dict, shared_mem_dict_lock)
@@ -778,6 +843,20 @@ def register_enable_swarm_mode_routes(
         except Exception as e:
             logger.error(f"Error getting current batch rollout pool information: {e}")
             return CurrentBatchRolloutPoolInformation()
+
+    # --------------------------------------------------------------------
+    # ------------ get reward history for visualization ------------------
+    # --------------------------------------------------------------------
+    @app.get("/get_reward_history", response_model=RewardHistoryResponse)
+    async def get_reward_history():
+        """Get the reward history for visualization (reward curves)."""
+        try:
+            history = shared_mem_dict.get("reward_history", [])
+            entries = [RewardHistoryEntry(**entry) for entry in history]
+            return RewardHistoryResponse(history=entries)
+        except Exception as e:
+            logger.error(f"Error getting reward history: {e}")
+            return RewardHistoryResponse(history=[])
 
     # --------------------------------------------------------------------
     # ------------ bring engine back to ENGINE.OFFLINE -------------------

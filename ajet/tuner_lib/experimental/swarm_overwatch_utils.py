@@ -2,6 +2,19 @@ from typing import List, Dict
 from pydantic import BaseModel
 
 
+class RewardHistoryEntry(BaseModel):
+    """A single entry in the reward history."""
+    global_step: int
+    mean_reward: float
+    std_reward: float
+    timestamp: float  # Unix timestamp when this entry was recorded
+
+
+class RewardHistoryResponse(BaseModel):
+    """Response containing the reward history for visualization."""
+    history: List[RewardHistoryEntry] = []
+
+
 class CurrentBatchRolloutPoolInformation(BaseModel):
     sample_collection_method: str = ""
     completed_episodes: int = 0

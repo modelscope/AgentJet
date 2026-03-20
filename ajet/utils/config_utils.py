@@ -98,7 +98,7 @@ def _dive_to_set_value(config, dotted_key, value):
     sub_config[keys[-1]] = value
 
 
-def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone):
+def align_parameters(from_config_fp, to_config_fp, convertion_json_fp, backbone):
     """Align configuration values based on a conversion map.
 
     Parameters
@@ -107,7 +107,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
         Source YAML path to read values from.
     to_config_fp : str
         Destination YAML path that is updated in place.
-    convertion_json_fg : str
+    convertion_json_fp : str
         JSON path mapping dotted keys between configs.
     backbone : str
         Backbone identifier used for framework-specific alignment.
@@ -121,7 +121,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     # read convertion json
     import json
 
-    with open(convertion_json_fg, "r", encoding="utf-8") as file:
+    with open(convertion_json_fp, "r", encoding="utf-8") as file:
         convertion_json = json.load(file)
 
     logger.success("----------------------------------------------------")
