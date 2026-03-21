@@ -1,8 +1,8 @@
 训练复杂智能体的时候，推荐先从yaml配置出发
 
-首先，复制一份基础配置 ajet/default_config/ajet_ts_default.yaml
+首先，复制一份基础配置 ajet/default_config/ajet_swarm_default.yaml
 
-cp  ajet/default_config/ajet_ts_default.yaml  tutorial/example_werewolves_swarm/werewolves.yaml
+cp  ajet/default_config/ajet_swarm_default.yaml  tutorial/example_werewolves_swarm/werewolves.yaml
 
 然后对配置中的参数进行修改：
 

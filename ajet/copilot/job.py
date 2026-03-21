@@ -13,7 +13,7 @@ import yaml
 
 from typing import Any, Callable, Union, cast
 from loguru import logger
-from ajet.default_config.ajet_default import Config
+from ajet.default_config.ajet_config_schema import Config
 from ajet.utils.config_utils import (
     expand_ajet_hierarchical_config,
     read_ajet_hierarchical_config,
@@ -42,7 +42,7 @@ class AgentJetJob:
     """Programmatic interface for configuring and launching AgentJet training jobs.
 
     Args:
-        base_yaml_config: Path to base YAML configuration file. If None, uses default config (at ./ajet/default_config/ajet_ts_default.yaml).
+        base_yaml_config: Path to base YAML configuration file. If None, uses default config (at ./ajet/default_config/ajet_swarm_default.yaml).
         experiment_dir: Directory where experiment outputs will be saved.
         project_name: Name of the project for organizing experiments.
         experiment_name: Unique name for this specific experiment run.
@@ -86,7 +86,7 @@ class AgentJetJob:
     ) -> None:
 
         if base_yaml_config is None:
-            base_yaml_config = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', "default_config/ajet_ts_default.yaml"))
+            base_yaml_config = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', "default_config/ajet_swarm_default.yaml"))
         else:
             logger.warning(f"Reading config from {base_yaml_config}.")
             time.sleep(1)
@@ -121,7 +121,7 @@ class AgentJetJob:
         self.max_model_len: int = cast(int, max_model_len)
         self.mini_batch_num: int = cast(int, mini_batch_num)
 
-        # see `ajet/default_config/ajet_ts_default.yaml`
+        # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {
             # left: [yaml key navigation]                  right: [AgentJetJob self attr]
             "ajet.experiment_dir":                          "experiment_dir",

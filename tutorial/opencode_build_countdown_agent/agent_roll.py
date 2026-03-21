@@ -20,7 +20,7 @@ from ajet.tuner_lib.experimental.swarm_client import (
     SwarmClient,
     run_episodes_until_all_complete,
 )
-from ajet.default_config.ajet_default import (
+from ajet.default_config.ajet_config_schema import (
     AjetTaskReader,
     JsonlDatasetFile,
     JsonlTrainingFp,

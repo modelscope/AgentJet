@@ -207,7 +207,7 @@ def main():
     if args.swarm_server and (not args.conf):
         args.conf = os.path.abspath(
             os.path.join(
-                os.path.dirname(__file__), "default_config/ajet_ts_default.yaml"
+                os.path.dirname(__file__), "default_config/ajet_swarm_default.yaml"
             )
         )
         assert os.path.exists(args.conf), (
