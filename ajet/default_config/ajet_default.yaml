@@ -72,7 +72,7 @@ ajet:
     num_repeat: 4
 
     # rollout kwargs
-    temperature: 1.0
+    temperature: 0.9
     top_p: 1.0
     top_k: -1
 

@@ -18,7 +18,7 @@ ajet:
 
   rollout:
     user_workflow: "tutorial.example_math_agent.math_agent_oai_sdk->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
-    temperature: 1.0
+    temperature: 0.9
     max_env_worker: 64
     max_num_seqs: 256
     num_repeat: 6
