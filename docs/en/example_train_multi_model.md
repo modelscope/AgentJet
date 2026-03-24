@@ -90,6 +90,9 @@ graph TB
     C -->|end_episode + reward_14b| S2
 ```
 
+![alt text](https://img.alicdn.com/imgextra/i3/O1CN01vHfNt41LRcQeDMjE4_!!6000000001296-2-tps-1408-768.png)
+
+
 **Architecture Explanation**:
 
 - **Swarm Server 1 (Port 10086)**: Hosts the 7B model, responsible for Agent 1 and Agent 3's inference and training

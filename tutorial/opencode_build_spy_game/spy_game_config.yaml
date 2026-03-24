@@ -1,0 +1,35 @@
+# Custom configuration for spy game training
+# Extends default AgentJet configuration with optimized memory settings
+
+defaults:
+  - ajet_ts_default
+
+# Override rollout configuration to use tensor parallelism
+actor_rollout_ref:
+  rollout:
+    tensor_model_parallel_size: 2  # Use 2-way tensor parallelism for vLLM to reduce memory per GPU
+    max_num_seqs: 8  # Reduce concurrent sequences
+    max_model_len: 15000  # Slightly reduce max length
+    
+  # Optimize actor configuration for memory
+  actor:
+    fsdp_config:
+      param_offload: true  # Offload parameters to CPU when not needed
+      optimizer_offload: true  # Offload optimizer states to CPU
+    ppo_max_token_len_per_gpu: 15000  # Reduce token length per GPU
+    ppo_micro_batch_size_per_gpu: 1  # Keep small micro batch size
+    
+  # Optimize reference model configuration
+  ref:
+    fsdp_config:
+      param_offload: true
+      reshard_after_forward: true
+    log_prob_max_token_len_per_gpu: 15000
+    log_prob_micro_batch_size_per_gpu: 3
+
+# Environment settings
+ajet:
+  rollout:
+    tensor_model_parallel_size: 2
+    max_num_seqs: 8
+    max_model_len: 15000

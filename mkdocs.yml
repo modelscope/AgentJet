@@ -68,6 +68,8 @@ nav:
       - Multi Model Training (ZH): en/example_train_multi_model.zh.md
       - Training OpenClaw (EN): en/example_openclaw.md
       - Training OpenClaw (ZH): en/example_openclaw.zh.md
+      - Vibe RL Who is Spy (EN): en/example_vibe_rl_who_is_spy.md
+      - Vibe RL Who is Spy (ZH): en/example_vibe_rl_who_is_spy.zh.md
 
 plugins:
   - search:

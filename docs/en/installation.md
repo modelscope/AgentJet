@@ -87,9 +87,8 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
 
     !!! warning "flash-attn Installation"
         - `flash-attn` must be installed **after** other dependencies.
-        - Ensure a healthy connection to GitHub to install pre-compiled wheels.
-        - If you find your machine spend a long time installing flash-attn, ensure a healthy connection to GitHub.
-        - To build faster, export `MAX_JOBS=${N_CPU}`.
+        - Please ensure a **healthy connection to GitHub** to install pre-compiled wheels to install faster.
+        - If the connection to github is unstable, it automatically falls back to building from source, export `MAX_JOBS=${N_CPU}` to install faster.
 
 
 === "Trinity"
