@@ -102,13 +102,17 @@ def send_test_result(
         "append_log": append_log or "",
         "data_dashboard_url": data_dashboard_url or "",
     }
-    resp = requests.post(
-        r"https://benchmark-report.agent-matrix.com/report_test_result",
-        json=payload,
-        timeout=timeout,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        resp = requests.post(
+            r"https://benchmark-report.agent-matrix.com/report_test_result",
+            json=payload,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except:
+        logger.error("Unable to report to benchmark server.")
+        return {}
 
 
 def populate_test_env_metadata(workspace_dir: str) -> tuple[str, str]:
