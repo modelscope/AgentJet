@@ -356,6 +356,7 @@ class SwarmClient(object):
             return
 
         task_id = task.task_id
+        assert task_id, "task.task_id must be valid!"
         workflow_output.metadata["task_id"] = task_id
         req_obj = EndEpisodeRequest(
             client_uuid=self.client_uuid,

@@ -88,6 +88,9 @@ graph TB
     C -->|end_episode + reward_14b| S2
 ```
 
+![alt text](https://img.alicdn.com/imgextra/i3/O1CN01vHfNt41LRcQeDMjE4_!!6000000001296-2-tps-1408-768.png)
+
+
 **架构说明**：
 
 - **Swarm Server 1 (端口 10086)**：承载 7B 模型，负责 Agent 1 和 Agent 3 的推理与训练
@@ -175,6 +178,8 @@ sequenceDiagram
 3. 分别计算两个奖励：7B 基于最终翻译质量，14B 基于检测质量
 4. 将各自的奖励汇报给对应的 Swarm Server
 5. 两个 Server 独立执行策略梯度更新
+
+
 
 ## 训练曲线
 

@@ -194,6 +194,10 @@ Below are some reference materials.
     Please run `ajet-swarm overwatch` during training, this panel displays everything about the weight update timing, transparently.
     When opening this panel, you can see 3 modes which you can select from: "rollout_until_finish_enough_episodes"(only count episodes), "rollout_until_finish_enough_tasks" (+consider task group), "rollout_until_finish_enough_non_dummy_tasks" (+consider group reward)
 
+    Another important thing to notice: each task must have a valid task_id (str), which is used to:
+        - Group up epsiodes that belong to same task inside swarm server (you do not have to worry about that).
+        - Used as a random seed if the task is a game requires random initialization. (e.g. werewolves game's player identity)
+
 
     ### 2-3. Intergrate with your agent loop.
 

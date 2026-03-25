@@ -18,6 +18,7 @@
 
 ## ✈️ News
 
+- 2026.3.19 Support for latest Qwen3.5 models is [in progress](https://github.com/modelscope/AgentJet/pull/16).
 - 2026.3.12 Tuning Original OpenClaw Agent without Editing Any Agent Code. [EN Blog](https://modelscope.github.io/AgentJet/en/example_openclaw/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/example_openclaw.zh/).
 - 2026.3.09 Non-shared-parameter Multiagent Training. [EN Blog](https://modelscope.github.io/AgentJet/en/example_train_multi_model/) / [ZH Blog](http://modelscope.github.io/AgentJet/en/example_train_multi_model.zh/).
 - 2026.2.20 Introducing AgentJet Swarm. [ZH Blog](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_zh/) / [EN Blog](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_en/).
