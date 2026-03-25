@@ -99,7 +99,7 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
         log_probs_lst = []
         entropy_lst = []
         sum_pi_squared_lst = []
-        print(f"len(micro_batches) = {len(micro_batches)}")
+        # print(f"len(micro_batches) = {len(micro_batches)}")
         for micro_batch in micro_batches:
             micro_batch = micro_batch.to(get_device_id())
             model_inputs = {**micro_batch.batch, **micro_batch.non_tensor_batch, "pad_token_id": pad_token_id}
@@ -211,7 +211,7 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                     advantages = model_inputs["advantages"]
                     # [AJET] Debug logging for tensor shapes
                     input_ids = model_inputs["input_ids"]
-                    print(f'-> Current tensor shape, input_ids {input_ids.shape}, response {response_mask.shape}')
+                    print(f'[Update Policy] -> Micro batch shape, input_ids {input_ids.shape}, response {response_mask.shape}')
 
                     entropy_coeff = self.config.entropy_coeff
                     loss_agg_mode = self.config.loss_agg_mode
