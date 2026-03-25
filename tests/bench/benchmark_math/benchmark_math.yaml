@@ -50,7 +50,7 @@ ajet:
     nnodes: 1
     n_gpus_per_node: 4
     # loss = loss * loss_extra_scale_ratio
-    loss_extra_scale_ratio: 10.0
+    loss_extra_scale_ratio: 1.0
 
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT

@@ -228,7 +228,7 @@ ajet:
     debug_tensor_parallel_size: 4
 
 
-  # trainer common configurations
+  # (ajet.trainer_common) trainer common configurations
   trainer_common:
 
     # validation before training

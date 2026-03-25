@@ -283,7 +283,7 @@ class AjetActorRolloutRefWorker(ActorRolloutRefWorker):
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def init_model(self):
-        # from verl.workers.actor import DataParallelPPOActor
+        # [AgentJet Change]: use the custom DataParallelPPOActor which supports FSDP and other features needed for ActorRolloutRefWorker
         from ajet.backbone.verl.dp_actor import AjetDataParallelPPOActor as DataParallelPPOActor
 
         # This is used to import external_lib into the huggingface systems
@@ -347,7 +347,8 @@ class AjetActorRolloutRefWorker(ActorRolloutRefWorker):
                 log_gpu_memory_usage("After offload actor optimizer during init", logger=logger)
 
         if self._is_actor:
-            actor_cfg = self.config.actor
+            # [AgentJet Change]: use the custom DataParallelPPOActor which supports FSDP and other features needed for ActorRolloutRefWorker
+            actor_cfg = omega_conf_to_dataclass(self.config.actor)
             self.actor = DataParallelPPOActor(
                 config=actor_cfg, actor_module=self.actor_module_fsdp, actor_optimizer=self.actor_optimizer
             )
@@ -421,7 +422,6 @@ class AjetActorRolloutRefWorker(ActorRolloutRefWorker):
 
         # Free cached GPU memory so colocated vLLM processes can see it via cudaMemGetInfo
         aggressive_empty_cache(force_sync=True)
-
 
 # ================================= Async related workers =================================
 class AjetAsyncActorRolloutRefWorker(AjetActorRolloutRefWorker):

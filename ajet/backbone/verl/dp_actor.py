@@ -32,7 +32,8 @@ from verl.utils.device import get_device_id
 from verl.utils.fsdp_utils import FSDPModule, fsdp2_clip_grad_norm_
 from verl.utils.profiler import GPUMemoryLogger
 from verl.utils.py_functional import append_to_dict
-from verl.utils.seqlen_balancing import prepare_dynamic_batch
+# ajet/backbone/verl/seqlen_balancing.py
+from ajet.backbone.verl.seqlen_balancing import prepare_dynamic_batch, restore_dynamic_batch
 from verl.workers.actor.dp_actor import DataParallelPPOActor
 
 __all__ = ["AjetDataParallelPPOActor"]
@@ -46,7 +47,93 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
 
     1. Supports `override_ppo_mini_batch_num` to control the number of optimizer steps per train-batch-step.
     2. Adds debug print for tensor shapes during training.
+    3. Override `prepare_dynamic_batch`
     """
+
+    @GPUMemoryLogger(role="dp actor", logger=logger)
+    def compute_log_prob(self, data: DataProto, calculate_entropy: bool = False) -> dict[str, torch.Tensor]:
+        """Compute the log probability of the responses given input_ids, attention_mask and position_ids
+
+        Args:
+            data (DataProto): a DataProto containing keys
+
+                ``input_ids``: tensor of shape [batch_size, sequence_length]. torch.int64. Note that input_ids is the
+                concatenation of prompt and response. Note that ``sequence_length = prompt_length + response_length``.
+
+                ``attention_mask``: tensor of shape [batch_size, sequence_length]. torch.int64.
+
+                ``position_ids``: tensor of shape [batch_size, sequence_length]. torch.int64.
+
+                ``responses``:  tensor of shape [batch_size, response_length]. torch.int64.
+
+        Returns:
+            dict[str, torch.Tensor]: a dict containing keys
+                - ``log_probs``: tensor of shape [batch_size, response_length]. torch.float32.
+                - ``entropys``: tensor of shape [batch_size, response_length]. torch.float32.
+                - ``sum_pi_squared``: tensor of shape [batch_size, response_length]. torch.float32.
+        """
+        calculate_sum_pi_squared = self.config.get("calculate_sum_pi_squared", False)
+        self.actor_module.eval()
+
+        micro_batch_size = data.meta_info["micro_batch_size"]
+        temperature = data.meta_info["temperature"]  # temperature must be in the data.meta_info to avoid silent error
+        use_dynamic_bsz = data.meta_info["use_dynamic_bsz"]
+        pad_token_id = data.meta_info.get("pad_token_id", 0)
+        has_multi_modal_inputs = "multi_modal_inputs" in data.non_tensor_batch.keys()
+
+        select_keys = ["responses", "input_ids", "attention_mask", "position_ids"]
+        non_tensor_select_keys = ["multi_modal_inputs"] if has_multi_modal_inputs else []
+        if self.use_prefix_grouper:
+            select_keys += [k for k in ["prompts", "response_mask"] if k in data.batch]
+            if "uid" in data.non_tensor_batch:
+                non_tensor_select_keys.append("uid")
+
+        data = data.select(batch_keys=select_keys, non_tensor_batch_keys=non_tensor_select_keys)
+
+        if use_dynamic_bsz:
+            max_token_len = data.meta_info["max_token_len"] * self.ulysses_sequence_parallel_size
+            micro_batches, batch_idx_list = prepare_dynamic_batch(data, max_token_len=max_token_len)
+        else:
+            micro_batches = data.split(micro_batch_size)
+
+        log_probs_lst = []
+        entropy_lst = []
+        sum_pi_squared_lst = []
+        print(f"len(micro_batches) = {len(micro_batches)}")
+        for micro_batch in micro_batches:
+            micro_batch = micro_batch.to(get_device_id())
+            model_inputs = {**micro_batch.batch, **micro_batch.non_tensor_batch, "pad_token_id": pad_token_id}
+            with torch.no_grad():
+                outputs = self._forward_micro_batch(
+                    model_inputs, temperature=temperature, calculate_entropy=calculate_entropy
+                )
+            log_probs_lst.append(outputs["log_probs"])
+            if calculate_entropy:
+                entropy_lst.append(outputs["entropys"])
+            if calculate_sum_pi_squared:
+                sum_pi_squared_lst.append(outputs["sum_pi_squared"])
+
+        log_probs = torch.concat(log_probs_lst, dim=0)
+        if calculate_entropy:
+            entropys = torch.concat(entropy_lst, dim=0)
+        if calculate_sum_pi_squared:
+            sum_pi_squared = torch.concat(sum_pi_squared_lst, dim=0)
+
+        if use_dynamic_bsz:
+            log_probs = restore_dynamic_batch(log_probs, batch_idx_list)
+            if calculate_entropy:
+                entropys = restore_dynamic_batch(entropys, batch_idx_list)
+            if calculate_sum_pi_squared:
+                sum_pi_squared = restore_dynamic_batch(sum_pi_squared, batch_idx_list)
+
+        outputs = {"log_probs": log_probs}
+        if calculate_entropy:
+            outputs["entropys"] = entropys
+        if calculate_sum_pi_squared:
+            outputs["sum_pi_squared"] = sum_pi_squared
+        return outputs
+
+
 
     @GPUMemoryLogger(role="dp actor", logger=logger)
     def update_policy(self, data: DataProto):

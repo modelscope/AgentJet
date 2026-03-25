@@ -1,16 +1,6 @@
-# coyp from verl's:
-#    verl/trainer/config/_generated_ppo_trainer.yaml
-
-# DO NOT EDIT MANUALLY
-
-# This reference configration yaml is automatically generated via 'scripts/generate_trainer_config.sh'
-# in which it invokes 'python3 scripts/print_cfg.py --cfg job ' to flatten the 'verl/trainer/config/ppo_trainer.yaml' config fields into a single file.
-# Do not modify this file directly.
-# The file is usually only for reference and never used.
-
 actor_rollout_ref:
   actor:
-    optim:
+    optim:  # [auto-convert]
       _target_: verl.workers.config.FSDPOptimizerConfig
       optimizer: AdamW
       optimizer_impl: torch.optim
@@ -29,7 +19,8 @@ actor_rollout_ref:
       warmup_style: null
       override_optimizer_config: null
       grad_clip: null
-    fsdp_config:
+      clip_grad: 1.0
+    fsdp_config:  # [auto-convert]
       _target_: verl.workers.config.FSDPEngineConfig
       wrap_policy:
         min_num_params: 0
@@ -39,8 +30,8 @@ actor_rollout_ref:
       reshard_after_forward: true
       fsdp_size: -1
       forward_prefetch: false
-      model_dtype: fp32 # Model data type used to initialize the transformers model. default "fp32"
-      dtype: bfloat16   # dtype (str): Mixed precision training param dtype, default "bfloat16"
+      model_dtype: fp32
+      dtype: bfloat16
       use_orig_params: false
       seed: 42
       full_determinism: false
@@ -61,16 +52,30 @@ actor_rollout_ref:
         - re:.*mlp.gate$
         activation_observer: static_minmax
         quantization_config_path: null
+      router_replay:
+        _target_: verl.workers.config.engine.EngineRouterReplayConfig
+        replay_file: null
+        mode: disabled
+        record_file: null
+      micro_batch_size_per_gpu: null
+      infer_max_token_len_per_gpu: null
+      infer_micro_batch_size_per_gpu: null
+      grad_offload: false
+      use_fused_kernels: false
+      mixed_precision: null
+      use_dynamic_bsz: true
+      use_remove_padding: true
+      max_token_len_per_gpu: null
     _target_: ajet.backbone.verl.actor_config.AgentJetFSDPActorConfig
-    rollout_n: ${oc.select:actor_rollout_ref.rollout.n,1}
+    rollout_n: ${oc.select:actor_rollout_ref.rollout.n,1}  # [auto-convert]
     strategy: fsdp
     ppo_mini_batch_size: 16
-    loss_extra_scale_ratio: 1.0
-    override_ppo_mini_batch_num: 1 # special in agentjet
+    loss_extra_scale_ratio: 1.0  # [auto-convert]
+    override_ppo_mini_batch_num: 1  # [auto-convert]
     ppo_micro_batch_size: null
     ppo_micro_batch_size_per_gpu: null
     use_dynamic_bsz: true
-    ppo_max_token_len_per_gpu: 16384
+    ppo_max_token_len_per_gpu: 16384  # [auto-convert]
     clip_ratio: 0.2
     clip_ratio_low: 0.2
     clip_ratio_high: 0.2
@@ -85,17 +90,26 @@ actor_rollout_ref:
       clip_cov_ub: 5.0
       kl_cov_ratio: 0.0002
       ppo_kl_coef: 0.1
+      rollout_correction:
+        _target_: verl.trainer.config.algorithm.RolloutCorrectionConfig
+        rollout_is_threshold: 2.0
+        rollout_is_batch_normalize: false
+        rollout_is: sequence
+        rollout_rs_threshold: null
+        loss_type: ppo_clip
+        bypass_mode: false
+        rollout_rs: null
     clip_ratio_c: 3.0
     loss_agg_mode: seq-mean-token-mean
     loss_scale_factor: null
     global_batch_info: {}
     entropy_coeff: 0
     calculate_entropy: false
-    use_kl_loss: true
+    use_kl_loss: true  # [auto-convert]
     use_prefix_grouper: false
     use_torch_compile: true
-    kl_loss_coef: 0.001
-    kl_loss_type: low_var_kl
+    kl_loss_coef: 0.001  # [auto-convert]
+    kl_loss_type: low_var_kl  # [auto-convert]
     ppo_epochs: 1
     shuffle: false
     data_loader_seed: 42
@@ -145,7 +159,7 @@ actor_rollout_ref:
       record_file: null
       replay_file: null
     grad_clip: 1.0
-    ulysses_sequence_parallel_size: 1
+    ulysses_sequence_parallel_size: 1  # [auto-convert]
     entropy_from_logits_with_chunking: false
     entropy_checkpointing: false
     use_remove_padding: true
@@ -161,20 +175,63 @@ actor_rollout_ref:
       - re:.*mlp.gate$
       activation_observer: static_minmax
       quantization_config_path: null
+    ppo_infer_max_token_len_per_gpu: 16384
+    model_config:
+      _target_: verl.workers.config.model.HFModelConfig
+      local_tokenizer_path: null
+      use_fused_kernels: false
+      trust_remote_code: false
+      override_config: {}
+      local_hf_config_path: null
+      external_lib: null
+      use_remove_padding: true
+      tokenizer: null
+      hf_config: null
+      processor: null
+      hf_config_path: null
+      target_modules: all-linear
+      use_liger: false
+      use_shm: false
+      tokenizer_path: null
+      exclude_modules: null
+      mtp:
+        _target_: verl.workers.config.model.MtpConfig
+        speculative_num_steps: 3
+        speculative_num_draft_tokens: 4
+        num_speculative_tokens: 1
+        enable_rollout: false
+        mtp_loss_scaling_factor: 0.1
+        speculative_algorithm: EAGLE
+        enable: false
+        enable_train: false
+        detach_encoder: false
+        method: mtp
+        speculative_eagle_topk: 1
+      architectures: null
+      local_path: null
+      path: ???
+      generation_config: null
+      enable_activation_offload: false
+      fused_kernel_options: {}
+      custom_chat_template: null
+      load_tokenizer: true
+      lora_rank: 0
+      tiled_mlp: {}
+      enable_gradient_checkpointing: true
+      lora_alpha: 16
+      lora_adapter_path: null
+      target_parameters: null
+    use_rollout_log_probs: false
+    ppo_infer_micro_batch_size_per_gpu: null
+    engine:
+      _target_: verl.base_config.BaseConfig
   ref:
     rollout_n: ${oc.select:actor_rollout_ref.rollout.n,1}
     strategy: ${actor_rollout_ref.actor.strategy}
     use_torch_compile: ${oc.select:actor_rollout_ref.actor.use_torch_compile,true}
-
     ppo_micro_batch_size: null
     ppo_micro_batch_size_per_gpu: null
     use_dynamic_bsz: true
-
-    log_prob_micro_batch_size: null
-    log_prob_micro_batch_size_per_gpu: 1
-    log_prob_use_dynamic_bsz: true
-    log_prob_max_token_len_per_gpu: ${oc.select:actor_rollout_ref.actor.ppo_max_token_len_per_gpu,16384}
-
     ppo_max_token_len_per_gpu: ${oc.select:actor_rollout_ref.actor.ppo_max_token_len_per_gpu,16384}
     profiler:
       _target_: verl.utils.profiler.ProfilerConfig
@@ -221,8 +278,8 @@ actor_rollout_ref:
       reshard_after_forward: true
       fsdp_size: -1
       forward_prefetch: false
-      model_dtype: fp32   # model_dtype (str): Model data type used to initialize the transformers model. default "fp32"
-      dtype: bfloat16     # dtype (str): Mixed precision training param dtype, default "bfloat16"
+      model_dtype: fp32
+      dtype: bfloat16
       use_orig_params: false
       seed: 42
       full_determinism: false
@@ -243,17 +300,145 @@ actor_rollout_ref:
         - re:.*mlp.gate$
         activation_observer: static_minmax
         quantization_config_path: null
+      router_replay:
+        _target_: verl.workers.config.engine.EngineRouterReplayConfig
+        replay_file: null
+        mode: disabled
+        record_file: null
+      micro_batch_size_per_gpu: null
+      infer_max_token_len_per_gpu: null
+      infer_micro_batch_size_per_gpu: null
+      grad_offload: false
+      use_fused_kernels: false
+      mixed_precision: null
+      use_dynamic_bsz: true
+      use_remove_padding: true
+      max_token_len_per_gpu: null
     _target_: verl.workers.config.FSDPActorConfig
     ulysses_sequence_parallel_size: ${oc.select:actor_rollout_ref.actor.ulysses_sequence_parallel_size,1}
     entropy_from_logits_with_chunking: false
     entropy_checkpointing: false
+    clip_ratio: 0.2
+    ppo_epochs: 1
+    use_fused_kernels: false
+    freeze_vision_tower: false
+    optim:
+      _target_: verl.workers.config.optimizer.OptimizerConfig
+      lr_warmup_steps: -1
+      clip_grad: 1.0
+      total_training_steps: -1
+      grad_clip: null
+      betas: !!python/tuple
+      - 0.9
+      - 0.999
+      lr: 0.001
+      lr_warmup_steps_ratio: 0.0
+      weight_decay: 0.01
+    entropy_coeff: 0
+    use_remove_padding: false
+    shuffle: false
+    kl_loss_coef: 0.001
+    ppo_infer_max_token_len_per_gpu: 16384
+    global_batch_info: {}
+    clip_ratio_high: 0.2
+    data_loader_seed: 1
+    ppo_infer_micro_batch_size_per_gpu: null
+    ppo_mini_batch_size: 256
+    use_kl_loss: false
+    kl_loss_type: low_var_kl
+    tau_neg: 1.05
+    checkpoint:
+      _target_: verl.trainer.config.config.CheckpointConfig
+      async_save: false
+    engine:
+      _target_: verl.base_config.BaseConfig
+    use_prefix_grouper: false
+    model_config:
+      _target_: verl.workers.config.model.HFModelConfig
+      local_tokenizer_path: null
+      use_fused_kernels: false
+      trust_remote_code: false
+      override_config: {}
+      local_hf_config_path: null
+      external_lib: null
+      use_remove_padding: true
+      tokenizer: null
+      hf_config: null
+      processor: null
+      hf_config_path: null
+      target_modules: all-linear
+      use_liger: false
+      use_shm: false
+      tokenizer_path: null
+      exclude_modules: null
+      mtp:
+        _target_: verl.workers.config.model.MtpConfig
+        speculative_num_steps: 3
+        speculative_num_draft_tokens: 4
+        num_speculative_tokens: 1
+        enable_rollout: false
+        mtp_loss_scaling_factor: 0.1
+        speculative_algorithm: EAGLE
+        enable: false
+        enable_train: false
+        detach_encoder: false
+        method: mtp
+        speculative_eagle_topk: 1
+      architectures: null
+      local_path: null
+      path: ???
+      generation_config: null
+      enable_activation_offload: false
+      fused_kernel_options: {}
+      custom_chat_template: null
+      load_tokenizer: true
+      lora_rank: 0
+      tiled_mlp: {}
+      enable_gradient_checkpointing: true
+      lora_alpha: 16
+      lora_adapter_path: null
+      target_parameters: null
+    calculate_entropy: false
+    loss_scale_factor: null
+    calculate_sum_pi_squared: false
+    clip_ratio_c: 3.0
+    loss_agg_mode: token-mean
+    tau_pos: 1.0
+    clip_ratio_low: 0.2
+    grad_clip: 1.0
+    policy_loss:
+      _target_: verl.workers.config.actor.PolicyLossConfig
+      ppo_kl_coef: 0.1
+      clip_cov_lb: 1.0
+      clip_cov_ratio: 0.0002
+      kl_cov_ratio: 0.0002
+      rollout_correction:
+        _target_: verl.trainer.config.algorithm.RolloutCorrectionConfig
+        rollout_is_threshold: 2.0
+        rollout_is_batch_normalize: false
+        rollout_is: sequence
+        rollout_rs_threshold: null
+        loss_type: ppo_clip
+        bypass_mode: false
+        rollout_rs: null
+      loss_mode: vanilla
+      clip_cov_ub: 5.0
+    qat:
+      _target_: verl.utils.qat.core.QATConfig
+      mode: w4a16
+      group_size: 16
+      enable: false
+      activation_observer: static_minmax
+      quantization_config_path: null
+    use_rollout_log_probs: false
+    sum_pi_squared_checkpointing: false
   rollout:
     _target_: verl.workers.config.RolloutConfig
     name: vllm
     mode: async
     nnodes: 0
     n_gpus_per_node: ${oc.select:trainer.n_gpus_per_node,8}
-    temperature: 0.9
+    temperature: 0.9  # [auto-convert]
     top_k: -1
     top_p: 1
     prompt_length: ${oc.select:data.max_prompt_length,512}
@@ -269,8 +454,8 @@ actor_rollout_ref:
     expert_parallel_size: 1
     pipeline_model_parallel_size: 1
     max_num_batched_tokens: 8192
-    max_model_len: null
-    max_num_seqs: 10
+    max_model_len: null  # [auto-convert]
+    max_num_seqs: 10  # [auto-convert]
     enable_chunked_prefill: false
     enable_prefix_caching: false
     logprobs_mode: processed_logprobs
@@ -279,24 +464,24 @@ actor_rollout_ref:
     log_prob_micro_batch_size: null
     log_prob_micro_batch_size_per_gpu: 1
     log_prob_use_dynamic_bsz: true
-    log_prob_max_token_len_per_gpu: ${oc.select:actor_rollout_ref.actor.ppo_max_token_len_per_gpu,16384}
+    log_prob_max_token_len_per_gpu: ${oc.select:actor_rollout_ref.actor.ppo_max_token_len_per_gpu,16384}  # [auto-convert]
     disable_log_stats: true
     do_sample: true
-    'n': 1
+    n: 1  # [auto-convert]
     over_sample_rate: 0
     multi_stage_wake_up: false
     engine_kwargs:
       vllm: {}
       sglang: {}
       trtllm: {}
-    val_kwargs:
+    val_kwargs:  # [auto-convert]
       _target_: verl.workers.config.SamplingConfig
       top_k: -1
       top_p: 1.0
       temperature: 0
-      'n': 1
+      n: 1
       do_sample: false
-    multi_turn:
+    multi_turn:  # [auto-convert]
       _target_: ajet.default_config.verl.config_schema_rollout.AjetMultiTurnConfig
       enable: false
       max_assistant_turns: null
@@ -388,7 +573,7 @@ actor_rollout_ref:
       max_connections: 1000
   model:
     _target_: verl.workers.config.HFModelConfig
-    path: ~/models/deepseek-llm-7b-chat
+    path: ~/models/deepseek-llm-7b-chat  # [auto-convert]
     hf_config_path: null
     tokenizer_path: null
     use_shm: false
@@ -445,9 +630,9 @@ data:
   val_max_samples: -1
   prompt_key: prompt
   reward_fn_key: data_source
-  max_prompt_length: 512
-  max_response_length: 512
-  train_batch_size: 1024
+  max_prompt_length: 512  # [auto-convert]
+  max_response_length: 512  # [auto-convert]
+  train_batch_size: 1024  # [auto-convert]
   val_batch_size: null
   tool_config_path: ${oc.select:actor_rollout_ref.rollout.multi_turn.tool_config_path,null}
   return_raw_input_ids: false
@@ -507,8 +692,8 @@ critic:
       reshard_after_forward: true
       fsdp_size: -1
       forward_prefetch: false
-      model_dtype: fp32   # model_dtype (str): Model data type used to initialize the transformers model. default "fp32"
-      dtype: bfloat16     # dtype (str): Mixed precision training param dtype, default "bfloat16"
+      model_dtype: fp32
+      dtype: bfloat16
       use_orig_params: false
       seed: 42
       full_determinism: false
@@ -529,6 +714,20 @@ critic:
         - re:.*mlp.gate$
         activation_observer: static_minmax
         quantization_config_path: null
+      router_replay:
+        _target_: verl.workers.config.engine.EngineRouterReplayConfig
+        replay_file: null
+        mode: disabled
+        record_file: null
+      micro_batch_size_per_gpu: null
+      infer_max_token_len_per_gpu: null
+      infer_micro_batch_size_per_gpu: null
+      grad_offload: false
+      use_fused_kernels: false
+      mixed_precision: null
+      use_dynamic_bsz: true
+      use_remove_padding: true
+      max_token_len_per_gpu: null
     path: ~/models/deepseek-llm-7b-chat
     tokenizer_path: ${oc.select:actor_rollout_ref.model.path,"~/models/deepseek-llm-7b-chat"}
     override_config: {}
@@ -652,7 +851,7 @@ sandbox_fusion:
   max_concurrent: null
   memory_limit_mb: null
 reward:
-  num_workers: 0
+  num_workers: 8
   custom_reward_function:
     path: null
     name: compute_score
@@ -693,6 +892,108 @@ reward:
       skip_tokenizer_init: false
       prompt_length: 2048
       response_length: 2048
+      do_sample: true
+      quantization_config_file: null
+      skip_dump_dir: /tmp/rollout_dump
+      prometheus:
+        _target_: verl.workers.config.rollout.PrometheusConfig
+        served_model_name: null
+        port: 9090
+        enable: false
+        file: /tmp/ray/session_latest/metrics/prometheus/prometheus.yml
+      profiler: null
+      ignore_eos: false
+      checkpoint_engine:
+        _target_: verl.workers.config.rollout.CheckpointEngineConfig
+        backend: naive
+        engine_kwargs: {}
+        update_weights_bucket_megabytes: 2048
+      temperature: 1.0
+      layer_name_map: {}
+      calculate_log_probs: false
+      quantization: null
+      over_sample_rate: 0.0
+      custom: null
+      sglang_engine_mode: local
+      scheduling_policy: fcfs
+      logprobs_mode: processed_logprobs
+      skip_rollout: false
+      nnodes: 0
+      server:
+        _target_: verl.workers.config.rollout.ServerConfig
+        timeout: 60.0
+        max_attempts: 3
+        retry_delay: 2.0
+        max_start_wait_time: 300.0
+        max_connections: 1000
+      trace:
+        _target_: verl.workers.config.rollout.TraceConfig
+        project_name: null
+        token2text: false
+        experiment_name: null
+        max_samples_per_step_per_worker: null
+        backend: null
+      enable_sleep_mode: true
+      mode: async
+      enable_rollout_routing_replay: false
+      pipeline_model_parallel_size: 1
+      mtp:
+        _target_: verl.workers.config.model.MtpConfig
+        speculative_num_steps: 3
+        speculative_num_draft_tokens: 4
+        num_speculative_tokens: 1
+        enable_rollout: false
+        mtp_loss_scaling_factor: 0.1
+        speculative_algorithm: EAGLE
+        enable: false
+        enable_train: false
+        detach_encoder: false
+        method: mtp
+        speculative_eagle_topk: 1
+      val_kwargs:
+        _target_: verl.workers.config.rollout.SamplingConfig
+        do_sample: true
+        n: 1
+        top_k: -1
+        top_p: 1.0
+        temperature: 1.0
+      log_prob_micro_batch_size: null
+      top_p: 1.0
+      multi_turn:
+        _target_: verl.workers.config.rollout.MultiTurnConfig
+        interaction_config_path: null
+        max_user_turns: null
+        format: hermes
+        tool_config_path: null
+        max_assistant_turns: null
+        max_parallel_calls: 1
+        use_inference_chat_template: false
+        enable: false
+        max_tool_response_length: 256
+        tokenization_sanity_check_mode: strict
+        tool_response_truncate_side: middle
+        num_repeat_rollouts: null
+      repetition_penalty: 1.0
+      moe_tensor_parallel_size: 1
+      log_prob_micro_batch_size_per_gpu: null
+      n: 1
+      n_gpus_per_node: 8
+      top_k: -1
+      log_prob_use_dynamic_bsz: false
+      agent:
+        _target_: verl.workers.config.rollout.AgentLoopConfig
+        agent_loop_manager_class: null
+        num_workers: 8
+        default_agent_loop: single_turn_agent
+        agent_loop_config_path: null
+        custom_async_server:
+          _target_: verl.workers.config.rollout.CustomAsyncServerConfig
+          name: null
+          path: null
+      layered_summon: false
+      qat: null
+      multi_stage_wake_up: false
+      log_prob_max_token_len_per_gpu: 16384
   sandbox_fusion:
     url: null
     max_concurrent: 64
@@ -709,9 +1010,9 @@ algorithm:
   _target_: verl.trainer.config.AlgoConfig
   gamma: 1.0
   lam: 1.0
-  adv_estimator: grpo
+  adv_estimator: grpo  # [auto-convert]
   norm_adv_by_std_in_grpo: true
-  use_kl_in_reward: false
+  use_kl_in_reward: false  # [auto-convert]
   kl_penalty: kl
   kl_ctrl:
     _target_: verl.trainer.config.KLControlConfig
@@ -728,37 +1029,35 @@ algorithm:
   gdpo_reward_weights: null
 trainer:
   balance_batch: true
-  total_epochs: 30
+  total_epochs: 30  # [auto-convert]
   total_training_steps: null
-  project_name: verl_examples
-  experiment_name: gsm8k
-  logger:
+  project_name: verl_examples  # [auto-convert]
+  experiment_name: gsm8k  # [auto-convert]
+  logger:  # [auto-convert]
   - console
   - wandb
   log_val_generations: 0
   rollout_data_dir: null
   validation_data_dir: null
-  nnodes: 1
-  n_gpus_per_node: 8
-  save_freq: -1
+  nnodes: 1  # [auto-convert]
+  n_gpus_per_node: 8  # [auto-convert]
+  save_freq: -1  # [auto-convert]
   esi_redundant_time: 0
   resume_mode: auto
   resume_from_path: null
-  val_before_train: true
+  val_before_train: true  # [auto-convert]
   val_only: false
-  test_freq: -1
+  test_freq: -1  # [auto-convert]
   critic_warmup: 0
   default_hdfs_dir: null
   del_local_ckpt_after_load: false
-  checkpoint_base_dir: checkpoints
+  checkpoint_base_dir: checkpoints  # [auto-convert]
   default_local_dir: ${trainer.checkpoint_base_dir}/${trainer.project_name}/${trainer.experiment_name}
   max_actor_ckpt_to_keep: null
   max_critic_ckpt_to_keep: null
   ray_wait_register_center_timeout: 300
   device: cuda
   use_legacy_worker_impl: auto
-global_profiler:
-  _target_: verl.utils.profiler.ProfilerConfig
 transfer_queue:
   enable: false
 ray_kwargs:

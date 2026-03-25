@@ -810,7 +810,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
             # repeat test batch
             test_batch = test_batch.repeat(
-                repeat_times=self.config.ajet.rollout.val_kwargs.num_repeat,
+                repeat_times=self.config.ajet.trainer_common.val_pass_n,
                 interleave=True,
             )
 
@@ -858,10 +858,10 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             logger.info(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
 
             self.checkpoint_manager.update_weights(self.global_steps)
-            main_val_dataset = self.get_eval_dataset()
+            main_val_dataset = self.get_val_dataset()
 
             logger.info("Starting validate rollout")
-            context_tracker_arr, tasks, val_metrics = self.eval_dataset(
+            context_tracker_arr, tasks, val_metrics = self._rollout_val_dataset(
                 target_dataset=main_val_dataset,
                 target_dataset_name="main_val_dataset",
                 mode="validate",
@@ -920,7 +920,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
         return metric_dict
 
-    def eval_dataset(self, target_dataset, target_dataset_name, mode, epoch):
+    def _rollout_val_dataset(self, target_dataset, target_dataset_name, mode, epoch):
         """
         Evaluate a dataset by running rollouts and computing task completion metrics.
 
@@ -1005,7 +1005,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
         return ctx_trackers, tasks, val_metrics
 
-    def get_eval_dataset(self):
+    def get_val_dataset(self):
         from ajet.task_reader import RouterTaskReader
 
         task_reader = RouterTaskReader(
