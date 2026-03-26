@@ -297,7 +297,7 @@ actor_rollout_ref:
       'n': 1
       do_sample: false
     multi_turn:
-      _target_: ajet.default_config.verl.config_schema_rollout.AjetMultiTurnConfig
+      _target_: ajet.backbone.verl.multiturn_config.AjetMultiTurnConfig
       enable: false
       max_assistant_turns: null
       tool_config_path: null

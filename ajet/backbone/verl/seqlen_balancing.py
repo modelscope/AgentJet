@@ -196,9 +196,9 @@ def greedy_partition(seqlen_list: list[int], k_partitions: int, equal_size: bool
     partitions = [[] for _ in range(k_partitions)]
     partition_sums = [0 for _ in range(k_partitions)]
     for seqlen, i in sorted_seqlen:
-        min_idx = None
-        for j in range(k_partitions):
-            if min_idx is None or partition_sums[j] < partition_sums[min_idx]:
+        min_idx = 0
+        for j in range(1, k_partitions):
+            if partition_sums[j] < partition_sums[min_idx]:
                 min_idx = j
         partitions[min_idx].append(i)
         partition_sums[min_idx] += seqlen
@@ -295,7 +295,7 @@ def log_seqlen_unbalance(seqlen_list: list[int], partitions: list[list[int]], pr
     return {
         f"{prefix}/min": min_sum_seqlen,
         f"{prefix}/max": max_sum_seqlen,
-        f"{prefix}/minmax_diff": max_sum_seqlen - min_sum_seqlen,
+        f"{prefix}/minmax_diff": max_sum_seqlen - min_sum_seqlen,  # type: ignore[operator]
         f"{prefix}/balanced_min": min_sum_seqlen_balanced,
         f"{prefix}/balanced_max": max_sum_seqlen_balanced,
         f"{prefix}/mean": total_sum_seqlen / len(partitions),

@@ -131,7 +131,13 @@ def main():
             swarm_worker_2.print_rollout_stat()
 
             # Return average reward for logging
-            return (workflow_output_civilians.reward + workflow_output_spies.reward) / 2.0
+            civilian_reward = workflow_output_civilians.reward
+            spy_reward = workflow_output_spies.reward
+            if civilian_reward is None or spy_reward is None:
+                return None
+            if not isinstance(civilian_reward, float) or not isinstance(spy_reward, float):
+                return None
+            return (civilian_reward + spy_reward) / 2.0
 
         except Exception as e:
             print(f"Error in adversarial rollout: {e}")
