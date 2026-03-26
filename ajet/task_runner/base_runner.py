@@ -1,5 +1,4 @@
 import asyncio
-import gc
 from threading import Lock
 from typing import Any, Callable, Union, Type
 from multiprocessing import Process, Queue

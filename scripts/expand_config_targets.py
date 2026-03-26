@@ -18,7 +18,6 @@ import sys
 
 class TargetRemovalError(Exception):
     """Custom exception for target removal validation errors."""
-    pass
 
 
 def get_class_from_target(target_path: str):

@@ -38,7 +38,7 @@ tutorial/opencode_build_spy_game/
 
 Train a 7B model as the civilian team against qwen-max (via DashScope API) as spies.
 
-**Hardware:** 4 GPUs  
+**Hardware:** 4 GPUs
 **Reward:** 1.0 if civilians win, 0.0 if spies win
 
 #### Setup:
@@ -66,7 +66,7 @@ Train a 7B model as the civilian team against qwen-max (via DashScope API) as sp
 
 Train two 7B models competitively - one as civilians, one as spies.
 
-**Hardware:** 8 GPUs total (4 per swarm server)  
+**Hardware:** 8 GPUs total (4 per swarm server)
 **Reward:** Team-based (1.0 for winners, 0.0 for losers)
 
 #### Setup:
@@ -170,7 +170,7 @@ python tutorial/opencode_build_spy_game/mock_dataset.py
 1. **Random Player Assignment**: Each episode randomly assigns player names and roles
 2. **Description Phase**: Players generate descriptions using LLM without revealing their word
 3. **Voting Phase**: Players vote to eliminate the most suspicious player
-4. **Win Conditions**: 
+4. **Win Conditions**:
    - Civilians win when all spies eliminated
    - Spies win when they equal/outnumber civilians
    - Draw if max rounds (10) reached

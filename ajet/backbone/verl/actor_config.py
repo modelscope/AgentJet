@@ -1,5 +1,5 @@
 from verl.workers.config import FSDPActorConfig
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

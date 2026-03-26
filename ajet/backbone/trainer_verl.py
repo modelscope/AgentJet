@@ -23,13 +23,10 @@ import numpy as np
 import torch
 from beast_logger import print_dict
 from loguru import logger
-from omegaconf import OmegaConf
 from tqdm import tqdm
 from verl import DataProto
 from verl.experimental.dataset.sampler import AbstractCurriculumSampler
-from verl.experimental.agent_loop.agent_loop import AsyncLLMServerManager, AgentLoopWorker
-from verl.single_controller.ray import RayClassWithInitArgs
-from verl.single_controller.ray.base import create_colocated_worker_cls
+from verl.experimental.agent_loop.agent_loop import AsyncLLMServerManager
 from verl.trainer.config import AlgoConfig
 from verl.trainer.ppo import core_algos
 from verl.trainer.ppo.core_algos import AdvantageEstimator, agg_loss
@@ -40,7 +37,6 @@ from verl.trainer.ppo.metric_utils import (
 )
 from verl.trainer.ppo.ray_trainer import (
     RayPPOTrainer,
-    Role,
     apply_kl_penalty,
     compute_response_mask,
 )

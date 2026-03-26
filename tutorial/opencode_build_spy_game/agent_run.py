@@ -74,7 +74,7 @@ def _execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Dict:
     player_configs = []
     spy_count = 0
     civilian_count = 0
-    
+
     for i in range(num_players):
         # Use shuffled index to determine role
         is_spy = player_indices[i] < num_spies
@@ -99,11 +99,11 @@ def _execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Dict:
             civilian_count += 1
 
         player_configs.append(config)
-    
+
     # Assert correct role distribution
     assert spy_count == num_spies, f"Expected {num_spies} spies, got {spy_count}"
     assert civilian_count == num_players - num_spies, f"Expected {num_players - num_spies} civilians, got {civilian_count}"
-    
+
     # Assert all trainable model users have the same role (all civilians in this mode)
     trainable_base_url = api_baseurl_key.base_url
     trainable_roles = []
@@ -112,7 +112,7 @@ def _execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Dict:
             # Determine role by checking which model is used
             is_civilian = config["model"] == "agentjet-model" and config["base_url"] == trainable_base_url
             trainable_roles.append(is_civilian)
-    
+
     # All trainable model users must have the same role
     if trainable_roles:
         assert all(trainable_roles) or not any(trainable_roles), \

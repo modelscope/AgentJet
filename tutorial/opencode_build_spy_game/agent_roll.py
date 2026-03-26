@@ -5,12 +5,9 @@ Civilians (7B model) vs Spies (qwen-max)
 
 import os
 import json
-import uuid
 from pathlib import Path
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
-from ajet.default_config.ajet_default import AjetTaskReader
-from ajet.task_reader import RouterTaskReader
 from ajet.schema.task import Task
 from tutorial.opencode_build_spy_game.agent_run import run_agent_and_compute_reward
 

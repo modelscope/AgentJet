@@ -22,7 +22,6 @@ import socket
 import hydra
 import ray
 from omegaconf import DictConfig, OmegaConf
-from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
 from verl.utils.dataset.rl_dataset import collate_fn
 from torch.utils.data import Dataset as TorchDataset
@@ -156,7 +155,6 @@ class TaskRunner:
             from verl.workers.megatron_workers import (
                 ActorRolloutRefWorker,
                 AjetAsyncActorRolloutRefWorker,
-                CriticWorker,
             )
 
             actor_rollout_cls = AjetAsyncActorRolloutRefWorker

@@ -10,7 +10,7 @@ actor_rollout_ref:
     tensor_model_parallel_size: 2  # Use 2-way tensor parallelism for vLLM to reduce memory per GPU
     max_num_seqs: 8  # Reduce concurrent sequences
     max_model_len: 15000  # Slightly reduce max length
-    
+
   # Optimize actor configuration for memory
   actor:
     fsdp_config:
@@ -18,7 +18,7 @@ actor_rollout_ref:
       optimizer_offload: true  # Offload optimizer states to CPU
     ppo_max_token_len_per_gpu: 15000  # Reduce token length per GPU
     ppo_micro_batch_size_per_gpu: 1  # Keep small micro batch size
-    
+
   # Optimize reference model configuration
   ref:
     fsdp_config:

@@ -1,5 +1,4 @@
-from verl.workers.config.rollout import MultiTurnConfig
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 from verl.base_config import BaseConfig
 
@@ -23,5 +22,3 @@ class AjetMultiTurnConfig(BaseConfig):
     tokenization_sanity_check_mode: str = "strict"
     format: str = "hermes"
     num_repeat_rollouts: Optional[int] = None
-
-

@@ -17,80 +17,39 @@ Custom FSDP workers for AgentJet project
 """
 
 import datetime
-import json
 import logging
 import os
-import warnings
-from dataclasses import asdict
 
-import psutil
-import torch
-import torch.distributed
-import torch.distributed as dist
-from codetiming import Timer
 from omegaconf import DictConfig, OmegaConf, open_dict
-from omegaconf.errors import ConfigAttributeError
-from peft import LoraConfig, TaskType, get_peft_model
-from safetensors.torch import save_file
 from torch.distributed.device_mesh import init_device_mesh
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from torch.distributed.fsdp.api import FullStateDictConfig, ShardedStateDictConfig, StateDictType
 
 try:
     # for torch 2.5+
-    from torch.distributed.tensor import DTensor
+    pass
 except ImportError:
-    from torch.distributed._tensor import DTensor
+    pass
 
-from verl import DataProto
-from verl.models.transformers.monkey_patch import apply_monkey_patch
 from verl.single_controller.base import Worker
-from verl.single_controller.base.decorator import Dispatch, make_nd_compute_dataproto_dispatch_fn, register
-from verl.utils import hf_processor, hf_tokenizer
-from verl.utils.activation_offload import enable_activation_offloading
+from verl.single_controller.base.decorator import Dispatch, register
 from verl.utils.checkpoint.fsdp_checkpoint_manager import FSDPCheckpointManager
 from verl.utils.config import omega_conf_to_dataclass
 from verl.utils.device import (
-    get_device_id,
     get_device_name,
     get_nccl_backend,
-    get_torch_device,
-    set_expandable_segments,
 )
 from verl.utils.flops_counter import FlopsCounter
 from verl.utils.fs import copy_to_local
 from verl.utils.fsdp_utils import (
-    CPUOffloadPolicy,
-    MixedPrecisionPolicy,
-    apply_fsdp2,
-    collect_lora_params,
-    fsdp2_load_full_state_dict,
     fsdp_version,
-    get_fsdp_wrap_policy,
-    get_init_weight_context_manager,
-    get_shard_placement_fn,
-    init_fn,
-    layered_summon_lora_params,
-    load_fsdp_model_to_gpu,
-    load_fsdp_optimizer,
     offload_fsdp_model_to_cpu,
     offload_fsdp_optimizer,
-    replace_lora_wrapper,
 )
 from verl.utils.import_utils import import_external_libs
 from verl.utils.memory_utils import aggressive_empty_cache
-from verl.utils.model import convert_weight_keys
-from verl.utils.profiler import DistProfiler, DistProfilerExtension, ProfilerConfig, log_gpu_memory_usage, simple_timer
-from verl.utils.profiler.performance import reduce_timing, topk_reduce_ratio_min_max
-from verl.utils.py_functional import convert_to_regular_types
+from verl.utils.profiler import DistProfiler, DistProfilerExtension, ProfilerConfig, log_gpu_memory_usage
 
 # QAT support
-from verl.utils.qat import apply_qat, enable_qat_fuse
-from verl.utils.ray_utils import get_event_loop
-from verl.utils.transformers_compat import get_auto_model_for_vision2seq
-from verl.workers.config import FSDPCriticConfig, FSDPEngineConfig, HFModelConfig, RolloutConfig
-from verl.workers.config.optimizer import build_optimizer
-from verl.workers.rollout import get_rollout_class
+from verl.workers.config import FSDPEngineConfig
 from verl.workers.sharding_manager.fsdp_ulysses import FSDPUlyssesShardingManager
 from verl.workers.fsdp_workers import ActorRolloutRefWorker
 

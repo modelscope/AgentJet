@@ -2,7 +2,6 @@
 Test script to verify a single game works correctly.
 """
 
-import os
 from ajet.schema.task import Task
 from tutorial.opencode_build_spy_game.agent_run import run_agent_and_compute_reward
 
