@@ -18,6 +18,7 @@
 
 ## ✈️ News
 
+- 2026.3.26 Upgrade verl backend to 0.7.1 to support more models and increase training speed!
 - 2026.3.19 Support for latest Qwen3.5 models is [in progress](https://github.com/modelscope/AgentJet/pull/16).
 - 2026.3.12 Tuning Original OpenClaw Agent without Editing Any Agent Code. [EN Blog](https://modelscope.github.io/AgentJet/en/example_openclaw/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/example_openclaw.zh/).
 - 2026.3.09 Non-shared-parameter Multiagent Training. [EN Blog](https://modelscope.github.io/AgentJet/en/example_train_multi_model/) / [ZH Blog](http://modelscope.github.io/AgentJet/en/example_train_multi_model.zh/).
