@@ -204,6 +204,7 @@ Current evaluation criteria:
 ```
 
 **用户反馈"回答更详细一些，更适合老年人阅读"后**（After user prompt: Can you be more detailed in your responses, and make the answers more suitable for elderly readers?）：
+![alt text](https://img.alicdn.com/imgextra/i2/O1CN01eMbqQP1Ff0JQ9DooN_!!6000000000513-2-tps-1006-204.png)
 ```
 Current evaluation criteria:
 - Respond to the question accurately and completely
@@ -215,6 +216,7 @@ Current evaluation criteria:
 ```
 
 **用户进一步反馈"再幽默一点"后**（After user prompt: It would be better to be a bit more humorous and witty.）：
+![alt text](https://img.alicdn.com/imgextra/i4/O1CN01uVW6W11T71Y2PUoaq_!!6000000002334-2-tps-1201-221.png)
 ```
 Current evaluation criteria:
 - Use appropriate tone and style: clear, patient, respectful, suitable for elderly readers
@@ -228,18 +230,24 @@ Current evaluation criteria:
 
 ### 训练效果对比
 
-以"木星"问题为例（Response towards question: Thinking about Jupiter, What are your thoughts on Jupiter?）：
+测试提问问题：Thinking about Jupiter, What are your thoughts on Jupiter？
 
 **微调前：**
+
 > Jupiter is the largest planet in our solar system and the fifth planet from the Sun. It is known for its distinctive Great Red Spot, a hurricane-like storm that has been raging for hundreds of years, and its many moons...
 
 **微调后（根据用户偏好演化）：**
+
 > Hello there! Jupiter is a fascinating planet, isn't it? It's the largest in our solar system, a giant gas giant with a big, beautiful banded atmosphere. People often think Jupiter is full of mystery and wonder, with its swirling clouds and those iconic Great Red Spot—the biggest storm known to humanity, lasting hundreds of years! What aspect of Jupiter are you most curious about today? 😊
 
 可以看到，微调后的回答更生动、更有亲和力，符合用户在交互中表达的偏好。
 
 这种变化是怎么发生的？当用户持续表达偏好后，Judge Prompt 被不断更新，后续候选回答的评分标准也随之改变。
 在 GRPO 训练过程中，被评为低分的回答对应的梯度会被抑制，而高分回答的梯度会被强化。如此循环，最终模型的输出分布逐渐向用户的偏好方向收敛。值得注意的是，这个过程并不需要用户显式标注数据——偏好信号隐藏在日常对话中，由模型自己理解和翻译。
+
+以下曲线展现了训练过程中奖励、entropy、kl loss的变化。由于这个案例中使用了listwise奖励，因此，奖励基本保持平稳。
+![alt text](https://img.alicdn.com/imgextra/i2/O1CN01rW5h2O1Rrcc3aPZ1z_!!6000000002165-2-tps-2318-790.png)
+
 
 ### 完整数据流
 
