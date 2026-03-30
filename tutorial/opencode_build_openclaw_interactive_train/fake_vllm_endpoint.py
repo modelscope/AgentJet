@@ -141,7 +141,7 @@ def apply_pending_config_updates() -> bool:
             logger.warning(f"Unknown ajet_job field: {key}")
 
     # Recreate ajet_job with updated values
-    ajet_job = AgentJetJob(**job_dict)
+    ajet_job = AgentJetJob(**job_dict)  # type: ignore
 
     # Restart engine with new config
     if swarm_client is not None:
