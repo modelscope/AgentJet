@@ -18,6 +18,7 @@
 
 ## ✈️ News
 
+- 2026.3.30 LoRA training example is now online! See [tutorial/example_math_lora](tutorial/example_math_lora/) for an example.
 - 2026.3.26 Upgrade verl backend to 0.7.1 to support more models and increase training speed! All [benchmark](https://benchmark.agentjet.top/) verified.
 - 2026.3.19 Support for latest Qwen3.5 models is [in progress](https://github.com/modelscope/AgentJet/pull/16).
 - 2026.3.12 Tuning Original OpenClaw Agent without Editing Any Agent Code. [EN Blog](https://modelscope.github.io/AgentJet/en/example_openclaw/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/example_openclaw.zh/).
@@ -163,7 +164,6 @@ AgentJet is a constantly evolving project. We are planning to add the following 
 
 | Category | Feature | Status |
 | :--- | :--- | :--- |
-| **Examples** | Add LoRA training examples | Todo |
 | **Infra** | Optimize configurations for long-context adaptation on smaller GPUs | In Progress |
 | **Capability** | Multi-modal training support | Todo |
 | **Capability** | MARL Credit assignment | Todo |
