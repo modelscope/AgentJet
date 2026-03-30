@@ -734,6 +734,11 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             if is_last_step:
                                 last_val_metrics = val_metrics
                         metrics.update(val_metrics)
+                        val_print_to_markdown_file_path = self.config.ajet.trainer_common.val_print_to_markdown_file_path
+                        if val_print_to_markdown_file_path:
+                            with open(val_print_to_markdown_file_path, mode="a+") as f:
+                                f.write(str(val_metrics))
+                                f.write('\n')
 
                     # Check if the ESI (Elastic Server Instance)/training plan is close to expiration.
                     esi_close_to_expiration = should_save_ckpt_esi(
@@ -782,6 +787,11 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     self.train_dataloader.sampler.update(batch=batch)
 
                 self.verl_logger.log(data=metrics, step=self.global_steps)
+                train_print_to_markdown_file_path = self.config.ajet.trainer_common.train_print_to_markdown_file_path
+                if train_print_to_markdown_file_path:
+                    with open(train_print_to_markdown_file_path, mode="a+") as f:
+                        f.write(str(metrics))
+                        f.write('\n')
                 progress_bar.update(1)
                 self.global_steps += 1
 
