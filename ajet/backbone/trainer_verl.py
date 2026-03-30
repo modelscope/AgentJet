@@ -987,12 +987,12 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         assert num_tasks == len(ctx_trackers) // pass_n
 
         val_metrics = {
-            "target dataset name": target_dataset_name,
+            "global_steps": self.global_steps,
+            "target_dataset_name": target_dataset_name,
             "pass_n": pass_n,
             "total_tasks": len(task_results),
             "num_all_success_tasks": num_all_success_tasks,
             f"num_pass_n_tasks(pass@{pass_n})": num_pass_n_tasks,
-            # [oc]: change var name TGC -> task_pass_rate
             "task_pass_rate@1": repeated_success_tasks / (num_tasks * pass_n),
             f"task_pass_rate@{pass_n}": num_pass_n_tasks / num_tasks,
             f"task_pass_rate@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
