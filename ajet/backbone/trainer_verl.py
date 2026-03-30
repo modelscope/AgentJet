@@ -419,14 +419,23 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         self.checkpoint_manager.update_weights(self.global_steps)
         self.checkpoint_manager.sleep_replicas()
 
+        # [oc] swarm_mode is not compatible with `val_before_train` and `val_only`
+        assert not (self.config.ajet.enable_swarm_mode and (self.config.ajet.trainer_common.val_before_train or self.config.ajet.trainer_common.val_only)), \
+            "swarm_mode is not compatible with `val_before_train` and `val_only`"
+
+
         # perform validation before training
         # currently, we only support validation using the reward_function.
-        if (self.val_reward_fn is not None) and (self.config.trainer.get("val_before_train", True)) and (not self.config.ajet.enable_swarm_mode):
+        if (self.val_reward_fn is not None) and (self.config.ajet.trainer_common.val_before_train) and (not self.config.ajet.enable_swarm_mode):
             val_metrics = self._validate()
             assert val_metrics, f"{val_metrics=}"
-            pprint(f"Initial validation metrics: {val_metrics}")
             self.verl_logger.log(data=val_metrics, step=self.global_steps)
-            if self.config.trainer.get("val_only", False):
+            val_print_to_markdown_file_path = self.config.ajet.trainer_common.val_print_to_markdown_file_path
+            if val_print_to_markdown_file_path:
+                with open(val_print_to_markdown_file_path, mode="a+") as f:
+                    f.write(str(val_metrics))
+                    f.write('\n')
+            if self.config.ajet.trainer_common.val_only:
                 return
 
         # add tqdm
@@ -983,11 +992,21 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             "total_tasks": len(task_results),
             "num_all_success_tasks": num_all_success_tasks,
             f"num_pass_n_tasks(pass@{pass_n})": num_pass_n_tasks,
-            "TGC@1": repeated_success_tasks / (num_tasks * pass_n),
-            f"TGC@{pass_n}": num_pass_n_tasks / num_tasks,
-            f"TGC@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
+            # [oc]: change var name TGC -> task_pass_rate
+            "task_pass_rate@1": repeated_success_tasks / (num_tasks * pass_n),
+            f"task_pass_rate@{pass_n}": num_pass_n_tasks / num_tasks,
+            f"task_pass_rate@{pass_n}-all-pass": num_all_success_tasks / num_tasks,
             "mean_reward": sum(rewards) / len(rewards) if rewards else 0,
+            "std_reward": np.std(rewards) if rewards else 0,
         }
+        for k in [2, 4, 8, 16]:
+            if pass_n > k:
+                num_pass_k = 0
+                for task_id, task_outcomes in task_results.items():
+                    if any(tag == "success" for tag in task_outcomes["tag_arr"][:k]):
+                        num_pass_k += 1
+                val_metrics[f"task_pass_rate@{k}"] = num_pass_k / num_tasks
+
         save_trajectory_as_json_file(ctx_trackers, self.global_steps, self.config, prefix="eval")
         update_metrics(ctx_trackers, val_metrics, prefix="eval_")
         print_dict(

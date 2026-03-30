@@ -299,7 +299,6 @@ async def finalize_episodes(task: Task, valid_results: List[EpisodeResult], rewa
             lambda ep=episode_result, wo=workflow_output: swarm_client.end_episode(task, ep.episode_uuid, wo),
         )
 
-# [oc]: 微调一下代码，当 handle_one2many_request_run_episodes 运行完时，随机stream回去一个答案，但stream不中断，等待reward计算完之后，再结束stream
 async def handle_one2many_request(request: Request, request_id: str) -> Dict | List[bytes]:
     task, valid_results, all_answers, user_query, all_answers = await handle_one2many_request_run_episodes(request, request_id)
     best_answer = await handle_one2many_request_run_reward(task, valid_results, all_answers, user_query)

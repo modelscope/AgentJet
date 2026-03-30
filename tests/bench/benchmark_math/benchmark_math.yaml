@@ -43,14 +43,16 @@ ajet:
     debug_first_n_tasks: 1
 
   trainer_common:
-    save_freq: 100
+    save_freq: 999999
     test_freq: 999999
     total_epochs: 100
     logger: swanlab
+    val_print_to_markdown_file_path: './qwen2-7b.md'
     nnodes: 1
     n_gpus_per_node: 4
     # loss = loss * loss_extra_scale_ratio
     loss_extra_scale_ratio: 1.0
+    val_before_train: true
 
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT

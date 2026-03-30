@@ -234,6 +234,8 @@ ajet:
     # validation before training
     val_before_train: False
     val_pass_n: 4
+    val_only: False
+    val_print_to_markdown_file_path: null
 
     # save and test frequency (in step)
     save_freq: 20
