@@ -278,6 +278,41 @@ def expand_ajet_hierarchical_config(config, write_to=None):
     return config_final
 
 
+def _validate_input_yaml_no_overlap_with_auto_convertion_config(input_yaml_config, config_final):
+    """Validate that input yaml doesn't contain keys that will be auto-converted with different values."""
+    import json
+    import re
+
+    jsonc_path = os.path.join(os.path.dirname(__file__), "..", "default_config", "verl", "config_auto_convertion_verl.jsonc")
+    with open(jsonc_path, "r", encoding="utf-8") as f:
+        content = f.read()
+        content = re.sub(r'//.*', '', content)
+        convertion_json = json.loads(content)
+
+    errors = []
+    for from_key, to_keys in convertion_json.items():
+        to_keys = to_keys if isinstance(to_keys, list) else [to_keys]
+        for to_key in to_keys:
+            try:
+                input_value = _dive_to_fetch_value(input_yaml_config, to_key)
+            except ValueError:
+                continue
+            final_value = _dive_to_fetch_value(config_final, to_key)
+            if str(input_value) != str(final_value):
+                errors.append(
+                    f"  - Key '{to_key}': input_yaml value = {input_value}, "
+                    f"but ajet config sets it to = {final_value}"
+                )
+
+    if errors:
+        error_msg = (
+            "We found a configuration conflict between AgentJet and Verl! Input yaml contains keys that conflict with ajet default config values:\n"
+            + "\n".join(errors)
+            + "\nPlease use ajet.xxx to assign training parameters instead."
+        )
+        raise ValueError(error_msg)
+
+
 def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_callback=None, storage=True):
     """
     Prepare experiment configuration by reading YAML, setting up backup directories,
@@ -299,7 +334,7 @@ def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_
 
     ## 0. read yaml & get experiment_name
     with open(yaml_path, "r", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
+        config = input_yaml_config = yaml.safe_load(file)
     try:
         exp_name = config.get("ajet").get("experiment_name")
     except Exception:
@@ -366,6 +401,8 @@ def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_
         override_param_callback=override_param_callback
     )
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
+
+    _validate_input_yaml_no_overlap_with_auto_convertion_config(input_yaml_config, config_final)
 
     if not storage:
         shutil.rmtree(os.path.join(exp_base_dir, exp_name))

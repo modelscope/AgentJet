@@ -177,3 +177,4 @@ tutorial/**/*.json
 node_modules
 .agents
 skills-lock.json
+blueprint*

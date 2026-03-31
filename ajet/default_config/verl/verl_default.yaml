@@ -488,7 +488,6 @@ critic:
     betas:
     - 0.9
     - 0.999
-    clip_grad: 1.0
     min_lr_ratio: 0.0
     num_cycles: 0.5
     lr_scheduler_type: constant

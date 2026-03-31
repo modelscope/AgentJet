@@ -1,6 +1,6 @@
 # ------------------ main configuration ------------------
 ajet:
-  project_name: example_math_agent
+  project_name: test_lora
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     # effective when `type: huggingface_dat_repo`
@@ -44,35 +44,29 @@ ajet:
     max_prompt_length:   3000
     max_response_length: 7000
 
+  execute_test: false
+
   debug:
     debug_max_parallel: 1
     debug_first_n_tasks: 1
 
   trainer_common:
+    val_print_to_markdown_file_path: /mnt/data_cpfs/qingxu.fu/autoresearch-rl/exp_result/hello-agentjet-math-lora/val_result.md
+    train_print_to_markdown_file_path: /mnt/data_cpfs/qingxu.fu/autoresearch-rl/exp_result/hello-agentjet-math-lora/train_result.md
     save_freq: 100
     test_freq: 100
     total_epochs: 100
     logger: swanlab
     val_before_train: true
+    optim:
+      lr: 3e-05
 
-actor_rollout_ref:
-  model:
+  lora:
     lora_rank: 32
     lora_alpha: 32
     target_modules: all-linear
-  actor:
-    optim:
-      lr: 3e-5
-    fsdp_config:
-      param_offload: true
-      optimizer_offload: true
-  rollout:
     load_format: safetensors
 
-trinity:
-  synchronizer:
-    sync_offset: 1
-    sync_method: nccl
 
 
 # ------------------ do not modify ------------------

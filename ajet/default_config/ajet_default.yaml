@@ -276,13 +276,11 @@ ajet:
       betas:
       - 0.9
       - 0.999
-      clip_grad: 1.0
       min_lr_ratio: 0.0
       num_cycles: 0.5
       lr_scheduler_type: constant
       zero_indexed_step: true
-      warmup_style: null
-      override_optimizer_config: null
+      grad_clip: 20.0
 
     # enable KL loss regularization
     use_kl_loss: True
@@ -302,6 +300,13 @@ ajet:
 
     # whether to save train/eval trajectories to JSON files
     save_trajectory_as_json_file: False
+
+  lora:
+    # LoRA configuration (disabled by default, set lora_rank > 0 to enable)
+    lora_rank: 0
+    lora_alpha: 16
+    target_modules: all-linear
+    load_format: auto
 
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
