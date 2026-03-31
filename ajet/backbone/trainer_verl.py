@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import os
 import uuid
 from collections import defaultdict
 from pprint import pprint
@@ -432,6 +433,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             self.verl_logger.log(data=val_metrics, step=self.global_steps)
             val_print_to_markdown_file_path = self.config.ajet.trainer_common.val_print_to_markdown_file_path
             if val_print_to_markdown_file_path:
+                os.makedirs(os.path.dirname(val_print_to_markdown_file_path), exist_ok=True)
                 with open(val_print_to_markdown_file_path, mode="a+") as f:
                     f.write(str(val_metrics))
                     f.write('\n')
@@ -736,6 +738,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         metrics.update(val_metrics)
                         val_print_to_markdown_file_path = self.config.ajet.trainer_common.val_print_to_markdown_file_path
                         if val_print_to_markdown_file_path:
+                            os.makedirs(os.path.dirname(val_print_to_markdown_file_path), exist_ok=True)
                             with open(val_print_to_markdown_file_path, mode="a+") as f:
                                 f.write(str(val_metrics))
                                 f.write('\n')
@@ -789,6 +792,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 self.verl_logger.log(data=metrics, step=self.global_steps)
                 train_print_to_markdown_file_path = self.config.ajet.trainer_common.train_print_to_markdown_file_path
                 if train_print_to_markdown_file_path:
+                    os.makedirs(os.path.dirname(train_print_to_markdown_file_path), exist_ok=True)
                     with open(train_print_to_markdown_file_path, mode="a+") as f:
                         f.write(str(metrics))
                         f.write('\n')
