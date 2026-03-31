@@ -37,6 +37,7 @@ nav:
       - Learning to Ask: en/example_learning_to_ask.md
       - Frozen Lake: en/example_frozenlake.md
       - Countdown Game: en/example_countdown.md
+      - LoRA Training: en/lora_training.md
 
   - • Swarm Examples:
       - Best Practice: en/swarm_best_practice.md
