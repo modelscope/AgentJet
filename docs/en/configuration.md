@@ -4,39 +4,109 @@ AgentJet uses YAML files to configure every aspect of a training run.
 This page is a **lookup reference** for every configuration key.
 For conceptual introductions, see [Workflow](../workflow/), [Data Pipeline](../data_pipeline/), and [Task Judger](../task_judger/).
 
+<br/>
 
 ## How Configuration Works
 
-AgentJet uses [Hydra](https://hydra.cc/) to compose a final config from three layers, merged top-to-bottom (later layers override earlier ones):
+AgentJet uses [Hydra](https://hydra.cc/) to compose a final config. Your experiment YAML only needs to contain the keys you want to override — everything else is filled in by defaults.
+
+
+### Classic Mode Config Chain
+
+There are three layers, merged top-to-bottom (later layers win):
 
 ```
-1. verl_default.yaml / trinity_default.yaml    ← backend defaults
-2. ajet_default.yaml                           ← AgentJet defaults
-3. your_experiment.yaml  (_self_)              ← your overrides
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                          (lowest prior)                               │
+ │            verl_default.yaml (auto generated, do not edit)            │
+ │                                                                       │
+ │  Backend defaults (actor_rollout_ref.*, algorithm.*, trainer.*, ...)  │
+ │  You almost never touch these directly.                               │
+ │                                                                       │
+ └───────────────────────────────┬───────────────────────────────────────┘
+                                 │
+                                 │  overridden by
+                                 ▼
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                        ajet_default.yaml                              │
+ │                                                                       │
+ │  AgentJet defaults for all ajet.* keys.                               │
+ │  (ajet.* keys are auto-converted to verl keys — see "Backend-        │
+ │   Specific: verl" section below for the full mapping)                  │
+ │                                                                       │
+ └───────────────────────────────┬───────────────────────────────────────┘
+                                 │
+                                 │  overridden by
+                                 ▼
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                       (highest priority)                              │
+ │                      your_experiment.yaml                             │
+ │                                                                       │
+ │  YOUR overrides — only write the keys you want to change.             │
+ │                                                                       │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ Priority:  your_experiment.yaml  >  ajet_default.yaml  >  verl_default.yaml
+            (highest)                                       (lowest)
 ```
 
-Every experiment YAML **must** include this preamble at the bottom:
 
-```yaml
-# ── Do not edit ──
-hydra:
-  searchpath:
-    - file://ajet/default_config
-    - file://ajet/default_config/verl
-    - file://ajet/default_config/trinity
 
-defaults:
-  - verl_default
-  - trinity_default
-  - ajet_default
-  - _self_
+### Swarm Mode Config Chain
+
+
+```
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                        (lowest prior)                                 │
+ │            verl_default.yaml (auto generated, do not edit)            │
+ │                                                                       │
+ │  Backend defaults (actor_rollout_ref.*, algorithm.*, trainer.*, ...)  │
+ │                                                                       │
+ └───────────────────────────────┬───────────────────────────────────────┘
+                                 │  overridden by
+                                 ▼
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                        ajet_default.yaml                              │
+ │  AgentJet defaults for all ajet.* keys.                               │
+ │                                                                       │
+ └───────────────────────────────┬───────────────────────────────────────┘
+                                 │  overridden by
+                                 ▼
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                     ajet_swarm_default.yaml                           │
+ │  Swarm-specific overrides on top of ajet_default:                     │
+ │   - enable_swarm_mode: true                                           │
+ │   - enable_interchange_server: true                                   │
+ │   - interchange_server.interchange_server_port: 10086                 │
+ │   - task_reader.type: random_dummy  (tasks come from remote workers)  │
+ │   - task_judge.judge_protocol: null  (rewards come from remote too)   │
+ │   - trainer_common.logger: tensorboard                                │
+ │                                                                       │
+ └───────────────────────────────┬───────────────────────────────────────┘
+                                 │  overridden by
+                                 ▼
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │                                                                       │
+ │                   AgentJetJob Argument (highest priority)             │
+ │                                                                       │
+ └───────────────────────────────────────────────────────────────────────┘
+
+
+ Priority:  AgentJetJob Argument  >  ajet_swarm_default  >  ajet_default  >  verl_default
+            (highest)                                                         (lowest)
 ```
 
-Defaults cover every key. Your YAML only needs the keys you want to override.
 
-### Config Auto-Conversion (verl backend)
 
-The file `ajet/default_config/verl/config_auto_convertion_verl.jsonc` maps short `ajet.*` keys to verbose verl-native keys automatically. For example, `ajet.model.path` expands to `actor_rollout_ref.model.path`, and `ajet.rollout.num_repeat` expands to both `actor_rollout_ref.actor.rollout_n` and `actor_rollout_ref.rollout.n`. You never need to touch verl keys directly.
+<br/>
+<br/>
+<br/>
 
 
 ## Full Key Reference
@@ -989,9 +1059,35 @@ These keys exist but are not intended for end users.
 
 ## Backend-Specific: verl
 
-When `backbone: verl`, AgentJet translates `ajet.*` keys into the full verl configuration tree (defined in `ajet/default_config/verl/verl_default.yaml`). The auto-conversion mapping is in `config_auto_convertion_verl.jsonc`.
+When `backbone: verl`, AgentJet translates `ajet.*` keys into the full verl configuration tree (defined in `ajet/default_config/verl/verl_default.yaml`). This means you write simple `ajet.*` keys in your YAML, and AgentJet automatically sets the correct verl-native keys for you.
 
-You almost never need to set verl keys directly. If you do, add them as top-level YAML keys alongside `ajet:`:
+### How Auto-Conversion Works
+
+The mapping file `ajet/default_config/verl/config_auto_convertion_verl.jsonc` defines how each `ajet.*` key translates to one or more verl-native keys. There are two patterns:
+
+**1:1 mapping** — one `ajet.*` key sets one verl key:
+
+| `ajet.*` key (you write this) | verl key (set automatically) |
+|---|---|
+| `ajet.model.path` | `actor_rollout_ref.model.path` |
+| `ajet.trainer_common.optim.lr` | `actor_rollout_ref.actor.optim.lr` |
+| `ajet.trainer_common.total_epochs` | `trainer.total_epochs` |
+| `ajet.data.train_batch_size` | `data.train_batch_size` |
+| `ajet.lora.lora_rank` | `actor_rollout_ref.model.lora_rank` |
+| `ajet.project_name` | `trainer.project_name` |
+
+**1:N fan-out** — one `ajet.*` key sets multiple verl keys at once:
+
+| `ajet.*` key | verl keys (all set to the same value) |
+|---|---|
+| `ajet.rollout.num_repeat` | `actor_rollout_ref.actor.rollout_n` + `actor_rollout_ref.rollout.n` |
+| `ajet.rollout.max_model_len` | `actor_rollout_ref.rollout.max_model_len` + `actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu` + `actor_rollout_ref.actor.ppo_max_token_len_per_gpu` + `actor_rollout_ref.ref.log_prob_max_token_len_per_gpu` |
+
+This fan-out is why `ajet.*` keys exist — without them, you would have to set 4 separate verl keys just to change the context window length.
+
+### Directly Overriding verl Keys
+
+You almost never need to set verl keys directly. If you do (e.g. to tune a verl-specific parameter that has no `ajet.*` equivalent), add them as **top-level YAML keys alongside `ajet:`**:
 
 ```yaml
 ajet:
@@ -1009,29 +1105,22 @@ actor_rollout_ref:
 
 ### Notable verl Defaults
 
-`actor_rollout_ref.actor.fsdp_config.dtype` defaults to `bfloat16`. Mixed precision dtype.
+These are verl-native defaults (from `verl_default.yaml`) that you may want to be aware of. They can be overridden using the direct override syntax above.
 
-`actor_rollout_ref.actor.fsdp_config.use_torch_compile` defaults to `true`. Enables torch compile for the actor.
-
-`actor_rollout_ref.actor.clip_ratio` defaults to `0.2`. PPO clip ratio.
-
-`actor_rollout_ref.actor.ppo_max_token_len_per_gpu` defaults to `16384`. Max tokens per GPU for actor training.
-
-`actor_rollout_ref.rollout.mode` defaults to `async`. Async rollout mode.
-
-`actor_rollout_ref.rollout.gpu_memory_utilization` defaults to `0.85`. vLLM GPU memory fraction.
-
-`actor_rollout_ref.rollout.enforce_eager` defaults to `true`. Disables CUDA graphs.
-
-`actor_rollout_ref.rollout.enable_sleep_mode` defaults to `true`. Sleeps vLLM between steps to free memory.
-
-`actor_rollout_ref.model.enable_gradient_checkpointing` defaults to `true`. Activation checkpointing.
-
-`algorithm.adv_estimator` defaults to `grpo`. GRPO advantage estimator.
-
-`algorithm.gamma` defaults to `1.0`. Reward discount.
-
-`algorithm.lam` defaults to `1.0`. GAE lambda.
+| verl key | Default | Description |
+|---|---|---|
+| `actor_rollout_ref.actor.fsdp_config.dtype` | `bfloat16` | Mixed precision dtype |
+| `actor_rollout_ref.actor.fsdp_config.use_torch_compile` | `true` | Enables torch compile for the actor |
+| `actor_rollout_ref.actor.clip_ratio` | `0.2` | PPO clip ratio |
+| `actor_rollout_ref.actor.ppo_max_token_len_per_gpu` | `16384` | Max tokens per GPU for actor training |
+| `actor_rollout_ref.rollout.mode` | `async` | Async rollout mode |
+| `actor_rollout_ref.rollout.gpu_memory_utilization` | `0.85` | vLLM GPU memory fraction |
+| `actor_rollout_ref.rollout.enforce_eager` | `true` | Disables CUDA graphs |
+| `actor_rollout_ref.rollout.enable_sleep_mode` | `true` | Sleeps vLLM between steps to free memory |
+| `actor_rollout_ref.model.enable_gradient_checkpointing` | `true` | Activation checkpointing |
+| `algorithm.adv_estimator` | `grpo` | GRPO advantage estimator |
+| `algorithm.gamma` | `1.0` | Reward discount |
+| `algorithm.lam` | `1.0` | GAE lambda |
 
 
 ## CLI Flags
@@ -1042,69 +1131,71 @@ actor_rollout_ref:
 ajet --conf <yaml> [--backbone verl|trinity|debug] [flags]
 ```
 
-`--conf PATH` — Path to experiment YAML. Required.
+- `--conf PATH` — Path to experiment YAML. Required.
 
-`--backbone` — Override backbone. Options: `verl`, `trinity`, `debug`.
+- `--backbone` — Override backbone. Options: `verl`, `trinity`, `debug`.
 
-`--exp-dir DIR` — Experiment output directory. Default: `saved_experiments`.
+- `--exp-dir DIR` — Experiment output directory. Default: `saved_experiments`.
 
-`--autokill` — Kill stale ray/vllm/python processes before launch.
+- `--autokill` — Kill stale ray/vllm/python processes before launch.
 
-`--kill KEYWORDS` — Kill processes matching `|`-separated keywords.
+- `--kill KEYWORDS` — Kill processes matching `|`-separated keywords.
 
-`--with-ray` — Start a local Ray cluster.
+- `--with-ray` — Start a local Ray cluster.
 
-`--with-ray-cluster` — Connect to an existing Ray cluster.
+- `--with-ray-cluster` — Connect to an existing Ray cluster.
 
-`--with-appworld` — Start the AppWorld environment service.
+- `--with-appworld` — Start the AppWorld environment service.
 
-`--with-deepfinance` — Start the DeepFinance environment.
+- `--with-deepfinance` — Start the DeepFinance environment.
 
-`--with-webshop` — Start the WebShop environment.
+- `--with-webshop` — Start the WebShop environment.
 
-`--with-bfcl` — Start the BFCL environment.
+- `--with-bfcl` — Start the BFCL environment.
 
-`--with-crafters` — Start the Crafters environment.
+- `--with-crafters` — Start the Crafters environment.
 
-`--with-logview` — Start the log viewer.
+- `--with-logview` — Start the log viewer.
 
-`--swarm-server` — Run as a swarm server.
+- `--swarm-server` — Run as a swarm server.
 
-`--swarm-overwatch URL` — Monitor a swarm server.
+- `--swarm-overwatch URL` — Monitor a swarm server.
 
-`--skip-check-avail-gpu` — Skip GPU free-memory check.
+- `--skip-check-avail-gpu` — Skip GPU free-memory check.
 
-`--debug`, `--db` — Debug helper flag.
+- `--debug`, `--db` — Debug helper flag.
 
 ### `ajet-swarm`
 
-`ajet-swarm start` — Start the swarm server. Key flags: `--swarm-port 10086`, `--conf`, `--exp-dir`.
+- `ajet-swarm start` — Start the swarm server. Key flags: `--swarm-port 10086`, `--conf`, `--exp-dir`.
 
-`ajet-swarm overwatch` — Monitor the swarm server (TUI). Key flags: `--swarm-url http://localhost:10086`, `--refresh-interval 2.0`.
+- `ajet-swarm overwatch` — Monitor the swarm server (TUI). Key flags: `--swarm-url http://localhost:10086`, `--refresh-interval 2.0`.
 
-`ajet-swarm top` — Alias for `overwatch`.
+- `ajet-swarm top` — Alias for `overwatch`.
 
 
 ## Environment Variables
 
-`DASHSCOPE_API_KEY` — API key for DashScope-based LLM-as-Judge. Pipe-separated for multiple keys.
+- `DASHSCOPE_API_KEY` — API key for DashScope-based LLM-as-Judge. Pipe-separated for multiple keys.
 
-`DASHSCOPE_API_KEY_BACKUP` — Backup API key.
+- `DASHSCOPE_API_KEY_BACKUP` — Backup API key.
 
-`VERL_PYTHON` — Python executable for verl subprocess. Used in benchmarks.
+- `VERL_PYTHON` — Python executable for verl subprocess. Used in benchmarks.
 
-`APPWORLD_PATH` — Path to AppWorld data pack.
+- `APPWORLD_PATH` — Path to AppWorld data pack.
 
-`APPWORLD_SCRIPT` — Command to launch AppWorld.
+- `APPWORLD_SCRIPT` — Command to launch AppWorld.
 
-`AJET_SWARM_URL` — Swarm server URL for client scripts.
+- `AJET_SWARM_URL` — Swarm server URL for client scripts.
 
-`REMOTE_MODEL_PATH` — Model path on the swarm server.
+- `REMOTE_MODEL_PATH` — Model path on the swarm server.
 
 
 ## Common Recipes
 
 ### Reduce GPU Memory
+
+When training large models on limited GPU hardware, combine several memory-saving techniques. FSDP offloading moves model parameters and optimizer states to CPU, freeing GPU VRAM at the cost of slower training steps. Reducing `max_model_len` shrinks the per-sequence memory allocation in the vLLM engine. Lowering `max_num_seqs` limits how many sequences vLLM batches in parallel, further reducing peak memory. A smaller `train_batch_size` reduces the number of samples processed per gradient update. Finally, enabling LoRA (e.g. `lora_rank: 16`) trains only low-rank adapter matrices instead of all model weights, dramatically cutting both memory and compute.
 
 ```yaml
 ajet:
@@ -1121,7 +1212,48 @@ ajet:
     lora_rank: 16
 ```
 
-### Fast Debug Iteration
+
+### Validation Only (No Training)
+
+Evaluate a model checkpoint without running any training steps. Setting `val_only: true` causes the trainer to exit immediately after validation, and `val_before_train: true` triggers the validation pass at step 0. This is useful for benchmarking a pre-trained or fine-tuned model, comparing checkpoints, or verifying that your workflow and judge produce sensible metrics before committing to a full training run. The pass@n metrics (controlled by `val_pass_n`) are computed as usual.
+
+```yaml
+ajet:
+  trainer_common:
+    val_only: true
+    val_before_train: true
+```
+
+
+### Multi-Node Training
+
+Scale training across multiple machines. Set `nnodes` to the number of nodes and `n_gpus_per_node` to match the hardware. The total GPU count (`nnodes × n_gpus_per_node`) determines the FSDP sharding degree, and `train_batch_size × num_repeat` must be divisible by it. For multi-node setups, you also need to configure the interchange server with `interchange_method: "tcp"` (IPC only works on a single node) and set the `MASTER_NODE_IP` environment variable.
+
+```yaml
+ajet:
+  trainer_common:
+    nnodes: 2
+    n_gpus_per_node: 8
+```
+
+
+### Swarm Mode (Minimal)
+
+Decouple rollout workers from the training loop so that environment interactions can run on separate (potentially GPU-less) machines. The interchange server acts as a gateway — remote workers receive OpenAI-compatible API credentials and send completed episodes back. Use `interchange_method: tcp` for multi-node communication and set a fixed port (e.g. `10086`) for predictable networking. Remote workers connect to this port to submit rollout results. See the [Swarm Mode Config Chain](#swarm-mode-config-chain) section for how defaults are layered.
+
+```yaml
+ajet:
+  enable_swarm_mode: true
+  enable_interchange_server: true
+  interchange_server:
+    interchange_method: tcp
+    interchange_server_port: 10086
+```
+
+
+### Fast Debug Iteration (Deprecated, recommend to use swarm mode instead)
+
+Use debug mode to quickly test your workflow and reward function without launching a full distributed training loop. Debug mode connects to an external vLLM server and only runs inference + rollout — no weight updates occur. Setting `debug_max_parallel: 1` and `debug_first_n_tasks: 1` runs a single task sequentially, making it easy to step through the logic and inspect outputs. You can also override the backbone from the command line with `--backbone=debug` without modifying your YAML.
 
 ```yaml
 ajet:
@@ -1135,34 +1267,7 @@ ajet:
 ajet --conf my_config.yaml --backbone=debug
 ```
 
-### Validation Only (No Training)
 
-```yaml
-ajet:
-  trainer_common:
-    val_only: true
-    val_before_train: true
-```
-
-### Multi-Node Training
-
-```yaml
-ajet:
-  trainer_common:
-    nnodes: 2
-    n_gpus_per_node: 8
-```
-
-### Swarm Mode (Minimal)
-
-```yaml
-ajet:
-  enable_swarm_mode: true
-  enable_interchange_server: true
-  interchange_server:
-    interchange_method: tcp
-    interchange_server_port: 10086
-```
 
 
 ## Next Steps
