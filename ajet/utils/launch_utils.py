@@ -77,9 +77,10 @@ def set_loguru_default_color():
     if not colorize:
         os.environ["RAY_COLOR_PREFIX"] = "0"
 
-    logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser").setLevel(
-        logging.CRITICAL
-    )
+    target_logger = logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
+    target_logger = logging.getLogger("vllm.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
     return
 
 
