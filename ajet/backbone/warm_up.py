@@ -64,6 +64,7 @@ def clean_up_tmp_ajet_dir(config):
         return
     current_time = time.time()
     ttl = 4 * 3600
+    print("Clean up old IPC socket files in /tmp/ajet directory.")
     try:
         for filename in os.listdir(tmp_dir):
             if not filename.endswith(".sock"):
@@ -71,7 +72,6 @@ def clean_up_tmp_ajet_dir(config):
 
             file_path = os.path.join(tmp_dir, filename)
             try:
-                print(current_time - os.path.getmtime(file_path))
                 if current_time - os.path.getmtime(file_path) > ttl:
                     os.remove(file_path)
             except OSError:
