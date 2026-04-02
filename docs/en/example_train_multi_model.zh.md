@@ -203,7 +203,8 @@ sequenceDiagram
 ### 交叉引用
 
 - **[AgentJet Swarm 训练模式](../swarm.md)**：深入了解 AgentJet 蜂群架构的设计理念和核心优势
-- **[可训练工作流](../workflow.md)**：学习如何在 AgentJet 中定义多智能体工作流
+- **[经典工作流](../classic_workflow.md)**：学习如何在 AgentJet 中定义多智能体工作流
+- **[蜂群工作流](../swarm_workflow.md)**：分布式训练，rollout 在独立机器上运行
 - **[任务评判器](../task_judger.md)**：了解奖励函数的设计原理和自定义方法
 - **[数学 Agent 示例](../example_math_agent.md)**：学习单智能体训练的基础示例
 

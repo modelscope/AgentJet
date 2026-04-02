@@ -84,7 +84,7 @@ Let's begin with the simplest AgentJet Swarm example: also a math agent. In this
         Click here to see AgentJet performance across tasks/versions/backbones.
         </p>
     </a>
-    <a href="en/workflow/" class="feature-card">
+    <a href="en/classic_workflow/" class="feature-card">
         <div class="card-header"><img src="https://api.iconify.design/lucide:users.svg" class="card-icon card-icon-tool"
                 alt="">
             <h3>Multi-agent and Multi-turn</h3>
@@ -141,7 +141,7 @@ AgentJet makes agent fine-tuning straightforward by separating the developer int
 To optimize an agent, you provide three core inputs:
 
 <div class="card-grid">
-<a href="en/workflow/" class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:graph.svg" class="card-icon card-icon-agent" alt=""><h3>Trainable Workflow</h3></div><p class="card-desc">Define your agent logic by inheriting the Workflow class, supporting both simple and multi-agent setups.</p></a>
+<a href="en/classic_workflow/" class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:graph.svg" class="card-icon card-icon-agent" alt=""><h3>Trainable Workflow</h3></div><p class="card-desc">Define your agent logic by inheriting the Workflow class, supporting both simple and multi-agent setups.</p></a>
 <a href="en/data_pipeline/" class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:database.svg" class="card-icon card-icon-data" alt=""><h3>Task Reader</h3></div><p class="card-desc">Load training tasks from JSONL files, HuggingFace datasets, or auto-generate from documents.</p></a>
 <a href="en/task_judger/" class="feature-card-sm"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Evaluates agent outputs and assigns rewards to guide the training process.</p></a>
 </div>
@@ -175,7 +175,7 @@ When swarm training mode is enabled, an additional component will be activated:
 ## Navigation
 
 * **Tutorials**: From [Installation](en/installation) to [Tuning your first agent](en/tune_your_first_agent) — the essential path for beginners.
-* **Core Components**: Define your [Trainable Workflow](en/workflow) and manage [Data](en/data_pipeline) and [Reward](en/task_judger).
+* **Core Components**: Define your [Classic Workflow](en/classic_workflow) or [Swarm Workflow](en/swarm_workflow), and manage [Data](en/data_pipeline) and [Reward](en/task_judger).
 * **Example**: Check the [Example Library](#example-library) above for real-world cases like [Math](en/example_math_agent), [Werewolves game](en/example_werewolves) and [Learning to ask task](en/example_learning_to_ask).
 * **Deep Dive**: Master advanced [Configuration](en/configuration).
 

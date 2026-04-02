@@ -43,7 +43,8 @@ nav:
       - Swarm Vibe Coding: en/swarm_vibe_coding.md
 
   - • Components:
-      - Workflow: en/workflow.md
+      - Classic Workflow: en/classic_workflow.md
+      - Swarm Workflow: en/swarm_workflow.md
       - Data Pipeline: en/data_pipeline.md
       - Task Judger: en/task_judger.md
 

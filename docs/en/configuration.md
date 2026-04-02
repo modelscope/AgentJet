@@ -2,7 +2,7 @@
 
 AgentJet uses YAML files to configure every aspect of a training run.
 This page is a **lookup reference** for every configuration key.
-For conceptual introductions, see [Workflow](../workflow/), [Data Pipeline](../data_pipeline/), and [Task Judger](../task_judger/).
+For conceptual introductions, see [Classic Workflow](../classic_workflow/), [Swarm Workflow](../swarm_workflow/), [Data Pipeline](../data_pipeline/), and [Task Judger](../task_judger/).
 
 <br/>
 
@@ -1273,7 +1273,8 @@ ajet --conf my_config.yaml --backbone=debug
 ## Next Steps
 
 <div class="card-grid">
-<a href="../workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:workflow.svg" class="card-icon card-icon-general" alt=""><h3>Workflow</h3></div><p class="card-desc">How to define your trainable agent workflow.</p></a>
+<a href="../classic_workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:workflow.svg" class="card-icon card-icon-general" alt=""><h3>Classic Workflow</h3></div><p class="card-desc">How to define your trainable agent workflow.</p></a>
+<a href="../swarm_workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:network.svg" class="card-icon card-icon-general" alt=""><h3>Swarm Workflow</h3></div><p class="card-desc">Distributed training with rollout on separate machines.</p></a>
 <a href="../data_pipeline/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:database.svg" class="card-icon card-icon-general" alt=""><h3>Data Pipeline</h3></div><p class="card-desc">Task readers and data formats in detail.</p></a>
 <a href="../task_judger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:scale.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Built-in and custom reward functions.</p></a>
 <a href="../example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Math Agent Example</h3></div><p class="card-desc">See all configuration applied in a real training run.</p></a>

@@ -1,6 +1,6 @@
-# Trainable Workflow
+# Classic Workflow
 
-This tutorial introduces how to define a trainable workflow.
+This tutorial introduces how to define a trainable workflow in **classic mode** — single-machine training launched with the `ajet` CLI, where rollout and training share the same GPU cluster. For distributed training where rollout workers run on separate (potentially GPU-less) machines, see [Swarm Workflow](../swarm_workflow/).
 
 !!! info ""
     AgentJet provides two **convenient** and **mutually compatible** ways to wrap your Workflow:
@@ -241,16 +241,10 @@ Here's a complete example with multiple agent roles (Werewolves game):
     - You can flexibly switch training targets by modifying `trainable_targets`
 
 
-## Swarm
-
-Wrapping and training your agent on a machine without GPU.
-
-Working in progress and coming soon.
-
-
 ## Next Steps
 
 <div class="card-grid">
+<a href="../swarm_workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:network.svg" class="card-icon card-icon-general" alt=""><h3>Swarm Workflow</h3></div><p class="card-desc">Distributed training with rollout workers on separate machines.</p></a>
 <a href="../data_pipeline/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:database.svg" class="card-icon card-icon-data" alt=""><h3>Data Pipeline</h3></div><p class="card-desc">Configure data loading from files, HuggingFace, or environments.</p></a>
 <a href="../task_judger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Set up reward functions to evaluate agent performance.</p></a>
 </div>

@@ -28,7 +28,7 @@
 
 ## ✈️ Fast Introduction
 
-### Classic Mode
+### **1 - Classic Mode**
 
 Let's begin with the simplest example: a math agent with a tool call. This is a simple & centralized training example.
 
@@ -37,11 +37,12 @@ Let's begin with the simplest example: a math agent with a tool call. This is a 
     ```python
     ajet --conf ./tutorial/example_math_agent/math_agent.yaml --backbone='verl'
     ```
+
 <div align="center">
-<img width="640" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/classic+swarm+revise.jpg"/>
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/new_classic.png"/>
 </div>
 
-### Swarm Mode
+### **2 - Swarm Mode**
 
 Let's begin with the simplest AgentJet Swarm example: also a math agent. In this case, you can use any GPU-less laptop to train the model remotely.
 
@@ -50,6 +51,17 @@ Let's begin with the simplest AgentJet Swarm example: also a math agent. In this
     ```python
     AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
     ```
+
+
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/new_swarm.png"/>
+</div>
+
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarming.gif"/>
+</div>
+
+
 <div align="center">
 <img width="600" alt="image" src="https://github.com/user-attachments/assets/41ed1e71-8b18-4c4c-b5e2-833399317337"/>
 </div>

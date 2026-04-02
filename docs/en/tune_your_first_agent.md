@@ -753,7 +753,8 @@ The server handles gradient computation and model updates automatically.
 ### Continue Learning
 
 <div class="card-grid">
-<a href="../workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:graph.svg" class="card-icon card-icon-agent" alt=""><h3>Workflow</h3></div><p class="card-desc">Learn to define trainable workflows and multi-agent setups.</p></a>
+<a href="../classic_workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:graph.svg" class="card-icon card-icon-agent" alt=""><h3>Classic Workflow</h3></div><p class="card-desc">Learn to define trainable workflows and multi-agent setups.</p></a>
+<a href="../swarm_workflow/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/lucide:network.svg" class="card-icon card-icon-general" alt=""><h3>Swarm Workflow</h3></div><p class="card-desc">Distributed training with rollout on separate machines.</p></a>
 <a href="../data_pipeline/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:database.svg" class="card-icon card-icon-data" alt=""><h3>Data Pipeline</h3></div><p class="card-desc">Configure data loading from various sources.</p></a>
 <a href="../task_judger/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:check-decagram.svg" class="card-icon card-icon-general" alt=""><h3>Task Judger</h3></div><p class="card-desc">Set up reward functions for your training.</p></a>
 <a href="../example_math_agent/" class="feature-card"><div class="card-header"><img src="https://api.iconify.design/mdi:calculator-variant.svg" class="card-icon card-icon-math" alt=""><h3>Math Agent Example</h3></div><p class="card-desc">See the complete Math Agent implementation.</p></a>

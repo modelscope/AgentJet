@@ -202,7 +202,8 @@ Compared to traditional single-model shared parameter training, non-shared param
 ### Cross References
 
 - **[AgentJet Swarm Training Mode](../swarm.md)**: Deep dive into AgentJet's swarm architecture design philosophy and core advantages
-- **[Trainable Workflow](../workflow.md)**: Learn how to define multi-agent workflows in AgentJet
+- **[Classic Workflow](../classic_workflow.md)**: Learn how to define multi-agent workflows in AgentJet
+- **[Swarm Workflow](../swarm_workflow.md)**: Distributed training with rollout on separate machines
 - **[Task Judger](../task_judger.md)**: Understand reward function design principles and customization methods
 - **[Math Agent Example](../example_math_agent.md)**: Learn the basics of single-agent training
 
