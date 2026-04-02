@@ -53,14 +53,17 @@ Let's begin with the simplest AgentJet Swarm example: also a math agent. In this
     ```
 
 
-<div align="center">
+<!-- <div align="center">
 <img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/new_swarm.png"/>
-</div>
+</div> -->
+
+<!-- <div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarming.gif"/>
+</div> -->
 
 <div align="center">
-<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarming.gif"/>
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarming2.gif"/>
 </div>
-
 
 <div align="center">
 <img width="600" alt="image" src="https://github.com/user-attachments/assets/41ed1e71-8b18-4c4c-b5e2-833399317337"/>
