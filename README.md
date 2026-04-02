@@ -213,7 +213,16 @@ This project is under active development, we need your help to make it shine! <b
 
 
 <div align="center">
-<img width="180" alt="image" src="https://img.alicdn.com/imgextra/i4/O1CN01DJuOtZ1Kgu1UvjaNl_!!6000000001194-2-tps-922-882.png"/>
+<img height="180" alt="image" src="https://img.alicdn.com/imgextra/i4/O1CN01DJuOtZ1Kgu1UvjaNl_!!6000000001194-2-tps-922-882.png"/>
 <br/>
 <span>Join AgentJet DingTalk Group to share your idea</span>
+</div>
+
+<br/>
+<hr/>
+<br/>
+
+<div align="center">
+<img height="260" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/star3.png"/>
+<br/>
 </div>
