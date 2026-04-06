@@ -480,3 +480,5 @@ fi
 
 整体来看，这些结果说明，RL 训练带来的提升并不只是对金融任务风格的适配，而更像是在强化一种可迁移的研究过程。
 
+
+更多具体案例和经验分析详见[博客](https://github.com/modelscope/AgentJet/blob/dev/shuchang_newjudge/tutorial/example_deep_finance/blog_cn.md)
