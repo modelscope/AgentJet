@@ -1,7 +1,3 @@
-这是一份为您合并并优化后的 `DeepFinance` 完整文档。我已将 `quick_start.md` 中的所有环境安装步骤、`.env` 配置详情以及核心脚本代码块完整无损地整合到了 `Quick Start` 章节中，并对文档中的数学公式进行了规范化的排版。
-
------
-
 # DeepFinance: 通过强化学习训练金融深度研究 Agent
 
 ## 概述
@@ -27,7 +23,8 @@ DeepFinance 是基于 AgentJet 框架构建的金融深度研究 Agent 训练方
 | **Reader** | `deep_finance_reader.py` | 加载 JSON 训练数据，组装 System Prompt + User Query |
 | **Workflow** | `deep_finance.py` | 定义 ReAct Agent 的多轮交互逻辑，维护对话历史 |
 | **Judge** | `deep_finance_judge.py` + `judge/` | 多维度奖励评分（核心创新） |
-| **配置** | `deep_finance.yaml` / `*.sh` | 训练参数、奖励权重、环境配置 |
+| **配置** | `yaml_template/deepfinance_template.yaml`  | 训练参数、环境配置 |
+| **配置** | `deep_finance_single.sh` / `deep_finance.sh` | 奖励权重、环境配置 |
 
 ```plain
 ┌─────────────────────────────────────────────────────────────┐
@@ -130,9 +127,8 @@ DeepFinance 集成了 **19 个金融工具**，通过 MCP（Model Context Protoc
 
 ### 总体公式
 
-$$final\_reward = \sum (w_i \times grader\_i\_score) + tool\_penalty$$
+![img](https://img.alicdn.com/imgextra/i4/O1CN01KOkk6021pd3j6ysIa_!!6000000007034-55-tps-927-20.svg)
 
-其中各 grader 权重归一化（$\sum w_i = 1$），`tool_penalty` 为额外惩罚项。
 
 ### 5 个评分维度总览
 
@@ -448,4 +444,39 @@ fi
 
 -----
 
+## 实验结果
+
+我们从训练曲线和外部 benchmark 两个角度，观察 RL 训练后策略的变化。
+
+延续前面的设计，最终 reward 由 **1 个核心目标和 3 个约束项** 组成：
+**rm** 对应分析充分性，**audit** 对应事实性，**grounding** 对应引用规范，**presentation** 对应呈现质量。
+![img](https://img.alicdn.com/imgextra/i4/O1CN01KOkk6021pd3j6ysIa_!!6000000007034-55-tps-927-20.svg)
+其中，每个维度都是0-1的分数。
+
+### 1 训练动态：主要提升来自分析能力
+
+![img](https://img.alicdn.com/imgextra/i2/O1CN01SRfe2v1quhfomOfD2_!!6000000005556-2-tps-2060-600.png)
+
+
+
+![img](https://img.alicdn.com/imgextra/i2/O1CN01ZTruSk1G1u7JYLGRB_!!6000000000563-2-tps-1358-614.png)
+
+从训练曲线看，final_reward_mean 从约 0.54 持续提升到 0.75 左右，整体优化过程比较稳定。拆开来看，提升最明显的是 rm_raw_mean，大约从 0.30 增长到 0.60+，说明这一轮 RL 的主要收益确实来自分析充分性的提升。
+与此同时，几个约束相关指标整体保持稳定：presentation 大部分时间维持在 0.95 以上，grounding 基本稳定在 0.90–0.95 区间，audit_raw_mean 也从约 0.60 缓慢提升到 0.73 左右。换句话说，这轮训练并不是靠牺牲事实性、引用规范或呈现质量来换取更高分，而是在守住这些约束的前提下，把主要增益集中在“研究是否做得更充分”这一核心目标上。
+
+### 2 外部评测：提升不只局限于金融任务
+
+我们进一步在[ DeepResearch Bench](https://github.com/Ayanami0730/deep_research_bench)[2] 上进行了 zero-shot 测试。结果显示，我们的方法在 **overall score** 上达到 **0.476**，高于 **base30b (0.127)**、**tongyidr (0.277)**，也高于表中的 **claude3.7 (0.422)**。
+
+| **model**                       | **finance**       | **others** | **overall**           |             |                   |                   |         |                       |             |                   |                   |         |                       |             |                   |
+| ------------------------------- | ----------------- | ---------- | --------------------- | ----------- | ----------------- | ----------------- | ------- | --------------------- | ----------- | ----------------- | ----------------- | ------- | --------------------- | ----------- | ----------------- |
+|                                 | comprehensiveness | insight    | instruction_following | readability | **overall_score** | comprehensiveness | insight | instruction_following | readability | **overall_score** | comprehensiveness | insight | instruction_following | readability | **overall_score** |
+| **Qwen3-30B-A3B-Instruct-2507** | 0.181             | 0.169      | 0.191                 | 0.211       | 0.184             | 0.112             | 0.111   | 0.117                 | 0.137       | 0.118             | 0.122             | 0.119   | 0.128                 | 0.148       | 0.127             |
+| **Tongyi DeepResearch**         | 0.291             | 0.282      | 0.316                 | 0.313       | 0.296             | 0.270             | 0.260   | 0.289                 | 0.290       | 0.274             | 0.273             | 0.263   | 0.293                 | 0.293       | 0.277             |
+| **Claude 3.7**                  | 0.404             | 0.398      | 0.465                 | 0.416       | 0.417             | 0.412             | 0.406   | 0.462                 | 0.417       | 0.423             | 0.411             | 0.405   | 0.462                 | 0.417       | 0.422             |
+| **Ours**                        | 0.476             | 0.472      | 0.488                 | 0.487       | 0.479             | 0.470             | 0.470   | 0.485                 | 0.484       | 0.475             | 0.471             | 0.471   | 0.485                 | 0.484       | **0.476**         |
+
+这种提升不仅体现在 finance 子集上，也体现在 others 子集上：我们的 **finance overall score** 为 **0.479**，**others overall score** 为 **0.475**，两者都明显高于对应基线。并且，这一优势并不是来自单一指标，而是同时体现在 **comprehensiveness、insight、instruction following** 和 **readability** 等多个维度上。
+
+整体来看，这些结果说明，RL 训练带来的提升并不只是对金融任务风格的适配，而更像是在强化一种可迁移的研究过程。
 
