@@ -80,13 +80,12 @@ def compute_reward_metrics(reward_stats_list: List[Dict[str, Any]], prefix: str 
     metrics[f"{prefix}rewards/penalty_rate"] = float(len(non_zero_penalties) / n * 100) if n > 0 else 0.0
 
     # ========== OpenJudge Metrics ==========
-    # OpenJudge graders: presentation_quality, grounding, audit, ebtu
+    # OpenJudge graders: presentation_quality, grounding, audit
     openjudge_graders = [
         "presentation_quality",
         "grounding",
         "planning",
         "audit",
-        "ebtu",
     ]
 
     for grader_name in openjudge_graders:

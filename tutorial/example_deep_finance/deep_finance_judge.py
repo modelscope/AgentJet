@@ -19,7 +19,6 @@ from tutorial.example_deep_finance.judge import (
     PresentationQualityGrader, 
     GroundingGrader, 
     AuditGrader, 
-    EBTUTraceabilityGrader,
     FinanceCompositionEvaluator,
 )
 # =============================================================================
@@ -107,7 +106,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             "presentation_quality": getattr(cfg, "presentation_quality_weight", 0.25) if cfg else 0.25,
             "grounding": getattr(cfg, "grounding_weight", 0.0) if cfg else 0.0,  # 引用规范性评估
             "audit": getattr(cfg, "audit_weight", 0.0) if cfg else 0.0,  # 引用逻辑审计
-            "ebtu": getattr(cfg, "ebtu_weight", 0.0) if cfg else 0.0,  # EBTU证据优先可追溯性审计
         }
 
         # 归一化（注意：action_loop 是惩罚项，不参与归一化；finance 需要参与归一化）
@@ -273,11 +271,6 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             # Audit: 引用逻辑审计 - 验证引用是否严格符合逻辑蕴含原则
             "audit": GraderConfig(
                 grader=AuditGrader(model=model),
-                mapper=lambda data: {"traj": data},
-            ),
-            # EBTU: Evidence-Backed Trace Units 证据优先可追溯性审计
-            "ebtu": GraderConfig(
-                grader=EBTUTraceabilityGrader(model=model),
                 mapper=lambda data: {"traj": data},
             ),
         }

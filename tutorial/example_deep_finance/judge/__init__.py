@@ -2,13 +2,11 @@
 from .grounding.grader import GroundingGrader
 from .presentation_quality.grader import PresentationQualityGrader
 from .audit.grader import AuditGrader
-from .ebtu.grader import EBTUTraceabilityGrader
 from .finance.grader import FinanceCompositionEvaluator
 
 __all__ = [
     "PresentationQualityGrader", 
     "GroundingGrader", 
     "AuditGrader", 
-    "EBTUTraceabilityGrader",
     "FinanceCompositionEvaluator",
 ]

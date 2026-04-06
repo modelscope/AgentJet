@@ -1,38 +1,40 @@
 #!/bin/bash
-set -e  
+set -e
 #===============================================================================
 # 1. 配置区域 - 用户只需修改这里
 #===============================================================================
-SUFFIX="newjudge"     # 实验后缀，影响所有日志和实验名称
-PREFIX="ajet_newjudge"                        # 实验前缀，影响日志和实验所在文件夹
+SUFFIX="deepfinance"     # 实验后缀，影响所有日志和实验名称
+PREFIX="ajet_deepfinance"                        # 实验前缀，影响日志和实验所在文件夹
 
 # OpenJudge 模型配置
-OPENJUDGE_LLM='qwen-flash'        # OpenJudge 评分模型
-RM_LLM='qwen-max'                 # RM Gallery 评分模型
-JUDGE_CONCURRENCY=10
-
+# finance_llm 可单独配置 Finance 评估使用的模型，留空则复用 OPENJUDGE_LLM
+OPENJUDGE_LLM='qwen-flash'             # OpenJudge 评分模型（用于通用评估）
+FINANCE_LLM='qwen-max'                       # Finance 评估专用模型（可选，留空则复用 OPENJUDGE_LLM）
+JUDGE_CONCURRENCY=20
 # 奖励权重配置
-RM_WEIGHT=0.5
-PRESENTATION_QUALITY_WEIGHT=0.25
-GROUNDING_WEIGHT=0.25
-CGCV_WEIGHT=0.0                   # 不使用 CGCV，设为 0
-AUDIT_WEIGHT=0.0                  # 不使用 Audit，设为 0
-TRACEABILITY_WEIGHT=0.0           # 不使用 Traceability，设为 0
-EBTU_WEIGHT=0.0                   # 不使用 EBTU，设为 0
-
+# rm_weight 现在对应 FinanceCompositionEvaluator（基于 OpenJudge）
+RM_WEIGHT=0.5                        # Finance 评估权重（stock_analysis/industry/macro/event/search）
+PRESENTATION_QUALITY_WEIGHT=0.2      # 报告呈现质量
+GROUNDING_WEIGHT=0.1                 # 引用规范性评估
+AUDIT_WEIGHT=0.2                     # 引用逻辑审计
 # 训练参数配置
-NUM_REPEAT=4        # group size，每个query rollout NUM_REPEAT次
-TRAIN_BATCH_SIZE=32  # 训练batchsize
-NUM_STEPS=6         # 每个样本step轮数
+NUM_REPEAT=4                         # group size，每个query rollout NUM_REPEAT次
+TRAIN_BATCH_SIZE=32                  # 训练batchsize
+NUM_STEPS=10                         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
 
 # Env Service URL 配置
 ENV_SERVICE_URL="http://127.0.0.1:8080"  # 环境服务地址
 
 # 主目录（需要更改）
-export AJET_ROOT="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new"
+export AJET_ROOT="/path/to/agent_jet"
 
-NNODES=${WORLD_SIZE}
+NNODES=${WORLD_SIZE:-1}
+GPUS_PER_NODE=8
+CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
+LOG_DIR="${AJET_ROOT}/logs/${PREFIX}"
+TRAIN_LOG="${LOG_DIR}/train_${SUFFIX}_${CURRENT_TIME}.log"
+mkdir -p ${LOG_DIR}
 
 # 涉密的配置（API_KEY以及模型、数据位置）从.env读取
 cd ${AJET_ROOT}
@@ -48,12 +50,15 @@ if [ -f "$ENV_FILE" ]; then
 else
     echo -e "\033[31m警告: 找不到 .env 文件: $ENV_FILE\033[0m"
 fi
+export TRAIN_DATA_PATH="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new/tutorial/example_deep_finance/data/train_merged_all.json"
+export TRAIN_REF_ANS_PATH="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new/tutorial/example_deep_finance/data/Reference_merged_all.json"
+
 
 #===============================================================================
 # 2. 动态生成配置文件 (从yaml template生成yaml)
 #===============================================================================
 # 修改：配置文件生成路径，现在动态生成到 yaml 目录下
-CONFIG_TEMPLATE="tutorial/example_deep_finance/deep_finance.yaml"
+CONFIG_TEMPLATE="tutorial/example_deep_finance/yaml_template/deepfinance_template.yaml"
 CONFIG_FILE="${AJET_ROOT}/tutorial/example_deep_finance/yaml/${SUFFIX}.yaml"
 mkdir -p $(dirname ${CONFIG_FILE})
 
@@ -64,10 +69,8 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{RM_WEIGHT}}|${RM_WEIGHT}|g" \
     -e "s|{{PRESENTATION_QUALITY_WEIGHT}}|${PRESENTATION_QUALITY_WEIGHT}|g" \
     -e "s|{{GROUNDING_WEIGHT}}|${GROUNDING_WEIGHT}|g" \
-    -e "s|{{CGCV_WEIGHT}}|${CGCV_WEIGHT}|g" \
     -e "s|{{AUDIT_WEIGHT}}|${AUDIT_WEIGHT}|g" \
-    -e "s|{{TRACEABILITY_WEIGHT}}|${TRACEABILITY_WEIGHT}|g" \
-    -e "s|{{EBTU_WEIGHT}}|${EBTU_WEIGHT}|g" \
+    -e "s|{{FINANCE_LLM}}|${FINANCE_LLM}|g" \
     -e "s|{{OPENJUDGE_LLM}}|${OPENJUDGE_LLM}|g" \
     -e "s|{{RM_LLM}}|${RM_LLM}|g" \
     -e "s|{{JUDGE_CONCURRENCY}}|${JUDGE_CONCURRENCY}|g" \
@@ -79,11 +82,19 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{TRAIN_REF_ANS_PATH}}|${TRAIN_REF_ANS_PATH}|g" \
     -e "s|{{VAL_REF_ANS_PATH}}|${VAL_REF_ANS_PATH}|g" \
     -e "s|{{CKPT_SAVE_PATH}}|${CKPT_SAVE_PATH}|g" \
+    -e "s|{{MAX_MODEL_LEN}}|${MAX_MODEL_LEN}|g" \
     -e "s|{{ENV_SERVICE_URL}}|${ENV_SERVICE_URL}|g" \
     ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
 
 echo "配置文件已生成: ${CONFIG_FILE}"
-echo "参数确认: RM=${RM_WEIGHT}, PresentationQuality=${PRESENTATION_QUALITY_WEIGHT}, Grounding=${GROUNDING_WEIGHT}, CGCV=${CGCV_WEIGHT}, Audit=${AUDIT_WEIGHT}, Traceability=${TRACEABILITY_WEIGHT}, EBTU=${EBTU_WEIGHT}, OpenJudge=${OPENJUDGE_LLM}, RM_LLM=${RM_LLM}"
+echo "=== OpenJudge Finance 配置 ==="
+echo "  Finance评估权重: ${RM_WEIGHT} (使用 FinanceCompositionEvaluator)"
+echo "  Finance评估模型: ${FINANCE_LLM_DISPLAY}"
+echo "  PresentationQuality: ${PRESENTATION_QUALITY_WEIGHT}"
+echo "  Grounding: ${GROUNDING_WEIGHT}"
+echo "  CGCV: ${CGCV_WEIGHT}"
+echo "  Audit: ${AUDIT_WEIGHT}"
+echo "  OpenJudge LLM: ${OPENJUDGE_LLM}"
 
 #===============================================================================
 # 3. 环境配置
@@ -112,7 +123,7 @@ cat > ${DEEPFINANCE_MCP_CONFIG} << EOF
     }
 }
 EOF
-export DEEPFINANCE_MCP_CONFIG  DEEPFINANCE_TOOL_RESULT_MAX_CHARS
+export DEEPFINANCE_MCP_CONFIG DEEPFINANCE_TOOL_RESULT_MAX_CHARS
 
 # 其他服务配置
 HF_ENDPOINT="https://hf-mirror.com"
@@ -121,15 +132,11 @@ export HF_ENDPOINT ES_HOSTS
 
 # log 文件位置
 CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
-LOG_DIR="${AJET_ROOT}/logs/${PREFIX}"
-MASTER_IP_FILE="${LOG_DIR}/master-ip_${SUFFIX}.log"
-ENV_SERVICE_LOG="${LOG_DIR}/env_service_${SUFFIX}_${CURRENT_TIME}.log"
-TRAIN_LOG="${LOG_DIR}/train_${SUFFIX}_${CURRENT_TIME}.log"
 env_log_prefix="${SUFFIX}__${CURRENT_TIME}"
-# 多机训练参数配置
-GPUS_PER_NODE=8
-EXPECTED_WORKERS=$WORLD_SIZE
+MASTER_IP_FILE="${LOG_DIR}/master-ip_${SUFFIX}.log"
 
+# 多机训练参数配置
+EXPECTED_WORKERS=$WORLD_SIZE
 
 #===============================================================================
 # 4. 工具函数 以及 NCCL 配置（固定）
@@ -165,10 +172,14 @@ export NCCL_ASYNC_ERROR_HANDLING=1
 # 5. 工具envservice 环境变量
 #===============================================================================
 
-export PYTHONPATH="${AJET_ROOT}:${PYTHONPATH}"
+export PYTHONPATH="${AJET_ROOT}:${OPENJUDGE_ROOT}:${PYTHONPATH}"
 export RAY_CLUSTER_MODE="multi_node"
-export DEEPFINANCE_PATH="${ENV_SERVICE_ROOT}" # AgentJet 内部可能使用此路径
+export DEEPFINANCE_PATH="${ENV_SERVICE_ROOT}"
 export DEEPFINANCE_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profile.d/conda.sh && conda activate finworld_1209  && cd ${ENV_SERVICE_ROOT} && DEEPFINANCE_TOOL_RESULT_MAX_CHARS=${DEEPFINANCE_TOOL_RESULT_MAX_CHARS} DEEPFINANCE_MCP_CONFIG=${DEEPFINANCE_MCP_CONFIG} CACHE_TYPE=${CACHE_TYPE} MONGO_URI=${MONGO_URI} MONGO_DB_NAME=${MONGO_DB_NAME} MONGO_COLLECTION_NAME=${MONGO_COLLECTION_NAME} python -m env_service.env_service --env finworld --portal 0.0.0.0 --port 8080"
+# 打印 PYTHONPATH 确认
+echo "=== PYTHONPATH 配置 ==="
+echo "  AJET_ROOT: ${AJET_ROOT}"
+echo "  OPENJUDGE_ROOT: ${OPENJUDGE_ROOT}"
 
 
 #===============================================================================
@@ -176,6 +187,7 @@ export DEEPFINANCE_SCRIPT="source /mnt/data/taoshuchang.tsc/anaconda3/etc/profil
 #===============================================================================
 log "开始多机多卡训练: ${SUFFIX}"
 log "节点数: ${NNODES}, 每节点GPU数: ${GPUS_PER_NODE}"
+log "使用 OpenJudge FinanceCompositionEvaluator 进行 Finance 评估"
 mkdir -p ${LOG_DIR}
 mkdir -p $(dirname ${CONFIG_FILE})
 
@@ -208,8 +220,10 @@ if [[ $HOSTNAME == *"-master-"* ]]; then
     export RAY_ADDRESS="ray://localhost:10001"
 
     print_green "==================================="
-    print_green "Training Configuration"
+    print_green "OpenJudge Finance Training"
     print_green "Total GPUs: $((NNODES * GPUS_PER_NODE))"
+    print_green "OpenJudge LLM: ${OPENJUDGE_LLM}"
+    print_green "Finance Weight: ${RM_WEIGHT}"
     print_green "Log: ${TRAIN_LOG}"
     print_green "==================================="
 
