@@ -1,5 +1,4 @@
 import asyncio
-import gc
 from threading import Lock
 from typing import Any, Callable, Union, Type
 from multiprocessing import Process, Queue
@@ -82,12 +81,12 @@ class BaseAgentRunner(object):
         # malloc garbage collection
         del user_workflow
 
-        # run gc in a thread-safe way
-        if gc_lock.acquire(blocking=False):
-            try:
-                gc.collect()
-            finally:
-                gc_lock.release()
+        # # run gc in a thread-safe way
+        # if gc_lock.acquire(blocking=False):
+        #     try:
+        #         gc.collect()
+        #     finally:
+        #         gc_lock.release()
         return result
 
 

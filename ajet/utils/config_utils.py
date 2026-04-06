@@ -3,9 +3,10 @@
 import os
 import shutil
 import time
+import yaml
+import hydra.errors
 from functools import cache
 
-import yaml
 from beast_logger import print_dict
 from hydra import compose, initialize
 from loguru import logger
@@ -15,15 +16,44 @@ from ajet.utils.config_computer import split_keys_and_operators
 
 DEFAULT_DIR = "saved_experiments"
 
+def fix_hydra_searchpath_and_create_copy_when_needed(yaml_fp):
+    """Fix Hydra search paths if they don't exist by trying with base directory."""
+    abs_yaml_fp = os.path.abspath(yaml_fp)
+    with open(abs_yaml_fp, 'r', encoding='utf-8') as f:
+        yaml_content = yaml.safe_load(f)
+    if yaml_content and 'hydra' in yaml_content and 'searchpath' in yaml_content['hydra']:
+        base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        modified = False
+        for i, path in enumerate(yaml_content['hydra']['searchpath']):
+            if path.startswith('file://'):
+                rel_path = path[7:]
+                if not os.path.exists(rel_path):
+                    fixed_path = os.path.join(base_dir, rel_path)
+                    if os.path.exists(fixed_path):
+                        logger.warning(f"Cannot find `{os.path.abspath(rel_path)}`, but find `{os.path.abspath(fixed_path)}`, override original config ...")
+                        yaml_content['hydra']['searchpath'][i] = f'file://{fixed_path}'
+                        modified = True
+        if modified:
+            with open(abs_yaml_fp + ".patch.yaml", 'w', encoding='utf-8') as f:
+                yaml.dump(yaml_content, f)
+            return abs_yaml_fp + ".patch.yaml"
+    return abs_yaml_fp
+
+
 def read_ajet_config(yaml_fp):
     """Load a Hydra configuration relative to this module."""
+    yaml_fp = read_ajet_yaml_fp = fix_hydra_searchpath_and_create_copy_when_needed(yaml_fp)
     yaml_fp = os.path.relpath(
         yaml_fp, os.path.dirname(__file__)
     )  # do not try to understand this line, hydra is too weird
 
     def load_hydra_config(config_path: str, config_name: str) -> DictConfig:
         with initialize(config_path=config_path, version_base=None):
-            cfg = compose(config_name=config_name, overrides=[])
+            try:
+                cfg = compose(config_name=config_name, overrides=[])
+            except hydra.errors.MissingConfigException as e:
+                logger.error(f"Configuration default files not found (please check {read_ajet_yaml_fp})")
+                raise e
             return cfg
 
     dir_path = os.path.dirname(yaml_fp)
@@ -171,7 +201,7 @@ def config_safe_guard(config: dict, backbone: str) -> dict:
 
 
 def read_ajet_hierarchical_config(
-    yaml_fp, exp_name, backbone, write_to=None, exp_dir=DEFAULT_DIR, override_param_callback=None
+    yaml_fp, experiment_name=None, backbone=None, write_to=None, experiment_dir=None, override_param_callback=None
 ):
     if yaml_fp is None:
         config = {
@@ -193,9 +223,12 @@ def read_ajet_hierarchical_config(
     else:
         with open(yaml_fp, "r", encoding="utf-8") as file:
             config = yaml.safe_load(file)
-    config["ajet"]["experiment_name"] = exp_name
-    config["ajet"]["experiment_dir"] = os.path.join(exp_dir, exp_name)
-    config["ajet"]["backbone"] = backbone
+    if experiment_name is not None:
+        config["ajet"]["experiment_name"] = experiment_name
+    if (experiment_dir is not None):
+        config["ajet"]["experiment_dir"] = experiment_dir
+    if backbone is not None:
+        config["ajet"]["backbone"] = backbone
 
     # remove extra config of verl for trinity
     if backbone == "debug":
@@ -245,14 +278,49 @@ def expand_ajet_hierarchical_config(config, write_to=None):
     return config_final
 
 
-def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callback=None, storage=True):
+def _validate_input_yaml_no_overlap_with_auto_convertion_config(input_yaml_config, config_final):
+    """Validate that input yaml doesn't contain keys that will be auto-converted with different values."""
+    import json
+    import re
+
+    jsonc_path = os.path.join(os.path.dirname(__file__), "..", "default_config", "verl", "config_auto_convertion_verl.jsonc")
+    with open(jsonc_path, "r", encoding="utf-8") as f:
+        content = f.read()
+        content = re.sub(r'//.*', '', content)
+        convertion_json = json.loads(content)
+
+    errors = []
+    for from_key, to_keys in convertion_json.items():
+        to_keys = to_keys if isinstance(to_keys, list) else [to_keys]
+        for to_key in to_keys:
+            try:
+                input_value = _dive_to_fetch_value(input_yaml_config, to_key)
+            except ValueError:
+                continue
+            final_value = _dive_to_fetch_value(config_final, to_key)
+            if str(input_value) != str(final_value):
+                errors.append(
+                    f"  - Key '{to_key}': input_yaml value = {input_value}, "
+                    f"but ajet config sets it to = {final_value}"
+                )
+
+    if errors:
+        error_msg = (
+            "We found a configuration conflict between AgentJet and Verl! Input yaml contains keys that conflict with ajet default config values:\n"
+            + "\n".join(errors)
+            + "\nPlease use ajet.xxx to assign training parameters instead."
+        )
+        raise ValueError(error_msg)
+
+
+def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_callback=None, storage=True):
     """
     Prepare experiment configuration by reading YAML, setting up backup directories,
     and copying necessary files for the experiment.
 
     Args:
         yaml_path: Path to the YAML configuration file
-        exp_dir: Directory where experiment artifacts and backups should be stored
+        exp_base_dir: Directory where experiment artifacts and backups should be stored
         backbone: Backbone identifier that controls config munging
 
     Returns:
@@ -266,7 +334,7 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
 
     ## 0. read yaml & get experiment_name
     with open(yaml_path, "r", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
+        config = input_yaml_config = yaml.safe_load(file)
     try:
         exp_name = config.get("ajet").get("experiment_name")
     except Exception:
@@ -281,8 +349,8 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
     else:
         exp_name = exp_name.replace("|", "-")
 
-    backup_dir = os.path.abspath(os.path.join(exp_dir, exp_name, "backup"))
-    yaml_backup_dst = os.path.join(exp_dir, exp_name, "yaml_backup.yaml")
+    backup_dir = os.path.abspath(os.path.join(exp_base_dir, exp_name, "backup"))
+    yaml_backup_dst = os.path.join(exp_base_dir, exp_name, "yaml_backup.yaml")
     yaml_backup_dst = os.path.abspath(yaml_backup_dst)
     exe_exp_base = os.path.dirname(yaml_backup_dst)
 
@@ -323,12 +391,20 @@ def prepare_experiment_config(yaml_path, exp_dir, backbone, override_param_callb
     shutil.copyfile(yaml_backup_src, yaml_backup_dst)
 
     ## 4. edit new yaml
+    experiment_dir = f"{exp_base_dir}/{exp_name}"
     config = read_ajet_hierarchical_config(
-        yaml_backup_dst, exp_name, backbone, write_to=yaml_backup_dst, exp_dir=exp_dir, override_param_callback=override_param_callback
+        yaml_backup_dst,
+        experiment_name=exp_name,
+        backbone=backbone,
+        write_to=yaml_backup_dst,
+        experiment_dir=experiment_dir,
+        override_param_callback=override_param_callback
     )
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
 
+    _validate_input_yaml_no_overlap_with_auto_convertion_config(input_yaml_config, config_final)
+
     if not storage:
-        shutil.rmtree(os.path.join(exp_dir, exp_name))
+        shutil.rmtree(os.path.join(exp_base_dir, exp_name))
 
     return yaml_backup_dst, exe_exp_base, exp_name, config_final

@@ -4,6 +4,7 @@
 """The main entry point for the werewolf game."""
 
 from typing import List
+import agentscope
 import numpy as np
 import dotenv
 dotenv.load_dotenv()
@@ -12,7 +13,7 @@ from textwrap import dedent
 
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeMultiAgentFormatter, OpenAIMultiAgentFormatter
-from agentscope.model import OpenAIChatModel
+from agentscope.model import OpenAIChatModel, DashScopeChatModel
 from loguru import logger
 from pydantic import Field
 
@@ -81,9 +82,12 @@ def get_official_agent_prompt(name) -> str:
 
 class ExampleWerewolves(Workflow):
     trainable_targets: List[str] | None = Field(default=["werewolf"], description="List of agents to be fine-tuned.")
+    big_external_opponent_llm_url: str = Field(default="http://22.17.52.4:2888/v1", description="The URL of the big external opponent LLM. You can replace it with any OpenAI-compatible LLM API URL.")
+    big_external_opponent_llm_name: str = Field(default="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/", description="The model name of the big external opponent LLM. You can replace it with any OpenAI-compatible LLM name.")
 
     async def execute(self, workflow_task: WorkflowTask, tuner: AjetTuner) -> WorkflowOutput:
 
+        assert agentscope.__version__ == "1.0.7", "AgentScope has too many bugs across versions, please use version 1.0.7 for werewolves example."
         # ensure trainable targets is legal
         assert self.trainable_targets is not None, "trainable_targets cannot be None in ExampleWerewolves (because we want to demonstrate a explicit multi-agent case)."
 
@@ -103,28 +107,27 @@ class ExampleWerewolves(Workflow):
         # initialize agents
         players = []
         for i, role in enumerate(roles):
-            default_model = OpenAIChatModel(
-                model_name="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-235B-A22B-Instruct-2507/",
-                stream=False,
-                client_args={"base_url": "http://22.17.52.4:2888/v1"},
-                api_key="no_api_key",
-                generate_kwargs={"temperature": 0.01},
-            )
-            model_for_this_agent = tuner.as_agentscope_model(
-                agent_name=f"Player{i + 1}",    # the name of this agent
-                target_tag=role,                # `target_tag in self.trainable_targets` means we train this agent, otherwise we do not train this agent.
-                debug_model=default_model,      # the model used when this agent is not in `self.trainable_targets`
-            )
+            if role not in self.trainable_targets:
+                model_for_this_agent = OpenAIChatModel(
+                    stream=False,
+                    api_key="no_api_key",
+                    generate_kwargs={"temperature": 0.01},
+                    model_name=self.big_external_opponent_llm_name,
+                    client_args={"base_url": self.big_external_opponent_llm_url},
+                )
+            else:
+                model_for_this_agent = tuner.as_agentscope_model(
+                    agent_name=f"Player{i + 1}",
+                    target_tag=role,
+                )
             agent = ReActAgent(
                 name=f"Player{i + 1}",
                 sys_prompt=get_official_agent_prompt(f"Player{i + 1}"),
                 model=model_for_this_agent,
-                formatter=DashScopeMultiAgentFormatter()
-                     if role in self.trainable_targets
-                     else OpenAIMultiAgentFormatter(),
+                formatter=DashScopeMultiAgentFormatter() if isinstance(model_for_this_agent, DashScopeChatModel) else OpenAIMultiAgentFormatter(),
                 max_iters=3 if role in self.trainable_targets else 5,
             )
-            # agent.set_console_output_enabled(False)
+            agent.set_console_output_enabled(False)
             players += [agent]
 
         # reward condition

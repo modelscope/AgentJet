@@ -65,8 +65,6 @@ class ExtendedMessage:
         token_arr=[],
         token_begin_index=-1,
         token_end_index=-1,
-        clip=False,
-        clip_token_limit=8192,
         tokenizer: PreTrainedTokenizer = None,  # type: ignore
         token_generator="manual",
         build_from_uuid="",
@@ -85,9 +83,8 @@ class ExtendedMessage:
         self.token_begin_index = token_begin_index
         self.token_end_index = token_end_index
         self.invalid_log_prob_value = INVALID_LOG_PROB_VALUE
-        self._content_for_future = ""
+        self._content_for_compare = ""
         self._info = ""
-        self.clip = clip
         self.tools = tools
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
@@ -101,14 +98,8 @@ class ExtendedMessage:
         self.manual_loss_mask_override = []
         self.lack_normal_eos = False
 
-        if not clip:
-            self.generate_content_for_future(tokenizer=None, clip=False)
-        else:
-            self.generate_content_for_future(
-                tokenizer=tokenizer,
-                clip=True,
-                clip_token_limit=clip_token_limit,
-            )
+        self.generate_content_for_compare(tokenizer=None)
+
         self.eos_token_id = tokenizer.eos_token_id
 
         if token_generator == "auto":
@@ -127,9 +118,9 @@ class ExtendedMessage:
         if not self.first_message:
             self.token_arr = self.auto_tokenize_non_first_message(tokenizer=tokenizer, tools=tools)
         else:
-            auto_tokenize_target = {
+            auto_tokenize_target:dict = {
                 "role": self.role,
-                "content": self.content_for_future,
+                "content": self.content_for_compare,
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
@@ -144,9 +135,9 @@ class ExtendedMessage:
     def auto_tokenize_non_first_message(self, tokenizer, tools):
         try:
             # completion_token_arr will contain generation_prompt header
-            auto_tokenize_target = {
+            auto_tokenize_target:dict = {
                 "role": self.role,
-                "content": self.content_for_future,
+                "content": self.content_for_compare,
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
@@ -160,7 +151,7 @@ class ExtendedMessage:
             )
         except Exception as e:
             raise ValueError(
-                f"Cannot tokenize {self.role} --- {self.content_for_future}, \n\n Error: {e}"
+                f"Cannot tokenize {self.role} --- {self.content_for_compare}, \n\n Error: {e}"
             )
         self.token_arr, _ = self.get_inc_simple(
             text_frag_from=ajet_apply_chat_template(
@@ -175,12 +166,12 @@ class ExtendedMessage:
         return self.token_arr
 
     @property
-    def content_for_future(self):
-        if self._content_for_future == "":
+    def content_for_compare(self):
+        if self._content_for_compare == "":
             if not self.tool_calls:
-                logger.exception("content_for_future is not set, or previous llm output is empty!")
-                self._content_for_future
-        return self._content_for_future
+                logger.exception("content_for_compare is not set, or previous llm output is empty!")
+                self._content_for_compare
+        return self._content_for_compare
 
     @property
     def need_training(self):
@@ -191,19 +182,9 @@ class ExtendedMessage:
         ), f"author {self.author} is not identified"
         return self.author in NEED_TRAIN_AUTHORS
 
-    def generate_content_for_future(self, tokenizer, clip, clip_token_limit=-1):
+    def generate_content_for_compare(self, tokenizer):
         _content: str = self.content
-        if clip:
-            assert clip_token_limit > 0, "clip_token_limit must be set when clip is True"
-            n_token = len(tokenizer(_content, return_tensors="pt", padding=False)["input_ids"][0])
-            if n_token > clip_token_limit:
-                # 8000 > 4000
-                n_char = len(_content)  # 10,000
-                eps = 100  # token
-                preserve_percent = (clip_token_limit - eps) / n_token  # 3900 / 8000
-                n_char_to_preserve = int(n_char * preserve_percent)
-                _content = _content[:n_char_to_preserve] + "... truncate ..."
-        self._content_for_future = _content
+        self._content_for_compare = _content
 
     def get_loss_mask(self, blackout_token_combo):
         if self.need_training:
@@ -244,9 +225,11 @@ class ExtendedMessage:
         tokenizer_output = tokenizer(text_frag_from, return_tensors="pt", padding=False)
         tokenizer_input_ids = tokenizer_output["input_ids"][0].tolist()
         token_ids_acc = tokenizer_input_ids
+        del tokenizer_output  # Free memory immediately
 
         tokenizer_output = tokenizer(text_frag_to, return_tensors="pt", padding=False)
         input_ids = tokenizer_output["input_ids"][0].tolist()
+        del tokenizer_output  # Free memory immediately
         # get the new tokens added in this step
         input_id_increment = input_ids[len(token_ids_acc) :]
         FN_DEBUG = False
@@ -313,7 +296,7 @@ class ExtendedMessage:
             )
             # re-compute token_arr
             auto_tokenize_targets = [
-                {"role": msg.role, "content": msg.content_for_future} for msg in group
+                {"role": msg.role, "content": msg.content_for_compare} for msg in group
             ]
             merged.token_arr, _ = merged.get_inc_simple(
                 text_frag_from=ajet_apply_chat_template(

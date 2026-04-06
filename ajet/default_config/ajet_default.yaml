@@ -3,7 +3,7 @@ ajet:
   project_name: "ajet_default_project"
   experiment_name: "read_yaml_name"
   experiment_dir: "auto"  # {exp-dir}/{experiment_name}
-  backbone: debug # `debug` or `trinity` or `verl`
+  backbone: verl # `debug` or `trinity` or `verl`
 
 
   model:
@@ -74,6 +74,7 @@ ajet:
     # rollout kwargs
     temperature: 0.9
     top_p: 1.0
+    top_k: -1
 
     # validation kwargs
     val_kwargs:
@@ -82,7 +83,7 @@ ajet:
       top_k: -1
       top_p: 1.0
       do_sample: False
-      num_repeat: 1
+
 
 
   task_reader:
@@ -227,12 +228,15 @@ ajet:
     debug_tensor_parallel_size: 4
 
 
-  # trainer common configurations
+  # (ajet.trainer_common) trainer common configurations
   trainer_common:
 
     # validation before training
     val_before_train: False
     val_pass_n: 4
+    val_only: False
+    val_print_to_markdown_file_path: null
+    train_print_to_markdown_file_path: null
 
     # save and test frequency (in step)
     save_freq: 20
@@ -260,9 +264,23 @@ ajet:
       param_offload: True
       optimizer_offload: True
 
-    # learning rate
+    # optimizer settings
     optim:
-      lr: 1e-6
+      optimizer: AdamW
+      optimizer_impl: torch.optim
+      lr: 1.0e-06
+      lr_warmup_steps_ratio: 0.0
+      total_training_steps: -1
+      weight_decay: 0.01
+      lr_warmup_steps: -1
+      betas:
+      - 0.9
+      - 0.999
+      min_lr_ratio: 0.0
+      num_cycles: 0.5
+      lr_scheduler_type: constant
+      zero_indexed_step: true
+      grad_clip: 20.0
 
     # enable KL loss regularization
     use_kl_loss: True
@@ -270,6 +288,9 @@ ajet:
     # kl divergence loss coefficient
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
+
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 1.0
 
     # Ulysses specific configs
     ulysses_sequence_parallel_size: 1
@@ -280,11 +301,18 @@ ajet:
     # whether to save train/eval trajectories to JSON files
     save_trajectory_as_json_file: False
 
+  lora:
+    # LoRA configuration (disabled by default, set lora_rank > 0 to enable)
+    lora_rank: 0
+    lora_alpha: 16
+    target_modules: all-linear
+    load_format: auto
+
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_swarm_mode: False
   # both swarm / oai share the same interchange server
-  enable_experimental_interchange_server: False
+  enable_interchange_server: False
   # interchange server configuration
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
@@ -306,8 +334,6 @@ ajet:
   swarm_mode_sample_collection_max_cached_episodes: 9999
 
   task_runner:
-    # submit llm infer submit method
-    llm_infer_submit_method: "async" # options: "sync", "async"
 
     # how to wrap the user-defined workflow
     wrapper_type: "asyncio-with-gc"

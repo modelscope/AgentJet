@@ -28,6 +28,9 @@ class BenchmarkTestCase(unittest.TestCase):
         enable_ray_for_trinity: bool = True,
     ) -> None:
         """Run a benchmark with shared boilerplate for setup and process management."""
+        import agentscope
+        assert agentscope.__version__ == "1.0.7", "AgentScope has too many bugs across versions, please use version 1.0.7 for werewolves example."
+
         workspace_dir = Path(__file__).resolve().parents[2]
 
         git_hash, req_txt = populate_test_env_metadata(str(workspace_dir))

@@ -24,14 +24,14 @@ def start_swarm_server(env, config, port):
     assert config.ajet.enable_swarm_mode, (
         "Please enable_swarm_mode in config to start swarm server."
     )
-    assert config.ajet.enable_experimental_interchange_server, (
-        "Please enable_experimental_interchange_server in config to start swarm server."
+    assert config.ajet.enable_interchange_server, (
+        "Please enable_interchange_server in config to start swarm server."
     )
 
     # Set the port in the config
     config.ajet.interchange_server.interchange_server_port = port
 
-    from ajet.tuner_lib.experimental.as_oai_model_server import (
+    from ajet.tuner_lib.experimental.oai_model_server import (
         start_interchange_server,
     )
 
@@ -42,11 +42,11 @@ def start_swarm_server(env, config, port):
 def cmd_start(args):
     """Handle the 'start' subcommand."""
     # Use default config if not provided
-    exp_dir = args.exp_dir or DEFAULT_DIR
+    exp_base_dir = args.exp_dir or DEFAULT_DIR
     if not args.conf:
         args.conf = os.path.abspath(
             os.path.join(
-                os.path.dirname(__file__), "default_config/ajet_ts_default.yaml"
+                os.path.dirname(__file__), "default_config/ajet_swarm_default.yaml"
             )
         )
         assert os.path.exists(args.conf), (
@@ -61,7 +61,10 @@ def cmd_start(args):
         exp_name,
         exp_config,
     ) = prepare_experiment_config(
-        yaml_path, exp_dir, "verl", storage=False
+        yaml_path=yaml_path,
+        exp_base_dir=exp_base_dir,
+        backbone="verl",
+        storage=False
     )
 
     # Setup environment variables
@@ -73,7 +76,6 @@ def cmd_start(args):
             self.swarm_server = True
             self.swarm_overwatch = ""
             self.debug = ""
-
     swarm_args = SwarmArgs(args.conf, "verl", args.exp_dir)
     env, exp_config = setup_environment_vars(swarm_args, exp_config, main_yaml_fp)
 
@@ -131,11 +133,29 @@ def main():
     parser_overwatch.add_argument(
         "--refresh-interval",
         type=float,
-        default=1.0,
+        default=2.0,
         required=False,
-        help="Refresh interval in seconds (default: 1.0)",
+        help="Refresh interval in seconds (default: 2.0)",
     )
     parser_overwatch.set_defaults(func=cmd_overwatch)
+
+    # Subcommand: top (alias for overwatch)
+    parser_top = subparsers.add_parser("top", help="Monitor the swarm server (alias for overwatch)")
+    parser_top.add_argument(
+        "--swarm-url",
+        type=str,
+        default="http://localhost:10086",
+        required=False,
+        help="Swarm server URL (default: http://localhost:10086)",
+    )
+    parser_top.add_argument(
+        "--refresh-interval",
+        type=float,
+        default=2.0,
+        required=False,
+        help="Refresh interval in seconds (default: 2.0)",
+    )
+    parser_top.set_defaults(func=cmd_overwatch)
 
     args = parser.parse_args()
 

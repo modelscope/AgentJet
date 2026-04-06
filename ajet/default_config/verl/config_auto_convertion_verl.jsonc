@@ -2,6 +2,7 @@
     "ajet.trainer_common.total_epochs": "trainer.total_epochs",
 
     "ajet.trainer_common.val_before_train": "trainer.val_before_train",
+    "ajet.trainer_common.val_only": "trainer.val_only",
     "ajet.trainer_common.n_gpus_per_node": "trainer.n_gpus_per_node",
     "ajet.trainer_common.nnodes": "trainer.nnodes",
     "ajet.trainer_common.logger": "trainer.logger",
@@ -10,11 +11,29 @@
     "ajet.trainer_common.algorithm.use_kl_in_reward": "algorithm.use_kl_in_reward",
     "ajet.trainer_common.mini_batch_num": "actor_rollout_ref.actor.override_ppo_mini_batch_num",
     "ajet.trainer_common.fsdp_config": "actor_rollout_ref.actor.fsdp_config",
-    "ajet.trainer_common.optim": "actor_rollout_ref.actor.optim",
+    "ajet.trainer_common.optim.optimizer": "actor_rollout_ref.actor.optim.optimizer",
+    "ajet.trainer_common.optim.optimizer_impl": "actor_rollout_ref.actor.optim.optimizer_impl",
+    "ajet.trainer_common.optim.lr": "actor_rollout_ref.actor.optim.lr",
+    "ajet.trainer_common.optim.lr_warmup_steps_ratio": "actor_rollout_ref.actor.optim.lr_warmup_steps_ratio",
+    "ajet.trainer_common.optim.total_training_steps": "actor_rollout_ref.actor.optim.total_training_steps",
+    "ajet.trainer_common.optim.weight_decay": "actor_rollout_ref.actor.optim.weight_decay",
+    "ajet.trainer_common.optim.lr_warmup_steps": "actor_rollout_ref.actor.optim.lr_warmup_steps",
+    "ajet.trainer_common.optim.betas": "actor_rollout_ref.actor.optim.betas",
+    "ajet.trainer_common.optim.min_lr_ratio": "actor_rollout_ref.actor.optim.min_lr_ratio",
+    "ajet.trainer_common.optim.num_cycles": "actor_rollout_ref.actor.optim.num_cycles",
+    "ajet.trainer_common.optim.lr_scheduler_type": "actor_rollout_ref.actor.optim.lr_scheduler_type",
+    "ajet.trainer_common.optim.zero_indexed_step": "actor_rollout_ref.actor.optim.zero_indexed_step",
+    "ajet.trainer_common.optim.grad_clip": "actor_rollout_ref.actor.optim.grad_clip",
     "ajet.trainer_common.use_kl_loss": "actor_rollout_ref.actor.use_kl_loss",
     "ajet.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
     "ajet.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
     "ajet.trainer_common.ulysses_sequence_parallel_size": "actor_rollout_ref.actor.ulysses_sequence_parallel_size",
+    "ajet.trainer_common.loss_extra_scale_ratio": "actor_rollout_ref.actor.loss_extra_scale_ratio",
+
+    "ajet.lora.lora_rank": "actor_rollout_ref.model.lora_rank",
+    "ajet.lora.lora_alpha": "actor_rollout_ref.model.lora_alpha",
+    "ajet.lora.target_modules": "actor_rollout_ref.model.target_modules",
+    "ajet.lora.load_format": "actor_rollout_ref.rollout.load_format",
 
     "ajet.trainer_common.save_freq": "trainer.save_freq",
     "ajet.trainer_common.test_freq": "trainer.test_freq",
@@ -30,8 +49,14 @@
         "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu"
     ],
 
+    "ajet.rollout.max_num_seqs": "actor_rollout_ref.rollout.max_num_seqs",
+    "ajet.rollout.temperature": "actor_rollout_ref.rollout.temperature",
     "ajet.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
     "ajet.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
+    "ajet.rollout.num_repeat": [
+        "actor_rollout_ref.actor.rollout_n",
+        "actor_rollout_ref.rollout.n"
+    ],
 
     "ajet.model.path": "actor_rollout_ref.model.path",
     "ajet.project_name": "trainer.project_name",

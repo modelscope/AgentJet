@@ -1,0 +1,82 @@
+# ------------------ main configuration ------------------
+ajet:
+  project_name: test_lora
+  task_reader:
+    type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
+    # effective when `type: huggingface_dat_repo`
+    huggingface_dat_repo:
+      dataset_path: '/mnt/data_cpfs/model_cache/modelscope/dataset/openai/gsm8k/main'
+      training_split: "train"
+      validation_split: "test"
+
+  task_judge:
+    # ✨✨✨✨ define your evaluation function
+    judge_protocol: tutorial.example_math_agent.math_answer_as_judge->MathAnswerAsJudge
+
+  model:
+    # ✨✨✨✨ set the model to be trained
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+
+  rollout:
+    user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ write and select workflow
+    # user_workflow: "tutorial.example_math_agent.math_agent_langchain->ExampleMathLearn"                     # ✨if you prefer langchain version
+    # user_workflow: "tutorial/example_math_agent/math_agent_oai_sdk.py->ExampleMathLearn_Simple_NoToolCall"  # ✨if you prefer openai sdk version without toolcall
+    # user_workflow: "tutorial/example_math_agent/math_agent_oai_sdk.py->ExampleMathLearn"                    # ✨if you prefer openai sdk version with toolcall
+    # user_workflow: "tutorial/example_math_agent/math_agent_raw_http.py->ExampleMathLearn"                   # ✨if you do not want to use any agentic framwork at all
+    # user_workflow: "tutorial/example_math_agent/math_agent_simplify.py->MathToolWorkflow"                   # ✨if you prefer to compute reward inside workflow
+    temperature: 1.0
+    max_env_worker: 64
+    num_repeat: 6
+    agent_madness_reward: 0.0
+    tensor_model_parallel_size: 1
+    max_num_seqs: 40
+    multi_turn:
+      max_sample_per_task: 2
+    compute_madness_checklist:
+      - "nonsense"
+      - "wrong_toolcall"
+    max_response_length_in_one_turn: 1024
+    max_model_len: 10000
+    n_vllm_engine: 2
+
+  data:
+    train_batch_size: 100
+    max_prompt_length:   3000
+    max_response_length: 7000
+
+  execute_test: false
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  trainer_common:
+    save_freq: 100
+    test_freq: 100
+    total_epochs: 100
+    logger: swanlab
+    val_before_train: true
+    optim:
+      lr: 3e-05
+
+  lora:
+    lora_rank: 32
+    lora_alpha: 32
+    target_modules: all-linear
+    load_format: safetensors
+
+
+
+# ------------------ do not modify ------------------
+hydra:
+  searchpath:
+    - file://ajet/default_config
+    - file://ajet/default_config/verl
+    - file://ajet/default_config/trinity
+
+# ------------------ do not modify ------------------
+defaults:
+  - verl_default
+  - trinity_default
+  - ajet_default
+  - _self_

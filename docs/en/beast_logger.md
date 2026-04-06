@@ -6,6 +6,13 @@ that is unprecedented in any other projects.
 
 Here is how to use beast-logger in AgentJet.
 
+
+<div align="center">
+<img width="800" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/beast_logger_zimu.mp4.gif"/>
+</div>
+
+
+
 ## Usage in AgentJet
 
 1. Start training or debugging with AgentJet launcher.

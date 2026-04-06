@@ -1,0 +1,58 @@
+/*
+ * 表格文本自动换行
+ * 此文件专门解决表格单元格文本溢出问题
+ * 使用最高优先级确保生效
+ */
+
+/* 全局表格设置 */
+table {
+  table-layout: auto !important;
+  width: 100% !important;
+}
+
+/* 所有表格单元格强制换行 */
+table th,
+table thead th,
+table tbody th,
+table td,
+table tbody td,
+article table th,
+article table td,
+.prose table th,
+.prose table td,
+.md-typeset table th,
+.md-typeset table td,
+.md-content table th,
+.md-content table td,
+div[class*="prose"] table th,
+div[class*="prose"] table td {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  hyphens: auto !important;
+  max-width: 400px !important;
+}
+
+/* 第一列可以窄一些 */
+table th:first-child,
+table td:first-child {
+  max-width: 150px !important;
+  min-width: 100px !important;
+}
+
+/* 确保表格容器不溢出 */
+.md-content__inner,
+.prose,
+article {
+  overflow-x: auto !important;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  table th,
+  table td {
+    max-width: 200px !important;
+    font-size: 0.875rem !important;
+  }
+}

@@ -1,10 +1,6 @@
-import os
 import time
-import httpx
-from typing import List, Dict, Callable, Any
+from typing import Dict, Callable, Any
 from functools import wraps
-from pydantic import BaseModel
-from loguru import logger
 
 def cache_with_ttl(ttl: float):
     """

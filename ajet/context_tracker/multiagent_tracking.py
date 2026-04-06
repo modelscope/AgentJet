@@ -17,7 +17,7 @@ from ajet.context_tracker.single_agent_tracking import (
 )
 from ajet.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from ajet.schema.trajectory import Reward
-from ajet.utils.color_hsl import adjust_color_hsl
+from ajet.utils.color_hsl import adjust_color_hsl_batch
 from ajet.utils.compute_madness import compute_string_madness
 from ajet.utils.tokenizer import ajet_apply_chat_template
 
@@ -84,19 +84,6 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         #        },
         #    ],
         # }
-        # or tool_result format?? not observed yet:
-        # msg = {
-        #    "role": "tool",
-        #    "content": [
-        #        {
-        #           "type": "tool_result",
-        #           "id": "call_xxx",
-        #           "output": "tool output content",
-        #           "name": "tool_name"
-        #        },
-        #    ],
-        # }
-
 
         str_content = ""
         for item in msg["content"]:
@@ -332,6 +319,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             )
         ):
             logger.bind(exception=True).info(f"General Warning: merge failure discovered.\n")
+            # from ajet import bp; bp("SWARM")
         return
 
 
@@ -346,7 +334,9 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             # llm_output["tool_calls"] is not None, and is not []
             tool_calls = llm_output["tool_calls"]
             if "wrong_toolcall" in self.config.ajet.rollout.compute_madness_checklist:
-                copy_tool_calls = copy.deepcopy(tool_calls)
+                # copy_tool_calls = copy.deepcopy(tool_calls)
+                # Shallow copy is sufficient - we're only reading the data
+                copy_tool_calls = tool_calls
                 wrong_toolcall = False
                 for i in range(len(copy_tool_calls)):
                     if ("function" in copy_tool_calls[i]) and (
@@ -513,15 +503,9 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             logprobs = [INVALID_LOG_PROB_VALUE] * len(
                 tracker_tokenized["prompt_ids"]
             ) + tracker_tokenized["response_logprobs"]
-            # Create adjusted color array
-            loss_mask_color_abl_arr = [
-                (
-                    adjust_color_hsl("#09ABCF", logprob)
-                    if mask == 1
-                    else adjust_color_hsl("#D98510", logprob)
-                )
-                for mask, logprob in zip(tracker_tokenized["loss_mask"], logprobs)
-            ]
+            # Create adjusted color array using batch processing for better performance
+            base_colors = ["#09ABCF" if mask == 1 else "#D98510" for mask in tracker_tokenized["loss_mask"]]
+            loss_mask_color_abl_arr = adjust_color_hsl_batch(base_colors, logprobs)
             logprob_text_arr = [
                 (f"{logprob:.4f}" if logprob != INVALID_LOG_PROB_VALUE else "N/A")
                 for logprob in logprobs
@@ -619,11 +603,13 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             add_generation_prompt=True,
             tokenize=False,
         )
-        length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
-        max_response_length = self.config.ajet.rollout.max_response_length_in_one_turn
+        prompt_token_length = len(self.tokenizer(prompt_text, return_tensors="pt", padding=False)["input_ids"][0])  # type: ignore
+        max_response_length_in_one_turn = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
-        max_seq_length: int = max_model_len - max_response_length
-        if length < max_seq_length:
+        max_seq_length: int = max_model_len - max_response_length_in_one_turn
+        # prompt_token_length: the prompt_token_length of current all previous context
+        # max_seq_length: max_model_len - max_response_length_in_one_turn
+        if prompt_token_length < max_seq_length:
             token_overflow = False
         else:
             token_overflow = True
@@ -631,12 +617,13 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             ret = (False, token_overflow, "externally_interrupted")
         elif self.already_mad_flag and self.config.ajet.rollout.agent_madness_termination:
             ret = (False, token_overflow, "already_mad")
-        elif length < max_seq_length:
+        elif prompt_token_length < max_seq_length:
             ret = (
                 True,
                 token_overflow,
-                f"safe[{length} < {max_model_len} - {max_response_length}]",
+                f"safe[{prompt_token_length} < {max_model_len} - {max_response_length_in_one_turn}]",
             )
         else:
-            ret = (False, token_overflow, "token_overflow")
+            ret = (False, token_overflow,
+                   f"token_overflow(prompt_token_length.{prompt_token_length}>=max_model_len.{max_model_len}-max_response_length_in_one_turn.{max_response_length_in_one_turn})")
         return ret

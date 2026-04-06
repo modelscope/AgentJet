@@ -15,12 +15,13 @@ ajet:
   model:
     # ✨✨✨✨ 设置待训练的模型
     path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-7B-Instruct
+    # path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3.5-9B
 
   rollout:
     user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
-    temperature: 1.0
+    temperature: 0.9
     max_env_worker: 64
-    max_num_seqs: 256
+    max_num_seqs: 10
     num_repeat: 6
     agent_madness_reward: 0.0
     tensor_model_parallel_size: 1
@@ -31,7 +32,6 @@ ajet:
       - "wrong_toolcall"
     max_response_length_in_one_turn: 1024
     max_model_len: 10000
-    n_vllm_engine: 2
 
   data:
     train_batch_size: 100
@@ -43,13 +43,16 @@ ajet:
     debug_first_n_tasks: 1
 
   trainer_common:
-    save_freq: 100
+    save_freq: 999999
     test_freq: 999999
     total_epochs: 100
     logger: swanlab
+    val_print_to_markdown_file_path: './qwen2-7b.md'
     nnodes: 1
     n_gpus_per_node: 4
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 1.0
+    val_before_train: true
 
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
@@ -62,14 +65,14 @@ trinity:
     sync_method: nccl
 
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
     - file://ajet/default_config/trinity      # trinity only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
   - verl_default # verl inherit
   - trinity_default # trinity inherit

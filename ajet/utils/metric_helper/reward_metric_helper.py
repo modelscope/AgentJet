@@ -143,14 +143,13 @@ def compute_reward_metrics_from_trajectories(trajectories: List[Any], prefix: st
 def populate_reward_metadata_from_stats(reward: "Reward", reward_stats: Dict[str, Any]) -> None:
     """
     Populate Reward.metadata with all reward statistics.
-    
+
     Args:
         reward: The Reward object to populate
         reward_stats: The reward_stats dictionary from judge
     """
     if not reward_stats:
         return
-    
+
     # Directly copy all reward_stats into metadata
     reward.metadata.update(reward_stats)
-

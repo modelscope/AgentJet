@@ -12,10 +12,12 @@ class MockAsyncCompletions(AsyncCompletions):
     async def create(self, *args, **kwargs) -> Any: # type: ignore
         return await self._client.create(*args, **kwargs) # type: ignore
 
+
 class MockAsyncChat(AsyncChat):
     @property
     def completions(self) -> MockAsyncCompletions:  # type: ignore
         return MockAsyncCompletions(self._client)
+
 
 class OpenaiBaseUrlAndApiKey(BaseModel):
     """ At this layer, we will determine which model to use:
@@ -29,12 +31,16 @@ class OpenaiBaseUrlAndApiKey(BaseModel):
     episode_uuid: str = Field(default="episode_id", description="reserved field.")
 
     def as_agentscope_model(self, *args, **kwargs):
-        from agentscope.model import DashScopeChatModel
-        return DashScopeChatModel(model_name="AgentJet-Model", api_key=self.api_key, base_http_api_url=self.base_url)
+        from agentscope.model import OpenAIChatModel
+        return OpenAIChatModel(
+            model_name="AgentJet-Model", api_key=self.api_key,
+            client_args={"base_url": self.base_url}
+        )
 
     def as_raw_openai_sdk_client(self, *args, **kwargs):
         from openai import AsyncOpenAI
         return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+
 
 class OpenaiClientBaseUrlTuner(BaseModel):
     """ At this layer, we will determine which model to use:

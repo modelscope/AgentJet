@@ -31,7 +31,7 @@ COPY scripts/docker/pyproject_for_docker_build.toml pyproject.toml
 RUN pip install uv
 
 # use uv to create a virtual environment and install dependencies
-RUN uv venv /opt/venv --python=3.10
+RUN uv venv /opt/venv --python=3.12
 
 ENV UV_HTTP_TIMEOUT=9999
 
@@ -41,6 +41,7 @@ RUN . /opt/venv/bin/activate && uv pip install flash_attn==2.8.3 --no-deps --no-
 
 # cache friendly layer for code changes
 COPY . .
+RUN . /opt/venv/bin/activate && uv pip install -e .[verl]
 RUN wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/dataset.tar.gz
 RUN mkdir -p /mnt/data_cpfs/model_cache/modelscope
 RUN tar -xzf dataset.tar.gz -C /mnt/data_cpfs/model_cache/modelscope/ && rm dataset.tar.gz

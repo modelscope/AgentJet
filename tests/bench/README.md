@@ -11,7 +11,7 @@ Note: `tests/bench` source code is for test robot only, therefore `yaml` configu
 # prepare dataset path
 # prepare swanlab api
 
-source .verl/bin/activate
+source .venv/bin/activate
 
 python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py
 python -m pytest -s tests/bench/benchmark_appworld/execute_benchmark_appworld.py
@@ -19,15 +19,19 @@ python -m pytest -s tests/bench/benchmark_countdown/execute_benchmark_countdown.
 python -m pytest -s tests/bench/benchmark_learn2ask/execute_benchmark_learn2ask.py
 python -m pytest -s tests/bench/benchmark_frozenlake/execute_benchmark_frozenlake.py
 
-VERL_PYTHON="./.verl/bin/python" python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_01_begin_verl
-VERL_PYTHON="./.verl/bin/python" python -m pytest -s tests/bench/benchmark_appworld/execute_benchmark_appworld.py::TestBenchmarkAppworld::test_01_begin_verl
-VERL_PYTHON="./.verl/bin/python" python -m pytest -s tests/bench/benchmark_countdown/execute_benchmark_countdown.py::TestBenchmarkCountdown::test_01_begin_verl
-VERL_PYTHON="./.verl/bin/python" python -m pytest -s tests/bench/benchmark_learn2ask/execute_benchmark_learn2ask.py::TestBenchmarkLearnToAsk::test_01_begin_verl
-VERL_PYTHON="./.verl/bin/python" python -m pytest -s tests/bench/benchmark_frozenlake/execute_benchmark_frozenlake.py::TestBenchmarkFrozenLake::test_01_begin_verl
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_01_begin_verl
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_appworld/execute_benchmark_appworld.py::TestBenchmarkAppworld::test_01_begin_verl
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_countdown/execute_benchmark_countdown.py::TestBenchmarkCountdown::test_01_begin_verl
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_learn2ask/execute_benchmark_learn2ask.py::TestBenchmarkLearnToAsk::test_01_begin_verl
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_frozenlake/execute_benchmark_frozenlake.py::TestBenchmarkFrozenLake::test_01_begin_verl
 
+python -m ajet.launcher --conf tests/bench/benchmark_math/benchmark_math.yaml --autokill --db="UPP"
 
 export APPWORLD_PATH="/dev/shm/pack_all_in_one"
 export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
 python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld.yaml --with-appworld --backbone=debug --autokill
 python -m ajet.launcher --conf tests/bench/benchmark_appworld/benchmark_appworld_oai_sdk.yaml --with-appworld --autokill --db="EXT"
 ```
+
+
+VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_01_begin_verl

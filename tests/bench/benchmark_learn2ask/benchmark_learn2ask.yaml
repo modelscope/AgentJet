@@ -15,7 +15,7 @@ ajet:
   rollout:
     user_workflow: "tutorial.example_learn2ask.learn2ask->ExampleLearn2Ask"
     force_disable_toolcalls: True
-    temperature: 1.0
+    temperature: 0.9
     max_env_worker: 64
     num_repeat: 6
     tensor_model_parallel_size: 1
@@ -45,7 +45,8 @@ ajet:
     test_freq: 100
     total_epochs: 100
     logger: swanlab
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 10.0
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
   execute_testing_lambda: "tests/bench/benchmark_learn2ask/benchmark_learn2ask.py->TestProbe" # DO NOT EDIT, THIS IS FOR TEST ROBOT
@@ -57,14 +58,14 @@ trinity:
     sync_method: nccl
 
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
     - file://ajet/default_config/trinity      # trinity only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1

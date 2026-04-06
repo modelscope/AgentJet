@@ -9,17 +9,19 @@ from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
-from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 
 # python -m tutorial.example_math_swarm.math
 
 GRPO_N = 4  # grpo group size
 NUM_EPOCH = 10000
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
-REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct")
+REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct")
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
+
+assert AJET_SWARM_URL != "http://swarm-server-ip:10086", "Please set the environment variable AJET_SWARM_URL to your swarm server's URL, e.g., http://localhost:10086 or http://your-swarm-server-ip:10086"
 
 def main():
 
@@ -28,38 +30,38 @@ def main():
         reader_type = "huggingface_dat_repo",
         reader_config = AjetTaskReader(
             huggingface_dat_repo = HuggingfaceDatRepo(
-                dataset_path = "/mnt/data_cpfs/qingxu.fu/dataset/openai/gsm8k/main",
+                dataset_path = '/mnt/data_cpfs/model_cache/modelscope/dataset/openai/gsm8k/main',
+                # dataset_path = "/root/agentjet/benchmark_datasets/dataset/gsm8k/socratic",
                 # dataset_path = "openai/gsm8k",
                 # dataset_name = "main",
             )
         )
     )
 
-    # # Hand shake with remote swarm server
+    # Hand shake with remote swarm server
     swarm_worker = SwarmClient(AJET_SWARM_URL)
+    ajet_job = AgentJetJob(
+        experiment_name="math_gsm8k_grpo",
+        algorithm="grpo",
+        n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
+        model=REMOTE_MODEL_PATH,
+        batch_size=REMOTE_BATCH_SIZE,
+        num_repeat=GRPO_N,
+    )
+    print(ajet_job.config.to_dict())
     swarm_worker.auto_sync_train_config_and_start_engine(
-        AgentJetJob(
-            experiment_name="math_gsm8k_grpo",
-            algorithm="grpo",
-            n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
-            model=REMOTE_MODEL_PATH,
-            batch_size=REMOTE_BATCH_SIZE,
-            num_repeat=GRPO_N,
-        ),
-        # force_restart=True,
+        ajet_job,
+        force_restart=True,
     )
 
     def rollout(task):
-        try:
-            # begin episode
-            episode_uuid, api_baseurl_key = swarm_worker.begin_episode(discard_episode_timeout=60)
-            # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
-            workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
-            # report output back to swarm remote
-            swarm_worker.end_episode(task, episode_uuid, workflow_output)
-            return
-        except:
-            pass
+        # begin episode
+        episode_uuid, api_baseurl_key = swarm_worker.begin_episode(discard_episode_timeout=60)
+        # execute agent ( base_url = api_baseurl_key.base_url, api_key = api_baseurl_key.api_key )
+        workflow_output = execute_agent(task, api_baseurl_key)  # reward is in `workflow_output`
+        # report output back to swarm remote
+        swarm_worker.end_episode(task, episode_uuid, workflow_output)
+        return
 
     executor = PeriodicDrainThreadPoolExecutor(workers=GRPO_N * REMOTE_BATCH_SIZE, auto_retry=True)
     for _ in range(NUM_EPOCH):

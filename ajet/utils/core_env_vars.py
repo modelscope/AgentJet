@@ -15,7 +15,7 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
     if config.ajet.trainer_common.nnodes == 1:
         master_node_ip = "localhost"
     else:
-        if config.ajet.enable_experimental_interchange_server:
+        if config.ajet.enable_interchange_server:
             if config.ajet.interchange_server.interchange_method == "ipc":
                 raise ValueError("IPC interchange method is not supported for multi-node setup. Please set `ajet.interchange_server.interchange_method: tcp` ")
 
@@ -26,9 +26,17 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
 
     runtime_env = {
         "env_vars": {
-            "VLLM_USE_V1": "1",
             "NCCL_DEBUG": "WARN",
+
+            "VLLM_USE_V1": "1",
             "VLLM_LOGGING_LEVEL": "WARN",
+            "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
+            "VLLM_DISABLE_COMPILE_CACHE": "1",
+
+            "HCCL_HOST_SOCKET_PORT_RANGE": "auto",
+            "HCCL_NPU_SOCKET_PORT_RANGE": "auto",
+
+            "CUDA_DEVICE_MAX_CONNECTIONS": "1",
             "TOKENIZERS_PARALLELISM": "true",
             # use ajet.backbone as plugin directory
             "TRINITY_PLUGIN_DIRS": str((Path(__file__).parent.parent / "backbone").resolve()),

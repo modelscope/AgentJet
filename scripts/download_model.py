@@ -4,9 +4,9 @@ if ms == "Y" or ms == "y":
     from loguru import logger
     from modelscope import snapshot_download
 
-    cache_dir = input("model path (./modelscope_cache): ").strip()
+    cache_dir = input("model path (/mnt/data_cpfs/model_cache/modelscope/hub/Qwen): ").strip()
     if not cache_dir:
-        cache_dir = "./modelscope_cache"
+        cache_dir = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen"
     res = snapshot_download(input("model name: ").strip(), cache_dir=cache_dir)
     logger.success(res)
 

@@ -1,0 +1,22 @@
+/* Fix for badges to display inline */
+article p a img[alt="Benchmarking"],
+article p a img[alt="Docs"],
+article p a img[alt="License"],
+article p a img[alt="Python"] {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+/* Ensure paragraph containing only badges displays inline */
+article p:has(> a > img[src*="shields.io"]) {
+  display: inline;
+  line-height: 0;
+}
+
+/* Alternative: target all badge images from shields.io */
+article img[src*="shields.io"],
+article img[src*="badge"] {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 2px;
+}

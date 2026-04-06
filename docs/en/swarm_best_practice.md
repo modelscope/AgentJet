@@ -49,6 +49,7 @@ swarm_worker.start_engine()
 ```
 
 Hints:
+
 - You can `yaml_job.dump_job_as_yaml('./config.yaml')` to take a look at the full configuration.
 - You can `yaml_job.build_job_from_yaml('./config.yaml')` to load yaml configuration as override. (there are some configurations that must be edited from yaml).
 
@@ -93,6 +94,7 @@ def rollout(task) -> float | None:
 ```
 
 One important thing to note is that before each episode begins, you need to call `begin_episode` to obtain the `base_url` and `api_key`. At the same time, you will receive an episode identifier, `episode_uuid`. The `swarm_worker` is thread-safe and does not hold the state of the `episode`, so you can safely invoke multiple `begin_episode` calls concurrently. When your agent finishes running, remember to call `end_episode` to send the reward signal back to the swarm server (with the `episode_uuid` parameter). Additionally, if you wish to discard an episode for reasons such as:
+
 - **Reward miscalculation**
 - **External API out of credit**
 - **Debugging**
@@ -130,10 +132,10 @@ Hint: you do not have to use `run_episodes_until_all_complete`, you are free to 
 
 ```python
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient, run_episodes_until_all_complete
-from ajet.default_config.ajet_default import AjetTaskReader, HuggingfaceDatRepo
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.task_reader import RouterTaskReader
-from tutorial.example_academic_trans.trans import execute_agent
+from tutorial.example_academic_trans_swarm.trans import execute_agent
 
 
 LOCAL_GRPO_N = 4  # grpo num_repeat (rollout.n)

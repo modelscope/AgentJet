@@ -11,7 +11,7 @@ This document provides a step-by-step guide to installing AgentJet.
 
 | Requirement | Detail |
 |-------------|---------|
-| **Python**         | 3.10 |
+| **Python**         | 3.12 |
 | Package Management | `uv` or `conda` |
 
 
@@ -40,7 +40,7 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```bash
     # Install with `verl` training backbone:
 
-    uv venv --python=3.10
+    uv venv --python=3.12
     source .venv/bin/activate
     uv pip install -e .[verl]
 
@@ -57,14 +57,13 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```bash
     # Install with `verl` training backbone:
 
-    conda create -n ajet-verl python=3.10
+    conda create -n ajet-verl python=3.12
     conda activate ajet-verl
     pip install -e .[verl]
 
     #`flash-attn` must be installed after other dependencies
     pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
     ```
-
 
     !!! warning "flash-attn Installation"
         - `flash-attn` must be installed **after** other dependencies.
@@ -77,7 +76,7 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```bash
     # Install with `verl` training backbone:
 
-    uv venv --python=3.10
+    uv venv --python=3.12
     source .venv/bin/activate
     uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
 
@@ -87,9 +86,8 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
 
     !!! warning "flash-attn Installation"
         - `flash-attn` must be installed **after** other dependencies.
-        - Ensure a healthy connection to GitHub to install pre-compiled wheels.
-        - If you find your machine spend a long time installing flash-attn, ensure a healthy connection to GitHub.
-        - To build faster, export `MAX_JOBS=${N_CPU}`.
+        - Please ensure a **healthy connection to GitHub** to install pre-compiled wheels to install faster.
+        - If the connection to github is unstable, it automatically falls back to building from source, export `MAX_JOBS=${N_CPU}` to install faster.
 
 
 === "Trinity"
@@ -104,18 +102,6 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
     ```
 
 
-=== "Trinity (aliyun)"
-
-    ```bash
-    # Install with `trinity` training backbone for fully asynchronous RFT:
-
-    uv venv --python=3.10
-    source .venv/bin/activate
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[trinity]
-    uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache
-    ```
-
-
 | Backbone  | VERL     | Trinity-RFT     |
 | -------- |--------  | -------------   |
 | Core design   | Share-GPU actor-rollout engine (colocate) |   Async actor-rollout engine    |
@@ -126,7 +112,25 @@ AgentJet supports multiple backbones, you can choose any of them depending on yo
 | vLLM Version   | 0.10.0 |     0.10.0         |
 
 
+## Deploy with docker
 
+The docker solution is recommanded when you are using **AgentJet Swarm** mode!
+
+Simply run:
+
+```bash
+docker run --rm -it \
+  -v /path/to/host/Qwen/Qwen2.5-7B-Instruct:/Qwen/Qwen2.5-7B-Instruct \
+  -v ./swarmlog:/workspace/log \
+  -v ./swarmexp:/workspace/saved_experiments \
+  -p 10086:10086 \
+  --gpus=all \
+  --shm-size=32GB \
+  ghcr.io/modelscope/agentjet:main \
+  bash -c "(ajet-swarm overwatch) & (NO_COLOR=1 LOGURU_COLORIZE=NO ajet-swarm start &>/workspace/log/swarm_server.log)"
+```
+
+to start the swarm server. For more details and explainations, please refer to [this document](./ajet-swarm-docker.md).
 
 
 ## Next Steps

@@ -157,5 +157,3 @@ ajet.context_tracker.detect_timeline_snap = False #（default False）
 ```
 
 启动时间线分歧点实时检测功能。这会消耗CPU算力，拖慢训练进程。仅建议在调试模式（`--backbone=debug`）时使用。
-
-

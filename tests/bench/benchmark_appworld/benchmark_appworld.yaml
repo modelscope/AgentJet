@@ -47,25 +47,28 @@ ajet:
     max_prompt_length: 3000
     max_response_length: 15000
 
+  # trainer common configurations
   trainer_common:
     save_freq: 99999
     test_freq: 99999
     total_epochs: 99999
     nnodes: 1
     n_gpus_per_node: 8
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 10.0
 
   execute_test: True # DO NOT EDIT, THIS IS FOR TEST ROBOT
   execute_testing_lambda: "tests/bench/benchmark_appworld/benchmark_appworld.py->TestProbe" #
 
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
     - file://ajet/default_config/trinity      # trinity only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1

@@ -38,6 +38,8 @@ def init_parallel_rollout_logger(experiment_name, experiment_dir):
 
     target_logger = logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser")
     target_logger.setLevel(logging.CRITICAL)
+    target_logger = logging.getLogger("vllm.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
@@ -54,7 +56,7 @@ def warm_up_task_judge_when_needed(config):
 def clean_up_tmp_ajet_dir(config):
     """Clean up old IPC socket files in /tmp/ajet directory."""
     import time
-    if config.ajet.enable_experimental_interchange_server is False:
+    if config.ajet.enable_interchange_server is False:
         return
 
     tmp_dir = "/tmp/ajet"
@@ -62,6 +64,7 @@ def clean_up_tmp_ajet_dir(config):
         return
     current_time = time.time()
     ttl = 4 * 3600
+    print("Clean up old IPC socket files in /tmp/ajet directory.")
     try:
         for filename in os.listdir(tmp_dir):
             if not filename.endswith(".sock"):
@@ -69,7 +72,6 @@ def clean_up_tmp_ajet_dir(config):
 
             file_path = os.path.join(tmp_dir, filename)
             try:
-                print(current_time - os.path.getmtime(file_path))
                 if current_time - os.path.getmtime(file_path) > ttl:
                     os.remove(file_path)
             except OSError:

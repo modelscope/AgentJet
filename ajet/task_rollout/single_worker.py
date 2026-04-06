@@ -1,6 +1,7 @@
 """Single worker primitives for environment rollouts."""
 
 import uuid
+import time
 import threading
 from typing import Literal
 
@@ -72,6 +73,10 @@ class BaseRolloutManager:
             max_llm_retries=max_llm_retries,
         )
 
+        # Memory leak tracking
+        self._memory_snapshot = None
+        self._tracemalloc_started = False
+
     @retry_with_backoff(max_retry_attr="max_llm_retries")
     def rollout_env_worker(
         self,
@@ -90,14 +95,9 @@ class BaseRolloutManager:
         """
         sampling_params = get_sample_params(mode, self.config)
 
-        if self.config.ajet.task_runner.llm_infer_submit_method == "sync":
-            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_sync(
-                sampling_params=sampling_params
-            )
-        else:
-            llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(
-                sampling_params=sampling_params
-            )
+        llm_inference_fn = self.async_llm_bridge.get_llm_inference_fn_async(
+            sampling_params=sampling_params
+        )
 
         episode_uuid = uuid.uuid4().hex
         workflow_task = WorkflowTask(
@@ -169,7 +169,6 @@ class BaseRolloutManager:
             cnt = 1
 
             while True:
-
                 if observation_window["stop"][task_thread_index]:           # since we use multi-threading, the best way to communicate with main thread is through shared memory.
                     observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"
                     return
@@ -206,10 +205,9 @@ class BaseRolloutManager:
                     observation_window["info"][task_thread_index] += f"[thread {task_thread_index} observe stop, returning]\n"
                     return
                 else:
+                    time.sleep(0)   # be nice to other threads
                     continue
 
         except Exception as e:
-            logger.exception(
-                f"encounter exception in env_worker_loop error={e.args}"
-            )
+            logger.exception(f"encounter exception in env_worker_loop error={e.args}")
             raise e

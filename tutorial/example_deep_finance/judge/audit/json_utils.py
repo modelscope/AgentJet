@@ -52,20 +52,20 @@ def _repair_json(js: str) -> str:
                 result.append(c)
             i += 1
         return ''.join(result)
-    
+
     js = escape_newlines_in_strings(js)
-    
+
     # 2. 移除trailing comma: ",}" -> "}" 和 ",]" -> "]"
     js = re.sub(r',\s*}', '}', js)
     js = re.sub(r',\s*]', ']', js)
-    
+
     # 3. 尝试修复截断的JSON - 补全缺失的括号
     # 统计括号数量
     open_braces = js.count('{')
     close_braces = js.count('}')
     open_brackets = js.count('[')
     close_brackets = js.count(']')
-    
+
     # 如果括号不匹配，尝试补全
     if open_braces > close_braces:
         # 先关闭可能未闭合的字符串
@@ -81,11 +81,11 @@ def _repair_json(js: str) -> str:
                 in_string = not in_string
         if in_string:
             js += '"'
-        
+
         # 补全缺失的括号
         js += ']' * (open_brackets - close_brackets)
         js += '}' * (open_braces - close_braces)
-    
+
     return js
 
 
@@ -93,7 +93,7 @@ def strict_load_json(text: str) -> Tuple[Dict[str, Any] | None, str | None]:
     js = extract_first_json_object(text)
     if js is None:
         return None, "No JSON object found"
-    
+
     # 第一次尝试：直接解析
     try:
         obj = json.loads(js)
@@ -102,7 +102,7 @@ def strict_load_json(text: str) -> Tuple[Dict[str, Any] | None, str | None]:
         return obj, None
     except json.JSONDecodeError:
         pass  # 继续尝试修复
-    
+
     # 第二次尝试：修复后解析
     try:
         repaired = _repair_json(js)
@@ -146,17 +146,17 @@ def validate_integrity_shape(obj: Dict[str, Any]) -> Tuple[Dict[str, Any] | None
         return None, "audit_trail must be a list"
 
     valid_verdicts = {"Supported", "Overstated", "Contradicted", "Hallucinated", "Irrelevant"}
-    
+
     for idx, item in enumerate(obj["audit_trail"]):
         if not isinstance(item, dict):
             return None, f"audit_trail[{idx}] is not a dict"
-        
+
         # Check required item fields
         if "citation_id" not in item:
             return None, f"audit_trail[{idx}] missing 'citation_id'"
         if "verdict" not in item:
             return None, f"audit_trail[{idx}] missing 'verdict'"
-        
+
         # Normalize verdict
         v = str(item["verdict"]).strip()
         # 简单的大小写兼容
@@ -227,7 +227,7 @@ def construct_reward_prompt(trajectory: List[Dict[str, Any]], template: str) -> 
             if "References" in txt or "[TASK_COMPLETED]" in txt or len(txt) > 600:
                 final_report = _strip_markdown_fences(txt)
                 break
-    
+
     # 找不到显式报告时，取最后一条 Assistant
     if not final_report and trajectory:
         last = trajectory[-1]
@@ -237,7 +237,7 @@ def construct_reward_prompt(trajectory: List[Dict[str, Any]], template: str) -> 
     for idx, msg in enumerate(trajectory):
         role = msg.get("role")
         content_raw = clean(msg.get("content"))
-        
+
         # User Query: First user message
         if role == "user" and not user_query:
             user_query = content_raw
@@ -249,7 +249,7 @@ def construct_reward_prompt(trajectory: List[Dict[str, Any]], template: str) -> 
             tool_json = _extract_tool_call_json(content_raw)
             if tool_json:
                 evidence_parts.append(f"--- Step {idx} Tool Call ---\n{tool_json}")
-        
+
         elif role == "tool":
             evidence_parts.append(f"--- Step {idx} Tool Result ---\n{content_raw}")
 

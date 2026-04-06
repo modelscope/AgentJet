@@ -44,7 +44,7 @@ async def hunter_stage(
     global moderator
     msg_hunter = await hunter_agent(
         await moderator(Prompts.to_hunter.format(name=hunter_agent.name)),
-        structured_model=get_hunter_model(players.current_alive),
+        structured_model=get_hunter_model(players.all_players),
     )
     if msg_hunter.metadata.get("shoot"):
         return msg_hunter.metadata.get("name", None)
@@ -134,7 +134,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:  # noqa: C90
                     msgs_vote = await fanout_pipeline(
                         players.werewolves,
                         msg=await moderator(content=Prompts.to_wolves_vote),
-                        structured_model=get_vote_model(players.current_alive),
+                        structured_model=get_vote_model(players.all_players),
                         enable_gather=False,
                     )
                     killed_player, votes = majority_vote(
@@ -187,7 +187,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:  # noqa: C90
                             ),
                         ),
                         structured_model=get_poison_model(
-                            players.current_alive,
+                            players.all_players,
                         ),
                     )
                     if msg_witch_poison.metadata.get("poison"):
@@ -206,7 +206,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:  # noqa: C90
                             names_to_str(players.current_alive),
                         ),
                     ),
-                    structured_model=get_seer_model(players.current_alive),
+                    structured_model=get_seer_model(players.all_players),
                 )
                 if msg_seer.metadata.get("name"):
                     player = msg_seer.metadata["name"]
@@ -282,7 +282,7 @@ async def werewolves_game(agents: list[ReActAgent], roles) -> bool:  # noqa: C90
                         names_to_str(players.current_alive),
                     ),
                 ),
-                structured_model=get_vote_model(players.current_alive),
+                structured_model=get_vote_model(players.all_players),
                 enable_gather=False,
             )
             voted_player, votes = majority_vote(

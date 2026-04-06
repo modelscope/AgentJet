@@ -64,7 +64,7 @@ def get_note(item: Any) -> str:
 def validate_shape(obj: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | None]:
     """
     验证 grounding JSON 结构
-    
+
     必需字段:
     - total_key_facts: int
     - cited_key_facts: int
@@ -86,7 +86,7 @@ def validate_shape(obj: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | No
             obj[field] = int(val)
         elif not isinstance(val, int):
             return None, f"Field '{field}' must be int, got {type(val).__name__}"
-    
+
     # good_citations 必须是 list
     if "good_citations" not in obj:
         obj["good_citations"] = []
@@ -95,7 +95,7 @@ def validate_shape(obj: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | No
     else:
         # 确保每个元素是字符串，最多保留 2 条
         obj["good_citations"] = [str(x) for x in obj["good_citations"][:2]]
-    
+
     # invalid_reference_nums 必须是 list
     if "invalid_reference_nums" not in obj:
         obj["invalid_reference_nums"] = []
@@ -113,7 +113,7 @@ def validate_shape(obj: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | No
                 except ValueError:
                     pass
         obj["invalid_reference_nums"] = sorted(nums)
-    
+
     return obj, None
 
 
@@ -200,10 +200,10 @@ def _is_probably_final_report(text: str) -> bool:
 def construct_reward_prompt(trajectory: List[Dict[str, Any]], user_prompt_template: str) -> str:
     """
     从 trajectory 构建 reward prompt
-    
+
     Args:
         trajectory: 对话轨迹 [{"role": ..., "content": ...}, ...]
-        
+
     Returns:
         构建好的 user prompt 字符串
     """

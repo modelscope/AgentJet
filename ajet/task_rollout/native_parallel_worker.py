@@ -1,7 +1,9 @@
 """Parallel environment rollout orchestration utilities."""
 
 import os
+import gc
 import time
+import tracemalloc
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Dict, List, Literal
 from urllib.parse import quote
@@ -9,6 +11,7 @@ from urllib.parse import quote
 import numpy as np
 import torch
 import threading
+from math import ceil
 from loguru import logger
 from tensordict import TensorDict
 from torch.nn.utils.rnn import pad_sequence
@@ -89,6 +92,64 @@ class DynamicRolloutManager(BaseRolloutManager):
             f.write(string_buffer)
         return
 
+    def _check_memory_leak(self):
+        """Check for memory leaks by comparing memory snapshots."""
+        if not self._tracemalloc_started:
+            tracemalloc.start()
+            self._tracemalloc_started = True
+            logger.info("Memory tracking started (tracemalloc)")
+            self._memory_snapshot = tracemalloc.take_snapshot()
+            return
+
+        # Take a new snapshot
+        gc.collect()  # Force garbage collection before snapshot
+        current_snapshot = tracemalloc.take_snapshot()
+
+        if self._memory_snapshot is not None:
+            # Compare snapshots
+            top_stats = current_snapshot.compare_to(self._memory_snapshot, 'lineno')
+
+            logger.info("=" * 80)
+            logger.info("Memory Leak Detection: Top 10 differences since last rollout_swarm call")
+            logger.info("=" * 80)
+
+            total_size_diff = 0
+            for stat in top_stats[:10]:
+                total_size_diff += stat.size_diff
+                logger.info(f"{stat}")
+
+            # Convert to MB
+            total_size_diff_mb = total_size_diff / 1024 / 1024
+            logger.info(f"\nTotal memory difference: {total_size_diff_mb:.2f} MB")
+
+            # Show top current memory consumers
+            logger.info("\n" + "=" * 80)
+            logger.info("Top 10 current memory allocations")
+            logger.info("=" * 80)
+            top_current = current_snapshot.statistics('lineno')
+            for stat in top_current[:10]:
+                logger.info(f"{stat}")
+
+            logger.info("=" * 80)
+
+            # Enhanced leak detection: show traceback for largest leak
+            if total_size_diff_mb > 10:  # Only if leak is significant (>10MB)
+                logger.warning(f"SIGNIFICANT MEMORY LEAK DETECTED: {total_size_diff_mb:.2f} MB")
+                logger.info("\n" + "=" * 80)
+                logger.info("Detailed traceback for top 3 memory leaks:")
+                logger.info("=" * 80)
+                for i, stat in enumerate(top_stats[:3], 1):
+                    if stat.size_diff > 0:
+                        logger.info(f"\n--- Leak #{i}: +{stat.size_diff / 1024 / 1024:.2f} MB, {stat.count_diff} objects ---")
+                        logger.info(f"File: {stat.traceback.format()[0] if stat.traceback else 'Unknown'}")
+                        if stat.traceback and len(stat.traceback) > 1:
+                            logger.info("Full traceback:")
+                            for line in stat.traceback.format():
+                                logger.info(f"  {line}")
+                logger.info("=" * 80)
+
+        # Update snapshot for next comparison
+        self._memory_snapshot = current_snapshot
 
     def rollout_static(
         self,
@@ -173,10 +234,13 @@ class DynamicRolloutManager(BaseRolloutManager):
         each thread re-spawn after complete, until reaching conditions to stop.
         """
 
+        # # Memory leak detection: compare with previous snapshot
+        # self._check_memory_leak()
+
         tracker_array: List[SingleAgentContextTracker] = []
         rollout_n = self.rollout_n
         n_batch_task = len(tasks)
-        n_task = min(len(tasks), self.max_parallel // rollout_n)
+        n_task = min(len(tasks), ceil(self.max_parallel / rollout_n))
         assert n_task > 0, f"n_task is not valid, n_task = min(len(tasks), self.max_parallel // rollout_n) = {n_task}"
         self.current_token_count_time = time.time()
 
@@ -232,7 +296,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                     f"Too many cached episodes [{total_completed_episodes}] has exceeded the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}] "
                     f"Deleting cached episodes to release memory..."
                 )
-                completed_task_id_map_ct = {}
+                completed_task_id_map_ct.clear()
             return (total_completed_tasks >= n_batch_task)
 
         def enough_non_dummy_task_stop_condition(completed_task_id_map_ct) -> bool:
@@ -257,7 +321,7 @@ class DynamicRolloutManager(BaseRolloutManager):
                     f"Too many cached episodes [{total_completed_episodes}] has exceeded the max cached episodes [{self.config.ajet.swarm_mode_sample_collection_max_cached_episodes}] "
                     f"Deleting cached episodes to release memory..."
                 )
-                completed_task_id_map_ct = {}
+                completed_task_id_map_ct.clear()
             return (total_completed_non_dummy_tasks >= n_batch_task)
 
         # select stop condition function based on config
@@ -370,22 +434,23 @@ class DynamicRolloutManager(BaseRolloutManager):
             self._write_swarm_rollout_dynamic_log(observation_window)
             meet_stop_condition_after_new_results = stop_condition(completed_task_id_map_ct)
             if meet_stop_condition_after_new_results:
-                print("Sending soft stop signal to all threads...")
+                logger.info("Sending soft stop signal to all threads...")
                 stop_all_threads_soft()
                 break
 
         # wait for all threads to complete
-        print('Finalizing all threads...')
+        logger.info('Finalizing all threads...')
         executor.shutdown(wait=True)
 
         # stop all threads hard
-        print("Sending hard stop signal to all threads...")
+        logger.info("Sending hard stop signal to all threads...")
         stop_all_threads_hard()
 
         # build tracker_array
-        print('Collecting results...')
+        logger.info('Collecting results...')
         for ct_list in completed_task_id_map_ct.values():
             tracker_array.extend(ct_list)
+        completed_task_id_map_ct.clear()
 
         # TODO: support multi-step reward
         task_success_rate = np.mean(
@@ -401,6 +466,20 @@ class DynamicRolloutManager(BaseRolloutManager):
 
         update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
         self._write_swarm_rollout_dynamic_log(observation_window)
+
+        # Explicit cleanup to prevent memory leaks
+        logger.debug("Performing explicit cleanup...")
+        # Clear futures list
+        futures.clear()
+        # Clear observation window
+        observation_window.clear()
+        # Delete local function references to break circular refs
+        del stop_condition_callback
+        del stop_condition
+        del update_rollout_result_array_preview
+        del count_tasks
+        # Force garbage collection
+        gc.collect()
 
         return tracker_array
 

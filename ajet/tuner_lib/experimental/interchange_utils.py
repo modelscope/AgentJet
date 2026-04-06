@@ -109,10 +109,16 @@ DEBUG = False
 
 VERBOSE = True
 
+shared_http_client = httpx.Client(timeout=10.0)
+
 def get_interchange_server_url(config):
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
-    if config.ajet.interchange_server.interchange_server_port != 'auto':
-        port = str(int(config.ajet.interchange_server.interchange_server_port))
+    if isinstance(config, dict):
+        interchange_server_port = config.get("ajet", {}).get("interchange_server", {}).get("interchange_server_port", "auto")
+    else:
+        interchange_server_port = config.ajet.interchange_server.interchange_server_port
+    if interchange_server_port != 'auto':
+        port = str(int(interchange_server_port))
     assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
     master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
     base_url = f"http://{master_node_ip}:{port}"
@@ -123,7 +129,7 @@ def http_change_engine_status(config, new_status: str, new_status_detail: str|No
     if new_status not in VALID_STATUSES:
         raise ValueError(f"Invalid engine status: {new_status}")
 
-    resp = httpx.post(
+    resp = shared_http_client.post(
         f"{get_interchange_server_url(config)}/update_engine_status",
         json={"engine_status": new_status, "engine_status_detail": new_status_detail, "global_step": global_step},
         timeout=10
@@ -133,7 +139,7 @@ def http_change_engine_status(config, new_status: str, new_status_detail: str|No
 
 
 def is_episode_claimed(config, episode_uuid: str, unregister_if_not_claimed: bool) -> bool:
-    resp = httpx.post(
+    resp = shared_http_client.post(
         f"{get_interchange_server_url(config)}/is_episode_claimed",
         json={"episode_uuid": episode_uuid, "unregister_if_not_claimed": unregister_if_not_claimed},
         timeout=5
@@ -152,7 +158,7 @@ def http_register_episode(config,
                           should_exit_soft):
 
     if should_exit_soft():
-        logger.warning(f"Exiting before registering episode {episode_uuid}")
+        logger.debug(f"Exiting before registering episode {episode_uuid}")
         return None
 
     # parse episode_uuid, openai_base_url, openai_api_key
@@ -164,7 +170,7 @@ def http_register_episode(config,
         zmq_listen_result_addr=zmq_listen_result_addr,
     )
     # send http request to swarm server to register episode
-    response = httpx.post(
+    response = shared_http_client.post(
         f"{interchange_http_addr}/register_episode",
         json=rer.model_dump(),  # 或者 rer.model_dump() 如果使用 Pydantic v2
         timeout=2

@@ -24,16 +24,13 @@ theme:
 nav:
   - Overview: index.md
 
-  - Tutorial:
-      - Introduction: en/intro.md
+  - • Tutorial:
       - Installation: en/installation.md
-      - Quick Start: en/quickstart.md
-      - Tune Your First Agent: en/tune_your_first_agent.md
+      - Tune First Agent: en/tune_your_first_agent.md
+      - Swarm Training Intro: en/swarm_intro_blog_en.md
       - Agentic Frameworks: en/agent_framework_support.md
-      - Swarm Training: en/swarm_intro_blog_english.md
-      - swarm_best_practice: en/swarm_best_practice.md
 
-  - Examples:
+  - • Classic Examples:
       - Math Agent: en/example_math_agent.md
       - AppWorld Agent: en/example_app_world.md
       - Werewolves Game: en/example_werewolves.md
@@ -41,18 +38,23 @@ nav:
       - Frozen Lake: en/example_frozenlake.md
       - Countdown Game: en/example_countdown.md
 
-  - Components:
-      - Workflow: en/workflow.md
+  - • Swarm Examples:
+      - Best Practice: en/swarm_best_practice.md
+      - Swarm Vibe Coding: en/swarm_vibe_coding.md
+
+  - • Components:
+      - Classic Workflow: en/classic_workflow.md
+      - Swarm Workflow: en/swarm_workflow.md
       - Data Pipeline: en/data_pipeline.md
       - Task Judger: en/task_judger.md
 
-  - Supported Frameworks:
+  - • With Frameworks:
+      - OpenAI SDK: en/support_oaisdk.md
       - AgentScope: en/support_agentscope.md
       - Langchain: en/support_langchain.md
-      - OpenAI SDK: en/support_oaisdk.md
       - Raw HTTP: en/support_http.md
 
-  - Deep Dive:
+  - • Deep Dive:
       - Configuration: en/configuration.md
       - Visualization: en/visualization.md
       - Beast Logger: en/beast_logger.md
@@ -61,8 +63,14 @@ nav:
       - Timeline Processing: en/context_timeline.md
       - Platform Comparison: en/platform_comparison.md
 
-  - Blogs:
-      - Swarm Intro (ZH): en/swarm_intro.md
+  - • Blogs:
+      - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
+      - Multi Model Training (EN): en/example_train_multi_model.md
+      - Multi Model Training (ZH): en/example_train_multi_model.zh.md
+      - Training OpenClaw (EN): en/example_openclaw.md
+      - Training OpenClaw (ZH): en/example_openclaw.zh.md
+      - Vibe RL Who is Spy (EN): en/example_vibe_rl_who_is_spy.md
+      - Vibe RL Who is Spy (ZH): en/example_vibe_rl_who_is_spy.zh.md
 
 plugins:
   - search:
@@ -121,6 +129,8 @@ extra_css:
   - stylesheets/mermaid.css
   - stylesheets/mkdocstrings.css
   - stylesheets/responsive.css
+  - stylesheets/table-word-wrap.css
+  - stylesheets/badge-fix.css
 
 extra_javascript:
   - javascripts/tabbed-code.js

@@ -13,6 +13,7 @@ However, the AgentJet Swarm mode has pioneered a brand-new training approach. Co
 you can freely launch multiple "mother ships" (corresponding to multiple LLM models to be trained) on one or more servers.
 Then, from an "airport" (e.g., your workstation, server, or even your Mac), you can "take off" any number of "Jets" to act as "worker bees" running the Agent workflow awaiting training,
 forming a many-to-many training system:
+
 - "Jets" are responsible for reading datasets, running the Agent workflow, and finally sending reward signals back to each "mother ship".
 - "Mother ships" are responsible for providing vllm/sglang API interfaces (with AgentJet’s automatic context tracking & timeline merging capabilities that significantly accelerate training), coordinating and computing samples.
 
@@ -48,6 +49,7 @@ Notes:
 ## (2/2) Launching Swarm Clients ("jets")
 
 You can run any amount of swarm client:
+
 - on any devices (macbook, workstation, the same machine you run swarm-server, **wherever you want**).
 - at any time (before or in the middle of a training, **whenever you want**)
 
@@ -59,7 +61,7 @@ The primary objective of swarm client is to make sure network connection is good
 Now, create a python script and start coding:
 
 ```python
-from ajet.tuner_lib.experimental.as_swarm_client import SwarmClient
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
 swarm_worker = SwarmClient(REMOTE_SWARM_URL)
 ```
@@ -82,6 +84,7 @@ swarm_worker.auto_sync_train_config_and_start_engine(yaml_job)
 ```
 
 The swarm server can be in the following states and transition between them as follows:
+
 - **OFFLINE**: The swarm server is started but does not load any models or perform any training. It enters this state directly after startup. Additionally, it transitions to this state upon receiving a `stop_engine` command from (any) client while in any other state.
 - **BOOTING**: The swarm server enters this state upon receiving a configuration followed by an explicit `begin_engine` command. In this state, it loads model parameters, initializes FSDP, and initializes vLLM.
 - **ROLLING**: The swarm server enters this state automatically after completing **BOOTING** or after finishing the **WEIGHT_SYNCING** state. This represents the sampling phase.

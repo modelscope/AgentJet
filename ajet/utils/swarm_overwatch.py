@@ -23,13 +23,13 @@ from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRollou
 class SwarmOverwatch:
     """Real-time monitoring interface for swarm rollout pool"""
 
-    def __init__(self, server_url: str, refresh_interval: float = 1.0):
+    def __init__(self, server_url: str, refresh_interval: float = 2.0):
         """
         Initialize the overwatch monitor
 
         Args:
             server_url: Base URL of the swarm server (e.g., http://localhost:10086)
-            refresh_interval: Refresh interval in seconds (default: 1.0)
+            refresh_interval: Refresh interval in seconds (default: 2.0)
         """
         self.server_url = server_url.rstrip("/")
         self.refresh_interval = refresh_interval
@@ -37,11 +37,12 @@ class SwarmOverwatch:
         self.last_update_time = None
         self.error_count = 0
         self.total_requests = 0
+        self._httpx_client = httpx.Client(timeout=5.0)
 
     def fetch_pool_info(self) -> Optional[CurrentBatchRolloutPoolInformation]:
         """Fetch current batch rollout pool information from server"""
         try:
-            response = httpx.get(
+            response = self._httpx_client.get(
                 f"{self.server_url}/get_current_batch_rollout_pool_information",
                 timeout=5.0,
             )
@@ -391,7 +392,7 @@ class SwarmOverwatch:
         return content
 
     def create_dashboard(
-        self, info: Optional[CurrentBatchRolloutPoolInformation]
+        self, info: Optional[CurrentBatchRolloutPoolInformation], init=False
     ) -> Layout:
         """Create the main dashboard layout"""
         layout = Layout()
@@ -399,7 +400,7 @@ class SwarmOverwatch:
         # Create header
         header = self.create_header(info)
 
-        if info is None:
+        if (info is None) and (not init):
             # Show error state
             error_panel = Panel(
                 "[bold red]Failed to fetch data from server, please check your connection or simply wait a moment...[/bold red]\n"
@@ -408,8 +409,19 @@ class SwarmOverwatch:
                 padding=(1, 2),
             )
             layout.split_column(Layout(header, size=8), Layout(error_panel))
+        elif (info is None) and (init):
+            # Initial state before first successful data fetch
+            welcome_panel = Panel(
+                "[bold green]Welcome to AgentJet Swarm Overwatch![/bold green]\n\n"
+                "Attempting to connect to server and fetch data...\n"
+                f"[dim]Target server: {self.server_url}[/dim]\n",
+                border_style="green",
+                padding=(1, 2),
+            )
+            layout.split_column(Layout(header, size=8), Layout(welcome_panel))
         else:
             # Check engine status and show logo for OFFLINE or BOOTING states
+            assert info is not None  # for type checker
             if info.engine_status in ["ENGINE.OFFLINE", "ENGINE.BOOTING"]:
                 # Hide tables and show logo
                 logo_display = self.create_logo_panel(info)
@@ -438,58 +450,131 @@ class SwarmOverwatch:
 
         return layout
 
+
+    def display_latest_llm_call(self):
+        while True:
+            response = httpx.post(f"{self.server_url}/replay_latest_llm_call", timeout=30.0)
+            structured_response = response.json()
+            self.console.clear()
+            if "input" not in structured_response or "output" not in structured_response:
+                self.console.print(f"[bold red]{structured_response}[/bold red]")
+                time.sleep(5)
+                continue
+            else:
+                input = structured_response["input"]
+                output = structured_response["output"]
+                self.console.print(f"\n[bold green]Input:[/bold green]\n{input}")
+                self.console.print(f"\n[bold green]Output:[/bold green]\n{output}")
+                hide_when_more_than_n_line_break = 4
+                try:
+                    input_items = ""
+                    output_items = ""
+                    for item in input['messages']:
+                        role = item['role']
+                        content = item['content']
+                        if isinstance(content, list):
+                            content = content[0].get('text', '')
+                        if content.count('\n') >= hide_when_more_than_n_line_break:
+                            content = content.replace('\n',' ')[:200] + " ....."
+                        else:
+                            content = content.replace('\n',' ')
+                        input_items += f"[bold blue]@{role}:[/bold blue] {content}\n"
+                    for item in output['choices']:
+                        role = item['message']['role']
+                        content = item['message']['content']
+                        if content.count('\n') >= hide_when_more_than_n_line_break:
+                            content = content.replace('\n',' ')[:200] + " ....."
+                        else:
+                            content = content.replace('\n',' ')
+                        output_items += f"[bold red]@{role}:[/bold red] {content}\n"
+                    self.console.print(f"\n-------------------------------------------------------------")
+                    self.console.print(f"\n[bold green]Input Simlified:[/bold green]\n{input_items}")
+                    self.console.print(f"\n[bold green]Output Simlified:[/bold green]\n{output_items}")
+                except:
+                    pass
+                time.sleep(5)
+
+    def choose_run(self) -> str:
+        mode = "overwatch"
+        # mode = "replay_latest_llm_call"
+        while True:
+            self.console.clear()
+            try:
+                if mode == "overwatch":
+                    self.run()
+                elif mode == "replay_latest_llm_call":
+                    self.display_latest_llm_call()
+
+            except KeyboardInterrupt:
+                self.console.clear()
+                self.console.print("\n[bold yellow]Overwatch stopped by user[/bold yellow]")
+                self.console.print(
+                    f"[dim]Total requests: {self.total_requests}, Errors: {self.error_count}[/dim]\n"
+                )
+
+                self.console.print("\n[bold]Choose action:[/bold]")
+                self.console.print("  [bold cyan]o[/bold cyan] - Return to overwatch")
+                self.console.print("  [bold cyan]t[/bold cyan] - Show replay_latest_llm_call")
+                self.console.print("  [bold cyan]ctrl+c[/bold cyan] - Exit")
+                choice = input("\n> ").strip().lower()
+
+                if choice == "o":
+                    mode = "overwatch"
+                    self.console.clear()
+                    continue
+                elif choice == "t":
+                    mode = "replay_latest_llm_call"
+                    self.console.clear()
+                    continue
+                else:
+                    self.console.print("[yellow]Invalid choice. Please enter 'o' or 't'.[/yellow]")
+
     def run(self):
         """Start the monitoring interface"""
-        self.console.clear()
 
-        try:
-            with Live(
-                self.create_dashboard(None),
-                console=self.console,
-                refresh_per_second=1,
-                screen=True,
-            ) as live:
-                self.console.print(
-                    "[bold green]Starting Swarm Overwatch...[/bold green]"
-                )
-                self.console.print(f"[dim]Press Ctrl+C to exit[/dim]\n")
-                time.sleep(1)
-
-                while True:
-                    try:
-                        # Fetch latest data
-                        info = self.fetch_pool_info()
-
-                        # Update display
-                        live.update(self.create_dashboard(info))
-
-                        # Wait for next refresh
-                        time.sleep(self.refresh_interval)
-
-                    except KeyboardInterrupt:
-                        raise
-                    except Exception as e:
-                        logger.error(f"Error in monitoring loop: {e}")
-                        time.sleep(self.refresh_interval)
-
-        except KeyboardInterrupt:
-            self.console.clear()
-            self.console.print("\n[bold yellow]Overwatch stopped by user[/bold yellow]")
+        with Live(
+            self.create_dashboard(None, init=True),
+            console=self.console,
+            refresh_per_second=1,
+            screen=True,
+        ) as live:
             self.console.print(
-                f"[dim]Total requests: {self.total_requests}, Errors: {self.error_count}[/dim]\n"
+                "[bold green]Starting Swarm Overwatch...[/bold green]"
             )
+            self.console.print(f"[dim]Press Ctrl+C to exit[/dim]\n")
+            time.sleep(1)
+
+            while True:
+                try:
+                    # Fetch latest data
+                    info = self.fetch_pool_info()
+
+                    # Update display
+                    live.update(self.create_dashboard(info))
+
+                    # Wait for next refresh
+                    time.sleep(self.refresh_interval)
+
+                except KeyboardInterrupt:
+                    raise
+                except Exception as e:
+                    logger.error(f"Error in monitoring loop: {e}")
+                    time.sleep(self.refresh_interval)
 
 
-def start_overwatch(server_url: str, refresh_interval: float = 1.0):
+def start_overwatch(server_url: str, refresh_interval: float = 2.0):
     """
     Start the swarm overwatch monitoring interface
 
     Args:
         server_url: Base URL of the swarm server
-        refresh_interval: Refresh interval in seconds (default: 1.0)
+        refresh_interval: Refresh interval in seconds (default: 2.0)
     """
     overwatch = SwarmOverwatch(server_url, refresh_interval)
-    overwatch.run()
+    try:
+        overwatch.choose_run()
+    except KeyboardInterrupt:
+        logger.info("Swarm Overwatch stopped by user")
 
 
 if __name__ == "__main__":

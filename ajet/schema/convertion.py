@@ -3,7 +3,6 @@ import time
 from openai.types.chat.chat_completion import ChatCompletion, Choice
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from agentscope.model import ChatResponse as AgentScopeChatResponse
-from openai.types.completion_usage import CompletionUsage
 from typing import List, Type
 from agentscope.message import TextBlock, ToolUseBlock
 from agentscope._utils._common import _json_loads_with_repair
@@ -23,18 +22,11 @@ def convert_llm_proxy_response_to_oai_response(llm_proxy_response):
     choice = Choice(
         index=0,
         message=message,
-        finish_reason="stop",
+        finish_reason=llm_proxy_response.get("finish_reason", "stop"),
     )
 
     # Calculate token usage if tokens are available
-    usage = None
-    if "tokens" in llm_proxy_response and llm_proxy_response["tokens"]:
-        completion_tokens = len(llm_proxy_response["tokens"])
-        usage = CompletionUsage(
-            prompt_tokens=0,  # Not available in llm_proxy_response
-            completion_tokens=completion_tokens,
-            total_tokens=completion_tokens,
-        )
+    usage = llm_proxy_response.get("usage", None)
 
     return ChatCompletion(
         id=llm_proxy_response.get("request_id", "chatcmpl-default"),

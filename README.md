@@ -1,4 +1,4 @@
-# AgentJet (Beta)
+# AgentJet
 
 [![Benchmarking](https://img.shields.io/badge/Benchmarking-0078D4?style=for-the-badge&logo=github)](https://benchmark.agentjet.top/)
 [![Docs](https://img.shields.io/badge/Docs-Read%20the%20Documents-0A7ECC?style=for-the-badge&logo=readthedocs&logoColor=white)](https://modelscope.github.io/AgentJet)
@@ -16,11 +16,19 @@
 
 **AgentJet (AJet)** has fully-distributed **swarm training** capability, which means that you can **deploy `ajet-swarm start` in GPU server(s) and then start training agents in your laptop(s)**! Simply provide your agent workflow, training dataset, and reward function, and AgentJet will be ready to go!
 
+## ✈️ News
+
+- 2026.3.30 LoRA training example is now online! See [tutorial/example_math_lora](tutorial/example_math_lora/) for an example.
+- 2026.3.26 Upgrade verl backend to 0.7.1 to support more models and increase training speed! All [benchmark](https://benchmark.agentjet.top/) verified.
+- 2026.3.19 Support for latest Qwen3.5 models is [in progress](https://github.com/modelscope/AgentJet/pull/16).
+- 2026.3.12 Tuning Original OpenClaw Agent without Editing Any Agent Code. [EN Blog](https://modelscope.github.io/AgentJet/en/example_openclaw/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/example_openclaw.zh/).
+- 2026.3.09 Non-shared-parameter Multiagent Training. [EN Blog](https://modelscope.github.io/AgentJet/en/example_train_multi_model/) / [ZH Blog](http://modelscope.github.io/AgentJet/en/example_train_multi_model.zh/).
+- 2026.2.20 Introducing AgentJet Swarm. [ZH Blog](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_zh/) / [EN Blog](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_en/).
 
 
 ## ✈️ Fast Introduction
 
-### Classic Mode
+### **1 - Classic Mode**
 
 Let's begin with the simplest example: a math agent with a tool call. This is a simple & centralized training example.
 
@@ -29,19 +37,34 @@ Let's begin with the simplest example: a math agent with a tool call. This is a 
     ```python
     ajet --conf ./tutorial/example_math_agent/math_agent.yaml --backbone='verl'
     ```
+
 <div align="center">
-<img width="640" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/classic+swarm+revise.jpg"/>
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/new_classic.png"/>
 </div>
 
-### Swarm Mode
+### **2 - Swarm Mode**
 
 Let's begin with the simplest AgentJet Swarm example: also a math agent. In this case, you can use any GPU-less laptop to train the model remotely.
 
-1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch`.
+1. Start swarm server and begin swarm overwatch: `ajet-swarm start` and `ajet-swarm overwatch`. (Alternative: if you are a fan of docker, use our [prebuilt docker image here](docs/en/ajet-swarm-docker.md) without setting up dependencies)
 2. From your laptop (or swarm server localhost), run [this simple script](https://github.com/modelscope/AgentJet/blob/main/tutorial/example_math_swarm/math.py) to begin training:
     ```python
     AJET_SWARM_URL="http://swarm-server-ip:10086" python ./tutorial/example_math_swarm/math.py
     ```
+
+
+<!-- <div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/new_swarm.png"/>
+</div> -->
+
+<!-- <div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarming.gif"/>
+</div> -->
+
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/swarming2.gif"/>
+</div>
+
 <div align="center">
 <img width="600" alt="image" src="https://github.com/user-attachments/assets/41ed1e71-8b18-4c4c-b5e2-833399317337"/>
 </div>
@@ -49,12 +72,12 @@ Let's begin with the simplest AgentJet Swarm example: also a math agent. In this
 
 ## ✈️ Features
 
-We aim to build a easy-to-learn Agent tuner that unlock more possibilities for agent developers:
+We aim to build an easy-to-learn Agent tuner that unlocks more possibilities for agent developers:
 
 - **Easy and Friendly**. AgentJet helps you tune models behind your agent workflows easily, optimizing your agents for top performance with minimal effort.
 - **Rich Tutorial Library**. AgentJet provides a rich library of [examples](https://github.com/modelscope/AgentJet/tree/main/tutorial) as tutorials.
-- **Swarm Training**. [This unique feature](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_english/) of AgentJet opens many possibilities: deploying distributed & self-healing rollout workers, **non-shared-parameter multi-agent** training, **multi-runtime & multi-task cocktail** training. And just like Tinker, you can use AgentJet Swarm to train **models even on **GPU-less laptop(s)**.
-- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support trinity as alternative backbone, accelerating your tuning process via fully asynchronous RFT.
+- **Swarm Training**. [This unique feature](https://modelscope.github.io/AgentJet/en/swarm_intro_blog_en/) of AgentJet opens many possibilities: deploying distributed & self-healing rollout workers, **non-shared-parameter multi-agent** training, **multi-runtime & multi-task cocktail** training. And just like Tinker, you can use AgentJet Swarm to train models even on **GPU-less laptop(s)**.
+- **Efficient and Scalable**. AgentJet uses [verl] as the default backbone (`--backbone=verl`). However, we also support trinity as an alternative backbone, accelerating your tuning process via fully asynchronous RFT.
 - **Flexible and Fast**. AgentJet supports [multi-agent workflows](https://modelscope.github.io/AgentJet/en/workflow/) and adopts a context merging technique, accelerating training by 1.5x to 10x when the workflow involves multi-turn (or multi-agent) conversations.
 - **Reliability and Reproducibility**. Our team keeps track of framework performance across multiple [tasks + major-git-version + training-backbones](https://benchmark.agentjet.top/) (under construction, still gathering data, coming soon).
 
@@ -67,6 +90,11 @@ For advanced researchers, AgentJet also provides high-resolution logging and deb
 <div align="center">
 <img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/ai-generated-1771873242388.jpg"/>
 </div>
+
+<div align="center">
+<img width="600" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/beast_logger_zimu.mp4.gif"/>
+</div>
+
 
 
 ---
@@ -102,7 +130,7 @@ Explore our automated benchmarking system [https://benchmark.agentjet.top/](http
 AgentJet makes agent fine-tuning straightforward by separating the developer interface from the internal execution logic.
 
 <div align="center">
-<img width="480" alt="image" src="https://img.alicdn.com/imgextra/i1/O1CN01xnkGyf1j8szYYxt5U_!!6000000004504-0-tps-2261-1471.jpg"/>
+<img width="480" alt="image" src="https://img.alicdn.com/imgextra/i2/O1CN01PdCJym1jqr1jWGMZ4_!!6000000004600-0-tps-2013-870.jpg"/>
 
 </div>
 
@@ -124,8 +152,17 @@ The internal system orchestrates several specialized modules to handle the compl
 * **Task Runner**: Executes the Agent workflow and calculates rewards.
 * **Model Tuner**: Forwards inference requests from the workflow to the LLM engine.
 * **Context Tracker**: Monitors LLM calls and automatically merges shared-history timelines to improve training efficiency by **1.5x to 10x**.
-* **Swarm Server**: A data interchange center that accept OpenAI-like requests and engine instructions, activated only in AgentJet Swarm mode.
+* **Swarm Server**: A data interchange center that accepts OpenAI-like requests and engine instructions, activated only in AgentJet Swarm mode.
 
+#### 3. Swarm Architecture
+
+When swarm training mode is enabled, an additional component will be activated:
+
+* **Swarm Data Interchange Server**: Maintains HTTP service, listens to swarm instructions and OpenAI compatible requests. Establishes a high-speed zmq communication channel to coordinate other modules.
+
+<div align="center">
+<img width="400" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/arch.jpg"/>
+</div>
 
 
 
@@ -142,7 +179,6 @@ AgentJet is a constantly evolving project. We are planning to add the following 
 
 | Category | Feature | Status |
 | :--- | :--- | :--- |
-| **Examples** | Add LoRA training examples | Todo |
 | **Infra** | Optimize configurations for long-context adaptation on smaller GPUs | In Progress |
 | **Capability** | Multi-modal training support | Todo |
 | **Capability** | MARL Credit assignment | Todo |
@@ -177,10 +213,16 @@ This project is under active development, we need your help to make it shine! <b
 
 
 <div align="center">
-<img width="180" alt="image" src="https://img.alicdn.com/imgextra/i4/O1CN01DJuOtZ1Kgu1UvjaNl_!!6000000001194-2-tps-922-882.png"/>
+<img height="180" alt="image" src="https://img.alicdn.com/imgextra/i4/O1CN01DJuOtZ1Kgu1UvjaNl_!!6000000001194-2-tps-922-882.png"/>
 <br/>
 <span>Join AgentJet DingTalk Group to share your idea</span>
 </div>
 
+<br/>
+<hr/>
+<br/>
 
-
+<div align="center">
+<img height="260" alt="image" src="https://serve.gptacademic.cn/publish/shared/Image/star3.png"/>
+<br/>
+</div>

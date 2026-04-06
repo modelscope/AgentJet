@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Tuple
 
 from openjudge.graders.base_grader import BaseGrader
 from openjudge.graders.schema import GraderScore
@@ -19,7 +19,7 @@ from .json_utils import strict_load_json, validate_integrity_shape, construct_re
 class AuditGrader(BaseGrader):
     """
     引用逻辑审计 Grader
-    
+
     - 输入：traj (完整对话轨迹)
     - 输出：GraderScore(score, reason)
     - score: integrity_score (Supported / Total)
@@ -76,13 +76,13 @@ class AuditGrader(BaseGrader):
     ) -> GraderScore:
         """
         入口：必须喂 traj（完整对话轨迹）
-        
+
         Args:
             traj: 对话轨迹，支持以下格式：
                   - [{"role": ..., "content": ...}, ...] 直接消息列表
                   - {"messages": [...]} 包含 messages 字段的 dict
                   - {"traj": [[...]]} 包含 traj 字段的 dict（双重嵌套）
-        
+
         Returns:
             GraderScore(name, score, reason)
         """
@@ -105,7 +105,7 @@ class AuditGrader(BaseGrader):
                 score=0.0,
                 reason="BadInput: traj must be list or dict with 'messages'/'traj'",
             )
-        
+
         if not messages_list:
             return GraderScore(
                 name=self.name,
@@ -116,7 +116,7 @@ class AuditGrader(BaseGrader):
         # 2. 构建 Prompt
         # 使用新的 System Prompt 和 User Template
         user_prompt = construct_reward_prompt(messages_list, CITATION_INTEGRITY_USER_TEMPLATE)
-        
+
         messages = [
             {"role": "system", "content": CITATION_INTEGRITY_PROMPT_COT},
             {"role": "user", "content": user_prompt}
@@ -164,7 +164,7 @@ class AuditGrader(BaseGrader):
         # 直接获取模型计算的 integrity_score，若缺失则手动计算
         audit_trail = obj.get("audit_trail", [])
         total_citations = len(audit_trail)
-        
+
         # 统计各Verdict数量
         verdict_counts = {
             "Supported": 0,
@@ -173,16 +173,16 @@ class AuditGrader(BaseGrader):
             "Hallucinated": 0,
             "Irrelevant": 0
         }
-        
+
         for item in audit_trail:
             v = item.get("verdict", "Irrelevant")
             if v in verdict_counts:
                 verdict_counts[v] += 1
             else:
                 verdict_counts["Irrelevant"] += 1
-        
+
         supported_count = verdict_counts["Supported"]
-        
+
         # 优先使用模型输出的 score，如果有误则回退到手动计算
         # model_score = obj.get("integrity_score")
         # if isinstance(model_score, (float, int)) and 0.0 <= model_score <= 1.0:
@@ -196,10 +196,10 @@ class AuditGrader(BaseGrader):
         for k, v in verdict_counts.items():
             if v > 0:
                 stats_parts.append(f"{k[:4]}:{v}") # 缩写 Verdict
-        
+
         stats_str = ", ".join(stats_parts)
         qualitative = obj.get("qualitative_summary", "No summary provided.")
-        
+
         # 截取主要错误示例 (如果有)
         errors = [x for x in audit_trail if x.get("verdict") != "Supported"]
         error_msg = ""

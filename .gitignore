@@ -161,9 +161,20 @@ flash_attn-2.8.*.whl
 tutorial/example_deep_finance/prepare_data/*
 tutorial/example_deep_finance/judge/analytical_sufficiency/*
 tutorial/example_deep_finance/output_report/*
+tutorial/opencode_build_countdown_agent/countdown_dataset
 dataset_gsm8k/*
 
 .dockerignore
 benchmark_datasets
 modelscope_cache
 prompts
+swarmexp
+swarmlog
+werewolves_swarm
+.claude
+tensorboard_log
+tutorial/**/*.json
+node_modules
+.agents
+skills-lock.json
+blueprint*

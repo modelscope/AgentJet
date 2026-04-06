@@ -77,9 +77,10 @@ def set_loguru_default_color():
     if not colorize:
         os.environ["RAY_COLOR_PREFIX"] = "0"
 
-    logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser").setLevel(
-        logging.CRITICAL
-    )
+    target_logger = logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
+    target_logger = logging.getLogger("vllm.tool_parsers.hermes_tool_parser")
+    target_logger.setLevel(logging.CRITICAL)
     return
 
 
@@ -297,7 +298,7 @@ def verify_python_env(args, exp_config):
             time.sleep(5)
             raise ImportError(cause + " " + solution)
     elif args.backbone == "verl":
-        if not any([v in verl.__version__ for v in ["0.5.0.post", "0.5.0.dev", "0.7.0.post"]]):  # you must install via `pip install -e .[verl]` to get every dependency right
+        if not any([v in verl.__version__ for v in ["0.5.0.post", "0.5.0.dev", "0.7.0.post", "0.7.1", "0.8.0.dev"]]):  # you must install via `pip install -e .[verl]` to get every dependency right
             cause = "Python environment does not match current backbone 'verl'."
             solution = "Please `cd /path/to/project/AgentJet` and run `(uv) pip install -e .[verl]` to install the correct environment."
             print_dict(
@@ -319,6 +320,7 @@ def execute_training_process(
     exe_yaml_path,
     env,
     exp_config,
+    is_swarm_server=False,
 ):
     """
     Execute the training process based on the specified backbone and configuration.
@@ -403,7 +405,13 @@ def execute_training_process(
         subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")
+        if is_swarm_server:
+            from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
+            http_change_engine_status(exp_config, "ENGINE.OFFLINE", global_step=0)
         sys.exit(1)
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
+        if is_swarm_server:
+            from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
+            http_change_engine_status(exp_config, "ENGINE.OFFLINE", global_step=0)
         sys.exit(1)

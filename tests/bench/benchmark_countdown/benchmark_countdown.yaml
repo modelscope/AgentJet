@@ -77,7 +77,6 @@ ajet:
       top_k: -1
       top_p: 1.0
       do_sample: False
-      num_repeat: 1
 
 
   task_reader:
@@ -117,21 +116,22 @@ ajet:
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
     ulysses_sequence_parallel_size: 1
-
+    # loss = loss * loss_extra_scale_ratio
+    loss_extra_scale_ratio: 10.0
 
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
   execute_test: True # FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
   execute_testing_lambda: "tests/bench/benchmark_countdown/benchmark_countdown.py->TestProbe" # FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN
 
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
     - file://ajet/default_config/trinity      # trinity only
 
-# ------------------ 不需要修改 ------------------
+# ------------------ do not edit ------------------
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1

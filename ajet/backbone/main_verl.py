@@ -22,12 +22,12 @@ import socket
 import hydra
 import ray
 from omegaconf import DictConfig, OmegaConf
-from verl.trainer.ppo.reward import load_reward_manager
 from verl.utils.device import is_cuda_available
 from verl.utils.dataset.rl_dataset import collate_fn
 from torch.utils.data import Dataset as TorchDataset
 
 # Create training and validation datasets.
+from ajet.backbone.warm_up import warm_up_process
 from ajet.task_reader import RouterTaskReader, task_to_standard_dataset
 from ajet.utils.process_dataset import create_rl_sampler
 from ajet.utils.core_env_vars import get_runtime_env
@@ -61,10 +61,18 @@ def run_ppo(config: DictConfig) -> None:
         runtime_env = get_runtime_env(config)
         ray.init(
             runtime_env=runtime_env,
-            num_cpus=config.ray_init.num_cpus,
         )
 
-    atexit.register(lambda: ray.shutdown())  # ray shutdown on exit
+    def on_shutdown():
+        if ray.is_initialized():
+            ray.shutdown()
+        if config.ajet.enable_interchange_server:
+            if config.ajet.enable_swarm_mode:
+                from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
+                print("Changing engine status to OFFLINE before shutdown...")
+                http_change_engine_status(config, "ENGINE.OFFLINE", global_step=0)
+
+    atexit.register(on_shutdown)  # ray shutdown on exit
 
     # Create a remote instance of the TaskRunner class, and
     # Execute the `run` method of the TaskRunner instance remotely and wait for it to complete
@@ -83,12 +91,6 @@ def run_ppo(config: DictConfig) -> None:
     else:
         runner = TaskRunner.remote()
     ray.get(runner.run.remote(config))
-
-    # [Optional] get the path of the timeline trace file from the configuration, default to None
-    # This file is used for performance analysis
-    timeline_json_file = config.ray_init.get("timeline_json_file", None)
-    if timeline_json_file:
-        ray.timeline(filename=timeline_json_file)
 
 
 @ray.remote(num_cpus=1)  # please make sure main_task is not scheduled on head
@@ -115,6 +117,7 @@ class TaskRunner:
         from loguru import logger
         from omegaconf import OmegaConf
         from verl.utils.fs import copy_to_local
+        warm_up_process(config)
 
         logger.info(f"TaskRunner hostname: {socket.gethostname()}, PID: {os.getpid()}")
         pprint(OmegaConf.to_container(config, resolve=True))
@@ -139,23 +142,13 @@ class TaskRunner:
         if config.actor_rollout_ref.actor.strategy in {"fsdp", "fsdp2"}:
             assert config.critic.strategy in {"fsdp", "fsdp2"}
             from verl.single_controller.ray import RayWorkerGroup
-            from verl.workers.fsdp_workers import (
-                ActorRolloutRefWorker,
-                AsyncActorRolloutRefWorker,
-            )
+            from ajet.backbone.verl import AjetActorRolloutRefWorker
+            from ajet.backbone.verl import AjetAsyncActorRolloutRefWorker
 
-            use_legacy_worker_impl = config.trainer.get("use_legacy_worker_impl", "auto")
-            if use_legacy_worker_impl in ["auto", "enable"]:
-                # import warnings
-                # warnings.warn(f"Legacy worker impl is going to be deprecated, will be removed in the future. \
-                #   Please set trainer.use_legacy_worker_impl = false to switch to the new worker implementation.")
-                from verl.workers.fsdp_workers import CriticWorker
-            elif use_legacy_worker_impl == "disable":
-                from verl.workers.roles import CriticWorker
-            else:
-                raise ValueError(f"Invalid use_legacy_worker_impl: {use_legacy_worker_impl}")
 
-            actor_rollout_cls = AsyncActorRolloutRefWorker
+
+            ActorRolloutRefWorker = AjetActorRolloutRefWorker
+            actor_rollout_cls = AjetAsyncActorRolloutRefWorker
             ray_worker_group_cls = RayWorkerGroup
 
         elif config.actor_rollout_ref.actor.strategy == "megatron":
@@ -163,11 +156,10 @@ class TaskRunner:
             from verl.single_controller.ray.megatron import NVMegatronRayWorkerGroup
             from verl.workers.megatron_workers import (
                 ActorRolloutRefWorker,
-                AsyncActorRolloutRefWorker,
-                CriticWorker,
+                AjetAsyncActorRolloutRefWorker,
             )
 
-            actor_rollout_cls = AsyncActorRolloutRefWorker
+            actor_rollout_cls = AjetAsyncActorRolloutRefWorker
             ray_worker_group_cls = NVMegatronRayWorkerGroup
 
         else:
@@ -178,7 +170,6 @@ class TaskRunner:
         # Map roles to their corresponding remote worker classes.
         role_worker_mapping = {
             Role.ActorRollout: ray.remote(actor_rollout_cls),
-            Role.Critic: ray.remote(CriticWorker),
         }
 
         # Define the resource pool specification.
@@ -189,43 +180,15 @@ class TaskRunner:
         }
         mapping = {
             Role.ActorRollout: global_pool_id,
-            Role.Critic: global_pool_id,
         }
 
-        # We should adopt a multi-source reward function here:
-        # - for rule-based rm, we directly call a reward score
-        # - for model-based rm, we call a model
-        # - for code related prompt, we send to a sandbox if there are test cases
-        # finally, we combine all the rewards together
-        # The reward type depends on the tag of the data
-        if config.reward_model.enable:
-            if config.reward_model.strategy in {"fsdp", "fsdp2"}:
-                from verl.workers.fsdp_workers import RewardModelWorker
-            elif config.reward_model.strategy == "megatron":
-                from verl.workers.megatron_workers import RewardModelWorker
-            else:
-                raise NotImplementedError
-            role_worker_mapping[Role.RewardModel] = ray.remote(RewardModelWorker)
-            mapping[Role.RewardModel] = global_pool_id
 
         # Add a reference policy worker if KL loss or KL reward is used.
         if config.algorithm.use_kl_in_reward or config.actor_rollout_ref.actor.use_kl_loss:
             role_worker_mapping[Role.RefPolicy] = ray.remote(ActorRolloutRefWorker)
             mapping[Role.RefPolicy] = global_pool_id
 
-        # Load the reward manager for training and validation.
-        reward_fn = load_reward_manager(
-            config,
-            tokenizer,
-            num_examine=0,
-            **config.reward_model.get("reward_kwargs", {}),
-        )
-        val_reward_fn = load_reward_manager(
-            config,
-            tokenizer,
-            num_examine=1,
-            **config.reward_model.get("reward_kwargs", {}),
-        )
+
         resource_pool_manager = ResourcePoolManager(
             resource_pool_spec=resource_pool_spec, mapping=mapping
         )
@@ -241,8 +204,8 @@ class TaskRunner:
 
         from ajet.backbone.trainer_verl import AjetRayPPOTrainer
 
-        if config.ajet.enable_experimental_interchange_server:
-            from ajet.tuner_lib.experimental.as_oai_model_server import start_interchange_server
+        if config.ajet.enable_interchange_server:
+            from ajet.tuner_lib.experimental.oai_model_server import start_interchange_server
             start_interchange_server(config)
 
         # Initialize the PPO trainer.
@@ -253,8 +216,6 @@ class TaskRunner:
             role_worker_mapping=role_worker_mapping,
             resource_pool_manager=resource_pool_manager,
             ray_worker_group_cls=ray_worker_group_cls,
-            reward_fn=reward_fn,
-            val_reward_fn=val_reward_fn,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
             collate_fn=collate_fn,
