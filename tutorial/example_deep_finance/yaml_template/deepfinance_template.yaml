@@ -53,7 +53,7 @@ ajet:
   data:
     train_batch_size: {{TRAIN_BATCH_SIZE}}
     max_prompt_length: 8000
-    max_response_length: 41000
+    max_response_length: {{MAX_RESPONSE_LENGTH}}
 
   task_reader:
     type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service

@@ -268,38 +268,56 @@ $$integrity\_score = \frac{\text{Supported数量}}{\text{总引用数}}$$
 
 ## Quick Start
 
-### 1\. 使用前准备
-
-#### 1.1 安装 AgentJet
-
-请使用 `dev/shuchang_newjudge` 分支：
+### 1\. 安装基础依赖
 
 ```bash
-# 安装ajet请使用uv
+# 安装 AgentJet（请使用 dev/shuchang_newjudge 分支）
 git clone -b dev/shuchang_newjudge https://github.com/modelscope/AgentJet.git
-cd AgentJet  
+cd AgentJet
 export AJET_ROOT=$(pwd)
 uv venv --python=3.11.4
 source .venv/bin/activate
 uv pip install -e .[verl]
-#`flash-attn` must be installed after other dependencies
+# flash-attn must be installed after other dependencies
 uv pip install --verbose flash-attn --no-deps --no-build-isolation --no-cache
-```
 
-#### 1.2 安装 OpenJudge
-
-可以安装 OpenJudge 正式版本：
-
-```bash
+# 安装 OpenJudge
 cd ${AJET_ROOT}
-source .venv/bin/activate # 启动uv环境
+source .venv/bin/activate
 git clone https://github.com/agentscope-ai/OpenJudge.git
 cd OpenJudge
 pip install -e .
 ```
 
+### 2\. 安装启动 Finance MCP 服务
 
-#### 1.3 准备环境变量
+Finance MCP 提供金融研究相关的工具集（搜索、爬虫、同花顺数据等），DeepFinance 需要通过该服务获取金融数据。
+
+**安装：**
+```bash
+pip install finance-mcp
+```
+
+**启动服务（SSE 模式）：**
+```bash
+finance-mcp \
+  config=default,ths,crawl \
+  disabled_flows='["tavily_search","mock_search","react_agent"]' \
+  mcp.transport=sse \
+  mcp.port=8040
+```
+
+启动后服务地址为：`http://<服务器IP>:8040/sse`（本地使用 `127.0.0.1`，远程访问需替换为服务器实际 IP）
+
+**所需 API Keys（按需配置，添加到 `.env` 文件）：**
+
+| 变量名 | 用途 |
+|--------|------|
+| `DASHSCOPE_API_KEY` | DashScope 搜索 |
+| `TUSHARE_API_TOKEN` | A股历史数据 |
+| `TAVILY_API_KEY` | Tavily 搜索（可选） |
+
+### 3\. 准备环境变量
 
 把下面的 `.env_example` 填好后，重命名为 `.env` 并放入在 AgentJet 主文件夹下：
 
@@ -334,13 +352,13 @@ MCP_PORT=""
 
 **注意**：这里主要保存 key、模型位置、代码位置以及 MCP 工具的 port。请将 `SWANLAB_API_KEY="xxx"` 等配置项替换为自己的真实 key。
 
-### 2\. 训练运行与配置
+### 4\. 训练运行与配置
 
-#### 2.1 启动环境与工具
+#### 4.1 启动环境与工具
 
 在启动训练前，AgentJet 会根据环境配置自动启动 EnvService（金融工具服务）。
 
-#### 2.2 单机调试模式
+#### 4.2 单机调试模式
 
 如果仅为了验证工作流和进行快速调试，可运行单机调试模式：
 
@@ -350,7 +368,7 @@ bash tutorial/example_deep_finance/deep_finance_single.sh
 
 该脚本以 `--backbone="debug"` 模式运行，非常适合初期测试。
 
-#### 2.3 如何训练单 React Agent (多机/单机通用)
+#### 4.3 如何训练单 React Agent (多机/单机通用)
 
 上述准备完成后，可以直接运行训练脚本：
 

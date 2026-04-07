@@ -22,6 +22,8 @@ NUM_REPEAT=4                         # group size，每个query rollout NUM_REPE
 TRAIN_BATCH_SIZE=32                  # 训练batchsize
 NUM_STEPS=10                         # 每个样本step轮数
 DEEPFINANCE_TOOL_RESULT_MAX_CHARS=10000
+MAX_MODEL_LEN=60000
+MAX_RESPONSE_LENGTH=51000
 
 # Env Service URL 配置
 ENV_SERVICE_URL="http://127.0.0.1:8080"  # 环境服务地址
@@ -50,8 +52,6 @@ if [ -f "$ENV_FILE" ]; then
 else
     echo -e "\033[31m警告: 找不到 .env 文件: $ENV_FILE\033[0m"
 fi
-export TRAIN_DATA_PATH="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new/tutorial/example_deep_finance/data/train_merged_all.json"
-export TRAIN_REF_ANS_PATH="/mnt/data_cpfs/taoshuchang.tsc/deepresearch/AgentJet_new/tutorial/example_deep_finance/data/Reference_merged_all.json"
 
 
 #===============================================================================
@@ -83,6 +83,7 @@ sed -e "s|{{SUFFIX}}|${SUFFIX}|g" \
     -e "s|{{VAL_REF_ANS_PATH}}|${VAL_REF_ANS_PATH}|g" \
     -e "s|{{CKPT_SAVE_PATH}}|${CKPT_SAVE_PATH}|g" \
     -e "s|{{MAX_MODEL_LEN}}|${MAX_MODEL_LEN}|g" \
+    -e "s|{{MAX_RESPONSE_LENGTH}}|${MAX_RESPONSE_LENGTH}|g" \
     -e "s|{{ENV_SERVICE_URL}}|${ENV_SERVICE_URL}|g" \
     ${AJET_ROOT}/${CONFIG_TEMPLATE} > ${CONFIG_FILE}
 
