@@ -319,7 +319,7 @@ finance-mcp \
 
 ### 3\. 准备环境变量
 
-把下面的 `.env_example` 填好后，重命名为 `.env` 并放入在 AgentJet 主文件夹下：
+把下面的 `.env.example` 填好后，重命名为 `.env` 并放入在 AgentJet 主文件夹下：
 
 ```bash
 # API keys
