@@ -243,6 +243,7 @@ ajet:
     # save and test frequency (in step)
     save_freq: 20
     test_freq: 20
+    total_training_steps: null
 
     # total training epochs
     total_epochs: 50

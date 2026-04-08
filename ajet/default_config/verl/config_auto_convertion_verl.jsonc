@@ -35,6 +35,7 @@
     "ajet.lora.target_modules": "actor_rollout_ref.model.target_modules",
     "ajet.lora.load_format": "actor_rollout_ref.rollout.load_format",
 
+    "ajet.trainer_common.total_training_steps": "trainer.total_training_steps",
     "ajet.trainer_common.save_freq": "trainer.save_freq",
     "ajet.trainer_common.test_freq": "trainer.test_freq",
 
