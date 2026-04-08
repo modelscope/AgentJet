@@ -1042,5 +1042,24 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             self.config.ajet.task_reader,
         )
         tasks = task_reader.get_validation_tasks()
+
+        # clip validation tasks if val_max_num_task_each_validation is set
+        val_max_num_task = self.config.ajet.trainer_common.val_max_num_task_each_validation
+        if val_max_num_task is not None and len(tasks) > val_max_num_task:
+            original_size = len(tasks)
+            clip_method = self.config.ajet.trainer_common.val_max_num_task_clip_method
+            if clip_method == "fix_seed_random_n":
+                rng = np.random.RandomState(seed=42)
+                indices = rng.choice(len(tasks), val_max_num_task, replace=False)
+                tasks = [tasks[i] for i in sorted(indices)]
+            elif clip_method == "random_n":
+                indices = np.random.choice(len(tasks), val_max_num_task, replace=False)
+                tasks = [tasks[i] for i in sorted(indices)]
+            elif clip_method == "first_n":
+                tasks = tasks[:val_max_num_task]
+            else:
+                raise ValueError(f"Unknown val_max_num_task_clip_method: {clip_method}, expected 'fix_seed_random_n', 'random_n', or 'first_n'")
+            logger.info(f"Clipped validation dataset from {original_size} to {val_max_num_task} tasks using '{clip_method}'")
+
         self.main_val_dataset = tasks
         return self.main_val_dataset

@@ -235,6 +235,8 @@ ajet:
     val_before_train: False
     val_pass_n: 4
     val_only: False
+    val_max_num_task_each_validation: null
+    val_max_num_task_clip_method: fix_seed_random_n  # fix_seed_random_n, random_n, or first_n
     val_print_to_markdown_file_path: null
     train_print_to_markdown_file_path: null
 

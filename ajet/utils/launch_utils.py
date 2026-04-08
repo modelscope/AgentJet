@@ -219,6 +219,9 @@ def start_ray_service(args, env, cluster=False):
     # Get the current Python interpreter directory
     python_dir = os.path.dirname(sys.executable)
     ray_path = os.path.join(python_dir, "ray")
+    # if CUDA_VISIBLE_DEVICES is set, remove it from `env`
+    if "CUDA_VISIBLE_DEVICES" in env:
+        del env["CUDA_VISIBLE_DEVICES"]
     if not cluster:
         companion = LaunchCommandWhenAbsent(
             full_argument_list=[f"{ray_path} start --head --block"],
@@ -252,7 +255,7 @@ def start_ray_service(args, env, cluster=False):
                 tag="ray_service_worker",
                 use_pty=True,
             )
-            launch_wait_time = 9999999999
+            launch_wait_time = 9999999999999
             # success_std_string = "Connected to Ray cluster"
             success_std_string = "Just wait here forever"
     companion.launch(
