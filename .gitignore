@@ -178,3 +178,4 @@ node_modules
 .agents
 skills-lock.json
 blueprint*
+tmux_wait.py

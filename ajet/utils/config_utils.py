@@ -76,14 +76,18 @@ def dump_yaml_config(cfg: DictConfig, yaml_fp: str):
     return yaml_fp
 
 
+class NotFound(object): pass
+
 def _dive_to_fetch_value(config, dotted_key):
     keys = dotted_key.split(".")
     value = config
     for key in keys:
-        value = value.get(key, None)
+        value = value.get(key, NotFound)
         if value is None:
             break
-    if value is None:
+        if value is NotFound:
+            break
+    if value is NotFound:
         raise ValueError(f"[Warning]: Cannot find value for key: {dotted_key} in {config}")
     return value
 
@@ -145,6 +149,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     for from_key, to_keys in convertion_json.items():
         if from_key.startswith("("):
             # special argument that need A.S.T. computation
+            # e.g. "(min(ajet.rollout.max_env_worker, 128) // ajet.rollout.n_vllm_engine)": "explorer.runner_per_model"
             keys_array, config_computer = split_keys_and_operators(from_key, [])
             value = config_computer({k: _dive_to_fetch_value(from_config, k) for k in keys_array})
         else:
@@ -279,7 +284,7 @@ def expand_ajet_hierarchical_config(config, write_to=None):
 
 
 def _validate_input_yaml_no_overlap_with_auto_convertion_config(input_yaml_config, config_final):
-    """Validate that input yaml doesn't contain keys that will be auto-converted with different values."""
+    """Validate that input yaml doesn't contain keys in fields such as `actor_rollout_ref` that will be override by `ajet` field values."""
     import json
     import re
 
@@ -327,7 +332,7 @@ def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_
         tuple: (yaml_backup_dst, exe_exp_base, exp_name, config_final)
     """
     assert yaml_path.endswith(".yaml"), "Configuration file must be a YAML file"
-    exp_base = os.path.exists(os.path.dirname(yaml_path))
+    exp_base = os.path.dirname(yaml_path)
 
     if not os.path.exists(exp_base):
         raise FileNotFoundError(f"Configuration file not found: {exp_base}")
@@ -340,8 +345,6 @@ def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_
     except Exception:
         raise ValueError(f"Please set ajet field in yaml file. Current yaml:\n{config}")
     if exp_name is None or exp_name == "read_yaml_name":
-        if exp_name is not None:
-            exp_name = exp_name.replace("|", "-")
         exp_name = os.path.basename(yaml_path).replace(".yaml", "")
         # add timestamp to exp_name
         timestamp = time.strftime("%Y%m%d_%H%M", time.localtime())
