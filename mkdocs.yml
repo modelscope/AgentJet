@@ -65,6 +65,8 @@ nav:
       - Platform Comparison: en/platform_comparison.md
 
   - • Blogs:
+      - Auto Research (EN): en/blog_auto_research.en.md
+      - Auto Research (ZH): en/blog_auto_research.md
       - Swarm Intro (ZH): en/swarm_intro_blog_zh.md
       - Multi Model Training (EN): en/example_train_multi_model.md
       - Multi Model Training (ZH): en/example_train_multi_model.zh.md
@@ -72,6 +74,8 @@ nav:
       - Training OpenClaw (ZH): en/example_openclaw.zh.md
       - Vibe RL Who is Spy (EN): en/example_vibe_rl_who_is_spy.md
       - Vibe RL Who is Spy (ZH): en/example_vibe_rl_who_is_spy.zh.md
+      - Vibe Training Werewolves (EN): en/blog_vibe_training_werewolves.md
+      - Vibe Training Werewolves (ZH): en/blog_vibe_training_werewolves.zh.md
 
 plugins:
   - search:

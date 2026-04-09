@@ -18,6 +18,7 @@
 
 ## ✈️ News
 
+- 2026.4.9 AgentJet-powered Auto Research: fully automated overnight RL experiments. [EN Blog](https://modelscope.github.io/AgentJet/en/blog_auto_research.en/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/blog_auto_research/).
 - 2026.3.30 LoRA training example is now online! See [tutorial/example_math_lora](tutorial/example_math_lora/) for an example.
 - 2026.3.26 Upgrade verl backend to 0.7.1 to support more models and increase training speed! All [benchmark](https://benchmark.agentjet.top/) verified.
 - 2026.3.19 Support for latest Qwen3.5 models is [in progress](https://github.com/modelscope/AgentJet/pull/16).
