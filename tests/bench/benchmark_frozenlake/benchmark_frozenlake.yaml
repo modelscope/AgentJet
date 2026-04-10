@@ -34,7 +34,7 @@ ajet:
 
     mode: async
 
-    max_num_seqs: 40
+    max_num_seqs: 64
 
     # monitor LLM's abormal behaviors during rollout
     compute_madness_checklist: []

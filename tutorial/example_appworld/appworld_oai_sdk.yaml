@@ -27,7 +27,7 @@ ajet:
     num_repeat: 6
     agent_madness_reward: -1.0
     tensor_model_parallel_size: 1
-    max_num_seqs: 40
+    max_num_seqs: 64
     compute_madness_checklist:
       - "nonsense"
     max_response_length_in_one_turn: 4096

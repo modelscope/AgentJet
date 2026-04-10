@@ -19,7 +19,7 @@ ajet:
     max_env_worker: 64
     num_repeat: 6
     tensor_model_parallel_size: 1
-    max_num_seqs: 40
+    max_num_seqs: 64
     multi_turn:
       max_sample_per_task: 2
 

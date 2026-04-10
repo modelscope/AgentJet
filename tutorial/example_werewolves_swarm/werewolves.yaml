@@ -15,7 +15,7 @@ ajet:
     num_repeat: 6
     agent_madness_reward: 0.0
     tensor_model_parallel_size: 1
-    # max_num_seqs: 40
+    # max_num_seqs: 64
     # monitor LLM's abormal behaviors during rollout
     compute_madness_checklist:
       - "nonsense"
