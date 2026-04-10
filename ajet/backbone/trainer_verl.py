@@ -1002,7 +1002,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
         val_metrics = {
             "global_steps": self.global_steps,
-            "target_dataset_name": target_dataset_name,
             "pass_n": pass_n,
             "total_tasks": len(task_results),
             "num_all_success_tasks": num_all_success_tasks,
@@ -1031,6 +1030,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         )
 
         self.verl_logger.log(data=val_metrics, step=self.global_steps)
+        val_metrics.update({"target_dataset_name": target_dataset_name})
 
         return ctx_trackers, tasks, val_metrics
 
