@@ -95,7 +95,7 @@ The code follows a simple three-step pattern that defines all Swarm Client progr
 
 ## Architecture: How It Works
 
-```
+```text
 Swarm Server (GPU Cluster, 8x GPUs)
     ├── Qwen2.5-7B-Instruct (trainable)
     ├── vLLM inference engine

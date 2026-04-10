@@ -29,6 +29,7 @@ nav:
       - Tune First Agent: en/tune_your_first_agent.md
       - Swarm Training Intro: en/swarm_intro_blog_en.md
       - Agentic Frameworks: en/agent_framework_support.md
+      - Multi-Node Training: en/multi_node_training.md
 
   - • Classic Examples:
       - Math Agent: en/example_math_agent.md

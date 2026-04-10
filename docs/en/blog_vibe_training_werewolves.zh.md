@@ -95,7 +95,7 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
 
 ## 架构：工作原理
 
-```
+```text
 Swarm Server（GPU 集群，8 块 GPU）
     ├── Qwen2.5-7B-Instruct（可训练）
     ├── vLLM 推理引擎

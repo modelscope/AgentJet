@@ -169,7 +169,7 @@ When swarm training mode is enabled, an additional component will be activated:
 
 ### ✈️ Navigation
 
-* **Tutorials**: From [Installation](https://modelscope.github.io/AgentJet/en/installation) to [Tuning your first agent](https://modelscope.github.io/AgentJet/en/tune_your_first_agent) — the essential path for beginners.
+* **Tutorials**: From [Installation](https://modelscope.github.io/AgentJet/en/installation) to [Tuning your first agent](https://modelscope.github.io/AgentJet/en/tune_your_first_agent) to [Multi-Node Training](https://modelscope.github.io/AgentJet/en/multi_node_training) — the essential path for beginners.
 * **Core Components**: Define your [Trainable Workflow](https://modelscope.github.io/AgentJet/en/workflow) and manage [Data](https://modelscope.github.io/AgentJet/en/data_pipeline) and [Reward](https://modelscope.github.io/AgentJet/en/task_judger).
 * **Example**: Check the [Example Library](https://modelscope.github.io/AgentJet/#example-library) above for real-world cases like [Math](https://modelscope.github.io/AgentJet/en/example_math_agent), [Werewolves game](https://modelscope.github.io/AgentJet/en/example_werewolves) and  [Learning to ask task](https://modelscope.github.io/AgentJet/en/example_learning_to_ask).
 * **Deep Dive**: Master advanced [Configuration](https://modelscope.github.io/AgentJet/en/configuration).
