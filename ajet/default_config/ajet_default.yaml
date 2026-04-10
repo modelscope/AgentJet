@@ -292,6 +292,9 @@ ajet:
     kl_loss_coef: 0.002
     kl_loss_type: low_var_kl
 
+    # number of PPO epochs per update
+    ppo_epochs: 1
+
     # loss = loss * loss_extra_scale_ratio
     loss_extra_scale_ratio: 1.0
 

@@ -28,6 +28,7 @@
     "ajet.trainer_common.kl_loss_coef": "actor_rollout_ref.actor.kl_loss_coef",
     "ajet.trainer_common.kl_loss_type": "actor_rollout_ref.actor.kl_loss_type",
     "ajet.trainer_common.ulysses_sequence_parallel_size": "actor_rollout_ref.actor.ulysses_sequence_parallel_size",
+    "ajet.trainer_common.ppo_epochs": "actor_rollout_ref.actor.ppo_epochs",
     "ajet.trainer_common.loss_extra_scale_ratio": "actor_rollout_ref.actor.loss_extra_scale_ratio",
 
     "ajet.lora.lora_rank": "actor_rollout_ref.model.lora_rank",
