@@ -22,7 +22,7 @@
 
 我们搭建了一套 **Leader-Worker 架构**的自动化研究系统，以 [AgentJet](https://github.com/modelscope/AgentJet) 作为核心训练引擎，核心思路是：
 
-![Figure 1: Alpha Auto Research Leader-Worker Architecture. Research Topic flows to Leader Agent (6 steps: parse, plan, generate blueprints, dispatch, monitor, analyze), which dispatches 3 Blueprints via PAI DLC to parallel Worker nodes (8x GPU each), results converge back for review and iteration.](https://serve.gptacademic.cn/publish/auto/autoresearchblog/fig_architecture.png)
+![Figure 1: Alpha Auto Research Leader-Worker Architecture. Research Topic flows to Leader Agent (6 steps: parse, plan, generate blueprints, dispatch, monitor, analyze), which dispatches 3 Blueprints via PAI DLC to parallel Worker nodes (8x GPU each), results converge back for review and iteration.](https://serve.gptacademic.cn/publish/auto/autoresearchblog/fig_architecture_v2.jpg)
 
 ### 2.1 训练引擎：AgentJet
 

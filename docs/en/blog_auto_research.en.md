@@ -22,7 +22,7 @@ But most of these systems stop at "writing papers." We wanted something differen
 
 We built a **Leader-Worker architecture** for automated research, with [AgentJet](https://github.com/modelscope/AgentJet) as the core training engine:
 
-![Figure 1: Alpha Auto Research Leader-Worker Architecture. Research Topic flows to Leader Agent (6 steps: parse, plan, generate blueprints, dispatch, monitor, analyze), which dispatches 3 Blueprints via PAI DLC to parallel Worker nodes (8x GPU each), results converge back for review and iteration.](https://serve.gptacademic.cn/publish/auto/autoresearchblog/fig_architecture.png)
+![Figure 1: Alpha Auto Research Leader-Worker Architecture. Research Topic flows to Leader Agent (6 steps: parse, plan, generate blueprints, dispatch, monitor, analyze), which dispatches 3 Blueprints via PAI DLC to parallel Worker nodes (8x GPU each), results converge back for review and iteration.](https://serve.gptacademic.cn/publish/auto/autoresearchblog/fig_architecture_v2.jpg)
 
 ### 2.1 Training Engine: AgentJet
 
