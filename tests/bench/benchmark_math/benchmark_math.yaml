@@ -21,7 +21,7 @@ ajet:
     user_workflow: "tutorial.example_math_agent.math_agent->ExampleMathLearn" # ✨✨✨✨ 编写并选择Agent
     temperature: 0.9
     max_env_worker: 64
-    max_num_seqs: 10
+    max_num_seqs: 64
     num_repeat: 6
     agent_madness_reward: 0.0
     tensor_model_parallel_size: 1

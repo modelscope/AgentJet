@@ -59,7 +59,7 @@ ajet:
     n_vllm_engine: 2
 
     # how many sequences are allowed to be processed in parallel by each vllm engine
-    max_num_seqs: 10
+    max_num_seqs: 64
 
     # the usage of infer engine, options: (vllm, sglang)
     name: vllm
