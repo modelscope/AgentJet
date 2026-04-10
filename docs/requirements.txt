@@ -10,4 +10,4 @@ mkdocstrings-python==1.18.2
 pymdown-extensions==10.16.1
 
 # Syntax highlighting
-Pygments>=2.18.0
+Pygments==2.18.0
