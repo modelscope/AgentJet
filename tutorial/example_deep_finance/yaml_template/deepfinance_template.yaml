@@ -4,21 +4,19 @@ ajet:
   experiment_name: "{{SUFFIX}}"
   # Judge 配置（嵌套结构，对应 self.config.ajet.judge.*）
   judge:
-    openjudge_llm: {{OPENJUDGE_LLM}}     # OpenJudge 模型
-    rm_llm: {{RM_LLM}}                   # RM Gallery 模型
+    openjudge_llm: {{OPENJUDGE_LLM}}     # OpenJudge 模型（用于通用评估）
+    finance_llm: {{FINANCE_LLM}}         # Finance 评估专用模型（可选，留空则复用 openjudge_llm）
     concurrency: {{JUDGE_CONCURRENCY}}   # Judge 并发数
     train_ref_ans_path: {{TRAIN_REF_ANS_PATH}}   # 训练集 Reference Answer 路径
     val_ref_ans_path: {{VAL_REF_ANS_PATH}}       # 验证集 Reference Answer 路径
-  # OpenJudge 权重配置
+  # 权重配置
+  # rm_weight: Finance 评估权重（使用 FinanceCompositionEvaluator，支持 stock_analysis/industry/macro/event/search）
+  rm_weight: {{RM_WEIGHT}}
   presentation_quality_weight: {{PRESENTATION_QUALITY_WEIGHT}}   # 报告呈现质量评估
   grounding_weight: {{GROUNDING_WEIGHT}}                         # 引用规范性评估
-  cgcv_weight: {{CGCV_WEIGHT}}                                   # Citation-Grounded Claim Verification
   audit_weight: {{AUDIT_WEIGHT}}                                 # 引用逻辑审计
-  traceability_weight: {{TRACEABILITY_WEIGHT}}                   # 可追溯性/可核验性审计 (TVR)
-  ebtu_weight: {{EBTU_WEIGHT}}                                     # Audit Grader: audit reward EBTU证据优先可追溯性审计
-  rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
   task_judge:
-    # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）
+    # 使用 OpenJudge 版本的 DeepFinanceJudge
     judge_protocol: tutorial.example_deep_finance.deep_finance_judge->DeepFinanceJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
@@ -27,10 +25,10 @@ ajet:
     nnodes: {{NNODES}}
     n_gpus_per_node: 8
     val_before_train: True
-    val_pass_n: 2
+    val_pass_n: 8
     save_freq: 10
     test_freq: 2
-    total_epochs: {{TOTAL_EPOCHS}}
+    total_epochs: 200
     save_trajectory_as_json_file: True
   rollout:
     # ✨✨✨✨ 编写并选择Agent
@@ -55,7 +53,7 @@ ajet:
   data:
     train_batch_size: {{TRAIN_BATCH_SIZE}}
     max_prompt_length: 8000
-    max_response_length: 41000
+    max_response_length: {{MAX_RESPONSE_LENGTH}}
 
   task_reader:
     type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service

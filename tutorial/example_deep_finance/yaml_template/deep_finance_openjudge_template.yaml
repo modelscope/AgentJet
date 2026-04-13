@@ -1,20 +1,27 @@
-# ------------------ 主要配置 ------------------
+# ------------------ OpenJudge Finance 配置 ------------------
+# 注意：Finance 评估现在使用 OpenJudge FinanceCompositionEvaluator
+# finance_llm 可单独配置，若未设置则复用 openjudge_llm
 ajet:
   project_name: "{{PREFIX}}"
   experiment_name: "{{SUFFIX}}"
   # Judge 配置（嵌套结构，对应 self.config.ajet.judge.*）
   judge:
-    openjudge_llm: {{OPENJUDGE_LLM}}     # OpenJudge 模型
-    rm_llm: {{RM_LLM}}                   # RM Gallery 模型
+    openjudge_llm: {{OPENJUDGE_LLM}}     # OpenJudge 模型（用于通用评估）
+    finance_llm: {{FINANCE_LLM}}         # Finance 评估专用模型（可选，留空则复用 openjudge_llm）
     concurrency: {{JUDGE_CONCURRENCY}}   # Judge 并发数
     train_ref_ans_path: {{TRAIN_REF_ANS_PATH}}   # 训练集 Reference Answer 路径
     val_ref_ans_path: {{VAL_REF_ANS_PATH}}       # 验证集 Reference Answer 路径
-  # OpenJudge 权重配置
+  # 权重配置
+  # rm_weight: Finance 评估权重（使用 FinanceCompositionEvaluator，支持 stock_analysis/industry/macro/event/search）
+  rm_weight: {{RM_WEIGHT}}
   presentation_quality_weight: {{PRESENTATION_QUALITY_WEIGHT}}   # 报告呈现质量评估
   grounding_weight: {{GROUNDING_WEIGHT}}                         # 引用规范性评估
-  rm_weight: {{RM_WEIGHT}}                                       # RM Gallery 权重
+  cgcv_weight: {{CGCV_WEIGHT}}                                   # Citation-Grounded Claim Verification
+  audit_weight: {{AUDIT_WEIGHT}}                                 # 引用逻辑审计
+  traceability_weight: {{TRACEABILITY_WEIGHT}}                   # 可追溯性/可核验性审计 (TVR)
+  ebtu_weight: {{EBTU_WEIGHT}}                                   # EBTU证据优先可追溯性审计
   task_judge:
-    # 使用本地 DeepFinanceJudge 进行评估（解耦远程 env_service）
+    # 使用 OpenJudge 版本的 DeepFinanceJudge
     judge_protocol: tutorial.example_deep_finance.deep_finance_judge->DeepFinanceJudgeByOpenJudge
   model:
     # ✨✨✨✨ 设置待训练的模型
@@ -32,12 +39,13 @@ ajet:
     # ✨✨✨✨ 编写并选择Agent
     user_workflow: tutorial.example_deep_finance.deep_finance->ExampleDeepResearchProtocol
     force_disable_toolcalls: False
+    enable_oversample: False
     tensor_model_parallel_size: 8
     num_repeat: {{NUM_REPEAT}}
     max_env_worker: 64  # 增加环境并行数
     max_num_seqs: 64    # 增加VLLM并发序列数
     max_response_length_in_one_turn: 8000
-    max_model_len: 40960
+    max_model_len: {{MAX_MODEL_LEN}}
     agent_madness_reward: 0.0
     compute_madness_checklist: None
     multi_turn:
@@ -49,8 +57,8 @@ ajet:
     debug_first_n_tasks: 100  # 增加处理的任务数
   data:
     train_batch_size: {{TRAIN_BATCH_SIZE}}
-    max_prompt_length: 8000
-    max_response_length: 41000
+    max_prompt_length: 20000
+    max_response_length: 45000
 
   task_reader:
     type: deep_finance  # 数据从 JSON 加载并组装 init_messages，工具调用走 env_service
@@ -71,14 +79,14 @@ actor_rollout_ref:
   rollout:
     tensor_model_parallel_size: 8
     gpu_memory_utilization: 0.8
-# ------------------ do not edit ------------------
+# ------------------ 不需要修改 ------------------
 hydra:
   searchpath:
     - file://ajet/default_config
     - file://ajet/default_config/verl         # verl only
     - file://ajet/default_config/trinity      # trinity only
 
-# ------------------ do not edit ------------------
+# ------------------ 不需要修改 ------------------
 defaults:
   - verl_default # verl inherit 1/1
   - trinity_default # trinity inherit 1/1
