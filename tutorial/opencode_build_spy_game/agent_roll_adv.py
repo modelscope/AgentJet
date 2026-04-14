@@ -9,7 +9,8 @@ import os
 import json
 from pathlib import Path
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.schema.task import Task
 from tutorial.opencode_build_spy_game.agent_run_adv import run_agent_and_compute_reward
 
@@ -146,50 +147,17 @@ def main():
     # Training loop
     print(f"\nStarting adversarial training for {LOCAL_NUM_EPOCH} epochs...")
 
+    executor = PeriodicDrainThreadPoolExecutor(workers=REMOTE_BATCH_SIZE_1 * LOCAL_GRPO_N, max_parallel=LOCAL_MAX_PARALLEL, auto_retry=True)
     for epoch in range(LOCAL_NUM_EPOCH):
         print(f"\n{'='*60}")
         print(f"EPOCH {epoch + 1}/{LOCAL_NUM_EPOCH}")
         print(f"{'='*60}")
 
-        next_batch = []
         for task in dataset_reader.generate_training_tasks():
-            # For each task, add it LOCAL_GRPO_N times to the batch
+            # For each task, submit it LOCAL_GRPO_N times
             # These are multiple rollouts of the SAME task for GRPO
             for _ in range(LOCAL_GRPO_N):
-                next_batch.append(task)
-
-            # When we have enough tasks in batch, execute them
-            if len(next_batch) >= (REMOTE_BATCH_SIZE_1 * LOCAL_GRPO_N):
-                # Execute batch with retry logic
-                episode_results = run_episodes_until_all_complete(
-                    next_batch,
-                    func=rollout,
-                    auto_retry=True
-                )
-
-                # Print batch statistics
-                valid_results = [r for r in episode_results if r is not None]
-                if valid_results:
-                    avg_reward = sum(valid_results) / len(valid_results)
-                    num_tasks = len(next_batch) // LOCAL_GRPO_N
-                    print(f"\nBatch completed: {len(valid_results)}/{len(next_batch)} episodes "
-                          f"({num_tasks} tasks x {LOCAL_GRPO_N} episodes), Avg combined reward: {avg_reward:.3f}")
-
-                next_batch.clear()
-
-        # Process any remaining tasks in the batch at end of epoch
-        if len(next_batch) > 0:
-            episode_results = run_episodes_until_all_complete(
-                next_batch,
-                func=rollout,
-                auto_retry=True
-            )
-            valid_results = [r for r in episode_results if r is not None]
-            if valid_results:
-                avg_reward = sum(valid_results) / len(valid_results)
-                num_tasks = len(next_batch) // LOCAL_GRPO_N
-                print(f"\nFinal batch completed: {len(valid_results)}/{len(next_batch)} episodes "
-                      f"({num_tasks} tasks x {LOCAL_GRPO_N} episodes), Avg combined reward: {avg_reward:.3f}")
+                executor.submit_with_periodic_drain(fn=rollout, task=task)
 
     print("\n" + "="*60)
     print("Adversarial training completed!")

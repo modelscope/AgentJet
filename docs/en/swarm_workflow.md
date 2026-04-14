@@ -88,7 +88,8 @@ From your client script, connect to the server and send training parameters:
 
 ```python
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 
 swarm_worker = SwarmClient("http://localhost:10086")
 
@@ -163,14 +164,10 @@ def rollout(task):
     return workflow_output.reward
 
 # Training loop
-next_batch = []
+executor = PeriodicDrainThreadPoolExecutor(workers=BATCH_SIZE * LOCAL_GRPO_N, max_parallel=64, auto_retry=True)
 for task in dataset.generate_training_tasks():
     for _ in range(LOCAL_GRPO_N):
-        next_batch.append(task)
-        if len(next_batch) >= BATCH_SIZE * LOCAL_GRPO_N:
-            results = run_episodes_until_all_complete(next_batch, func=rollout, auto_retry=True)
-            print(results)
-            next_batch.clear()
+        executor.submit_with_periodic_drain(fn=rollout, task=task)
 ```
 
 That's it — the server collects episodes, computes advantages, and updates model weights automatically. Your client just runs agents in a loop.
@@ -226,14 +223,11 @@ Scale rollout across many machines by running the same client script on multiple
 
 ```python
 N_CLIENTS = 4  # total number of client machines
-next_batch = []
+# Each client processes 1/N_CLIENTS of the batch
+executor = PeriodicDrainThreadPoolExecutor(workers=BATCH_SIZE // N_CLIENTS * LOCAL_GRPO_N, max_parallel=64, auto_retry=True)
 for task in dataset.generate_training_tasks():
     for _ in range(LOCAL_GRPO_N):
-        next_batch.append(task)
-        # Each client processes 1/N_CLIENTS of the batch
-        if len(next_batch) >= (BATCH_SIZE // N_CLIENTS * LOCAL_GRPO_N):
-            results = run_episodes_until_all_complete(next_batch, func=rollout, auto_retry=True)
-            next_batch.clear()
+        executor.submit_with_periodic_drain(fn=rollout, task=task)
 ```
 
 ```bash

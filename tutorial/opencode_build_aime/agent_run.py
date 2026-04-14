@@ -149,7 +149,7 @@ def compute_reward(solution_str: str, ground_truth: str) -> dict:
     else:
         method = "boxed"
 
-    reward = 1.0 if correct else -1.0
+    reward = 1.0 if correct else 0.0
 
     return {
         "score": reward,
@@ -233,6 +233,8 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Workfl
         for msg in prompt:
             if isinstance(msg, dict):
                 messages.append(msg)
+        if not messages or messages[0].get("role") != "system":
+            messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
     else:
         # Fallback to custom format (supports \boxed{} format)
         messages = [

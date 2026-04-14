@@ -16,10 +16,8 @@ Before running:
 """
 
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.swarm_client import (
-    SwarmClient,
-    run_episodes_until_all_complete,
-)
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.default_config.ajet_config_schema import (
     AjetTaskReader,
     JsonlDatasetFile,
@@ -119,8 +117,7 @@ def main():
             return None
 
     # Training loop
-    next_batch = []
-    total_episodes = 0
+    executor = PeriodicDrainThreadPoolExecutor(workers=REMOTE_BATCH_SIZE * LOCAL_GRPO_N, max_parallel=64, auto_retry=True)
 
     for epoch in range(LOCAL_NUM_EPOCH):
         print(f"\n{'=' * 80}")
@@ -130,37 +127,7 @@ def main():
         for task_idx, task in enumerate(dataset.generate_training_tasks()):
             # For each task, perform LOCAL_GRPO_N rollouts (GRPO group)
             for _ in range(LOCAL_GRPO_N):
-                next_batch.append(task)
-
-                # When batch is full, execute all episodes
-                if len(next_batch) >= (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
-                    print(f"\nExecuting batch of {len(next_batch)} episodes...")
-
-                    # Execute episodes with automatic retry on failure
-                    episode_results = run_episodes_until_all_complete(
-                        next_batch, func=rollout, auto_retry=True
-                    )
-
-                    total_episodes += len(next_batch)
-
-                    # Print batch results
-                    successful = sum(
-                        1 for r in episode_results if r is not None and r > 0
-                    )
-                    avg_reward = (
-                        sum(r for r in episode_results if r is not None)
-                        / len(episode_results)
-                        if episode_results
-                        else 0
-                    )
-
-                    print(f"\nBatch completed:")
-                    print(f"  Total episodes: {len(next_batch)}")
-                    print(f"  Successful: {successful}")
-                    print(f"  Average reward: {avg_reward:.3f}")
-                    print(f"  Total episodes so far: {total_episodes}")
-
-                    next_batch.clear()
+                executor.submit_with_periodic_drain(fn=rollout, task=task)
 
         print(f"\nEpoch {epoch + 1} completed!")
 

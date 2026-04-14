@@ -210,7 +210,7 @@ The usual batching relationship is:
 - local `num_repeat` (a.k.a. rollout.n / GRPO N) is the number of rollouts per task
 - so one “full” batch roughly needs `batch_size × num_repeat` completed episodes.
 
-The helper `run_episodes_until_all_complete(tasks, func=rollout, auto_retry=True)` is just a convenience thread pool; you can implement your own scheduling.
+The helper `PeriodicDrainThreadPoolExecutor.submit_with_periodic_drain(fn=rollout, task=task)` is a convenience thread pool that periodically drains results; you can implement your own scheduling.
 
 Operational notes:
 

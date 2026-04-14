@@ -50,17 +50,11 @@ def rollout(task) -> float | None:
     return workflow_output.reward
 
 # 并行执行 Agent 完成多个 task，逐步地完成几个epoch
-episodes = []
+executor = PeriodicDrainThreadPoolExecutor(workers=REMOTE_BATCH_SIZE * LOCAL_GRPO_N, max_parallel=64, auto_retry=True)
 for epoch in range(10):
     for i_task, task in enumerate(dataset.generate_training_tasks()):
         for j_repeat in range(LOCAL_GRPO_N):
-            episodes += [ task ]
-            # wait until getting `local_batching_size` episodes, then execute them with retry logic
-            if len(episodes) == (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
-                episode_results = run_episodes_until_all_complete(episodes, func=rollout, auto_retry=True)
-                for episode, reward in zip(episodes, episode_results):
-                    logger.info(f"Episode for task {episode.task_id} completed with reward: {reward}")
-                episodes = []
+            executor.submit_with_periodic_drain(fn=rollout, task=task)
 
 # ... 等待训练结束 ...
 ```

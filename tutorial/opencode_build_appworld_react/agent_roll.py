@@ -10,7 +10,8 @@ Usage:
 import os
 import subprocess
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.utils.env_service_client.env_client_ng import EnvClient
 from ajet.schema.task import Task
 from tutorial.opencode_build_appworld_react.agent_run import run_agent_and_compute_reward
@@ -206,8 +207,7 @@ def main():
     print(f"  - Model: {REMOTE_TRAIN_MODEL}")
     print("=" * 60)
 
-    next_batch = []
-    total_episodes = 0
+    executor = PeriodicDrainThreadPoolExecutor(workers=REMOTE_BATCH_SIZE * LOCAL_GRPO_N, max_parallel=LOCAL_MAX_PARALLEL, auto_retry=True)
 
     try:
         for epoch in range(LOCAL_NUM_EPOCH):
@@ -220,30 +220,7 @@ def main():
 
                 # Rollout GRPO_N times for this task
                 for _ in range(LOCAL_GRPO_N):
-                    next_batch.append(task)
-
-                    # Execute batch when ready
-                    if len(next_batch) >= (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
-                        print(f"\nExecuting batch of {len(next_batch)} episodes...")
-
-                        episode_results = run_episodes_until_all_complete(
-                            next_batch,
-                            func=rollout,
-                            auto_retry=True
-                        )
-
-                        total_episodes += len(next_batch)
-
-                        # Print statistics
-                        successful_episodes = sum(1 for r in episode_results if r is not None)
-                        avg_reward = sum(r for r in episode_results if r is not None) / max(successful_episodes, 1)
-
-                        print(f"Batch complete:")
-                        print(f"  - Total episodes: {total_episodes}")
-                        print(f"  - Successful: {successful_episodes}/{len(next_batch)}")
-                        print(f"  - Average reward: {avg_reward:.4f}")
-
-                        next_batch.clear()
+                    executor.submit_with_periodic_drain(fn=rollout, task=task)
 
     except KeyboardInterrupt:
         print("\n\nTraining interrupted by user")
@@ -252,13 +229,7 @@ def main():
         import traceback
         traceback.print_exc()
     finally:
-        # Execute remaining episodes if any
-        if next_batch:
-            print("\nExecuting remaining episodes...")
-            run_episodes_until_all_complete(next_batch, func=rollout, auto_retry=True)
-
         print("\nTraining complete!")
-        print(f"Total episodes executed: {total_episodes}")
 
 
 if __name__ == "__main__":

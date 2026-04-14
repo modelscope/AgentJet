@@ -1,5 +1,6 @@
 from ajet.copilot.job import AgentJetJob
-from ajet.tuner_lib.experimental.swarm_client import SwarmClient, run_episodes_until_all_complete
+from ajet.tuner_lib.experimental.swarm_client import SwarmClient
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.task_reader import RouterTaskReader
 from tutorial.example_academic_trans_swarm.trans import execute_agent
@@ -56,15 +57,10 @@ def main():
         swarm_worker.print_rollout_stat()
         return workflow_output.reward
 
-    next_batch = []
+    executor = PeriodicDrainThreadPoolExecutor(workers=REMOTE_BATCH_SIZE * LOCAL_GRPO_N, max_parallel=64, auto_retry=True)
     for _, task in enumerate(dataset.generate_training_tasks()):
         for _ in range(LOCAL_GRPO_N):
-            next_batch.append(task)
-            if len(next_batch) >= (REMOTE_BATCH_SIZE * LOCAL_GRPO_N):
-                # wait until getting `local_batching_size` next_batch, then execute them with with retry logic
-                episode_results = run_episodes_until_all_complete(next_batch, func=rollout, auto_retry=True)
-                print(episode_results)
-                next_batch.clear()
+            executor.submit_with_periodic_drain(fn=rollout, task=task)
     return None
 
 

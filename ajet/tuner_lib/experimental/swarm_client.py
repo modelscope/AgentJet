@@ -11,7 +11,6 @@ from typing import List, Tuple
 from loguru import logger
 from ajet.schema.task import WorkflowOutput, Task
 from ajet.copilot.job import AgentJetJob
-from ajet.utils.thread_executors import BoundedThreadPoolExecutor
 from ajet.utils.cache import cache_with_ttl
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
@@ -58,8 +57,9 @@ class SwarmServerOfflineError(Exception): ...
 
 class SwarmClient(object):
 
-    def __init__(self, server_url: str):
+    def __init__(self, server_url: str, verbose: bool = True):
         self.server_url = server_url
+        self.verbose = verbose
         self.client_uuid = str(uuid.uuid4())
         self.previous_warning_time = 0
         self.record_episode_expire_time = {}
@@ -296,7 +296,8 @@ class SwarmClient(object):
                     # force replace openai_base_url host with self.server_url
                     openai_base_url = re.sub(r'^https?://[^/]+', self.server_url, openai_base_url)
 
-                    self.logger_info(f"Claimed episode {episode_uuid}, current global step: {status_json.get('global_step', 'unknown')}")
+                    if self.verbose:
+                        self.logger_info(f"Claimed episode {episode_uuid}, current global step: {status_json.get('global_step', 'unknown')}")
                     return episode_uuid, OpenaiBaseUrlAndApiKey(
                         base_url=openai_base_url,
                         api_key=openai_api_key,
@@ -373,7 +374,8 @@ class SwarmClient(object):
         data = EndEpisodeResponse.model_validate(resp.json())
 
         if data.success:
-            self.logger_info(f"Ended episode {episode_uuid}")
+            if self.verbose:
+                self.logger_info(f"Ended episode {episode_uuid}")
         else:
             logger.error(f"Failed to end episode {episode_uuid}")
             raise RuntimeError(f"Failed to end episode {episode_uuid}")
@@ -401,7 +403,8 @@ class SwarmClient(object):
             data = EndEpisodeResponse.model_validate(resp.json())
 
             if data.success:
-                self.logger_info(f"Aborted episode {episode_uuid}")
+                if self.verbose:
+                    self.logger_info(f"Aborted episode {episode_uuid}")
             else:
                 logger.error(f"Failed to end episode {episode_uuid}")
 
@@ -706,41 +709,8 @@ class SwarmClient(object):
         except:
             pass
 
-def run_episodes_until_all_complete(tasks: List[Tuple], func, max_workers=None, auto_retry=True):
-    if not max_workers:
-        max_workers = len(tasks)
-
-    executor = BoundedThreadPoolExecutor(
-        max_workers=max_workers,
-        max_queue_size=max_workers,
-    )
-    futures = []
-
-    def retry_wrapper(func, arg):
-        while True:
-            try:
-                return func(arg)
-            except Exception as e:
-                logger.exception(f"[run_episodes_until_all_complete] Error executing episode: {e}. Retrying...")
-
-    for task in tasks:
-        if auto_retry:
-            f = executor.submit(retry_wrapper, func, task)
-        else:
-            f = executor.submit(func, task)
-
-        futures.append(f)
-
-    executor.shutdown(wait=True)
-    results = [future.result() for future in futures]
-
-    print(f"*** Batch results: Finished {len(results)} Episodes. ***")
-    time.sleep(5)
-
-    return results
-
-
 def auto_train_with_dataset(dataset, swarm_worker: SwarmClient, execute_agent, local_grpo_n=2, remote_batch_size=8):
+    from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 
     def rollout(task) -> float | None:
         # begin episode
@@ -753,13 +723,7 @@ def auto_train_with_dataset(dataset, swarm_worker: SwarmClient, execute_agent, l
         swarm_worker.print_rollout_stat()
         return workflow_output.reward
 
-    episodes = []
+    executor = PeriodicDrainThreadPoolExecutor(workers=remote_batch_size * local_grpo_n, max_parallel=64, auto_retry=True)
     for _, task in enumerate(dataset.generate_training_tasks()):
         for _ in range(local_grpo_n):
-            episodes += [ task ]
-            # wait until getting `local_batching_size` episodes, then execute them with with retry logic
-            if len(episodes) == (remote_batch_size * local_grpo_n):
-                episode_results = run_episodes_until_all_complete(episodes, func=rollout, auto_retry=True)
-                for episode, reward in zip(episodes, episode_results):
-                    print(f"Episode for task {episode.task_id} completed with reward: {reward}")
-                episodes.clear()
+            executor.submit_with_periodic_drain(fn=rollout, task=task)

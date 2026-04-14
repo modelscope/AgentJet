@@ -65,7 +65,7 @@ class PeriodicDrainThreadPoolExecutor:
                 try:
                     return fn(*args, **kwargs)
                 except Exception as e:
-                    logger.exception(f"[run_episodes_until_all_complete] Error executing episode: {e}. Retrying...")
+                    logger.exception(f"[PeriodicDrainThreadPoolExecutor] Error executing episode: {e}. Retrying...")
 
         if self._auto_retry:
             future = self._executor.submit(retry_wrapper, fn, *args, **kwargs)
