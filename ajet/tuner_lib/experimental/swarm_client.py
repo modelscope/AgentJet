@@ -520,24 +520,29 @@ class SwarmClient(object):
 
     @cache_with_ttl(ttl=0.5)
     def get_engine_status(self) -> Tuple[str, dict]:
-        try:
-            resp = self._http_client.get(
-                f"{self.server_url}/get_engine_status",
-                timeout=10
-            )
-            raise_for_status_with_detail(resp)
-            resp_json = resp.json()
-            result = resp_json.get("engine_status", "unknown")
-            # engine_status_detail = resp_json.get("engine_status_detail", None)
-            # global_step = resp_json.get("global_step", None)
-            if result == "unknown":
-                logger.warning("get_engine_status: " + str(resp_json))
-            return result, resp_json
-        except Exception as e:
-            if self._should_refresh_client_on_error(e):
-                self._refresh_http_client()
-            logger.error(f"Error getting engine status: {e}")
-            return "ENGINE.CANNOT_CONNECT", {}
+        max_try = 5
+        for attempt in range(max_try):
+            try:
+                resp = self._http_client.get(
+                    f"{self.server_url}/get_engine_status",
+                    timeout=10
+                )
+                raise_for_status_with_detail(resp)
+                resp_json = resp.json()
+                result = resp_json.get("engine_status", "unknown")
+                # engine_status_detail = resp_json.get("engine_status_detail", None)
+                # global_step = resp_json.get("global_step", None)
+                if result == "unknown":
+                    logger.warning("get_engine_status: " + str(resp_json))
+                return result, resp_json
+            except Exception as e:
+                if self._should_refresh_client_on_error(e) and attempt < max_try - 1:
+                    self._refresh_http_client()
+                    continue
+                else:
+                    logger.error(f"Error getting engine status: {e}")
+                    return "ENGINE.CANNOT_CONNECT", {}
+        return "ENGINE.CANNOT_CONNECT", {}
 
     def can_continue_episode(self, episode_uuid: str) -> bool:
         if not episode_uuid:

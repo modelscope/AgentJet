@@ -58,6 +58,7 @@ class AIMESwarmTrainer:
 
     NUM_EPOCH = 10000
     EVAL_INTERVAL = 50  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
+    EVAL_K = 4  # pass@k: run each eval task K times
 
     def __init__(
         self,
@@ -133,25 +134,42 @@ class AIMESwarmTrainer:
         if not self.eval_tasks:
             return
 
-        print(f"\n[EVAL @ task {task_count}] Running AIME-2024 eval on {len(self.eval_tasks)} tasks...")
-        drained = []
-        pbar = tqdm(total=len(self.eval_tasks), desc=f"EVAL @ {task_count}")
+        k = self.EVAL_K
+        total_rollouts = len(self.eval_tasks) * k
+        print(f"\n[EVAL @ task {task_count}] Running AIME-2024 eval on {len(self.eval_tasks)} tasks x {k} (pass@{k})...")
+        per_task_rewards = [[] for _ in self.eval_tasks]
+        pbar = tqdm(total=total_rollouts, desc=f"EVAL @ {task_count}")
 
         with ThreadPoolExecutor(max_workers=self.max_env_worker) as eval_executor:
-            futures = [eval_executor.submit(self.eval_rollout, t) for t in self.eval_tasks]
-            for fut in as_completed(futures):
+            future_to_idx = {
+                eval_executor.submit(self.eval_rollout, t): i
+                for i, t in enumerate(self.eval_tasks)
+                for _ in range(k)
+            }
+            for fut in as_completed(future_to_idx):
+                idx = future_to_idx[fut]
                 try:
-                    drained.append(fut.result())
+                    per_task_rewards[idx].append(fut.result())
                 except Exception as e:
                     print(f"[EVAL] future error: {e}")
                 pbar.update(1)
         pbar.close()
 
-        rewards = [r for r in drained if r is not None]
-        if rewards:
-            avg = sum(rewards) / len(rewards)
-            acc = sum(1 for r in rewards if r > 0) / len(rewards)
-            print(f"[EVAL @ task {task_count}] avg_reward={avg:.4f}  pass@1={acc*100:.2f}%  n={len(rewards)}")
+        flat = [r for rs in per_task_rewards for r in rs if r is not None]
+        if flat:
+            avg = sum(flat) / len(flat)
+            pass1 = sum(1 for r in flat if r > 0) / len(flat)
+            solved_tasks = [rs for rs in per_task_rewards if any((r is not None and r > 0) for r in rs)]
+            passk = len(solved_tasks) / len(per_task_rewards)
+            summary = (
+                f"[EVAL @ task {task_count}] avg_reward={avg:.4f}  "
+                f"pass@1={pass1*100:.2f}%  pass@{k}={passk*100:.2f}%  "
+                f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
+            )
+            print(summary)
+            eval_log_path = os.path.join(os.path.dirname(__file__), "eval_results.log")
+            with open(eval_log_path, "a") as f:
+                f.write(summary + "\n")
         else:
             print(f"[EVAL @ task {task_count}] no valid rewards")
 

@@ -1,4 +1,5 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 from ajet.utils.sington import singleton
 from loguru import logger
 import threading
@@ -83,9 +84,13 @@ class PeriodicDrainThreadPoolExecutor:
         drain_every_n_job = self._max_workers
         results = []
         if self._submitted_count > 0 and self._submitted_count % drain_every_n_job == 0:
+            pbar = tqdm(total=len(self.current_futures), desc="Draining in-flight tasks")
+            for _ in as_completed(self.current_futures):
+                pbar.update(1)
+            pbar.close()
             for future in self.current_futures:
                 try:
-                    results += [future.result()]  # Wait for the task to complete and raise exceptions if any
+                    results += [future.result()]  # Preserve submission order
                 except Exception as e:
                     logger.exception(f"Error in task execution: {e}")
             self.current_futures = []

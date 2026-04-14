@@ -411,7 +411,12 @@ def register_enable_swarm_mode_routes(
             os.setpgid(p.pid, p.pid)
 
             # Store process info in shared memory
-            _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+            # _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+            await asyncio.to_thread(
+                _clean_up_engine_status,
+                shared_mem_dict_lock,
+                shared_mem_dict,
+            )
             with shared_mem_dict_lock:
                 shared_mem_dict["training_process_pid"] = p.pid
                 shared_mem_dict["engine_status"] = "ENGINE.BOOTING"
@@ -437,7 +442,12 @@ def register_enable_swarm_mode_routes(
         previous_status = shared_mem_dict["engine_status"]
         shared_mem_dict["engine_status"] = req.engine_status
         if previous_status in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"] and req.engine_status not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
-            _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+            # _clean_up_engine_status(shared_mem_dict_lock, shared_mem_dict)
+            await asyncio.to_thread(
+                _clean_up_engine_status,
+                shared_mem_dict_lock,
+                shared_mem_dict,
+            )
 
         # Clear booting_start_time when transitioning away from BOOTING
         if previous_status == "ENGINE.BOOTING" and req.engine_status != "ENGINE.BOOTING":
