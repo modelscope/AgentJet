@@ -180,3 +180,7 @@ skills-lock.json
 blueprint*
 tmux_wait.py
 qwen2*
+tutorial/alpha_auto_*
+research_*.json
+research_*.jsonc
+daemon_logs*

@@ -985,7 +985,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         for task_id, task_outcomes in task_results.items():
             # Calculate num_all_success_tasks  # The number of tasks where all were successful in n experiments
             # Calculate num_pass_n_tasks       # The number of tasks where at least one was successful in n experiments
-            assert len(task_outcomes["tag_arr"]) == pass_n
+            assert len(task_outcomes["tag_arr"]) == pass_n, f"expect {pass_n} attempts, but got {len(task_outcomes['tag_arr'])} attempts for task_id={task_id}."
             if all(tag == "success" for tag in task_outcomes["tag_arr"]):
                 num_all_success_tasks += 1
             if any(tag == "success" for tag in task_outcomes["tag_arr"]):

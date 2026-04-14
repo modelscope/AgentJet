@@ -20,7 +20,7 @@ class JsonlTaskReader(BaseTaskReader):
         Returns:
             List[Task]: List of Task objects.
         """
-        tasks = []
+        task_array = []
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -30,20 +30,20 @@ class JsonlTaskReader(BaseTaskReader):
                         task = Task(
                             main_query=task_data.get("main_query", "[not defined]"),
                             init_messages=task_data.get("init_messages", []),
-                            task_id=task_data.get("task_id", ""),
+                            task_id=task_data.get("task_id", f"task_{len(task_array)}"),
                             env_type=task_data.get("env_type", "no_env"),
                             metadata=task_data.get("metadata", task_data),
                         )
-                        tasks.append(task)
+                        task_array.append(task)
         except FileNotFoundError:
             raise ValueError(f"JSONL file not found: {file_path}")
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in file {file_path}: {str(e)}")
 
-        if len(tasks) == 0:
-            raise ValueError(f"No tasks found in file: {file_path}")
+        if len(task_array) == 0:
+            raise ValueError(f"No task found in file: {file_path}")
 
-        return tasks
+        return task_array
 
     def get_training_tasks(self) -> List[Task]:
         """

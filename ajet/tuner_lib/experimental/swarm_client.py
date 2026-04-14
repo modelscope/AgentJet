@@ -611,6 +611,32 @@ class SwarmClient(object):
         else:
             raise RuntimeError(f"Cannot sync train config or start engine when engine is in status: {current_status}")
 
+    @staticmethod
+    def async_and_start_multi_engine(client_job_pairs: List[Tuple["SwarmClient", AgentJetJob]], force_restart=False):
+        """
+        Run `auto_sync_train_config_and_start_engine` on multiple (client, job) pairs in parallel.
+        """
+        threads = []
+        errors = []
+
+        def _worker(client: "SwarmClient", job: AgentJetJob):
+            try:
+                client.auto_sync_train_config_and_start_engine(job, force_restart=force_restart)
+            except Exception as e:
+                logger.exception(f"Error starting engine on {client.server_url}: {e}")
+                errors.append((client.server_url, e))
+
+        for client, job in client_job_pairs:
+            t = threading.Thread(target=_worker, args=(client, job), daemon=True)
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+
+        if errors:
+            raise RuntimeError(f"Failed to start {len(errors)} engine(s): {errors}")
+
     def stop_engine(self):
         """
         Stop the training engine on the Swarm server.
