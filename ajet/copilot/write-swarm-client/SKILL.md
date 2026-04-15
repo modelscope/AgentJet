@@ -152,11 +152,34 @@ Below are some reference materials.
         model='/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct',
         batch_size=LOCAL_GRPO_N,
         num_repeat=4,
+        # LoRA parameters (optional, for parameter-efficient fine-tuning):
+        # lora_rank=8,           # Set > 0 to enable LoRA training (default: 0 = disabled)
+        # lora_alpha=16,         # LoRA alpha scaling factor (default: 16)
+        # lora_target_modules="all-linear",  # Target modules for LoRA (default: "all-linear")
     )
     # hint: you can `yaml_job.dump_job_as_yaml('./config.yaml')` to take a look at the full configuration
     # hint: you can `yaml_job.build_job_from_yaml('./config.yaml')` to load yaml configuration as override. (there are some configurations that must be edited from yaml)
     swarm_worker.auto_sync_train_config_and_start_engine(yaml_job)
     ```
+
+    **LoRA Training**: To enable LoRA (Low-Rank Adaptation) for parameter-efficient fine-tuning, set `lora_rank > 0`. This significantly reduces GPU memory usage and training time while maintaining good performance.
+
+    **Full AgentJetJob Arguments**: Run `help(AgentJetJob)` or check `ajet/copilot/job.py` for all available parameters including:
+
+    | Parameter | Description |
+    |-----------|-------------|
+    | `model` | Path to the model to train |
+    | `n_gpu` | Number of GPUs per node |
+    | `algorithm` | Advantage estimator (e.g., 'grpo') |
+    | `batch_size` | Training batch size |
+    | `num_repeat` | Number of repeated samples per task |
+    | `max_prompt_length` | Maximum prompt token length |
+    | `max_response_length` | Maximum response token length |
+    | `max_model_len` | Maximum total token length |
+    | `mini_batch_num` | Number of mini-batches per update |
+    | `lora_rank` | LoRA rank (0 = disabled, >0 = enabled) |
+    | `lora_alpha` | LoRA alpha scaling factor |
+    | `lora_target_modules` | Target modules for LoRA |
 
     The swarm server can be in the following states and transition between them as follows:
     - **OFFLINE**: The swarm server is started but does not load any models or perform any training. It enters this state directly after startup. Additionally, it transitions to this state upon receiving a `stop_engine` command from (any) client while in any other state.
@@ -279,6 +302,7 @@ Below are some reference materials.
         model=REMOTE_TRAIN_MODEL_01,
         batch_size=REMOTE_BATCH_SIZE,
         num_repeat=LOCAL_GRPO_N,
+        # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
     )
 
     swarm_worker.sync_train_config(yaml_job)
@@ -289,6 +313,8 @@ Below are some reference materials.
     Hints:
     - You can `yaml_job.dump_job_as_yaml('./config.yaml')` to take a look at the full configuration.
     - You can `yaml_job.build_job_from_yaml('./config.yaml')` to load yaml configuration as override. (there are some configurations that must be edited from yaml).
+    - For LoRA training, set `lora_rank > 0` (e.g., 8 or 16) to enable parameter-efficient fine-tuning.
+    - **Full argument list**: Run `help(AgentJetJob)` or check `ajet/copilot/job.py` for all available parameters.
 
     ### (D1-2) Write your agent & reward
 
@@ -577,6 +603,7 @@ Below are some reference materials.
             algorithm="grpo", project_name="ajet-swarm", experiment_name="test",
             n_gpu=8, model="/path/to/llm/model",
             batch_size=128, num_repeat=4,
+            # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
         )
         swarm_worker.sync_train_config(yaml_job)
         swarm_worker.start_engine()

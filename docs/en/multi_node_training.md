@@ -127,6 +127,7 @@ ajet_job = AgentJetJob(
     #     trainer_common:
     #       nnodes: 4
     #       n_gpus_per_node: 8
+    # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
 )
 ```
 

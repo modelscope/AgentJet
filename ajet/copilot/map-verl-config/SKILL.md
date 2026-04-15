@@ -12,3 +12,8 @@ license: Complete terms in LICENSE.txt
 3. if not, add a config under `ajet` field in `codebase/agentjet/ajet/default_config/ajet_default.yaml`, and add a mapping in `codebase/agentjet/ajet/default_config/verl/config_auto_convertion_verl.jsonc`
 
 4. double check, confirm that default value in `ajet_default.yaml` is the same as verl config in `verl_default.yaml`, and the mapping is correct in `config_auto_convertion_verl.jsonc`
+
+5. ask user whether to add to AgentJetJob (ajet/copilot/job.py), if the user confirms:
+  - learn how other config is added in ajet/copilot/job.py
+  - add to __init__, update docstring
+  - add to ajet/default_config/ajet_config_schema.py

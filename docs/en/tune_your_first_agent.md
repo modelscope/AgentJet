@@ -528,6 +528,7 @@ Create your client script. The client reads the dataset, runs the agent workflow
                 model=REMOTE_MODEL_PATH,
                 batch_size=REMOTE_BATCH_SIZE,
                 num_repeat=GRPO_N,
+                # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
             ),
             force_restart=True,
         )
@@ -681,6 +682,7 @@ The server handles gradient computation and model updates automatically.
                 model=REMOTE_MODEL_PATH,
                 batch_size=REMOTE_BATCH_SIZE,
                 num_repeat=GRPO_N,
+                # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
             ),
             force_restart=True,
         )

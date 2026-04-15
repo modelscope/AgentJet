@@ -60,6 +60,9 @@ class AgentJetJob:
         max_response_length: Maximum token length for model responses (token length after the first llm-generated token).
         max_model_len: Maximum total token length (prompt + response) the model can handle (bigger => more GPU memory).
         mini_batch_num: Number of mini-batches to split training batch into (how many mini steps, i.e. how many times the `optimizer.step` should be executed, per big train batch).
+        lora_rank: LoRA rank for low-rank adaptation (set > 0 to enable LoRA training, default 0 means disabled).
+        lora_alpha: LoRA alpha scaling factor (default 16).
+        lora_target_modules: Target modules for LoRA adaptation (default 'all-linear').
     """
 
     def __init__(
@@ -83,6 +86,9 @@ class AgentJetJob:
         max_response_length_in_one_turn: int | None = None,
         max_model_len: int | None = None,
         mini_batch_num: int | None = None,
+        lora_rank: int | None = None,
+        lora_alpha: int | None = None,
+        lora_target_modules: str | None = None,
     ) -> None:
 
         if base_yaml_config is None:
@@ -120,6 +126,9 @@ class AgentJetJob:
         self.max_response_length: int = cast(int, max_response_length)
         self.max_model_len: int = cast(int, max_model_len)
         self.mini_batch_num: int = cast(int, mini_batch_num)
+        self.lora_rank: int = cast(int, lora_rank)
+        self.lora_alpha: int = cast(int, lora_alpha)
+        self.lora_target_modules: str = cast(str, lora_target_modules)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {
@@ -142,6 +151,9 @@ class AgentJetJob:
             "ajet.rollout.max_response_length_in_one_turn": "max_response_length_in_one_turn",
             "ajet.rollout.max_model_len":                   "max_model_len",
             "ajet.trainer_common.mini_batch_num":           "mini_batch_num",
+            "ajet.lora.lora_rank":                          "lora_rank",
+            "ajet.lora.lora_alpha":                         "lora_alpha",
+            "ajet.lora.target_modules":                     "lora_target_modules",
         }
 
         # if any value given in kwargs, override the corresponding value in config

@@ -134,6 +134,7 @@ swarm_worker.auto_sync_train_config_and_start_engine(
         model="/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct",
         batch_size=32,
         num_repeat=4,
+        # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
     )
 )
 ```

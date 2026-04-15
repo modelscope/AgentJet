@@ -118,11 +118,19 @@ Below are some reference materials.
         model='/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-3B-Instruct',
         batch_size=LOCAL_GRPO_N,
         num_repeat=4,
+        # LoRA parameters (optional, for parameter-efficient fine-tuning):
+        # lora_rank=8,           # Set > 0 to enable LoRA training (default: 0 = disabled)
+        # lora_alpha=16,         # LoRA alpha scaling factor (default: 16)
+        # lora_target_modules="all-linear",  # Target modules for LoRA (default: "all-linear")
     )
     # hint: you can `yaml_job.dump_job_as_yaml('./config.yaml')` to take a look at the full configuration
     # hint: you can `yaml_job.build_job_from_yaml('./config.yaml')` to load yaml configuration as override. (there are some configurations that must be edited from yaml)
     swarm_worker.auto_sync_train_config_and_start_engine(yaml_job)
     ```
+
+    **LoRA Training**: To enable LoRA (Low-Rank Adaptation) for parameter-efficient fine-tuning, set `lora_rank > 0`. This significantly reduces GPU memory usage and training time while maintaining good performance.
+
+    **Full AgentJetJob Arguments**: Run `help(AgentJetJob)` or check `ajet/copilot/job.py` for all available parameters including `batch_size`, `num_repeat`, `max_prompt_length`, `max_response_length`, `max_model_len`, `mini_batch_num`, and more.
 
     An “episode” is the atomic unit of rollout work exchanged between client and server. The client does not “create” episodes; it **claims** episodes that the server has already registered (internally created by the training engine / runners).
 

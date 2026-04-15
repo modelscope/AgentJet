@@ -41,6 +41,7 @@ yaml_job = AgentJetJob(
     model=REMOTE_TRAIN_MODEL_01,
     batch_size=REMOTE_BATCH_SIZE,
     num_repeat=LOCAL_GRPO_N,
+    # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
 )
 
 swarm_worker.sync_train_config(yaml_job)
@@ -52,6 +53,8 @@ Hints:
 
 - You can `yaml_job.dump_job_as_yaml('./config.yaml')` to take a look at the full configuration.
 - You can `yaml_job.build_job_from_yaml('./config.yaml')` to load yaml configuration as override. (there are some configurations that must be edited from yaml).
+- For LoRA training, set `lora_rank > 0` (e.g., 8 or 16) to enable parameter-efficient fine-tuning.
+- **Full argument list**: Run `help(AgentJetJob)` or check `ajet/copilot/job.py` for all available parameters.
 
 ### (D1-2) Write your agent & reward
 

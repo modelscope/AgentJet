@@ -34,6 +34,14 @@ class AjetRollout:
 
 
 @dataclass
+class AjetLora:
+    lora_rank: int = 0
+    lora_alpha: int = 16
+    target_modules: str = "all-linear"
+    load_format: str = "auto"
+
+
+@dataclass
 class HuggingfaceDatRepo:
     dataset_path: str = "gsm8k"
     dataset_name: str | None = None
@@ -69,6 +77,7 @@ class AjetDefaultConfig:
     rollout: AjetRollout = field(default_factory=AjetRollout)
     trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
+    lora: AjetLora = field(default_factory=AjetLora)
     enable_swarm_mode: bool = True
     swarm_mode_sample_collection_method: str = "rollout_until_finish_enough_tasks"
 

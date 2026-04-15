@@ -21,7 +21,13 @@ from ajet import AgentJetJob
 from tutorial.example_math_agent.math_agent_simplify import MathToolWorkflow
 
 model_path = "YOUR_MODEL_PATH"
-job = AgentJetJob(n_gpu=8, algorithm='grpo', model=model_path)
+job = AgentJetJob(
+    n_gpu=8,
+    algorithm='grpo',
+    model=model_path,
+    # LoRA (optional): lora_rank=8, lora_alpha=16, lora_target_modules="all-linear"
+    # Full argument list: run `help(AgentJetJob)` or check `ajet/copilot/job.py`
+)
 job.set_workflow(MathToolWorkflow)
 job.set_data(type="hf", dataset_path='openai/gsm8k')
 
@@ -34,6 +40,9 @@ job.set_data(type="hf", dataset_path='openai/gsm8k')
 # Start training
 tuned_model = job.tune()
 ```
+
+!!! tip "AgentJetJob Parameters"
+    Run `help(AgentJetJob)` to see all available parameters including `batch_size`, `num_repeat`, `max_prompt_length`, `max_response_length`, `max_model_len`, `lora_rank`, `lora_alpha`, `lora_target_modules`, and more.
 
 !!! tip "CLI Alternative"
     The code above is equivalent to running in terminal:
