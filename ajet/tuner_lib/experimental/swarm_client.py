@@ -11,7 +11,6 @@ from typing import List, Tuple
 from loguru import logger
 from ajet.schema.task import WorkflowOutput, Task
 from ajet.copilot.job import AgentJetJob
-from ajet.utils.cache import cache_with_ttl
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 from ajet.tuner_lib.experimental.interchange_utils import (
@@ -70,6 +69,9 @@ class SwarmClient(object):
         self._begin_episode_lock = threading.Lock()
         self._http_client_lock = threading.Lock()
         self._http_client = self._refresh_http_client()
+        # cache for get_engine_status (protected by _http_client_lock)
+        self._engine_status_cache: tuple[str, dict, float] | None = None  # (status, json, timestamp)
+        self._engine_status_cache_ttl = 0.5
         # record last registered AgentJetJob
         self._agent_jet_job = None
         # throttle
@@ -117,7 +119,10 @@ class SwarmClient(object):
             "disconnected",
             "connection reset",
             "connection closed",
-            "connection aborted"
+            "connection aborted",
+            "bad file descriptor",
+            # "client has been closed",
+            # "cannot send a request",
         ])
 
     def _clean_up_expired_records(self):
@@ -518,23 +523,33 @@ class SwarmClient(object):
                 logger.error(f"Error polling engine status: {e}")
                 time.sleep(5)
 
-    @cache_with_ttl(ttl=0.5)
     def get_engine_status(self) -> Tuple[str, dict]:
         max_try = 5
         for attempt in range(max_try):
             try:
-                resp = self._http_client.get(
-                    f"{self.server_url}/get_engine_status",
-                    timeout=10
-                )
-                raise_for_status_with_detail(resp)
-                resp_json = resp.json()
-                result = resp_json.get("engine_status", "unknown")
-                # engine_status_detail = resp_json.get("engine_status_detail", None)
-                # global_step = resp_json.get("global_step", None)
-                if result == "unknown":
-                    logger.warning("get_engine_status: " + str(resp_json))
-                return result, resp_json
+                with self._http_client_lock:
+                    # check cache first (inside lock to avoid race condition)
+                    current_time = time.time()
+                    if self._engine_status_cache is not None:
+                        cached_status, cached_json, cached_time = self._engine_status_cache
+                        if current_time - cached_time < self._engine_status_cache_ttl:
+                            return cached_status, cached_json
+
+                    # cache miss or expired, make the request
+                    resp = self._http_client.get(
+                        f"{self.server_url}/get_engine_status",
+                        timeout=10
+                    )
+                    raise_for_status_with_detail(resp)
+                    resp_json = resp.json()
+                    result = resp_json.get("engine_status", "unknown")
+                    if result == "unknown":
+                        logger.warning("get_engine_status: " + str(resp_json))
+
+                    # update cache
+                    self._engine_status_cache = (result, resp_json, time.time())
+                    return result, resp_json
+
             except Exception as e:
                 if self._should_refresh_client_on_error(e) and attempt < max_try - 1:
                     self._refresh_http_client()

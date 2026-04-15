@@ -16,15 +16,15 @@ from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader, HuggingFaceTaskReader
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
+from tutorial.opencode_build_aime.agent_run import execute_agent
 from tqdm import tqdm
 
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct")
 ajet_job = AgentJetJob(
     algorithm="grpo",
-    experiment_name="aime_swarm_14b",
+    experiment_name="aime_swarm_14b_2",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
@@ -48,10 +48,7 @@ def load_eval_tasks(test_dataset: str) -> list:
     return eval_tasks
 
 
-def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
-    """Execute the AIME agent."""
-    from tutorial.opencode_build_aime.agent_run import execute_agent as _execute_agent
-    return _execute_agent(task, api_baseurl_key)
+
 
 class AIMESwarmTrainer:
     """AIME Math Swarm Trainer using GRPO algorithm."""
@@ -79,6 +76,8 @@ class AIMESwarmTrainer:
         self.grpo_n: int = None
         self.remote_batch_size: int = None
 
+
+
     def setup(self):
         """Initialize dataset, job config, and swarm connection."""
         if not os.path.exists(self.train_dataset):
@@ -97,13 +96,11 @@ class AIMESwarmTrainer:
             )
         )
 
-
-
         # Connect to swarm server
         self.swarm_worker = SwarmClient(self.swarm_url, verbose=False)
         self.swarm_worker.auto_sync_train_config_and_start_engine(
             ajet_job,
-            # force_restart=True,
+            force_restart=os.getenv("AJET_SWARM_RESTART", "0") == "1"
         )
 
         self.grpo_n = ajet_job.num_repeat
@@ -113,12 +110,16 @@ class AIMESwarmTrainer:
         # Load eval tasks
         self.eval_tasks = load_eval_tasks(self.test_dataset)
 
+
+
     def rollout(self, task: Task) -> float:
         """Execute a single training rollout."""
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=60)
         workflow_output = execute_agent(task, api_baseurl_key)
         self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
         return workflow_output.reward
+
+
 
     def eval_rollout(self, task: Task) -> float:
         """Execute an eval rollout (results do not contribute to training)."""
@@ -129,16 +130,18 @@ class AIMESwarmTrainer:
         finally:
             self.swarm_worker.abort_episode(episode_uuid)
 
-    def run_eval(self, task_count: int):
+
+
+    def run_eval(self, n_global_step: int):
         """Run evaluation on AIME-2024 test set."""
         if not self.eval_tasks:
             return
 
         k = self.EVAL_K
         total_rollouts = len(self.eval_tasks) * k
-        print(f"\n[EVAL @ task {task_count}] Running AIME-2024 eval on {len(self.eval_tasks)} tasks x {k} (pass@{k})...")
+        print(f"\n[EVAL @ step {n_global_step}] Running AIME-2024 eval on {len(self.eval_tasks)} tasks x {k} (pass@{k})...")
         per_task_rewards = [[] for _ in self.eval_tasks]
-        pbar = tqdm(total=total_rollouts, desc=f"EVAL @ {task_count}")
+        pbar = tqdm(total=total_rollouts, desc=f"EVAL @ step {n_global_step}")
 
         with ThreadPoolExecutor(max_workers=self.max_env_worker) as eval_executor:
             future_to_idx = {
@@ -162,7 +165,7 @@ class AIMESwarmTrainer:
             solved_tasks = [rs for rs in per_task_rewards if any((r is not None and r > 0) for r in rs)]
             passk = len(solved_tasks) / len(per_task_rewards)
             summary = (
-                f"[EVAL @ task {task_count}] avg_reward={avg:.4f}  "
+                f"[EVAL @ step {n_global_step}] avg_reward={avg:.4f}  "
                 f"pass@1={pass1*100:.2f}%  pass@{k}={passk*100:.2f}%  "
                 f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
             )
@@ -171,7 +174,9 @@ class AIMESwarmTrainer:
             with open(eval_log_path, "a") as f:
                 f.write(summary + "\n")
         else:
-            print(f"[EVAL @ task {task_count}] no valid rewards")
+            print(f"[EVAL @ step {n_global_step}] no valid rewards")
+
+
 
     def train(self):
         """Main training loop."""
@@ -193,15 +198,20 @@ class AIMESwarmTrainer:
                 task_count += 1
 
                 # Periodic evaluation every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
-                if task_count % (self.EVAL_INTERVAL * self.remote_batch_size) == 0:
-                    self.run_eval(task_count)
+                time_to_eval = task_count % (self.EVAL_INTERVAL * self.remote_batch_size) == 0
+                n_global_step = task_count // self.remote_batch_size
+                if time_to_eval:
+                    self.run_eval(n_global_step)
 
         print("\n[INFO] Training complete!")
+
+
 
     def run(self):
         """Setup and start training."""
         self.setup()
         self.train()
+
 
 
 def main():
