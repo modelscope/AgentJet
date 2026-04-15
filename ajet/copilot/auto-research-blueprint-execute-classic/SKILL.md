@@ -211,6 +211,7 @@
 
     # 创建用于训练的 tmux session (注意，无论如何，session名字中必须包含关键字 `ajet` )
     $ tmux new-session -d -s ajet_session -c "/mnt/data_cpfs/qingxu.fu/agentjet/good-luck-agentjet"
+    # 注意: 绝对不能在`tmux new-session`后面添加命令，否则 session 会很容易退出
     ...
 
     # 发送 SSH 命令到 tmux session

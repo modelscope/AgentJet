@@ -130,6 +130,7 @@ The user wants me to monitor a tmux session while running a training task. Let m
 
 # Create tmux session for training (note: session name must contain keyword `ajet`)
 $ tmux new-session -d -s ajet_session -c "/mnt/data_cpfs/qingxu.fu/agentjet/good-luck-agentjet"
+# note: do not add commands after `tmux new-session`, otherwise the session may exit immediately
 ...
 
 # Send SSH command to tmux session

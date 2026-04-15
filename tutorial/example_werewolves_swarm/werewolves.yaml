@@ -61,6 +61,7 @@ ajet:
     total_training_steps: 25
     nnodes: 1
     n_gpus_per_node: 8
+    lr: 3.0e-4
 
 # ------------------ do not edit ------------------
 hydra:

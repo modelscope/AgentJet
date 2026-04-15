@@ -1,5 +1,6 @@
 ## 你的任务
 
+0. 如果用户没有提供实验蓝图，则生成一个实验蓝图
 1. 根据实验蓝图，运行实验
 2. 等待实验结束或者超时
 3. 如果实验失败，尝试进行修正，把试错过程放置到指定位置（exp_result_dir中创建一个文档），如果无法修复，则跳到第 5 步
@@ -9,22 +10,118 @@
 
 ## 实验蓝图：
 
-设计实验蓝图是为了执行实验以验证猜想或者获取必要数据。
-一个实验蓝图是一个markdown文件（blueprint.md）。实验蓝图包含的内容主要包括 7 部分，你需要根据这些信息，执行任务：
+Experiment blueprints are designed to execute experiments that validate hypotheses or gather necessary data.
 
-1. [exp_purpose] 实验目的（一段文本）：
-    简要说明本次实验的主要目的，以及本实验蓝图与之前其他蓝图的主要区别（例如哪个超参数不同，哪个环境变量不同）。
-2. [exp_codebase_dir] 主实验代码路径（绝对路径）：
-    包含运行实验所需要的所有代码的**绝对路径**。体积较小。不包含python虚拟环境。记得在实验开始前，cd到这个路径。
-3. [exp_venv_exe] python虚拟环境路径（python的绝对路径）:
-    python可执行文件的路径。比如: /mnt/data_cpfs/agentjet/project/.venv/bin/python
-4. [exp_yaml_path] 实验配置文件路径（相对路径，相对于主实验代码路径）：
-    实验配置的yaml文件的路径。注意该文件必须包含在主实验代码路径内。比如: /mnt/data_cpfs/agentjet/project/tests/bench/benchmark_math/benchmark_math.yaml
-5. [exp_launch_command] 执行训练的命令（字符串）：
-    例如 python -m ajet.launcher --conf tests/bench/benchmark_math/benchmark_math.yaml --autokill
-6. [exp_result_dir] 结果数据存储路径（绝对路径）：
-    输出数据的存储路径
-7. [exp_max_time] 运行时间不超过 ${MaxTime}，每个实验强制在  ${MaxTime} 后终止
+An experiment blueprint is a markdown file (blueprint.md). It must contain 7 sections (write clearly; no strict format required, but each section must have textual explanation):
+
+1. [exp_purpose] Experiment purpose (text):
+    Briefly describe the main purpose of this experiment and the key differences from other blueprints (e.g., which hyperparameter or environment variable differs).
+2. [exp_codebase_dir] Main experiment code path (absolute path):
+    The **absolute path** containing all code needed to run the experiment. Relatively small in size. Does not include the Python virtual environment.
+    Default: ./
+3. [exp_venv_exe] Python virtual environment path (absolute path to python executable):
+    Path to the Python executable.
+    Default: ./venv/bin/python
+4. [exp_yaml_path] Experiment config file path (absolute path):
+    Path to the experiment configuration YAML file. Should be placed alongside the blueprint file.
+    Default: NA, the agent must write its own yaml file for the experiment.
+5. [exp_launch_command] Training execution command (string):
+    Default: the agent must write its own command
+6. [exp_result_dir] Result data storage path (absolute path):
+    Path for output data storage.
+    Default: ./auto_agent/exp_results/
+7. [exp_max_time] Maximum runtime is ${MaxTime}; each experiment is forcefully terminated after ${MaxTime}
+    Default:
+      - MaxTime per run:
+        24 hours
+      - First step success timeout:
+        20 minutes (when you see the first kl loss value printed in tmux window, that means the first step is successful, if you did not see any kl loss value printed in tmux window after 20 minutes, that means the first step is failed, you can check the log file for details)
+
+8. Additional notes: e.g., what preparation is needed before running, how to configure necessary dependencies; what cleanup is needed after running. Also, if the user's "main task description" contains critical information, attach it here. A todo list is recommended here.
+
+Once blueprints are issued, other agents will execute them. Therefore, each section should have textual explanation — the more detailed the better.
+
+Here is an example of an experiment blueprint (for `exp_purpose` ,`exp_codebase_dir` ,`exp_venv_exe` ,`exp_yaml_path` ,`exp_launch_command` ,`exp_result_dir` ,`exp_max_time`, add additonal fields such as `description` and `hint`):
+
+
+<blueprint_example_begin>
+
+```markdown
+    # Experiment Blueprint
+
+    ## [exp_purpose]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+
+    ## [exp_codebase_dir]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+    - warning 1:
+    - warning 2:
+
+    ## [exp_venv_exe]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+    - warning 1:
+    - warning 2:
+
+    ## [exp_yaml_path]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+    - warning 1:
+    - warning 2:
+
+    ## [exp_launch_command]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+    - warning 1:
+    - warning 2:
+
+    ## [exp_result_dir]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+    - warning 1:
+    - warning 2:
+
+    ## [exp_max_time]
+    - description:
+    - hint:
+    - content 1:
+    - content 2:
+    - content 3:
+    - warning 1:
+    - warning 2:
+
+    ## Other Notes
+    - description:
+    - note 1:
+    - note 2:
+    - note 3:
+    - note 4:
+    - note 5:
+    ....
+
+```
+
+<blueprint_example_end>
 
 
 ## YAML 配置内容提示：
@@ -199,6 +296,7 @@
 
     # 创建用于训练的 tmux session (注意，无论如何，session名字中必须包含关键字 `ajet` )
     $ tmux new-session -d -s ajet_session -c "/mnt/data_cpfs/qingxu.fu/agentjet/good-luck-agentjet"
+    # # 注意: 绝对不能在`tmux new-session`后面添加命令，否则 session 会很容易退出
     ...
 
     # 发送 SSH 命令到 tmux session
