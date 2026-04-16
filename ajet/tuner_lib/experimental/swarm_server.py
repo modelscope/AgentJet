@@ -292,16 +292,25 @@ def register_enable_swarm_mode_routes(
             )
 
         try:
+            import yaml as yaml_module
             yaml_str = req.yaml_as_string
             logger.info("[sync_train_config] Received training configuration")
             if DEBUG:
                 logger.debug(f"[sync_train_config] YAML content:\n{yaml_str}...")
 
+            # Extract model path from YAML config
+            try:
+                config_dict = yaml_module.safe_load(yaml_str)
+                model_path = config_dict.get("ajet", {}).get("model", {}).get("path", None)
+            except Exception:
+                model_path = None
+
             # Store the YAML config in shared memory for start_engine to use
             with shared_mem_dict_lock:
                 shared_mem_dict["train_config_yaml"] = yaml_str
+                shared_mem_dict["training_model_path"] = model_path
 
-            logger.info("[sync_train_config] Successfully stored training configuration")
+            logger.info(f"[sync_train_config] Successfully stored training configuration (model: {model_path})")
             return {"success": True}
         except Exception as e:
             logger.error(f"[sync_train_config] Error: {e}")
@@ -749,6 +758,7 @@ def register_enable_swarm_mode_routes(
             pool_info.engine_status = shared_mem_dict.get("engine_status", None)
             pool_info.global_step = shared_mem_dict.get("global_step", None)
             pool_info.booting_start_time = shared_mem_dict.get("booting_start_time", None)
+            pool_info.training_model_path = shared_mem_dict.get("training_model_path", None)
 
             # Build running_episode_details for claimed episodes
             running_episode_details = {}

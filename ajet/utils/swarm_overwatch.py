@@ -81,6 +81,10 @@ class SwarmOverwatch:
 
         # Add engine status and global step if available
         if info:
+            if info.training_model_path:
+                header_text.append(
+                    f"\nTraining Model: {info.training_model_path}", style="bold white"
+                )
             if info.engine_status:
                 header_text.append(
                     f"\nEngine Status: {info.engine_status}", style="bold yellow"
