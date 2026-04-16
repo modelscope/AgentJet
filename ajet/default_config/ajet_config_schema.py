@@ -8,9 +8,15 @@ class AjetAlgorithm:
 
 
 @dataclass
+class AjetOptim:
+    lr: float = 1e-6
+
+
+@dataclass
 class AjetTrainerCommon:
     n_gpus_per_node: int = 8
     algorithm: AjetAlgorithm = field(default_factory=AjetAlgorithm)
+    optim: AjetOptim = field(default_factory=AjetOptim)
 
 
 @dataclass
