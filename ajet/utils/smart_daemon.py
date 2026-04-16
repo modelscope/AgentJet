@@ -1,4 +1,5 @@
 import base64
+import fcntl
 import hashlib
 import json
 import logging
@@ -6,12 +7,43 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import psutil
 from beast_logger import print_dict
 from loguru import logger
+
+
+@contextmanager
+def file_lock(lock_path: Path, timeout: float = 60.0):
+    """
+    Cross-process file lock using fcntl.flock().
+
+    Args:
+        lock_path: Path to the lock file
+        timeout: Maximum time to wait for the lock in seconds
+    """
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = open(lock_path, 'w')
+    start_time = time.time()
+
+    while True:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except (IOError, OSError):
+            if time.time() - start_time > timeout:
+                lock_file.close()
+                raise TimeoutError(f"Could not acquire lock on {lock_path} within {timeout} seconds")
+            time.sleep(0.1)
+
+    try:
+        yield lock_file
+    finally:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
 
 
 def string_to_base64(s):
@@ -210,6 +242,25 @@ class LaunchWhenAbsent:
         Returns:
             str: Content that hit the success string, if any.
         """
+        # Use a lock file to prevent concurrent launches
+        lock_path = self.pgid_file.parent / f"{self.pgid_file.stem}.lock"
+
+        with file_lock(lock_path):
+            return self._launch_impl(
+                force_restart=force_restart,
+                launch_wait_time=launch_wait_time,
+                success_std_string=success_std_string,
+                env_dict=env_dict,
+            )
+
+    def _launch_impl(
+        self,
+        force_restart: bool = False,
+        launch_wait_time: int = 30,
+        success_std_string: str | None | List[str] = None,
+        env_dict={},
+    ) -> str:
+        """Internal implementation of launch, called under file lock."""
         is_running, existing_process, pgid = self._is_script_running()
         self.pgid = pgid
 
@@ -248,9 +299,11 @@ class LaunchWhenAbsent:
             else:
                 # Unix-like systems
                 # Use nohup and redirect output
-                # Open log file
-                if log_file.exists():
-                    os.remove(log_file)
+                # Remove old log file if it exists (safe removal to handle race conditions)
+                try:
+                    log_file.unlink(missing_ok=True)
+                except (OSError, FileNotFoundError):
+                    pass  # File already removed by another process or doesn't exist
 
                 if not self.use_pty:
                     print_dict(
