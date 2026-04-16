@@ -186,7 +186,7 @@ class AIMESwarmTrainer:
         task_count = 0
         executor = PeriodicDrainThreadPoolExecutor(
             workers=self.grpo_n * self.remote_batch_size,
-            max_parallel=64,
+            max_parallel=256,
             auto_retry=True
         )
 

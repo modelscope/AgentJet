@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 import time
 from dataclasses import dataclass
+from textwrap import dedent
 from uuid import uuid4
 
 from openai import OpenAI
@@ -96,39 +97,39 @@ class PythonExecutor:
         self.memory_limit_mb = memory_limit_mb
 
     def execute(self, code: str, stdin: str = "") -> ProcessExecuteResult:
-        pre_template = f"""
-import signal
-import resource
-import os
-import sys
+        pre_template = dedent(f"""\
+            import signal
+            import resource
+            import os
+            import sys
 
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
+            os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
-def _exec_set_alarm_timeout(timeout):
-    signal.signal(signal.SIGALRM, _exec_time_exceeded)
-    signal.alarm(timeout)
+            def _exec_set_alarm_timeout(timeout):
+                signal.signal(signal.SIGALRM, _exec_time_exceeded)
+                signal.alarm(timeout)
 
-def _exec_time_exceeded(*_):
-    print('Suicide from timeout.', flush=True)
-    try:
-        os.killpg(0, 9)
-    except Exception:
-        pass
-    os._exit({TIMEOUT_EXIT_CODE})
+            def _exec_time_exceeded(*_):
+                print('Suicide from timeout.', flush=True)
+                try:
+                    os.killpg(0, 9)
+                except Exception:
+                    pass
+                os._exit({TIMEOUT_EXIT_CODE})
 
-def _exec_set_max_runtime(seconds):
-    soft, hard = resource.getrlimit(resource.RLIMIT_CPU)
-    resource.setrlimit(resource.RLIMIT_CPU, (seconds, hard))
+            def _exec_set_max_runtime(seconds):
+                soft, hard = resource.getrlimit(resource.RLIMIT_CPU)
+                resource.setrlimit(resource.RLIMIT_CPU, (seconds, hard))
 
-_exec_set_alarm_timeout({self.timeout})
-_exec_set_max_runtime({self.timeout})
+            _exec_set_alarm_timeout({self.timeout})
+            _exec_set_max_runtime({self.timeout})
 
-_exec_time_start = time.perf_counter()
-"""
-        post_template = f"""
-_exec_time_end = time.perf_counter()
-_exec_duration = _exec_time_end - _exec_time_start
-"""
+            _exec_time_start = time.perf_counter()
+            """)
+        post_template = dedent("""\
+            _exec_time_end = time.perf_counter()
+            _exec_duration = _exec_time_end - _exec_time_start
+            """)
 
         with tempfile.TemporaryDirectory() as tmp_path:
             source_path = f"{tmp_path}/source.py"
@@ -307,23 +308,24 @@ class AgentLoop:
         user_turns, assistant_turns = 0, 0
         all_response_content = []
 
-        system_prompt = """You are an expert mathematician specialized in solving challenging math competition problems.
+        system_prompt = dedent("""\
+            You are an expert mathematician specialized in solving challenging math competition problems.
 
-You have access to a Python code execution tool. Use it to:
-1. Perform calculations and verify your answers
-2. Run code when you need precise computation
-3. Test your hypotheses before giving final answers
+            You have access to a Python code execution tool. Use it to:
+            1. Perform calculations and verify your answers
+            2. Run code when you need precise computation
+            3. Test your hypotheses before giving final answers
 
-Instructions:
-1. Think through the problem step by step
-2. Use the python_code_with_standard_io tool when you need to execute code
-3. Show your reasoning clearly
-4. Put your final numerical answer inside \\boxed{} at the end
+            Instructions:
+            1. Think through the problem step by step
+            2. Use the python_code_with_standard_io tool when you need to execute code
+            3. Show your reasoning clearly
+            4. Put your final numerical answer inside \\boxed{} at the end
 
-For each function call, return a json object within <tool_call></tool_call> XML tags:
-<tool_call>
-{"name": "python_code_with_standard_io", "arguments": {"code": "your python code", "input": "stdin input if needed"}}
-</tool_call>"""
+            For each function call, return a json object within <tool_call></tool_call> XML tags:
+            <tool_call>
+            {"name": "python_code_with_standard_io", "arguments": {"code": "your python code", "input": "stdin input if needed"}}
+            </tool_call>""")
 
         formatted_messages = [msg for msg in messages if msg.get("role") != "system"]
         if not any(msg.get("role") == "system" for msg in messages):
