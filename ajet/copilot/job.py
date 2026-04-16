@@ -110,15 +110,6 @@ class AgentJetJob:
         if not (all(p is None for p in length_params) or all(p is not None for p in length_params)):
             raise ValueError("(`max_prompt_length`, `max_response_length`, `max_model_len`, `max_response_length_in_one_turn`) must all be None or all be non-None")
 
-        # Validate: when lora_rank > 0, load_format must be safetensors
-        if lora_rank is not None and lora_rank > 0:
-            if lora_load_format != "safetensors":
-                raise ValueError(f"When lora_rank > 0, lora_load_format must be 'safetensors', got '{lora_load_format}'")
-            if lr is None:
-                raise ValueError("lr should be provided for lora training")
-            if lr <= 1e-5:
-                raise ValueError(f"lr should usually be greater than 1e-5 for lora training, got {lr}")
-
         self.config_as_dict: dict = self.build_job_from_yaml(base_yaml_config)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
 
@@ -198,6 +189,16 @@ class AgentJetJob:
 
         assert self.max_prompt_length + self.max_response_length <= self.max_model_len, "illegal token length"
         assert self.max_response_length_in_one_turn <= self.max_response_length
+
+        # Validate: when lora_rank > 0, load_format must be safetensors
+        if self.lora_rank > 0:
+            if self.lora_load_format != "safetensors":
+                raise ValueError(f"When lora_rank > 0, lora_load_format must be 'safetensors', got '{self.lora_load_format}'")
+            if self.lr is None:
+                raise ValueError("lr should be provided for lora training")
+            if self.lr <= 1e-5:
+                raise ValueError(f"lr should usually be greater than 1e-5 for lora training, got {self.lr}")
+
         if self.backbone == "trinity":
             raise NotImplementedError("Trinity backbone is not yet supported in AgentJetJob.")
 

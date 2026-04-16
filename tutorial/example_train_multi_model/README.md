@@ -199,3 +199,33 @@ REMOTE_14B_BATCH_SIZE = 8             # Batch size for 14B model
 REMOTE_7B_ALLOCATE_GPU_PER_NODE = 8   # GPUs for 7B model
 REMOTE_14B_ALLOCATE_GPU_PER_NODE = 8  # GPUs for 14B model
 ```
+
+
+## cheat sheet
+
+PROJECT_DIR="/mnt/data_cpfs/qingxu.fu/agentjet/hello-agentjet"
+
+# --- Swarm Server 1 ---
+tmux new-session -d -s "SWARM_SERVER_M1"    # warning: do not add command here, otherwise it will be executed immediately and the session will exit
+tmux send-keys -t "SWARM_SERVER_M1" "cd ${PROJECT_DIR}" Enter
+tmux send-keys -t "SWARM_SERVER_M1" "source .venv/bin/activate" Enter
+tmux send-keys -t "SWARM_SERVER_M1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "SWARM_SERVER_M1" "ajet-swarm start --swarm-port=10086" Enter
+echo "Started SWARM_SERVER_M1 on port 10086"
+
+# --- Swarm Server 2 ---
+tmux new-session -d -s "SWARM_SERVER_M2"
+tmux send-keys -t "SWARM_SERVER_M2" "cd ${PROJECT_DIR}" Enter
+tmux send-keys -t "SWARM_SERVER_M2" "source .venv/bin/activate" Enter
+tmux send-keys -t "SWARM_SERVER_M2" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "SWARM_SERVER_M2" "ajet-swarm start --swarm-port=10087" Enter
+echo "Started SWARM_SERVER_M2 on port 10087"
+
+# --- Swarm Client ---
+tmux new-session -d -s "SWARM_CLIENT_EXP1"
+tmux send-keys -t "SWARM_CLIENT_EXP1" "cd ${PROJECT_DIR}" Enter
+tmux send-keys -t "SWARM_CLIENT_EXP1" "source .venv/bin/activate" Enter
+tmux send-keys -t "SWARM_CLIENT_EXP1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "SWARM_CLIENT_EXP1" "sleep 30s" Enter
+tmux send-keys -t "SWARM_CLIENT_EXP1" "python -m tutorial.example_train_multi_model.trans_roll_lora" Enter
+echo "Started SWARM_CLIENT_EXP1"

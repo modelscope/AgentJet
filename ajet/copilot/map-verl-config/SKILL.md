@@ -5,7 +5,7 @@ license: Complete terms in LICENSE.txt
 ---
 
 
-1. find user requested verl config in in codebase/agentjet/ajet/default_config/verl/verl_default.yaml
+1. find user requested verl config in codebase/agentjet/ajet/default_config/verl/verl_default.yaml
 
 2. check `codebase/agentjet/ajet/default_config/verl/config_auto_convertion_verl.jsonc`, whether a mapping to this config already exists.
 
@@ -15,5 +15,14 @@ license: Complete terms in LICENSE.txt
 
 5. ask user whether to add to AgentJetJob (ajet/copilot/job.py), if the user confirms:
   - learn how other config is added in ajet/copilot/job.py
-  - add to __init__, update docstring
-  - add to ajet/default_config/ajet_config_schema.py
+  - add to __init__ signature (with type hint and default None)
+  - update docstring with parameter description
+  - add instance attribute assignment with cast()
+  - add mapping to `overrides` dict
+
+6. **CRITICAL**: update `ajet/default_config/ajet_config_schema.py`
+  - the schema must have a dataclass for EVERY nested level in the config path
+  - e.g., for `ajet.trainer_common.optim.lr`, need:
+    - `AjetOptim` dataclass with `lr: float = 1e-6`
+    - `AjetTrainerCommon` must have `optim: AjetOptim = field(default_factory=AjetOptim)`
+  - if parent dataclass is missing the nested field, config loading will store it as a raw dict instead of a typed dataclass, causing `getattr()` to fail at runtime
