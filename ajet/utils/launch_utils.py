@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import shutil
 import subprocess
 import sys
@@ -104,6 +105,7 @@ def check_debugpy_version():
             "Upgrade using 'pip install debugpy>=1.8.0'"
         )
     logger.info(f"✓ debugpy version {version} meets requirement (>=1.8.0)")
+    time.sleep(random.uniform(0, 4))
 
 
 def check_avail_gpu(min_free_ratio: float = 0.95):

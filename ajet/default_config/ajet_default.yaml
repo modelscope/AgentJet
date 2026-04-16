@@ -68,6 +68,9 @@ ajet:
     # the usage of infer engine, options: (vllm, sglang)
     name: vllm
 
+    # GPU memory utilization for vLLM engine
+    gpu_memory_utilization: 0.85
+
     # how many times a task should be repeated
     num_repeat: 4
 

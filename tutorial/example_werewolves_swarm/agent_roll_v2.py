@@ -405,6 +405,9 @@ class MultiModelWerewolvesTrainer:
 # Predefined Experiment Configurations
 # ============================================================================
 
+VERSION = "v2"
+
+
 def get_exp1_config() -> ExperimentConfig:
     """
     Experiment 1: Two models for good guys.
@@ -420,7 +423,7 @@ def get_exp1_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["hunter", "villager"],
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp1_m1_ht_vl",
+                experiment_name=f"werewolves_exp1_m1_ht_vl_{VERSION}",
             ),
             ModelConfig(
                 model_id="M2",
@@ -428,7 +431,7 @@ def get_exp1_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["witch", "seer"],
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp1_m2_wt_sr",
+                experiment_name=f"werewolves_exp1_m2_wt_sr_{VERSION}",
             ),
         ],
         project_name="werewolves_exp1_two_model_good",
@@ -437,11 +440,10 @@ def get_exp1_config() -> ExperimentConfig:
 
 def get_exp2_config() -> ExperimentConfig:
     """
-    Experiment 2: Four models, one per special role.
-    - M1 (14B-LoRA): villager
-    - M2 (14B-LoRA): seer
-    - M3 (14B-LoRA): witch
-    - M4 (14B-LoRA): hunter
+    Experiment 2: Three models for good guys.
+    - M1 (14B-LoRA, 3 GPUs): villager
+    - M2 (14B-LoRA, 3 GPUs): seer, witch
+    - M3 (14B-LoRA, 2 GPUs): hunter
     - Opponents (235B): werewolf
     """
     return ExperimentConfig(
@@ -451,44 +453,39 @@ def get_exp2_config() -> ExperimentConfig:
                 swarm_url="http://localhost:10086",
                 model_path=DEFAULT_MODEL_14B,
                 roles=["villager"],
+                n_gpu=3,
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp2_m1_vl",
+                experiment_name=f"werewolves_exp2_m1_vl_{VERSION}",
             ),
             ModelConfig(
                 model_id="M2",
                 swarm_url="http://localhost:10087",
                 model_path=DEFAULT_MODEL_14B,
-                roles=["seer"],
+                roles=["seer", "witch"],
+                n_gpu=3,
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp2_m2_sr",
+                experiment_name=f"werewolves_exp2_m2_sr_wt_{VERSION}",
             ),
             ModelConfig(
                 model_id="M3",
                 swarm_url="http://localhost:10088",
                 model_path=DEFAULT_MODEL_14B,
-                roles=["witch"],
-                lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp2_m3_wt",
-            ),
-            ModelConfig(
-                model_id="M4",
-                swarm_url="http://localhost:10089",
-                model_path=DEFAULT_MODEL_14B,
                 roles=["hunter"],
+                n_gpu=2,
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp2_m4_ht",
+                experiment_name=f"werewolves_exp2_m3_ht_{VERSION}",
             ),
         ],
-        project_name="werewolves_exp2_four_model_good",
+        project_name="werewolves_exp2_three_model_good",
     )
 
 
 def get_exp3_config() -> ExperimentConfig:
     """
     Experiment 3: Three models for werewolves.
-    - M1 (14B-LoRA): werewolf 1 (index 0)
-    - M2 (14B-LoRA): werewolf 2 (index 1)
-    - M3 (14B-LoRA): werewolf 3 (index 2)
+    - M1 (14B-LoRA, 3 GPUs): werewolf 1 (index 0)
+    - M2 (14B-LoRA, 3 GPUs): werewolf 2 (index 1)
+    - M3 (14B-LoRA, 2 GPUs): werewolf 3 (index 2)
     - Opponents (235B): villager, seer, witch, hunter
 
     Uses role_indices to assign each werewolf instance to a different model.
@@ -501,8 +498,9 @@ def get_exp3_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["werewolf"],
                 role_indices={"werewolf": [0]},  # First werewolf only
+                n_gpu=3,
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp3_m1_ww1",
+                experiment_name=f"werewolves_exp3_m1_ww1_{VERSION}",
             ),
             ModelConfig(
                 model_id="M2",
@@ -510,8 +508,9 @@ def get_exp3_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["werewolf"],
                 role_indices={"werewolf": [1]},  # Second werewolf only
+                n_gpu=3,
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp3_m2_ww2",
+                experiment_name=f"werewolves_exp3_m2_ww2_{VERSION}",
             ),
             ModelConfig(
                 model_id="M3",
@@ -519,8 +518,9 @@ def get_exp3_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["werewolf"],
                 role_indices={"werewolf": [2]},  # Third werewolf only
+                n_gpu=2,
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp3_m3_ww3",
+                experiment_name=f"werewolves_exp3_m3_ww3_{VERSION}",
             ),
         ],
         project_name="werewolves_exp3_three_model_ww",
@@ -546,7 +546,7 @@ def get_exp4_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["villager", "seer"],  # ~50% of good roles
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp4_m1_half",
+                experiment_name=f"werewolves_exp4_m1_half_{VERSION}",
             ),
             ModelConfig(
                 model_id="M2",
@@ -554,7 +554,7 @@ def get_exp4_config() -> ExperimentConfig:
                 model_path=DEFAULT_MODEL_14B,
                 roles=["witch", "hunter"],  # ~50% of good roles
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
-                experiment_name="werewolves_exp4_m2_half",
+                experiment_name=f"werewolves_exp4_m2_half_{VERSION}",
             ),
         ],
         project_name="werewolves_exp4_random_split",

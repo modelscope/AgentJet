@@ -55,6 +55,7 @@
     "ajet.rollout.temperature": "actor_rollout_ref.rollout.temperature",
     "ajet.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
     "ajet.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",
+    "ajet.rollout.gpu_memory_utilization": "actor_rollout_ref.rollout.gpu_memory_utilization",
     "ajet.rollout.num_repeat": [
         "actor_rollout_ref.actor.rollout_n",
         "actor_rollout_ref.rollout.n"

@@ -1,4 +1,7 @@
+import os
+import traceback
 import uuid
+from datetime import datetime
 from typing import List
 
 from loguru import logger
@@ -210,9 +213,26 @@ class ExtendedMessage:
                 )
             if self.manual_loss_mask_override:
                 # assert two list is identical
-                assert len(self.manual_loss_mask_override) == len(msg_token_mask)
-                assert all(a == b for a, b in zip(self.manual_loss_mask_override, msg_token_mask))
-
+                try:
+                    assert len(self.manual_loss_mask_override) == len(msg_token_mask)
+                    assert all(a == b for a, b in zip(self.manual_loss_mask_override, msg_token_mask))
+                except AssertionError:
+                    error_msg = (
+                        "Manual loss mask override mismatch | "
+                        f"author={self.author} role={self.role} uuid={self.uuid} | "
+                        f"override_len={len(self.manual_loss_mask_override)} mask_len={len(msg_token_mask)} | "
+                        f"token_arr_len={len(self.token_arr)} content_preview={self.content[:100]!r} | "
+                        f"override={self.manual_loss_mask_override} | "
+                        f"generated_mask={msg_token_mask}"
+                    )
+                    logger.bind(exception=True).error(error_msg)
+                    log_dir = "./loss_mask_exception"
+                    os.makedirs(log_dir, exist_ok=True)
+                    with open(os.path.join(log_dir, "exception.log"), "a") as f:
+                        f.write(f"\n{'='*80}\n")
+                        f.write(f"[{datetime.now().isoformat()}]\n")
+                        f.write(f"{error_msg}\n")
+                        f.write(f"Traceback:\n{traceback.format_exc()}\n")
             return msg_token_mask
         else:
             msg_token_mask = [0] * len(self.token_arr)

@@ -13,6 +13,7 @@ ajet:
     user_workflow: null
     temperature: 0.7
     max_env_worker: 64
+    gpu_memory_utilization: 0.75
     num_repeat: 6
     agent_madness_reward: 0.0
     tensor_model_parallel_size: 1
@@ -58,10 +59,20 @@ ajet:
     save_freq: 5
     test_freq: 9999999
     total_epochs: 9999999
-    total_training_steps: 25
+    total_training_steps: 75
     nnodes: 1
     n_gpus_per_node: 8
     lr: 3.0e-4
+
+  lora:
+    load_format: safetensors
+
+
+
+actor_rollout_ref:
+  rollout:
+    layered_summon: True
+
 
 # ------------------ do not edit ------------------
 hydra:

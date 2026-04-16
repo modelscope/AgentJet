@@ -104,6 +104,7 @@ def _dive_to_set_value(config, dotted_key, value):
 
 def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone):
     """Align configuration values based on a conversion map.
+    Please check `ajet/default_config/verl/config_auto_convertion_verl.jsonc`.
 
     Parameters
     ----------
@@ -167,7 +168,7 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
             )
 
     # backbone specific safe guard
-    to_config = config_safe_guard(to_config, backbone)
+    to_config = align_parameter_safe_guard(to_config, backbone)
 
     # save to_config_fp
     with open(to_config_fp, "w", encoding="utf-8") as file:
@@ -177,10 +178,20 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
     print_dict({"Note": f"Saved aligned configuration to {to_config_fp}"}, header="Final Configuration")
 
 
-def config_safe_guard(config: dict, backbone: str) -> dict:
+def align_parameter_safe_guard(config: dict, backbone: str) -> dict:
     # special: logger
     if backbone == "verl" and isinstance(config["trainer"]["logger"], str):
         config["trainer"]["logger"] = ["console", config["trainer"]["logger"]]
+
+    # special: LoRA requires safetensors load_format
+    if backbone == "verl":
+        lora_rank = config.get("actor_rollout_ref", {}).get("model", {}).get("lora_rank", 0)
+        load_format = config.get("actor_rollout_ref", {}).get("rollout", {}).get("load_format", "auto")
+        if lora_rank > 0 and load_format != "safetensors":
+            raise ValueError(
+                f"LoRA training (lora_rank={lora_rank}) requires load_format='safetensors', "
+                f"but got load_format='{load_format}'. Please set `ajet.lora.load_format: safetensors` in your config."
+            )
 
     # special: trinity train_batch_size
     if backbone == "trinity":
@@ -346,8 +357,9 @@ def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_
         raise ValueError(f"Please set ajet field in yaml file. Current yaml:\n{config}")
     if exp_name is None or exp_name == "read_yaml_name":
         exp_name = os.path.basename(yaml_path).replace(".yaml", "")
-        # add timestamp to exp_name
-        timestamp = time.strftime("%Y%m%d_%H%M", time.localtime())
+        # add timestamp to exp_name (with milliseconds to avoid concurrency conflicts)
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # trim to milliseconds
         exp_name = f"{exp_name}_{timestamp}"
     else:
         exp_name = exp_name.replace("|", "-")

@@ -63,6 +63,7 @@ class AgentJetJob:
         lora_rank: LoRA rank for low-rank adaptation (set > 0 to enable LoRA training, default 0 means disabled).
         lora_alpha: LoRA alpha scaling factor (default 16).
         lora_target_modules: Target modules for LoRA adaptation (default 'all-linear').
+        gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
     """
 
     def __init__(
@@ -89,6 +90,7 @@ class AgentJetJob:
         lora_rank: int | None = None,
         lora_alpha: int | None = None,
         lora_target_modules: str | None = None,
+        gpu_memory_utilization: float | None = None,
     ) -> None:
 
         if base_yaml_config is None:
@@ -129,6 +131,7 @@ class AgentJetJob:
         self.lora_rank: int = cast(int, lora_rank)
         self.lora_alpha: int = cast(int, lora_alpha)
         self.lora_target_modules: str = cast(str, lora_target_modules)
+        self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {
@@ -154,6 +157,7 @@ class AgentJetJob:
             "ajet.lora.lora_rank":                          "lora_rank",
             "ajet.lora.lora_alpha":                         "lora_alpha",
             "ajet.lora.target_modules":                     "lora_target_modules",
+            "ajet.rollout.gpu_memory_utilization":          "gpu_memory_utilization",
         }
 
         # if any value given in kwargs, override the corresponding value in config

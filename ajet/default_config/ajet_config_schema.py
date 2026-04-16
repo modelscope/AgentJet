@@ -31,6 +31,7 @@ class AjetRollout:
     n_vllm_engine: int = 1  # this argument is NOT effective when NOT using trinity
     tensor_model_parallel_size: int = 1
     num_repeat: int = 8
+    gpu_memory_utilization: float = 0.85
 
 
 @dataclass
