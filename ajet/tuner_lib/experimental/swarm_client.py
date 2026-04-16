@@ -375,6 +375,15 @@ class SwarmClient(object):
             f"{self.server_url}/end_episode",
             json=req_obj.model_dump()
         )
+        # Special handling: when engine is WEIGHT_SYNCING, just warn instead of raising error
+        if resp.status_code == 400:
+            try:
+                error_detail = resp.json()
+                if "WEIGHT_SYNCING" in str(error_detail.get("detail", "")):
+                    logger.warning(f"Engine is in WEIGHT_SYNCING state, episode {episode_uuid} will be discarded. This is expected during weight sync.")
+                    return
+            except (json.JSONDecodeError, ValueError):
+                pass
         raise_for_status_with_detail(resp)
         data = EndEpisodeResponse.model_validate(resp.json())
 
