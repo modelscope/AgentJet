@@ -183,14 +183,20 @@ def align_parameter_safe_guard(config: dict, backbone: str) -> dict:
     if backbone == "verl" and isinstance(config["trainer"]["logger"], str):
         config["trainer"]["logger"] = ["console", config["trainer"]["logger"]]
 
-    # special: LoRA requires safetensors load_format
+    # special: LoRA requires safetensors load_format and layered_summon
     if backbone == "verl":
         lora_rank = config.get("actor_rollout_ref", {}).get("model", {}).get("lora_rank", 0)
         load_format = config.get("actor_rollout_ref", {}).get("rollout", {}).get("load_format", "auto")
+        layered_summon = config.get("actor_rollout_ref", {}).get("rollout", {}).get("layered_summon", False)
         if lora_rank > 0 and load_format != "safetensors":
             raise ValueError(
                 f"LoRA training (lora_rank={lora_rank}) requires load_format='safetensors', "
                 f"but got load_format='{load_format}'. Please set `ajet.lora.load_format: safetensors` in your config."
+            )
+        if lora_rank > 0 and not layered_summon:
+            raise ValueError(
+                f"LoRA training (lora_rank={lora_rank}) requires layered_summon=True, "
+                f"but got layered_summon={layered_summon}. Please set `ajet.lora.layered_summon: true` in your config."
             )
 
     # special: trinity train_batch_size

@@ -46,6 +46,7 @@ class AjetLora:
     lora_alpha: int = 16
     target_modules: str = "all-linear"
     load_format: str = "auto"
+    layered_summon: bool = False
 
 
 @dataclass

@@ -316,6 +316,7 @@ ajet:
     lora_alpha: 16
     target_modules: all-linear
     load_format: auto
+    layered_summon: false
 
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature

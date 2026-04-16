@@ -64,6 +64,7 @@ class AgentJetJob:
         lora_alpha: LoRA alpha scaling factor (default 16).
         lora_target_modules: Target modules for LoRA adaptation (default 'all-linear').
         lora_load_format: Load format for LoRA weights (default 'auto').
+        layered_summon: Enable layered summon for LoRA (default False).
         gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
         lr: Learning rate for optimizer (default 1e-6).
     """
@@ -93,6 +94,7 @@ class AgentJetJob:
         lora_alpha: int | None = None,
         lora_target_modules: str | None = None,
         lora_load_format: str | None = None,
+        layered_summon: bool | None = None,
         gpu_memory_utilization: float | None = None,
         lr: float | None = None,
     ) -> None:
@@ -136,6 +138,7 @@ class AgentJetJob:
         self.lora_alpha: int = cast(int, lora_alpha)
         self.lora_target_modules: str = cast(str, lora_target_modules)
         self.lora_load_format: str = cast(str, lora_load_format)
+        self.layered_summon: bool = cast(bool, layered_summon)
         self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
         self.lr: float = cast(float, lr)
 
@@ -164,6 +167,7 @@ class AgentJetJob:
             "ajet.lora.lora_alpha":                         "lora_alpha",
             "ajet.lora.target_modules":                     "lora_target_modules",
             "ajet.lora.load_format":                        "lora_load_format",
+            "ajet.lora.layered_summon":                     "layered_summon",
             "ajet.rollout.gpu_memory_utilization":          "gpu_memory_utilization",
             "ajet.trainer_common.optim.lr":                 "lr",
         }
@@ -194,6 +198,8 @@ class AgentJetJob:
         if self.lora_rank > 0:
             if self.lora_load_format != "safetensors":
                 raise ValueError(f"When lora_rank > 0, lora_load_format must be 'safetensors', got '{self.lora_load_format}'")
+            if not self.layered_summon:
+                raise ValueError("When lora_rank > 0, layered_summon must be True")
             if self.lr is None:
                 raise ValueError("lr should be provided for lora training")
             if self.lr <= 1e-5:

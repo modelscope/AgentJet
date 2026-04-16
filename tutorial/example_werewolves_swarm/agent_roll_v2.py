@@ -108,6 +108,9 @@ class ExperimentConfig:
     max_parallel: int = 64
     discard_episode_timeout: int = 240
     project_name: str = "werewolves_multi_model"
+    # Random player split mode: at each episode start, randomly split
+    # good-side players among trainable models (ignoring role-based assignment)
+    random_player_split: bool = False
 
     def __post_init__(self):
         # Validate that all trainable roles are from the same faction
@@ -150,26 +153,29 @@ class MultiModelWerewolvesGame:
         swarm_clients: Dict[str, SwarmClient],
         opponent_model: str,
         opponent_url: str,
+        random_player_split: bool = False,
     ):
         self.model_configs = model_configs
         self.swarm_clients = swarm_clients
         self.opponent_model = opponent_model
         self.opponent_url = opponent_url
+        self.random_player_split = random_player_split
 
         # Build role -> model_id mapping (for roles without index constraints)
         self.role_to_model: Dict[str, str] = {}
         # Build (role, index) -> model_id mapping (for indexed assignments)
         self.role_index_to_model: Dict[Tuple[str, int], str] = {}
 
-        for mc in model_configs:
-            for role in mc.roles:
-                if mc.role_indices and role in mc.role_indices:
-                    # Index-based assignment
-                    for idx in mc.role_indices[role]:
-                        self.role_index_to_model[(role, idx)] = mc.model_id
-                else:
-                    # Role-based assignment (all instances)
-                    self.role_to_model[role] = mc.model_id
+        if not random_player_split:
+            for mc in model_configs:
+                for role in mc.roles:
+                    if mc.role_indices and role in mc.role_indices:
+                        # Index-based assignment
+                        for idx in mc.role_indices[role]:
+                            self.role_index_to_model[(role, idx)] = mc.model_id
+                    else:
+                        # Role-based assignment (all instances)
+                        self.role_to_model[role] = mc.model_id
 
     def get_trainable_targets(self) -> List[str]:
         """Get all trainable roles across all models."""
@@ -216,6 +222,22 @@ class MultiModelWerewolvesGame:
         # Track which model each player uses
         player_to_model: Dict[int, str] = {}
 
+        # For random_player_split mode: randomly assign good-side players to models
+        player_to_model_split: Dict[int, str] = {}
+        if self.random_player_split:
+            # Identify all good-side player indices
+            good_player_indices = [i for i, role in enumerate(roles) if role in GOOD_ROLES]
+            # Shuffle and split 50/50
+            np.random.shuffle(good_player_indices)
+            half = len(good_player_indices) // 2
+            model_ids = [mc.model_id for mc in self.model_configs]
+            for i, player_idx in enumerate(good_player_indices):
+                # First half -> M1, second half -> M2
+                model_id_for_player = model_ids[0] if i < half else model_ids[1]
+                player_to_model_split[player_idx] = model_id_for_player
+            logger.info(f"Random player split: M1={[p for p, m in player_to_model_split.items() if m == model_ids[0]]}, "
+                       f"M2={[p for p, m in player_to_model_split.items() if m == model_ids[1]]}")
+
         # Initialize agents
         players = []
         for i, role in enumerate(roles):
@@ -223,10 +245,15 @@ class MultiModelWerewolvesGame:
             role_idx = role_counters.get(role, 0)
             role_counters[role] = role_idx + 1
 
-            # Try to find model: first by (role, index), then by role only
-            model_id = self.role_index_to_model.get((role, role_idx))
-            if model_id is None:
-                model_id = self.role_to_model.get(role)
+            # Determine model_id based on assignment mode
+            if self.random_player_split:
+                # In random split mode, use player-based assignment
+                model_id = player_to_model_split.get(i)
+            else:
+                # Try to find model: first by (role, index), then by role only
+                model_id = self.role_index_to_model.get((role, role_idx))
+                if model_id is None:
+                    model_id = self.role_to_model.get(role)
 
             if model_id is None:
                 # Non-trainable role - use opponent model
@@ -326,6 +353,8 @@ class MultiModelWerewolvesTrainer:
                 lora_rank=mc.lora.rank if mc.lora.enabled else None,
                 lora_alpha=mc.lora.alpha if mc.lora.enabled else None,
                 lora_target_modules=mc.lora.target_modules if mc.lora.enabled else None,
+                lr=3e-4,
+                layered_summon=True,
             )
 
             self.jobs[mc.model_id] = job
@@ -358,6 +387,7 @@ class MultiModelWerewolvesTrainer:
             swarm_clients=self.swarm_clients,
             opponent_model=self.config.opponent_model,
             opponent_url=self.config.opponent_url,
+            random_player_split=self.config.random_player_split,
         )
 
         def rollout(task: Task):
@@ -405,7 +435,7 @@ class MultiModelWerewolvesTrainer:
 # Predefined Experiment Configurations
 # ============================================================================
 
-VERSION = "v2"
+VERSION = "v3"
 
 
 def get_exp1_config() -> ExperimentConfig:
@@ -529,22 +559,22 @@ def get_exp3_config() -> ExperimentConfig:
 
 def get_exp4_config() -> ExperimentConfig:
     """
-    Experiment 4: Two models with random 50/50 split of good roles.
-    - M1 (14B-LoRA): 50% random non-werewolf characters
-    - M2 (14B-LoRA): remaining 50% non-werewolf characters
+    Experiment 4: Two models with random 50/50 split of good-side players.
+    - M1 (14B-LoRA): randomly selected 50% of good-side players per episode
+    - M2 (14B-LoRA): remaining 50% of good-side players
     - Opponents (235B): werewolf
 
-    Role assignment is randomized per game.
+    At the start of each episode, the 6 good-side players (3 villagers,
+    1 seer, 1 witch, 1 hunter) are randomly split: 3 players go to M1,
+    3 players go to M2. This is player-based, not role-based assignment.
     """
-    # For simplicity, we do a fixed 50/50 split here
-    # In practice, the split could be randomized per game
     return ExperimentConfig(
         model_configs=[
             ModelConfig(
                 model_id="M1",
                 swarm_url="http://localhost:10086",
                 model_path=DEFAULT_MODEL_14B,
-                roles=["villager", "seer"],  # ~50% of good roles
+                roles=GOOD_ROLES,  # All good roles (for validation only)
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
                 experiment_name=f"werewolves_exp4_m1_half_{VERSION}",
             ),
@@ -552,12 +582,13 @@ def get_exp4_config() -> ExperimentConfig:
                 model_id="M2",
                 swarm_url="http://localhost:10087",
                 model_path=DEFAULT_MODEL_14B,
-                roles=["witch", "hunter"],  # ~50% of good roles
+                roles=GOOD_ROLES,  # All good roles (for validation only)
                 lora=LoraConfig(enabled=True, rank=32, alpha=32),
                 experiment_name=f"werewolves_exp4_m2_half_{VERSION}",
             ),
         ],
         project_name="werewolves_exp4_random_split",
+        random_player_split=True,  # Enable random player-based assignment
     )
 
 

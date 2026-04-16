@@ -52,7 +52,9 @@ def main():
         lora_rank=32,
         lora_alpha=32,
         lora_load_format="safetensors",
+        layered_summon=True,
         lr=3e-4,
+
     )
 
     job_7b = AgentJetJob(
@@ -67,6 +69,7 @@ def main():
         lora_rank=32,
         lora_alpha=32,
         lora_load_format="safetensors",
+        layered_summon=True,
         lr=3e-4,
     )
 
