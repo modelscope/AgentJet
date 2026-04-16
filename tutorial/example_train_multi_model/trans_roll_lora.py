@@ -51,6 +51,8 @@ def main():
         logging="swanlab",
         lora_rank=32,
         lora_alpha=32,
+        lora_load_format="safetensors",
+        lr=3e-4,
     )
 
     job_7b = AgentJetJob(
@@ -64,6 +66,8 @@ def main():
         logging="swanlab",
         lora_rank=32,
         lora_alpha=32,
+        lora_load_format="safetensors",
+        lr=3e-4,
     )
 
     # Original (sequential) version:
