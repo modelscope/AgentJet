@@ -117,7 +117,7 @@ Practical tips:
 
 - **Treat YAML as the source of truth**: you can inspect it with `yaml_job.dump_job_as_yaml("./config.yaml")` and load overrides via `yaml_job.build_job_from_yaml("./config.yaml")`.
 - **Idempotency**: `auto_sync_train_config_and_start_engine()` is designed to be safe if the engine is already **ROLLING** (it will do nothing) and will wait if the engine is **BOOTING / WEIGHT_SYNCING**.
-- **Monitoring**: run `ajet-swarm overwatch --swarm-url=http://your-swarm-server:10086` (or `python -m ajet.launcher --swarm-overwatch=...`) to watch the server states and rollout pool.
+- **Monitoring**: run `ajet-swarm overwatch --swarm-url=http://your-swarm-server:10086` (or `ajet-swarm top`, which is an alias) to watch the server states and rollout pool.
 - **Full AgentJetJob arguments**: run `help(AgentJetJob)` or check `ajet/copilot/job.py` for all available parameters including `max_prompt_length`, `max_response_length`, `max_model_len`, `mini_batch_num`, `lora_rank`, `lora_alpha`, `lora_target_modules`, and more.
 
 ### Episode Running

@@ -38,6 +38,7 @@ Notes:
     ```bash
     ajet-swarm overwatch --swarm-url=http://localhost:10086
     ```
+    Tip: `ajet-swarm top` is an alias for `ajet-swarm overwatch`.
 
 3. changing customized port (default port is 10086):
     ```bash

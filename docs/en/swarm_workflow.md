@@ -76,7 +76,7 @@ A swarm workflow has three phases per training step:
 ```bash
 # Start server + TUI monitor (in two terminals, or combined):
 ajet-swarm start &
-ajet-swarm overwatch
+ajet-swarm overwatch  # or: ajet-swarm top
 ```
 
 The server starts with `ajet_swarm_default.yaml` (see [Swarm Mode Config Chain](../configuration/#swarm-mode-config-chain)). No `--conf` is needed for the default setup.

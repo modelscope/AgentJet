@@ -15,6 +15,7 @@ everything need to begin from bring the swarm server alive.
 We recommend launching server together with a swarm monitor:
 ```bash
 # this command start swarm server and a TUI to monitor the swarm server
+# tip: ajet-swarm top is an alias for ajet-swarm overwatch
 (ajet-swarm start &> ajet-swarm-server.log) & (ajet-swarm overwatch)
 ```
 

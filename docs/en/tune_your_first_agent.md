@@ -463,6 +463,7 @@ On your GPU machine (or cluster), start the Swarm Server:
 ajet-swarm start
 
 # Open the monitoring dashboard in another terminal
+# tip: ajet-swarm top is an alias for ajet-swarm overwatch
 ajet-swarm overwatch --swarm-url=http://localhost:10086
 ```
 
