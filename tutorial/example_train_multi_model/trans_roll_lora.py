@@ -32,46 +32,6 @@ def _dset(container, key, value):
         setattr(container, key, value)
 
 
-def _enable_lora(job: AgentJetJob, rank: int = 32, alpha: int = 32):
-    lora = job.config.ajet.lora
-    _dset(lora, "lora_rank", rank)
-    _dset(lora, "lora_alpha", alpha)
-    _dset(lora, "target_modules", "all-linear")
-    _dset(lora, "load_format", "safetensors")
-    # The auto-conversion mapping replaces actor.fsdp_config with the full value
-    # of ajet.trainer_common.fsdp_config, so we must include every key verl
-    # expects or FSDP falls back to unsharded and OOMs.
-    fsdp = job.config.ajet.trainer_common.fsdp_config
-    _dset(fsdp, "_target_", "verl.workers.config.FSDPEngineConfig")
-    _dset(fsdp, "wrap_policy", {"min_num_params": 0})
-    _dset(fsdp, "param_offload", True)
-    _dset(fsdp, "optimizer_offload", True)
-    _dset(fsdp, "fsdp_size", -1)
-    _dset(fsdp, "offload_policy", False)
-    _dset(fsdp, "reshard_after_forward", True)
-    return job
-
-
-def _tune_rollout(job: AgentJetJob, tp: int, max_num_seqs: int = 16, gpu_mem_util: float = 0.55):
-    r = job.config.ajet.rollout
-    _dset(r, "tensor_model_parallel_size", tp)
-    _dset(r, "n_vllm_engine", 1)
-    _dset(r, "max_num_seqs", max_num_seqs)
-    # Config schema has only `ajet`; inject verl-layer overrides as an extra
-    # attribute so `Config.to_dict` picks it up (it walks __dict__).
-    job.config.actor_rollout_ref = {
-        "rollout": {
-            "tensor_model_parallel_size": tp,
-            "gpu_memory_utilization": gpu_mem_util,
-            "max_num_seqs": max_num_seqs,
-            "free_cache_engine": True,
-            "enforce_eager": True,
-            "layered_summon": True,
-        },
-    }
-    return job
-
-
 def main():
     dataset = RouterTaskReader(
         reader_type="huggingface_dat_repo",
@@ -88,9 +48,10 @@ def main():
         model=REMOTE_14B_TRAIN_MODEL,
         batch_size=REMOTE_14B_BATCH_SIZE,
         num_repeat=LOCAL_GRPO_N,
+        logging="swanlab",
+        lora_rank=32,
+        lora_alpha=32,
     )
-    _enable_lora(job_14b)
-    _tune_rollout(job_14b, tp=1, max_num_seqs=64, gpu_mem_util=0.8)
 
     job_7b = AgentJetJob(
         algorithm="grpo",
@@ -100,9 +61,10 @@ def main():
         model=REMOTE_7B_TRAIN_MODEL,
         batch_size=REMOTE_7B_BATCH_SIZE,
         num_repeat=LOCAL_GRPO_N,
+        logging="swanlab",
+        lora_rank=32,
+        lora_alpha=32,
     )
-    _enable_lora(job_7b)
-    _tune_rollout(job_7b, tp=1, max_num_seqs=64, gpu_mem_util=0.8)
 
     # Original (sequential) version:
     # swarm_worker_14b = SwarmClient(REMOTE_14B_SWARM_URL)

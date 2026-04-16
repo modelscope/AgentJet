@@ -39,7 +39,7 @@ def _get_nested_attr(obj, attr_path: str):
     return obj
 
 class AgentJetJob:
-    """Programmatic interface for configuring and launching AgentJet training jobs.
+    """Programmatic interface for configuring ( Arguments + YAML -->  New YAML ) and launching AgentJet training jobs.
 
     Args:
         base_yaml_config: Path to base YAML configuration file. If None, uses default config (at ./ajet/default_config/ajet_swarm_default.yaml).
@@ -63,7 +63,9 @@ class AgentJetJob:
         lora_rank: LoRA rank for low-rank adaptation (set > 0 to enable LoRA training, default 0 means disabled).
         lora_alpha: LoRA alpha scaling factor (default 16).
         lora_target_modules: Target modules for LoRA adaptation (default 'all-linear').
+        lora_load_format: Load format for LoRA weights (default 'auto').
         gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
+        lr: Learning rate for optimizer (default 1e-6).
     """
 
     def __init__(
@@ -90,7 +92,9 @@ class AgentJetJob:
         lora_rank: int | None = None,
         lora_alpha: int | None = None,
         lora_target_modules: str | None = None,
+        lora_load_format: str | None = None,
         gpu_memory_utilization: float | None = None,
+        lr: float | None = None,
     ) -> None:
 
         if base_yaml_config is None:
@@ -105,6 +109,15 @@ class AgentJetJob:
         length_params = [max_prompt_length, max_response_length, max_model_len, max_response_length_in_one_turn]
         if not (all(p is None for p in length_params) or all(p is not None for p in length_params)):
             raise ValueError("(`max_prompt_length`, `max_response_length`, `max_model_len`, `max_response_length_in_one_turn`) must all be None or all be non-None")
+
+        # Validate: when lora_rank > 0, load_format must be safetensors
+        if lora_rank is not None and lora_rank > 0:
+            if lora_load_format != "safetensors":
+                raise ValueError(f"When lora_rank > 0, lora_load_format must be 'safetensors', got '{lora_load_format}'")
+            if lr is None:
+                raise ValueError("lr should be provided for lora training")
+            if lr <= 1e-5:
+                raise ValueError(f"lr should usually be greater than 1e-5 for lora training, got {lr}")
 
         self.config_as_dict: dict = self.build_job_from_yaml(base_yaml_config)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
@@ -131,7 +144,9 @@ class AgentJetJob:
         self.lora_rank: int = cast(int, lora_rank)
         self.lora_alpha: int = cast(int, lora_alpha)
         self.lora_target_modules: str = cast(str, lora_target_modules)
+        self.lora_load_format: str = cast(str, lora_load_format)
         self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
+        self.lr: float = cast(float, lr)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {
@@ -157,7 +172,9 @@ class AgentJetJob:
             "ajet.lora.lora_rank":                          "lora_rank",
             "ajet.lora.lora_alpha":                         "lora_alpha",
             "ajet.lora.target_modules":                     "lora_target_modules",
+            "ajet.lora.load_format":                        "lora_load_format",
             "ajet.rollout.gpu_memory_utilization":          "gpu_memory_utilization",
+            "ajet.trainer_common.optim.lr":                 "lr",
         }
 
         # if any value given in kwargs, override the corresponding value in config

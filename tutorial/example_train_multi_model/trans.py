@@ -74,6 +74,7 @@ def execute_agent(task: Task, api_baseurl_key_7b: OpenaiBaseUrlAndApiKey, api_ba
     if rough_translate is None or fix_nouns is None:
         reward_7b = 0.0
         reward_14b = 0.0
+        # raise ValueError("Rough translation or proper noun detection failed, cannot compute rewards.")
     else:
         grader_14b = ProperNounDetectionGrader(model=grader_model)
         grader_score_14b = asyncio.run(asyncio.wait_for(
@@ -81,7 +82,7 @@ def execute_agent(task: Task, api_baseurl_key_7b: OpenaiBaseUrlAndApiKey, api_ba
             timeout=120
         ))
         reward_14b = grader_score_14b.score
-        print(f"14B Model Reward (Detection Quality): {grader_score_14b.score}")
+        # print(f"14B Model Reward (Detection Quality): {grader_score_14b.score}")
 
     # Return two separate WorkflowOutputs with different rewards
     workflow_output_7b = WorkflowOutput(reward=reward_7b, metadata={
