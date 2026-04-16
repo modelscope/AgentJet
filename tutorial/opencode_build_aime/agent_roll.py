@@ -18,7 +18,7 @@ from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
-from tutorial.opencode_build_aime.agent_run import execute_agent
+from tutorial.opencode_build_aime.agent_run_v3 import execute_agent
 from tqdm import tqdm
 
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct")
@@ -114,7 +114,7 @@ class AIMESwarmTrainer:
 
     def rollout(self, task: Task) -> float:
         """Execute a single training rollout."""
-        episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=60)
+        episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
         workflow_output = execute_agent(task, api_baseurl_key)
         self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
         return workflow_output.reward
@@ -123,7 +123,7 @@ class AIMESwarmTrainer:
 
     def eval_rollout(self, task: Task) -> float:
         """Execute an eval rollout (results do not contribute to training)."""
-        episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=60, episode_type="eval")
+        episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120, episode_type="eval")
         try:
             workflow_output = execute_agent(task, api_baseurl_key)
             return workflow_output.reward
@@ -186,7 +186,7 @@ class AIMESwarmTrainer:
         task_count = 0
         executor = PeriodicDrainThreadPoolExecutor(
             workers=self.grpo_n * self.remote_batch_size,
-            max_parallel=256,
+            max_parallel=128,
             auto_retry=True
         )
 

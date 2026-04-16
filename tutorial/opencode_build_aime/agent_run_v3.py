@@ -484,8 +484,9 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Workfl
             {"role": "user", "content": query}
         ]
 
+    # Tools for the AgentLoop (use schema, not instances, to avoid JSON serialization issues)
     tools = {
-        "python_code_with_standard_io": PythonTool(timeout=30, max_tool_response_length=8000)
+        "python_code_with_standard_io": PYTHON_TOOL_SCHEMA
     }
 
     client = OpenAI(
