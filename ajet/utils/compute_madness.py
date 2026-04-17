@@ -5,7 +5,7 @@ from functools import cache
 # Regex fragments for each whitelist category
 WHITE_LIST_REGEX_PARTS = {
     # Common symbols
-    "common_symbols": "‘’“”–—…•™©®°±µ′″℉℃·×",
+    "common_symbols": "‘’“”–—…•™©®°±µ′″℉℃·×²φ≥√→",
     # Chinese punctuation
     "chinese_punct": "，。！？、；：“”‘’（）【】《》（）——……「」『』",
     # Emoji ranges
@@ -21,6 +21,14 @@ WHITE_LIST_REGEX_PARTS = {
         "\U0001FA70-\U0001FAFF"
         "\u2702-\u27B0"
         "\u24C2-\U0001F251"
+    ),
+    # Mathematical symbols
+    "mathematical": (
+        "\u00B0-\u00BF"      # Latin-1 superscripts (¹²³ etc)
+        "\u2070-\u209F"      # Superscripts/subscripts
+        "\u2200-\u22FF"      # Math operators
+        "\u27C0-\u27EF"      # Miscellaneous math symbols
+        "\u2A00-\u2AFF"      # Supplemental math operators
     ),
     # Chinese characters
     "chinese": (
@@ -49,7 +57,7 @@ def build_pattern(white_list):
     return re.compile(pattern)
 
 
-def has_non_ascii(text, white_list=("common_symbols", "emoji", "chinese", "chinese_punct")):
+def has_non_ascii(text, white_list=("common_symbols", "emoji", "chinese", "chinese_punct", "mathematical")):
     pattern = build_pattern(white_list)
     return bool(pattern.search(text))
 
@@ -72,13 +80,15 @@ def has_repeat(token, remember_n_words=5, patience_max=10):
 
 def compute_string_madness(completion, detail=False, checklist=["nonsense"]) -> float:
     all_reward = 0.0
-    if ("nonsense" in checklist) and ("non_ascii" in checklist):
-        all_reward += compute_string_madness_char(completion, detail=detail)
-    elif ("nonsense" in checklist) and ("non_ascii" not in checklist):
-        all_reward += compute_string_madness_char(completion, detail=detail, skip_non_ascii=True)
-    if "format_type_1" in checklist:
-        all_reward += compute_string_madness_format(completion, detail=detail, format_type="type_1")
-
+    try:
+        if ("nonsense" in checklist) and ("non_ascii" in checklist):
+            all_reward += compute_string_madness_char(completion, detail=detail)
+        elif ("nonsense" in checklist) and ("non_ascii" not in checklist):
+            all_reward += compute_string_madness_char(completion, detail=detail, skip_non_ascii=True)
+        if "format_type_1" in checklist:
+            all_reward += compute_string_madness_format(completion, detail=detail, format_type="type_1")
+    except Exception as e:
+        return 0
     return all_reward
 
 
@@ -127,21 +137,20 @@ def compute_string_madness_format(completion, detail, format_type) -> float:
 
 
 def compute_string_madness_char(completion, detail=False, skip_non_ascii=False) -> float:
-    # if detail:
-    #     result = {
-    #         "has_non_ascii": has_non_ascii(completion),
-    #         "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
-    #         "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
-    #         "has_wrong_sp_token": "<|im_start|>" in completion,
-    #         # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
-    #     }
-    #     if has_non_ascii(completion):
-    #         for char in completion:
-    #             if has_non_ascii(char):
-    #                 print(f"---")
-    #                 print(f"found non-ascii char: {char} ord={ord(char)}")
-    #     print(result)
-    #     return result
+    if detail:
+        result = {
+            "has_non_ascii": has_non_ascii(completion),
+            "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
+            "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
+            "has_wrong_sp_token": "<|im_start|>" in completion,
+            # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
+        }
+        if has_non_ascii(completion):
+            for char in completion:
+                if has_non_ascii(char):
+                    print(f"---")
+                    print(f"found non-ascii char: {char} ord={ord(char)}")
+        print(result)
 
     if "<|im_start|>" in completion:
         return -1.0
