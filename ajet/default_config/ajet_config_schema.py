@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -38,6 +38,7 @@ class AjetRollout:
     tensor_model_parallel_size: int = 1
     num_repeat: int = 8
     gpu_memory_utilization: float = 0.85
+    compute_madness_checklist: List[str] = field(default_factory=list)
 
 
 @dataclass

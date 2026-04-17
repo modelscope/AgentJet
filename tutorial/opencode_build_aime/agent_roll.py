@@ -24,11 +24,11 @@ from tqdm import tqdm
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct")
 ajet_job = AgentJetJob(
     algorithm="grpo",
-    experiment_name="aime_swarm_14b_2",
+    experiment_name="aime_swarm_14b_v3",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
-    batch_size=128,
+    batch_size=64,
     num_repeat=8,
     logging="swanlab"
 )
@@ -55,7 +55,7 @@ class AIMESwarmTrainer:
 
     NUM_EPOCH = 10000
     EVAL_INTERVAL = 50  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
-    EVAL_K = 4  # pass@k: run each eval task K times
+    EVAL_K = 2  # pass@k: run each eval task K times
 
     def __init__(
         self,

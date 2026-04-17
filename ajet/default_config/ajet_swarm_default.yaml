@@ -16,6 +16,13 @@ ajet:
     max_env_worker: 128
     # how many times a task should be repeated
     num_repeat: 4
+    # monitor LLM's abormal behaviors during rollout
+    compute_madness_checklist: []
+    # send signal to terminate context tracing when LLM is losing control
+    agent_madness_termination: True # terminate_after_gone_mad
+    # punish the LLM when it is detected as lost control
+    agent_madness_reward: 0.0
+
 
   task_reader:
     type: random_dummy # `env_service` or `jsonl_dataset_file` or `huggingface_dat_repo` or `data_generation` or `random_dummy`
