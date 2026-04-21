@@ -554,9 +554,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         if self.config.ajet.execute_test:  # apply a test probe
                             from swanlab.data.run.main import get_run
 
-                            from ajet.utils.testing_utils import (
-                                _test_if_test_mode,
-                            )
+                            from ajet.utils.testing_utils import _test_if_test_mode
 
                             run_info = get_run().public.json()  # type: ignore
                             data = {
