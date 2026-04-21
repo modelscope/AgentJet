@@ -616,12 +616,16 @@ class VerlRolloutManager(DynamicRolloutManager):
         any_multi_modal = False
 
         for sample in samples:
+            # position_ids may be 1D (text-only) or 2D (4-channel M-RoPE).
+            _pos_seqlen = (len(sample.position_ids[0])
+                           if sample.position_ids and isinstance(sample.position_ids[0], list)
+                           else len(sample.position_ids))
             assert (
                 len(sample.input_ids)
                 == len(sample.attention_mask)
-                == len(sample.position_ids)
+                == _pos_seqlen
                 == len(sample.loss_mask)
-            ), f"Sample has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, {len(sample.position_ids)=}, {len(sample.loss_mask)=}"
+            ), f"Sample has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, pos_seqlen={_pos_seqlen}, {len(sample.loss_mask)=}"
 
             task_ids.append(sample.task_id)
             rollout_ids.append(sample.task_tag)
