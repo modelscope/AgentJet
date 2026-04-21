@@ -20,5 +20,5 @@ tmux send-keys -t "SWARM_CLIENT" "cd /mnt/data_cpfs/qingxu.fu/agentjet/hello-age
 tmux send-keys -t "SWARM_CLIENT" "source .venv/bin/activate" Enter
 tmux send-keys -t "SWARM_CLIENT" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
 tmux send-keys -t "SWARM_CLIENT" "sleep 30s" Enter
-tmux send-keys -t "SWARM_CLIENT" "python -m tutorial.example_werewolves_swarm.agent_roll" Enter
+tmux send-keys -t "SWARM_CLIENT" "python -m tutorial.example_werewolves_swarm.agent_roll_good_guys" Enter
 ta "SWARM_CLIENT"

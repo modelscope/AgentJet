@@ -40,7 +40,7 @@ tmux send-keys -t "SWARM_CLIENT_EXP4" "cd ${PROJECT_DIR}" Enter
 tmux send-keys -t "SWARM_CLIENT_EXP4" "source .venv/bin/activate" Enter
 tmux send-keys -t "SWARM_CLIENT_EXP4" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
 tmux send-keys -t "SWARM_CLIENT_EXP4" "sleep 30s" Enter
-tmux send-keys -t "SWARM_CLIENT_EXP4" "python -m tutorial.example_werewolves_swarm.agent_roll_v2 --config exp4" Enter
+tmux send-keys -t "SWARM_CLIENT_EXP4" "python -m tutorial.example_werewolves_swarm.agent_roll_v2 --config multi-exp4" Enter
 echo "Started SWARM_CLIENT_EXP4"
 
 echo ""

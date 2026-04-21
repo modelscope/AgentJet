@@ -64,7 +64,7 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey):
     game = ExampleWerewolves(
         trainable_targets=["werewolf"],
         big_external_opponent_llm_name="Qwen/Qwen3-235B-A22B-Instruct-2507",
-        big_external_opponent_llm_url="http://22.17.31.54:2888/v1",
+        big_external_opponent_llm_url="http://22.13.222.137:2888/v1",
     )
     res = asyncio.run(game.execute(WorkflowTask(task=task), api_baseurl_key))
     return res

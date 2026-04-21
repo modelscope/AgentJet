@@ -71,6 +71,7 @@ class AgentJetJob:
 
     def __init__(
         self,
+        ensure_new_experiment: bool = False,
         base_yaml_config: str | None = None,
         experiment_dir: str | None = None,
         project_name: str | None = None,
@@ -114,11 +115,23 @@ class AgentJetJob:
 
         self.config_as_dict: dict = self.build_job_from_yaml(base_yaml_config)
         self.config = Config.update_from_dict_recursive(Config(), self.config_as_dict)
+        self.ensure_new_experiment = ensure_new_experiment
 
         self.base_yaml_config: str = cast(str, base_yaml_config)    # currently may be None, but will be set later
         self.experiment_dir: str = cast(str, experiment_dir)
         self.project_name: str = cast(str, project_name)
         self.experiment_name: str = cast(str, experiment_name)
+
+        if self.ensure_new_experiment:
+            # add timestamp suffix to experiment_name to ensure it's new every time, if ensure_new_experiment is True.
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            if self.experiment_name is not None:
+                self.experiment_name += f"_{timestamp}"
+            else:
+                self.experiment_name = self.config.ajet.experiment_name
+                if self.experiment_name != "read_yaml_name":
+                    self.experiment_name += f"_{timestamp}"
+
         self.logging: str = cast(str, logging)
         self.n_gpu: int = cast(int, n_gpu)
         self.model: str = cast(str, model)

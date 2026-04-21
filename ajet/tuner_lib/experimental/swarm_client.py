@@ -620,6 +620,10 @@ class SwarmClient(object):
             self.stop_engine()
             time.sleep(8)
 
+        if agent_jet_job.ensure_new_experiment and not force_restart:
+            logger.warning("ensure_new_experiment is set to True, but force_restart is not set! Will still continue the experiment on the current model version!")
+            time.sleep(8)
+
         logger.success(f"--------------------------------------------------------------------------------------------------")
         logger.success(f"Run `python -m ajet.launcher --swarm-overwatch={self.server_url}` to monitor the training process.")
         logger.success(f"--------------------------------------------------------------------------------------------------")

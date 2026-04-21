@@ -41,7 +41,7 @@ from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 
 DEFAULT_MODEL_14B = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct"
 DEFAULT_MODEL_7B = "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct"
-DEFAULT_OPPONENT_URL = "http://22.17.31.54:2888/v1"
+DEFAULT_OPPONENT_URL = "http://22.13.222.137:2888/v1"
 DEFAULT_OPPONENT_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
 
 ALL_ROLES = ["werewolf", "villager", "seer", "witch", "hunter"]
@@ -353,7 +353,7 @@ class MultiModelWerewolvesTrainer:
                 lora_rank=mc.lora.rank if mc.lora.enabled else None,
                 lora_alpha=mc.lora.alpha if mc.lora.enabled else None,
                 lora_target_modules=mc.lora.target_modules if mc.lora.enabled else None,
-                lr=3e-4,
+                lr=3e-5,
                 layered_summon=True,
             )
 
@@ -435,7 +435,7 @@ class MultiModelWerewolvesTrainer:
 # Predefined Experiment Configurations
 # ============================================================================
 
-VERSION = "v3"
+VERSION = "v4"
 
 
 def get_exp1_config() -> ExperimentConfig:
@@ -596,18 +596,156 @@ def get_exp4_config() -> ExperimentConfig:
 # Main Entry Point
 # ============================================================================
 
+def get_single_exp3_config() -> ExperimentConfig:
+    """
+    Single-model Experiment 3: Single model seer training.
+    - M1 (14B-LoRA): seer
+    - Opponents (235B): werewolf
+    - Collaborators (235B): villager, witch, hunter
+    """
+    return ExperimentConfig(
+        model_configs=[
+            ModelConfig(
+                model_id="M1",
+                swarm_url="http://localhost:10086",
+                model_path=DEFAULT_MODEL_14B,
+                roles=["seer"],
+                lora=LoraConfig(enabled=True, rank=32, alpha=32),
+                experiment_name=f"werewolves_sr_single",
+            ),
+        ],
+        project_name="werewolves_single_model_seer",
+    )
+
+
+def get_single_exp4_config() -> ExperimentConfig:
+    """
+    Single-model Experiment 4: Single model villager training.
+    - M1 (14B-LoRA): villager
+    - Opponents (235B): werewolf
+    - Collaborators (235B): seer, witch, hunter
+    """
+    return ExperimentConfig(
+        model_configs=[
+            ModelConfig(
+                model_id="M1",
+                swarm_url="http://localhost:10086",
+                model_path=DEFAULT_MODEL_14B,
+                roles=["villager"],
+                lora=LoraConfig(enabled=True, rank=32, alpha=32),
+                experiment_name=f"werewolves_vl_single",
+            ),
+        ],
+        project_name="werewolves_single_model_villager",
+    )
+
+
+def get_single_exp5_config() -> ExperimentConfig:
+    """
+    Single-model Experiment 5: Single model witch training.
+    - M1 (14B-LoRA): witch
+    - Opponents (235B): werewolf
+    - Collaborators (235B): villager, seer, hunter
+    """
+    return ExperimentConfig(
+        model_configs=[
+            ModelConfig(
+                model_id="M1",
+                swarm_url="http://localhost:10086",
+                model_path=DEFAULT_MODEL_14B,
+                roles=["witch"],
+                lora=LoraConfig(enabled=True, rank=32, alpha=32),
+                experiment_name=f"werewolves_wt_single",
+            ),
+        ],
+        project_name="werewolves_single_model_witch",
+    )
+
+
+def get_single_exp6_config() -> ExperimentConfig:
+    """
+    Single-model Experiment 6: Single model hunter training.
+    - M1 (14B-LoRA): hunter
+    - Opponents (235B): werewolf
+    - Collaborators (235B): villager, seer, witch
+    """
+    return ExperimentConfig(
+        model_configs=[
+            ModelConfig(
+                model_id="M1",
+                swarm_url="http://localhost:10086",
+                model_path=DEFAULT_MODEL_14B,
+                roles=["hunter"],
+                lora=LoraConfig(enabled=True, rank=32, alpha=32),
+                experiment_name=f"werewolves_ht_single",
+            ),
+        ],
+        project_name="werewolves_single_model_hunter",
+    )
+
+
+def get_single_exp7_config() -> ExperimentConfig:
+    """
+    Single-model Experiment 7: Single model seer + witch + hunter training.
+    - M1 (14B-LoRA): seer, witch, hunter
+    - Opponents (235B): werewolf
+    - Collaborators (235B): villager
+    """
+    return ExperimentConfig(
+        model_configs=[
+            ModelConfig(
+                model_id="M1",
+                swarm_url="http://localhost:10086",
+                model_path=DEFAULT_MODEL_14B,
+                roles=["seer", "witch", "hunter"],
+                lora=LoraConfig(enabled=True, rank=32, alpha=32),
+                experiment_name=f"werewolves_sr_wt_ht_single",
+            ),
+        ],
+        project_name="werewolves_single_model_good_three",
+    )
+
+
+def get_single_exp8_config() -> ExperimentConfig:
+    """
+    Single-model Experiment 8: Single model all good guys training.
+    - M1 (14B-LoRA): villager, seer, witch, hunter
+    - Opponents (235B): werewolf
+    - Collaborators: none
+    """
+    return ExperimentConfig(
+        model_configs=[
+            ModelConfig(
+                model_id="M1",
+                swarm_url="http://localhost:10086",
+                model_path=DEFAULT_MODEL_14B,
+                roles=["villager", "seer", "witch", "hunter"],
+                lora=LoraConfig(enabled=True, rank=32, alpha=32),
+                experiment_name=f"werewolves_all_good_single",
+            ),
+        ],
+        project_name="werewolves_single_model_all_good",
+    )
+
+
 EXPERIMENT_CONFIGS = {
-    "exp1": get_exp1_config,
-    "exp2": get_exp2_config,
-    "exp3": get_exp3_config,
-    "exp4": get_exp4_config,
+    "multi-exp1": get_exp1_config,
+    "multi-exp2": get_exp2_config,
+    "multi-exp3": get_exp3_config,
+    "multi-exp4": get_exp4_config,
+    "single-exp3": get_single_exp3_config,
+    "single-exp4": get_single_exp4_config,
+    "single-exp5": get_single_exp5_config,
+    "single-exp6": get_single_exp6_config,
+    "single-exp7": get_single_exp7_config,
+    "single-exp8": get_single_exp8_config,
 }
 
 
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Multi-model Werewolves Training")
+    parser = argparse.ArgumentParser(description="Werewolves Training")
     parser.add_argument(
         "--config",
         type=str,

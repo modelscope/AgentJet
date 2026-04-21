@@ -43,7 +43,7 @@ def main():
     job_14b = AgentJetJob(
         algorithm="grpo",
         project_name="ajet-swarm-academic-trans-lora",
-        experiment_name="14b-model-lora",
+        experiment_name="translate-14b-model-lora",
         n_gpu=REMOTE_14B_ALLOCATE_GPU_PER_NODE,
         model=REMOTE_14B_TRAIN_MODEL,
         batch_size=REMOTE_14B_BATCH_SIZE,
@@ -53,14 +53,14 @@ def main():
         lora_alpha=32,
         lora_load_format="safetensors",
         layered_summon=True,
-        lr=3e-4,
+        lr=3e-5,
 
     )
 
     job_7b = AgentJetJob(
         algorithm="grpo",
         project_name="ajet-swarm-academic-trans-lora",
-        experiment_name="7b-model-lora",
+        experiment_name="translate-7b-model-lora",
         n_gpu=REMOTE_7B_ALLOCATE_GPU_PER_NODE,
         model=REMOTE_7B_TRAIN_MODEL,
         batch_size=REMOTE_7B_BATCH_SIZE,
@@ -70,7 +70,7 @@ def main():
         lora_alpha=32,
         lora_load_format="safetensors",
         layered_summon=True,
-        lr=3e-4,
+        lr=3e-5,
     )
 
     # Original (sequential) version:
