@@ -100,20 +100,17 @@ class SwarmOverwatch:
         header_text.append(f"\nCurrent Time: {now}", style="green")
         header_text.append(f"  |  Last Update: {last_update}", style="yellow")
         header_text.append(f"  |  Refresh: {self.refresh_interval}s", style="blue")
-        header_text.append(f"\nRequests: {self.total_requests}", style="magenta")
-        # header_text.append(
-        #     f"  |  Errors: {self.error_count}",
-        #     style="red" if self.error_count > 0 else "green",
-        # )
-
         # Inline the most recent verbose log entry (last 30s, overwritten by newer).
+        # When a verbose log is active, hide the "Requests: xxx" line to avoid clutter.
         latest = self._latest_verbose_entry()
         if latest is not None:
             age = max(0.0, time.time() - latest.get("timestamp", time.time()))
             tag = latest.get("tag") or ""
             msg = latest.get("message", "")
             prefix = f"<{tag}> " if tag else ""
-            header_text.append(f", {prefix}{msg}  ({age:.0f}s ago)", style="bright_magenta")
+            header_text.append(f"\n{prefix}{msg}  ({age:.0f}s ago)", style="bright_magenta")
+        else:
+            header_text.append(f"\nRequests: {self.total_requests}", style="magenta")
 
         # Add engine status and global step if available
         if info:
