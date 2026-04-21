@@ -103,3 +103,57 @@ class PeriodicDrainThreadPoolExecutor:
     def shutdown(self, wait=True):
         """Shut down the underlying executor."""
         self._executor.shutdown(wait=wait)
+
+
+class TaskCountLimitedThreadPoolExecutor(PeriodicDrainThreadPoolExecutor):
+    """Bounds the number of in-flight *task-id groups* via a semaphore.
+
+    Callers submit a group of tasks that share the same ``Task.task_id`` (e.g. a
+    GRPO group of rollouts for one prompt). The semaphore is acquired once per
+    group and released only after *all* tasks in the group have finished, so
+    backpressure is applied at the group granularity rather than per-task.
+
+    Inherits ``submit``/retry/``shutdown`` behavior from
+    :class:`PeriodicDrainThreadPoolExecutor`; only the group-level semaphore is
+    layered on top.
+    """
+
+    def __init__(self, max_parallel_groups, max_workers, auto_retry=True, block_first_run=False):
+        super().__init__(
+            workers=max_workers,
+            max_parallel=max_workers,
+            auto_retry=auto_retry,
+            block_first_run=block_first_run,
+        )
+        self._max_parallel_groups = max_parallel_groups
+        self._semaphore = threading.Semaphore(max_parallel_groups)
+
+    def submit_group(self, task_id, fn, args_list):
+        """Submit a group of tasks sharing ``task_id``.
+
+        Blocks until a group slot is available. ``args_list`` is a list of
+        ``dict`` kwargs — one invocation of ``fn`` per entry. The semaphore is
+        released exactly once, when the final future in the group completes.
+        Returns the list of futures.
+        """
+        if not args_list:
+            return []
+
+        self._semaphore.acquire()
+
+        remaining = [len(args_list)]
+        state_lock = threading.Lock()
+
+        def on_done(_f):
+            with state_lock:
+                remaining[0] -= 1
+                should_release = remaining[0] == 0
+            if should_release:
+                self._semaphore.release()
+
+        futures = []
+        for kwargs in args_list:
+            future = self.submit(fn, **kwargs)
+            future.add_done_callback(on_done)
+            futures.append(future)
+        return futures

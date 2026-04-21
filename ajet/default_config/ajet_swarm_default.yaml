@@ -17,7 +17,7 @@ ajet:
     # how many times a task should be repeated
     num_repeat: 4
     # monitor LLM's abormal behaviors during rollout
-    compute_madness_checklist: []
+    compute_madness_checklist: ["nonsense"]
     # send signal to terminate context tracing when LLM is losing control
     agent_madness_termination: True # terminate_after_gone_mad
     # punish the LLM when it is detected as lost control

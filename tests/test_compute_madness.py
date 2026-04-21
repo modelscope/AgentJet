@@ -346,7 +346,8 @@ def test_compute_string_madness_examples():
         print(most_recommended_artist)
         apis.supervisor.complete_task(answer=most_recommended_artist)
         ```คะแน limburg<|im_end|>
-    """
+    """,
+            checklist=["nonsense", "non_ascii"],
         )
         == -1
     )

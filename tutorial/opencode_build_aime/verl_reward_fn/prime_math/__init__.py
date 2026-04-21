@@ -21,7 +21,10 @@ FROM: https://github.com/openai/prm800k/blob/main/prm800k/grading/grader.py
 
 import contextlib
 import math
+import os
 import re
+import threading
+import time
 
 import sympy
 from pylatexenc import latex2text
@@ -32,12 +35,33 @@ from ..py_functional import timeout_limit
 from . import math_normalize
 from .grader import math_equal
 
+_SYMPY_TIMEOUT_LOG_PATH = os.environ.get(
+    "SYMPY_TIMEOUT_LOG_PATH",
+    os.path.join(os.getcwd(), "sympy_timeout.log"),
+)
+_SYMPY_TIMEOUT_LOG_LOCK = threading.Lock()
+
+
+def _log_sympy_timeout(ground_truth_elem: str, given_elem: str, err: Exception) -> None:
+    try:
+        line = (
+            f"{time.strftime('%Y-%m-%d %H:%M:%S')}\t"
+            f"pid={os.getpid()}\t"
+            f"err={type(err).__name__}: {err}\t"
+            f"gt={ground_truth_elem!r}\t"
+            f"given={given_elem!r}\n"
+        )
+        with _SYMPY_TIMEOUT_LOG_LOCK, open(_SYMPY_TIMEOUT_LOG_PATH, "a") as fh:
+            fh.write(line)
+    except Exception:
+        pass
+
 # import math_normalize
 # from grader import math_equal
 
 # sympy might hang -- we don't care about trying to be lenient in these cases
 BAD_SUBSTRINGS = ["^{", "^("]
-BAD_REGEXES = ["\^[0-9]+\^", "\^[0-9][0-9]+"]
+BAD_REGEXES = [r"\^[0-9]+\^", r"\^[0-9][0-9]+"]
 TUPLE_CHARS = "()[]"
 
 
@@ -114,7 +138,7 @@ def _inject_implicit_mixed_number(step: str):
 
 def _strip_properly_formatted_commas(expr: str):
     # We want to be careful because we don't want to strip tuple commas
-    p1 = re.compile("(\d)(,)(\d\d\d)($|\D)")
+    p1 = re.compile(r"(\d)(,)(\d\d\d)($|\D)")
     while True:
         next_expr = p1.sub("\\1\\3\\4", expr)
         if next_expr == expr:
@@ -129,7 +153,7 @@ def _normalize(expr: str) -> str:
         return None
 
     # Remove enclosing `\text{}`.
-    m = re.search("^\\\\text\{(?P<text>.+?)\}$", expr)
+    m = re.search(r"^\\text\{(?P<text>.+?)\}$", expr)
     if m is not None:
         expr = m.group("text")
 
@@ -163,8 +187,8 @@ def _normalize(expr: str) -> str:
         "yard",
         "liter",
     ]:
-        expr = re.sub(f"{unit}(es)?(s)? *(\^[0-9]+)?", "", expr)
-    expr = re.sub("\^ *\\\\circ", "", expr)
+        expr = re.sub(rf"{unit}(es)?(s)? *(\^[0-9]+)?", "", expr)
+    expr = re.sub(r"\^ *\\circ", "", expr)
 
     if len(expr) > 0 and expr[0] == "{" and expr[-1] == "}":
         expr = expr[1:-1]
@@ -291,6 +315,9 @@ def grade_answer(given_answer: str, ground_truth: str) -> bool:
                 # if the ground truth answer is an integer, we require the given answer to be a strict match
                 # (no sympy.simplify)
                 is_correct = False
+            elif _str_is_int(ground_truth_elem) and _str_is_int(given_elem):
+                # both are plain integers — compare numerically, no sympy subprocess needed
+                is_correct = _str_to_int(ground_truth_elem) == _str_to_int(given_elem)
             else:
                 try:
                     is_correct = are_equal_under_sympy(ground_truth_elem, given_elem)
@@ -298,6 +325,7 @@ def grade_answer(given_answer: str, ground_truth: str) -> bool:
                     # if there's an error, we'll just say it's not correct
                     is_correct = False
                     print(f"Error: {e} from are_equal_under_sympy, {ground_truth_elem}, {given_elem}")
+                    _log_sympy_timeout(ground_truth_elem, given_elem, e)
             if not is_correct:
                 break
 
@@ -398,7 +426,7 @@ def compute_score(model_output: str, ground_truth: str) -> tuple[bool, bool, str
         return True, True, extracted_model_output
 
     try:
-        if "\pi" in extracted_model_output or "\pi" in ground_truth:
+        if r"\pi" in extracted_model_output or r"\pi" in ground_truth:
             equivs = []
             for pi in [math.pi, 3.14]:
                 equivs.append(math_equal(extracted_model_output, ground_truth, timeout=True, pi=pi))

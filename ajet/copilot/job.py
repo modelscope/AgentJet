@@ -53,7 +53,19 @@ class AgentJetJob:
         num_repeat: Tell swarm server how many repeated sample it should expect for a same task (same means task_id is identical).
         batch_size: Training batch size for the model (the watermark to empty buffer pool and update llm weight).
         swarm_mode: Whether to enable swarm mode for distributed sample collection.
-        swarm_mode_sample_collection_method: Method for collecting samples in swarm mode.
+        swarm_mode_sample_collection_method: Stop-condition the swarm server uses to decide when the
+            current batch of collected samples is "enough" and the next weight update can proceed.
+            One of:
+              - "rollout_until_finish_enough_episodes": stop once ``total_episodes >= batch_size * num_repeat``.
+                Each episode counts individually regardless of its ``task_id``; cheapest, but a GRPO
+                group may end up with fewer than ``num_repeat`` episodes.
+              - "rollout_until_finish_enough_tasks" (default): stop once ``batch_size`` distinct
+                ``task_id``s have each accumulated at least ``num_repeat`` completed episodes. Guarantees
+                every GRPO group is fully populated.
+              - "rollout_until_finish_enough_non_dummy_tasks": like the above, but only counts tasks
+                whose ``num_repeat`` episodes do *not* all share the same reward. Tasks with uniform
+                reward (e.g. all 0 or all 1) produce zero advantage under GRPO and are skipped —
+                useful when the dataset contains many too-easy or too-hard prompts.
         max_env_worker: an estimation about how many episodes will be running in parallel (all swarm clients combined).
         backbone: Training backbone framework (e.g., 'verl').
         max_prompt_length: Maximum token length for input prompts (token length before the first llm-generated token).
@@ -67,7 +79,7 @@ class AgentJetJob:
         layered_summon: Enable layered summon for LoRA (default False).
         gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
         lr: Learning rate for optimizer (default 1e-6).
-        compute_madness_checklist: List of madness checks to monitor LLM's abnormal behaviors during rollout (default []).
+        compute_madness_checklist: List of madness checks to monitor LLM's abnormal behaviors during rollout (default ["nonsense"], detect infinite repeat such as "但但但但但但但但但但....").
     """
 
     def __init__(
@@ -156,7 +168,7 @@ class AgentJetJob:
         self.layered_summon: bool = cast(bool, layered_summon)
         self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
         self.lr: float = cast(float, lr)
-        self.compute_madness_checklist: List[str] = cast(List[str], compute_madness_checklist if compute_madness_checklist is not None else [])
+        self.compute_madness_checklist: List[str] = cast(List[str], compute_madness_checklist)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {

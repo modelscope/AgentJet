@@ -81,10 +81,10 @@ def has_repeat(token, remember_n_words=5, patience_max=10):
 def compute_string_madness(completion, detail=False, checklist=["nonsense"]) -> float:
     all_reward = 0.0
     try:
-        if ("nonsense" in checklist) and ("non_ascii" in checklist):
+        if "nonsense" in checklist:
             all_reward += compute_string_madness_char(completion, detail=detail)
-        elif ("nonsense" in checklist) and ("non_ascii" not in checklist):
-            all_reward += compute_string_madness_char(completion, detail=detail, skip_non_ascii=True)
+        if "non_ascii" in checklist:
+            all_reward += compute_string_madness_non_ascii(completion, detail=detail)
         if "format_type_1" in checklist:
             all_reward += compute_string_madness_format(completion, detail=detail, format_type="type_1")
     except Exception as e:
@@ -136,15 +136,30 @@ def compute_string_madness_format(completion, detail, format_type) -> float:
         raise NotImplementedError(f"format_type {format_type} not implemented")
 
 
-def compute_string_madness_char(completion, detail=False, skip_non_ascii=False) -> float:
+def compute_string_madness_char(completion, detail=False) -> float:
     if detail:
         result = {
-            "has_non_ascii": has_non_ascii(completion),
             "has_repeat": has_repeat(completion.split(), remember_n_words=5, patience_max=10),
             "has_repeat_x": has_repeat(completion, remember_n_words=4, patience_max=200),
             "has_wrong_sp_token": "<|im_start|>" in completion,
-            # 'non_ascii': {ch for ch in completion if ord(ch) > 127}
         }
+        print(result)
+
+    if "<|im_start|>" in completion:
+        return -1.0
+
+    if has_repeat(completion.split(), remember_n_words=5, patience_max=10):
+        return -1.0
+
+    if has_repeat(completion, remember_n_words=4, patience_max=200):
+        return -1.0
+
+    return 0
+
+
+def compute_string_madness_non_ascii(completion, detail=False) -> float:
+    if detail:
+        result = {"has_non_ascii": has_non_ascii(completion)}
         if has_non_ascii(completion):
             for char in completion:
                 if has_non_ascii(char):
@@ -152,17 +167,7 @@ def compute_string_madness_char(completion, detail=False, skip_non_ascii=False) 
                     print(f"found non-ascii char: {char} ord={ord(char)}")
         print(result)
 
-    if "<|im_start|>" in completion:
-        return -1.0
-
-    if skip_non_ascii:
-        if has_non_ascii(completion):
-            return -1.0
-
-    if has_repeat(completion.split(), remember_n_words=5, patience_max=10):
-        return -1.0
-
-    if has_repeat(completion, remember_n_words=4, patience_max=200):
+    if has_non_ascii(completion):
         return -1.0
 
     return 0

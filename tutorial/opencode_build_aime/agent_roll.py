@@ -14,7 +14,7 @@ import os
 from ajet.schema.task import Task
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader, HuggingFaceTaskReader
-from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
+from ajet.utils.thread_executors import TaskCountLimitedThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
@@ -22,13 +22,15 @@ from tutorial.opencode_build_aime.agent_run_v3 import execute_agent
 from tqdm import tqdm
 
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct")
+BATCH_SIZE = 64
 ajet_job = AgentJetJob(
     algorithm="grpo",
-    experiment_name="aime_swarm_14b_v3",
+    experiment_name="aime_swarm_14b_v3_2",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
-    batch_size=64,
+    batch_size=BATCH_SIZE,
+    swarm_mode_sample_collection_method="rollout_until_finish_enough_non_dummy_tasks",
     num_repeat=8,
     logging="swanlab"
 )
@@ -184,16 +186,18 @@ class AIMESwarmTrainer:
         self.run_eval(0)
 
         task_count = 0
-        executor = PeriodicDrainThreadPoolExecutor(
-            workers=self.grpo_n * self.remote_batch_size,
-            max_parallel=128,
-            auto_retry=True
+        max_parallel = 512
+        executor = TaskCountLimitedThreadPoolExecutor(
+            max_parallel_groups=BATCH_SIZE,
+            max_workers=max_parallel,
+            auto_retry=True,
         )
 
         for epoch in range(self.NUM_EPOCH):
             for _, task in enumerate(self.dataset.generate_training_tasks()):
-                for _ in range(self.grpo_n):
-                    executor.submit_with_periodic_drain(fn=self.rollout, task=task)
+
+                args_list = [{"task": task} for _ in range(self.grpo_n)]
+                executor.submit_group(task_id=task.task_id, fn=self.rollout, args_list=args_list)
 
                 task_count += 1
 

@@ -15,37 +15,204 @@
 Contain small python utility functions
 """
 
+import atexit
 import importlib
 import multiprocessing
 import os
+import pickle
 import queue  # Import the queue module for exception type hint
 import signal
+import threading
 from contextlib import contextmanager
 from functools import wraps
 from types import SimpleNamespace
 from typing import Any, Callable, Iterator, Optional
 
 
-# --- Top-level helper for multiprocessing timeout ---
-# This function MUST be defined at the top level to be pickleable
-def _mp_target_wrapper(target_func: Callable, mp_queue: multiprocessing.Queue, args: tuple, kwargs: dict[str, Any]):
-    """
-    Internal wrapper function executed in the child process.
-    Calls the original target function and puts the result or exception into the queue.
-    """
-    try:
-        result = target_func(*args, **kwargs)
-        mp_queue.put((True, result))  # Indicate success and put result
-    except Exception as e:
-        # Ensure the exception is pickleable for the queue
-        try:
-            import pickle
+# --- Persistent worker pool for timed calls ---
+# A single long-lived child process handles all timed calls from this Python process.
+# Avoids per-call fork/spawn overhead, which under heavy concurrent load can itself
+# exceed the configured timeout on trivial inputs.
 
-            pickle.dumps(e)  # Test if the exception is pickleable
-            mp_queue.put((False, e))  # Indicate failure and put exception
-        except (pickle.PicklingError, TypeError):
-            # Fallback if the original exception cannot be pickled
-            mp_queue.put((False, RuntimeError(f"Original exception type {type(e).__name__} not pickleable: {e}")))
+
+def _pool_worker_loop(in_q: "multiprocessing.Queue", out_q: "multiprocessing.Queue") -> None:
+    """Child-side loop: read tasks, run with SIGALRM timeout, push result."""
+    while True:
+        task = in_q.get()
+        if task is None:  # poison pill
+            return
+        func, args, kwargs, timeout = task
+
+        def _handler(signum, frame):
+            fname = getattr(func, "__name__", "target")
+            raise TimeoutError(f"Function {fname} timed out after {timeout} seconds (persistent worker)!")
+
+        old = signal.signal(signal.SIGALRM, _handler)
+        signal.setitimer(signal.ITIMER_REAL, timeout)
+        try:
+            result = func(*args, **kwargs)
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            try:
+                out_q.put((True, result))
+            except Exception:
+                out_q.put((False, RuntimeError("Result is not pickleable")))
+        except BaseException as e:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            try:
+                pickle.dumps(e)
+                out_q.put((False, e))
+            except (pickle.PicklingError, TypeError):
+                out_q.put(
+                    (False, RuntimeError(f"Original exception type {type(e).__name__} not pickleable: {e}"))
+                )
+        finally:
+            signal.signal(signal.SIGALRM, old)
+
+
+_TIMEOUT_POOL_SIZE = int(os.environ.get("TIMEOUT_POOL_SIZE", "64"))
+
+
+class _Worker:
+    """Wraps one long-lived child process with dedicated in/out queues."""
+
+    def __init__(self, ctx) -> None:
+        self._ctx = ctx
+        self._in_q = ctx.Queue()
+        self._out_q = ctx.Queue()
+        self._proc = ctx.Process(
+            target=_pool_worker_loop, args=(self._in_q, self._out_q), daemon=True
+        )
+        self._proc.start()
+
+    def is_alive(self) -> bool:
+        return self._proc is not None and self._proc.is_alive()
+
+    def submit(self, func: Callable, args: tuple, kwargs: dict, timeout: float) -> None:
+        self._in_q.put((func, args, kwargs, timeout))
+
+    def get_result(self, timeout: float):
+        return self._out_q.get(timeout=timeout)
+
+    def kill(self) -> None:
+        try:
+            if self._proc is not None and self._proc.is_alive():
+                self._proc.terminate()
+                self._proc.join(timeout=0.5)
+            if self._proc is not None and self._proc.is_alive():
+                self._proc.kill()
+                self._proc.join(timeout=0.5)
+        except Exception:
+            pass
+        for q in (self._in_q, self._out_q):
+            try:
+                if q is not None:
+                    q.close()
+                    q.join_thread()
+            except Exception:
+                pass
+        self._proc = None
+        self._in_q = None
+        self._out_q = None
+
+    def shutdown(self) -> None:
+        try:
+            if self._in_q is not None:
+                self._in_q.put(None)
+            if self._proc is not None and self._proc.is_alive():
+                self._proc.join(timeout=0.5)
+        except Exception:
+            pass
+        self.kill()
+
+
+class _PersistentTimeoutPool:
+    """N-worker persistent pool serving this process.
+
+    Up to `size` long-lived child workers are spawned lazily. Each call acquires
+    a free worker, submits the task, waits for the result with a small grace
+    over the configured timeout, and returns the worker to the free list. If a
+    worker becomes unresponsive, it is terminated and a replacement is created
+    on the next acquire.
+    """
+
+    def __init__(self, size: int) -> None:
+        self._size = max(1, int(size))
+        self._ctx = multiprocessing.get_context("fork") if os.name == "posix" else multiprocessing.get_context()
+        self._cond = threading.Condition()
+        self._free: list[_Worker] = []
+        self._alive_count = 0
+        self._owner_pid = os.getpid()
+
+    def _reset_if_forked(self) -> None:
+        if os.getpid() != self._owner_pid:
+            # A fork happened after pool init — child inherits dead handles; start over.
+            self._free = []
+            self._alive_count = 0
+            self._owner_pid = os.getpid()
+
+    def _acquire(self) -> _Worker:
+        with self._cond:
+            while True:
+                self._reset_if_forked()
+                # Reuse an already-spawned free worker.
+                while self._free:
+                    w = self._free.pop()
+                    if w.is_alive():
+                        return w
+                    # Stale (died in background) — drop it.
+                    self._alive_count -= 1
+                # Room to spawn a new one?
+                if self._alive_count < self._size:
+                    w = _Worker(self._ctx)
+                    self._alive_count += 1
+                    return w
+                # All workers busy; wait for one to be released.
+                self._cond.wait()
+
+    def _release(self, w: _Worker, keep: bool) -> None:
+        with self._cond:
+            if keep and w.is_alive():
+                self._free.append(w)
+            else:
+                self._alive_count -= 1
+                w.kill()
+            self._cond.notify()
+
+    def call(self, func: Callable, args: tuple, kwargs: dict, timeout: float) -> Any:
+        w = self._acquire()
+        keep = True
+        try:
+            w.submit(func, args, kwargs, timeout)
+            try:
+                success, payload = w.get_result(timeout=timeout + 1.0)
+            except queue.Empty:
+                keep = False
+                w.kill()
+                fname = getattr(func, "__name__", "target")
+                raise TimeoutError(
+                    f"Function {fname} timed out after {timeout} seconds (persistent worker, unresponsive)!"
+                )
+        except BaseException:
+            # If we failed mid-conversation (e.g., queue put error), don't reuse this worker.
+            keep = False
+            raise
+        finally:
+            self._release(w, keep=keep and w.is_alive())
+
+        if success:
+            return payload
+        raise payload
+
+    def shutdown(self) -> None:
+        with self._cond:
+            workers = list(self._free)
+            self._free.clear()
+        for w in workers:
+            w.shutdown()
+
+
+_GLOBAL_TIMEOUT_POOL = _PersistentTimeoutPool(size=_TIMEOUT_POOL_SIZE)
+atexit.register(_GLOBAL_TIMEOUT_POOL.shutdown)
 
 
 # Renamed the function from timeout to timeout_limit
@@ -100,46 +267,15 @@ def timeout_limit(seconds: float, use_signals: bool = False):
 
             return wrapper_signal
         else:
-            # --- Multiprocessing based timeout (existing logic) ---
+            # --- Persistent-worker-pool based timeout ---
+            # Dispatches to a single long-lived child process per parent process,
+            # which runs each call with a SIGALRM timeout internally. Avoids the
+            # per-call process startup overhead of the old implementation.
             @wraps(func)
-            def wrapper_mp(*args, **kwargs):
-                q = multiprocessing.Queue(maxsize=1)
-                process = multiprocessing.Process(target=_mp_target_wrapper, args=(func, q, args, kwargs))
-                process.start()
-                process.join(timeout=seconds)
+            def wrapper_pool(*args, **kwargs):
+                return _GLOBAL_TIMEOUT_POOL.call(func, args, kwargs, seconds)
 
-                if process.is_alive():
-                    process.terminate()
-                    process.join(timeout=0.5)  # Give it a moment to terminate
-                    if process.is_alive():
-                        print(f"Warning: Process {process.pid} did not terminate gracefully after timeout.")
-                    # Update function name in error message if needed (optional but good practice)
-                    raise TimeoutError(f"Function {func.__name__} timed out after {seconds} seconds (multiprocessing)!")
-
-                try:
-                    success, result_or_exc = q.get(timeout=0.1)  # Small timeout for queue read
-                    if success:
-                        return result_or_exc
-                    else:
-                        raise result_or_exc  # Reraise exception from child
-                except queue.Empty as err:
-                    exitcode = process.exitcode
-                    if exitcode is not None and exitcode != 0:
-                        raise RuntimeError(
-                            f"Child process exited with error (exitcode: {exitcode}) before returning result."
-                        ) from err
-                    else:
-                        # Should have timed out if queue is empty after join unless process died unexpectedly
-                        # Update function name in error message if needed (optional but good practice)
-                        raise TimeoutError(
-                            f"Operation timed out or process finished unexpectedly without result "
-                            f"(exitcode: {exitcode})."
-                        ) from err
-                finally:
-                    q.close()
-                    q.join_thread()
-
-            return wrapper_mp
+            return wrapper_pool
 
     return decorator
 
