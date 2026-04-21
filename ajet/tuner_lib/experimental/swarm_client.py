@@ -54,83 +54,210 @@ def raise_for_status_with_detail(resp):
 class SwarmServerOfflineError(Exception): ...
 
 
-class SwarmClient(object):
+class SwarmClientBase(object):
+    """HTTP client plus a background thread that keeps engine status cached."""
+
+    SLOW_POLL = 1.0
+    FAST_POLL = 0.33
+    FAST_POLL_WINDOW = 10.0
+    REFRESH_TRIGGER_KEYWORDS = (
+        "broken pipe", "disconnected", "connection reset",
+        "connection closed", "connection aborted", "bad file descriptor",
+    )
 
     def __init__(self, server_url: str, verbose: bool = True):
         self.server_url = server_url
         self.verbose = verbose
         self.client_uuid = str(uuid.uuid4())
-        self.previous_warning_time = 0
-        self.record_episode_expire_time = {}
-        self.auto_batching_tasks = []
 
-        # better logging management
+        # http client
         self._last_second_print_buffer: dict[str, float] = {}
-        self._begin_episode_lock = threading.Lock()
         self._http_client_lock = threading.Lock()
         self._http_client = self._refresh_http_client()
-        # cache for get_engine_status (protected by _http_client_lock)
-        self._engine_status_cache: tuple[str, dict, float] | None = None  # (status, json, timestamp)
-        self._engine_status_cache_ttl = 0.5
-        # record last registered AgentJetJob
-        self._agent_jet_job = None
-        # throttle
-        self._recent_seen_tasks = []
+
+        # engine-status cache (written by the poll thread; readers wait on _engine_status_ready)
+        self._engine_status_cache: tuple[str, dict] | None = None
+        self._engine_status_ready = threading.Event()
+        self._engine_status_last_error_log_time = 0.0
+        self._engine_status_poll_interval = self.SLOW_POLL
+
+        # fast-poll window: True for FAST_POLL_WINDOW seconds after each get_engine_status() call
+        self._high_freq_update_status = False
+        self._high_freq_update_expiry = 0.0
+
+        # callbacks fired once per fresh transition into ENGINE.WEIGHT_SYNCING
+        self._entering_weight_sync_callbacks: list = []
+        self._last_observed_engine_status: str | None = None
+        self._engine_status_callback_lock = threading.Lock()
+
+        # background polling thread
+        self._engine_status_poll_stop = threading.Event()
+        self._engine_status_poll_thread = threading.Thread(
+            target=self._engine_status_poll_loop,
+            daemon=True,
+            name=f"SwarmClient-EngineStatusPoll-{self.client_uuid[:8]}",
+        )
+        self._engine_status_poll_thread.start()
+
+    # ---- logging ------------------------------------------------------
 
     def logger_info(self, message):
-        # logger with de-duplication within 1 second to prevent log flooding
+        """logger.info with 1s de-duplication to avoid flooding."""
+        now = time.time()
+        last = self._last_second_print_buffer.get(message)
+        if last is not None and now - last < 1:
+            return
+        self._last_second_print_buffer[message] = now
+        logger.info(message)
+        # keep the dict small
+        for k in [k for k, ts in self._last_second_print_buffer.items() if now - ts > 1]:
+            del self._last_second_print_buffer[k]
 
-        if message in self._last_second_print_buffer.keys():
-            timestamp = self._last_second_print_buffer
-            if time.time() - timestamp[message] < 1:
-                return
-            else:
-                self._last_second_print_buffer[message] = time.time()
-                logger.info(message)
-                # clean up old records to prevent memory leak
-                keys_to_delete = [key for key, ts in self._last_second_print_buffer.items() if time.time() - ts > 1]
-                for key in keys_to_delete:
-                    del self._last_second_print_buffer[key]
-        else:
-            self._last_second_print_buffer[message] = time.time()
-            logger.info(message)
-
-        return
+    # ---- http client --------------------------------------------------
 
     def _refresh_http_client(self):
-        """Refresh the HTTP client by closing the old one and creating a new one."""
+        """Close the existing http client and create a fresh one."""
         with self._http_client_lock:
             try:
                 self._http_client.close()
             except Exception:
-                pass  # Ignore errors when closing
+                pass
             try:
                 self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=True)
-            except:
+            except Exception:
                 self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=False)
             logger.warning("swarm client httpx client refreshed.")
             return self._http_client
 
     def _should_refresh_client_on_error(self, error: Exception) -> bool:
-        """Check if an error suggests the HTTP client should be refreshed."""
-        error_msg = str(error).lower()
-        return any(keyword in error_msg for keyword in [
-            "broken pipe",
-            "disconnected",
-            "connection reset",
-            "connection closed",
-            "connection aborted",
-            "bad file descriptor",
-            # "client has been closed",
-            # "cannot send a request",
-        ])
+        msg = str(error).lower()
+        return any(k in msg for k in self.REFRESH_TRIGGER_KEYWORDS)
+
+    # ---- weight-sync transition callbacks -----------------------------
+
+    def add_entering_weight_sync_callback(self, callback):
+        """Fire `callback()` once each time engine status enters ENGINE.WEIGHT_SYNCING."""
+        with self._engine_status_callback_lock:
+            self._entering_weight_sync_callbacks.append(callback)
+
+    def _observe_engine_status(self, new_status: str):
+        with self._engine_status_callback_lock:
+            fresh_entry = (
+                new_status == "ENGINE.WEIGHT_SYNCING"
+                and self._last_observed_engine_status != "ENGINE.WEIGHT_SYNCING"
+            )
+            self._last_observed_engine_status = new_status
+            callbacks = list(self._entering_weight_sync_callbacks) if fresh_entry else ()
+        for cb in callbacks:
+            try:
+                cb()
+            except Exception as e:
+                logger.exception(f"Error in entering_weight_sync callback: {e}")
+
+    # ---- engine status: public reader + background poller -------------
+
+    def get_engine_status(self) -> Tuple[str, dict]:
+        """Return the latest cached (status, json). Extends the fast-poll window."""
+        self._high_freq_update_status = True
+        self._engine_status_poll_interval = self.FAST_POLL
+        self._high_freq_update_expiry = time.time() + self.FAST_POLL_WINDOW
+
+        if not self._engine_status_ready.is_set():
+            self._engine_status_ready.wait(timeout=15)
+        return self._engine_status_cache or ("ENGINE.CANNOT_CONNECT", {})
+
+    def _engine_status_poll_loop(self):
+        """Background thread: fetch engine status at _engine_status_poll_interval."""
+        while not self._engine_status_poll_stop.is_set():
+            if self._high_freq_update_status and time.time() >= self._high_freq_update_expiry:
+                self._high_freq_update_status = False
+                self._engine_status_poll_interval = self.SLOW_POLL
+            self._poll_engine_status_once()
+            self._engine_status_poll_stop.wait(self._engine_status_poll_interval)
+
+    def _poll_engine_status_once(self):
+        try:
+            resp = self._http_client.get(f"{self.server_url}/get_engine_status", timeout=10)
+            raise_for_status_with_detail(resp)
+            resp_json = resp.json()
+            status = resp_json.get("engine_status", "unknown")
+            if status == "unknown":
+                logger.warning(f"get_engine_status: {resp_json}")
+            self._engine_status_cache = (status, resp_json)
+            self._engine_status_ready.set()
+            self._observe_engine_status(status)
+        except Exception as e:
+            if self._should_refresh_client_on_error(e):
+                self._refresh_http_client()
+            if self._engine_status_cache is None:
+                # unblock waiters on the very first call when the server is unreachable
+                self._engine_status_cache = ("ENGINE.CANNOT_CONNECT", {})
+                self._engine_status_ready.set()
+            now = time.time()
+            if now - self._engine_status_last_error_log_time > 30:
+                logger.error(f"Error getting engine status in poll loop: {e}")
+                self._engine_status_last_error_log_time = now
+
+    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=3600):
+        """Block until engine status reaches desired_status, reporting every 30s."""
+        if verbose:
+            self.logger_info(f"Polling engine status until {desired_status}...")
+        start = time.time()
+        last_report = start
+        initial_status, _ = self.get_engine_status()
+
+        while True:
+            try:
+                current_status, _ = self.get_engine_status()
+                now = time.time()
+
+                if now - start >= timeout:
+                    raise TimeoutError(f"Timeout reached while waiting for engine status to change to {desired_status}")
+
+                if initial_status == "ENGINE.OFFLINE" and current_status == "ENGINE.OFFLINE" and desired_status != "ENGINE.OFFLINE":
+                    raise SwarmServerOfflineError(
+                        f"Engine status changed from {initial_status} to OFFLINE while waiting for {desired_status}. "
+                        "This may indicate an error in the engine. Please check the swarm server logs for details."
+                    )
+
+                if current_status == desired_status:
+                    if verbose:
+                        self.logger_info(f"Engine status is {desired_status}.")
+                    return
+
+                if verbose and now - last_report >= 30:
+                    self.logger_info(f"Current engine status (already waited {int(now - start)}s): {current_status}")
+                    last_report = now
+
+                time.sleep(5)
+            except SwarmServerOfflineError:
+                raise
+            except Exception as e:
+                if self._should_refresh_client_on_error(e):
+                    self._refresh_http_client()
+                logger.error(f"Error polling engine status: {e}")
+                time.sleep(5)
+
+
+
+class SwarmClient(SwarmClientBase):
+
+    def __init__(self, server_url: str, verbose: bool = True):
+        super().__init__(server_url=server_url, verbose=verbose)
+        self.previous_warning_time = 0
+        self.record_episode_expire_time = {}
+        self.auto_batching_tasks = []
+        self._begin_episode_lock = threading.Lock()
+        # record last registered AgentJetJob
+        self._agent_jet_job = None
+        # throttle
+        self._recent_seen_tasks = []
 
     def _clean_up_expired_records(self):
         # remove records that have expired and expired at least CLEAN_RECORD_TIMEOUT seconds ago
         current_time = time.time()
         expired_episodes = [
-            episode_uuid for episode_uuid, expire_time
-                         in self.record_episode_expire_time.items()
+            episode_uuid for episode_uuid, expire_time in self.record_episode_expire_time.items()
             if expire_time < current_time - CLEAN_RECORD_TIMEOUT
         ]
         for episode_uuid in expired_episodes:
@@ -485,88 +612,6 @@ class SwarmClient(object):
         self._wait_until_status_change_to(desired_status="ENGINE.ROLLING")
         logger.success("Training engine is now ROLLING and ready.")
 
-    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=3600):
-        """
-        Poll engine status until it reaches desired_status.
-        Reports status every 5 seconds while waiting.
-        """
-        if verbose:
-            self.logger_info(f"Polling engine status until {desired_status}...")
-        last_report_time = time.time()
-        init_poll_time = last_report_time
-        initial_status, _ = self.get_engine_status()
-
-        while True:
-            try:
-                current_status, _ = self.get_engine_status()
-                current_time = time.time()
-
-                # Check if timeout has been reached
-                if current_time - init_poll_time >= timeout:
-                    raise TimeoutError(f"Timeout reached while waiting for engine status to change to {desired_status}")
-
-                if (initial_status == "ENGINE.OFFLINE") and (current_status == "ENGINE.OFFLINE") and (desired_status!="ENGINE.OFFLINE"):
-                    raise SwarmServerOfflineError(f"Engine status changed from {initial_status} to OFFLINE while waiting for {desired_status}. This may indicate an error in the engine. Please check the swarm server logs for details.")
-
-                # Report status every 5 seconds
-                if current_time - last_report_time >= 30:
-                    if verbose:
-                        self.logger_info(f"Current engine status (already waited {int(current_time - init_poll_time)}s): {current_status}")
-                    last_report_time = current_time
-
-                # Check if engine has reached the desired status
-                if current_status == desired_status:
-                    if verbose:
-                        self.logger_info(f"Engine status is {desired_status}.")
-                    break
-
-                # Wait a bit before next poll
-                time.sleep(5)
-
-            except SwarmServerOfflineError as e:
-                raise e
-
-            except Exception as e:
-                if self._should_refresh_client_on_error(e):
-                    self._refresh_http_client()
-                logger.error(f"Error polling engine status: {e}")
-                time.sleep(5)
-
-    def get_engine_status(self) -> Tuple[str, dict]:
-        max_try = 5
-        for attempt in range(max_try):
-            try:
-                with self._http_client_lock:
-                    # check cache first (inside lock to avoid race condition)
-                    current_time = time.time()
-                    if self._engine_status_cache is not None:
-                        cached_status, cached_json, cached_time = self._engine_status_cache
-                        if current_time - cached_time < self._engine_status_cache_ttl:
-                            return cached_status, cached_json
-
-                    # cache miss or expired, make the request
-                    resp = self._http_client.get(
-                        f"{self.server_url}/get_engine_status",
-                        timeout=10
-                    )
-                    raise_for_status_with_detail(resp)
-                    resp_json = resp.json()
-                    result = resp_json.get("engine_status", "unknown")
-                    if result == "unknown":
-                        logger.warning("get_engine_status: " + str(resp_json))
-
-                    # update cache
-                    self._engine_status_cache = (result, resp_json, time.time())
-                    return result, resp_json
-
-            except Exception as e:
-                if self._should_refresh_client_on_error(e) and attempt < max_try - 1:
-                    self._refresh_http_client()
-                    continue
-                else:
-                    logger.error(f"Error getting engine status: {e}")
-                    return "ENGINE.CANNOT_CONNECT", {}
-        return "ENGINE.CANNOT_CONNECT", {}
 
     def can_continue_episode(self, episode_uuid: str) -> bool:
         if not episode_uuid:

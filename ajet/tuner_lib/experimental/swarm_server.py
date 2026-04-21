@@ -27,8 +27,14 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     BoolResponse,
     RegisterEpisodeRequest,
     UpdateEngineStatusRequest,
+    PushVerboseLogRequest,
+    VerboseLogEntry,
+    VerboseLogsResponse,
     VALID_STATUSES,
 )
+
+VERBOSE_LOG_TTL_SECONDS = 30.0
+VERBOSE_LOG_MAX_ENTRIES = 50
 
 RCVTIMEO = 2 * 1000
 RCVTIMEO_OUT = 300 * 1000
@@ -800,6 +806,35 @@ def register_enable_swarm_mode_routes(
         except Exception as e:
             logger.error(f"Error getting current batch rollout pool information: {e}")
             return CurrentBatchRolloutPoolInformation()
+
+    # --------------------------------------------------------------------
+    # ------------ verbose log (ephemeral, 30s TTL) ----------------------
+    # --------------------------------------------------------------------
+    if "verbose_logs" not in shared_mem_dict:
+        shared_mem_dict["verbose_logs"] = []
+
+    @app.post("/push_verbose_log", response_model=BoolResponse)
+    async def push_verbose_log(req: PushVerboseLogRequest):
+        """Push a short verbose status line. Auto-expires after 30 seconds."""
+        now = time.time()
+        entry = VerboseLogEntry(timestamp=now, tag=req.tag, message=req.message)
+        logs = list(shared_mem_dict.get("verbose_logs", []))
+        logs.append(entry.model_dump())
+        cutoff = now - VERBOSE_LOG_TTL_SECONDS
+        logs = [e for e in logs if e["timestamp"] >= cutoff]
+        if len(logs) > VERBOSE_LOG_MAX_ENTRIES:
+            logs = logs[-VERBOSE_LOG_MAX_ENTRIES:]
+        shared_mem_dict["verbose_logs"] = logs
+        return BoolResponse(success=True)
+
+    @app.get("/get_verbose_logs", response_model=VerboseLogsResponse)
+    async def get_verbose_logs():
+        """Return verbose log entries from the last 30 seconds."""
+        now = time.time()
+        cutoff = now - VERBOSE_LOG_TTL_SECONDS
+        logs = shared_mem_dict.get("verbose_logs", [])
+        fresh = [VerboseLogEntry(**e) for e in logs if e["timestamp"] >= cutoff]
+        return VerboseLogsResponse(entries=fresh)
 
     # --------------------------------------------------------------------
     # ------------ bring engine back to ENGINE.OFFLINE -------------------

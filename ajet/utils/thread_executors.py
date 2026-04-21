@@ -157,3 +157,8 @@ class TaskCountLimitedThreadPoolExecutor(PeriodicDrainThreadPoolExecutor):
             future.add_done_callback(on_done)
             futures.append(future)
         return futures
+
+    def on_entering_weight_sync(self):
+        """To be called by the training loop before it enters weight sync.
+        """
+        logger.info("[TaskCountLimitedThreadPoolExecutor] Entering weight sync...")

@@ -103,6 +103,21 @@ class UpdateEngineStatusRequest(BaseModel):
     global_step: int|None = None
 
 
+class PushVerboseLogRequest(BaseModel):
+    tag: str = ""
+    message: str
+
+
+class VerboseLogEntry(BaseModel):
+    timestamp: float
+    tag: str = ""
+    message: str
+
+
+class VerboseLogsResponse(BaseModel):
+    entries: List[VerboseLogEntry] = []
+
+
 
 DEBUG = False
 # DEBUG = True
@@ -183,6 +198,39 @@ def http_register_episode(config,
     if DEBUG: logger.info(f"Successfully registered episode {episode_uuid}")
 
     return True
+
+
+def _get_interchange_server_url_from_env():
+    port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
+    if not port:
+        return None
+    master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+    return f"http://{master_node_ip}:{port}"
+
+
+def http_push_verbose_log(message: str, tag: str = "", config=None):
+    """
+    Push a short verbose status line to the swarm server for display in overwatch.
+
+    Fire-and-forget: failures are swallowed (verbose logging must never block training).
+    Messages auto-expire on the server side after ~30s and newer ones supersede old ones.
+
+    `config` is optional — when omitted, the URL is resolved from env vars
+    (AJET_DAT_INTERCHANGE_PORT, MASTER_NODE_IP). Handy for call sites that only have
+    a sub-config (e.g. actor config) rather than the full ajet config.
+    """
+    try:
+        base_url = get_interchange_server_url(config) if config is not None else _get_interchange_server_url_from_env()
+        if not base_url:
+            return
+        shared_http_client.post(
+            f"{base_url}/push_verbose_log",
+            json={"tag": tag, "message": message},
+            timeout=2,
+        )
+    except Exception as e:
+        if DEBUG:
+            logger.warning(f"Failed to push verbose log: {e}")
 
 
 def http_update_rollout_pool_information(config, pool_info: CurrentBatchRolloutPoolInformation):

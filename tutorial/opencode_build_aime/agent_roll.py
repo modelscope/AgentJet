@@ -25,7 +25,7 @@ REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/m
 BATCH_SIZE = 64
 ajet_job = AgentJetJob(
     algorithm="grpo",
-    experiment_name="aime_swarm_14b_v3_2",
+    experiment_name="aime_swarm_14b_v3_4",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
@@ -183,7 +183,7 @@ class AIMESwarmTrainer:
     def train(self):
         """Main training loop."""
         # Run eval once before training starts (baseline)
-        self.run_eval(0)
+        # self.run_eval(0)
 
         task_count = 0
         max_parallel = 512
@@ -192,6 +192,7 @@ class AIMESwarmTrainer:
             max_workers=max_parallel,
             auto_retry=True,
         )
+        self.swarm_worker.add_entering_weight_sync_callback(executor.on_entering_weight_sync)
 
         for epoch in range(self.NUM_EPOCH):
             for _, task in enumerate(self.dataset.generate_training_tasks()):

@@ -19,6 +19,8 @@ from loguru import logger
 
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 
+VERBOSE_LOG_TTL_SECONDS = 30.0
+
 
 class SwarmOverwatch:
     """Real-time monitoring interface for swarm rollout pool"""
@@ -38,6 +40,7 @@ class SwarmOverwatch:
         self.error_count = 0
         self.total_requests = 0
         self._httpx_client = httpx.Client(timeout=5.0)
+        self._verbose_logs: list = []  # list of dicts {timestamp, tag, message}
 
     def fetch_pool_info(self) -> Optional[CurrentBatchRolloutPoolInformation]:
         """Fetch current batch rollout pool information from server"""
@@ -55,6 +58,30 @@ class SwarmOverwatch:
             self.error_count += 1
             # logger.error(f"Failed to fetch pool info: {e}")
             return None
+
+    def fetch_verbose_logs(self) -> None:
+        """Fetch verbose log entries from server. Failures are silent."""
+        try:
+            response = self._httpx_client.get(
+                f"{self.server_url}/get_verbose_logs",
+                timeout=2.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            self._verbose_logs = data.get("entries", [])
+        except Exception:
+            # Keep previously fetched logs; TTL filter still applies at render time.
+            pass
+
+    def _latest_verbose_entry(self) -> Optional[dict]:
+        """Return the most recent non-expired verbose log entry, or None."""
+        now = time.time()
+        cutoff = now - VERBOSE_LOG_TTL_SECONDS
+        fresh = [e for e in self._verbose_logs if e.get("timestamp", 0) >= cutoff]
+        if not fresh:
+            return None
+        fresh.sort(key=lambda e: e.get("timestamp", 0))
+        return fresh[-1]
 
     def create_header(
         self, info: Optional[CurrentBatchRolloutPoolInformation] = None
@@ -78,6 +105,15 @@ class SwarmOverwatch:
         #     f"  |  Errors: {self.error_count}",
         #     style="red" if self.error_count > 0 else "green",
         # )
+
+        # Inline the most recent verbose log entry (last 30s, overwritten by newer).
+        latest = self._latest_verbose_entry()
+        if latest is not None:
+            age = max(0.0, time.time() - latest.get("timestamp", time.time()))
+            tag = latest.get("tag") or ""
+            msg = latest.get("message", "")
+            prefix = f"<{tag}> " if tag else ""
+            header_text.append(f", {prefix}{msg}  ({age:.0f}s ago)", style="bright_magenta")
 
         # Add engine status and global step if available
         if info:
@@ -552,6 +588,7 @@ class SwarmOverwatch:
                 try:
                     # Fetch latest data
                     info = self.fetch_pool_info()
+                    self.fetch_verbose_logs()
 
                     # Update display
                     live.update(self.create_dashboard(info))
