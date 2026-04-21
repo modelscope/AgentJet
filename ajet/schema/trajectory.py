@@ -47,20 +47,28 @@ class Reward(BaseModel):
 class Sample(BaseModel):
     """The data model for single sample."""
 
+    model_config = {"arbitrary_types_allowed": True}
+
     task_batch_index: int = 0
     task_id: str = ""
     task_tag: str = ""
     messages: List[dict] = []
     extras: Dict[str, Any] = {}
+    # Multimodal inputs (pixel_values, image_grid_thw, ...) for VL training.
+    # None for text-only samples.
+    multi_modal_inputs: Union[Dict[str, Any], None] = None
     input_ids: List[int] = []
     prompt_ids: List[int] = []
     response_ids: List[int] = []
     attention_mask: List[int] = []
     prompt_attention_mask: List[int] = []
     response_attention_mask: List[int] = []
-    position_ids: List[int] = []
-    prompt_position_ids: List[int] = []
-    response_position_ids: List[int] = []
+    # position_ids can be:
+    #   - text-only: List[int]  (shape (seq_len,))
+    #   - multimodal (Qwen2-VL 4-channel): List[List[int]]  (shape (4, seq_len))
+    position_ids: List = []
+    prompt_position_ids: List = []
+    response_position_ids: List = []
     loss_mask: List[int] = []
     prompt_loss_mask: List[int] = []
     response_loss_mask: List[int] = []
@@ -109,24 +117,32 @@ class Sample(BaseModel):
 
         assert len(self.response_ids) != 0, "response_ids should not be empty"
 
+    @staticmethod
+    def _pos_seqlen(pos) -> int:
+        """Return seq_len for position_ids that may be 1D List[int] or
+        4-channel multimodal List[List[int]] (Qwen2-VL)."""
+        if pos and isinstance(pos[0], list):
+            return len(pos[0])
+        return len(pos)
+
     def truncate_output_ids(self) -> None:
         assert (
             len(self.input_ids)
             == len(self.attention_mask)
-            == len(self.position_ids)
+            == self._pos_seqlen(self.position_ids)
             == len(self.loss_mask)
         )
         assert (
             len(self.prompt_ids)
             == len(self.prompt_attention_mask)
-            == len(self.prompt_position_ids)
+            == self._pos_seqlen(self.prompt_position_ids)
             == len(self.prompt_loss_mask)
             == len(self.prompt_logprobs)
         )
         assert (
             len(self.response_ids)
             == len(self.response_attention_mask)
-            == len(self.response_position_ids)
+            == self._pos_seqlen(self.response_position_ids)
             == len(self.response_loss_mask)
             == len(self.response_logprobs)
         )
@@ -157,14 +173,22 @@ class Sample(BaseModel):
             )
             self.response_ids = self.response_ids[: self.max_response_len]
             self.response_attention_mask = self.response_attention_mask[: self.max_response_len]
-            self.response_position_ids = self.response_position_ids[: self.max_response_len]
+            if self.response_position_ids and isinstance(self.response_position_ids[0], list):
+                self.response_position_ids = [ch[: self.max_response_len] for ch in self.response_position_ids]
+            else:
+                self.response_position_ids = self.response_position_ids[: self.max_response_len]
             self.response_loss_mask = self.response_loss_mask[: self.max_response_len]
             self.response_logprobs = self.response_logprobs[: self.max_response_len]
 
         if truncate_any:
             self.input_ids = self.prompt_ids + self.response_ids
             self.attention_mask = self.prompt_attention_mask + self.response_attention_mask
-            self.position_ids = self.prompt_position_ids + self.response_position_ids
+            if self.prompt_position_ids and isinstance(self.prompt_position_ids[0], list):
+                self.position_ids = [
+                    p + r for p, r in zip(self.prompt_position_ids, self.response_position_ids)
+                ]
+            else:
+                self.position_ids = self.prompt_position_ids + self.response_position_ids
             self.loss_mask = self.prompt_loss_mask + self.response_loss_mask
             self.logprobs = self.prompt_logprobs + self.response_logprobs
 

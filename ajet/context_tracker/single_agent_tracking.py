@@ -200,6 +200,12 @@ class SingleAgentContextTracker(BaseTracker):
         sample_arr = []
         ext_steps = timeline
         tracker_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
+        mm_inputs = None
+        for m in ext_steps:
+            mmi = getattr(m, "multi_modal_inputs", None)
+            if mmi:
+                mm_inputs = mmi
+                break
         sample = Sample(
             tracker_tokenized=tracker_tokenized,
             messages=self.to_role_content(ext_steps),
@@ -207,6 +213,7 @@ class SingleAgentContextTracker(BaseTracker):
             task_batch_index=self.task_batch_index,
             task_tag=self.task_tag,
             task_id=self.task_id,
+            multi_modal_inputs=mm_inputs,
         )
         sample.truncate_output_ids()
         sample_arr += [sample]
@@ -221,6 +228,12 @@ class SingleAgentContextTracker(BaseTracker):
                 index=index,
                 total_steps=len(self.saved_timelines),
             )
+            mm_inputs = None
+            for m in ext_steps:
+                mmi = getattr(m, "multi_modal_inputs", None)
+                if mmi:
+                    mm_inputs = mmi
+                    break
             sample = Sample(
                 tracker_tokenized=tracker_tokenized,
                 messages=self.to_role_content(ext_steps),
@@ -228,6 +241,7 @@ class SingleAgentContextTracker(BaseTracker):
                 task_batch_index=self.task_batch_index,
                 task_tag=self.task_tag,
                 task_id=self.task_id,
+                multi_modal_inputs=mm_inputs,
             )
             sample_arr += [sample]
 
@@ -318,18 +332,52 @@ class SingleAgentContextTracker(BaseTracker):
         assert (
             split_prompt_response_index != -1
         ), "split_prompt_response_index should not be -1, at least one message should be in the context"
-        position_ids = compute_position_id_with_mask(torch.tensor(attention_mask)).tolist()
+        # ---- Position IDs --------------------------------------------------
+        # For multimodal (e.g. Qwen2-VL) samples we need 4-channel position
+        # ids: [text_cumsum, T_rope, H_rope, W_rope]. VERL's qwen2_vl actor
+        # forward requires this exact layout. For text-only samples we keep
+        # the 1D text position ids as before.
+        mm_inputs_for_rope = None
+        mm_processor = None
+        for m in ext_steps:
+            mmi = getattr(m, "multi_modal_inputs", None)
+            if mmi and "image_grid_thw" in mmi:
+                mm_inputs_for_rope = mmi
+                mm_processor = getattr(m, "processor", None)
+                break
+
+        if mm_inputs_for_rope is not None and mm_processor is not None:
+            from verl.models.transformers.qwen2_vl import get_rope_index
+            # Compute 3-channel M-RoPE (T, H, W) over the full input_ids.
+            input_ids_t = torch.tensor(input_ids, dtype=torch.long)
+            attn_t = torch.tensor(attention_mask, dtype=torch.long)
+            mrope_3 = get_rope_index(
+                mm_processor,
+                input_ids=input_ids_t,
+                image_grid_thw=mm_inputs_for_rope.get("image_grid_thw"),
+                video_grid_thw=mm_inputs_for_rope.get("video_grid_thw"),
+                second_per_grid_ts=mm_inputs_for_rope.get("second_per_grid_ts"),
+                attention_mask=attn_t,
+            )  # (3, seq_len)
+            text_pos = compute_position_id_with_mask(attn_t)  # (seq_len,)
+            # Layout: (4, seq_len) with channels [text, T, H, W]
+            pos_ids_4 = torch.cat([text_pos.view(1, -1), mrope_3], dim=0)  # (4, L)
+            position_ids = pos_ids_4.tolist()  # list[list[int]] with outer=4
+            prompt_position_ids = [ch[:split_prompt_response_index] for ch in position_ids]
+            response_position_ids = [ch[split_prompt_response_index:] for ch in position_ids]
+        else:
+            position_ids = compute_position_id_with_mask(torch.tensor(attention_mask)).tolist()
+            prompt_position_ids = position_ids[:split_prompt_response_index]
+            response_position_ids = position_ids[split_prompt_response_index:]
 
         # sperate prompt and response
         prompt_ids = input_ids[:split_prompt_response_index]
         prompt_attention_mask = attention_mask[:split_prompt_response_index]
-        prompt_position_ids = position_ids[:split_prompt_response_index]
         prompt_loss_mask = loss_mask[:split_prompt_response_index]
         prompt_logprobs = input_logprobs[:split_prompt_response_index]
 
         response_ids = input_ids[split_prompt_response_index:]
         response_attention_mask = attention_mask[split_prompt_response_index:]
-        response_position_ids = position_ids[split_prompt_response_index:]
         response_loss_mask = loss_mask[split_prompt_response_index:]
         response_logprobs = input_logprobs[split_prompt_response_index:]
 

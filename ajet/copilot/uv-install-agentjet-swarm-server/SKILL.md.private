@@ -1,0 +1,13 @@
+# install in a tmux window
+how to use tmux? you must follow this skill: ajet/copilot/monitor-with-tmux/SKILL.md
+
+# delete!
+trash .venv
+
+# create!
+uv venv --python=3.12
+source .venv/bin/activate
+uv pip install -i https://mirrors.aliyun.com/pypi/simple/ -e .[verl]
+
+# `flash-attn` must be installed after other dependencies!
+proxychains uv pip install -i https://mirrors.aliyun.com/pypi/simple/ --verbose flash-attn --no-deps --no-build-isolation --no-cache

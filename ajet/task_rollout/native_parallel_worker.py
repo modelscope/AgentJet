@@ -612,6 +612,8 @@ class VerlRolloutManager(DynamicRolloutManager):
         task_ids = []
         rollout_ids = []
         reference_advantage = []
+        multi_modal_inputs_list: list = []
+        any_multi_modal = False
 
         for sample in samples:
             assert (
@@ -641,6 +643,8 @@ class VerlRolloutManager(DynamicRolloutManager):
                 torch.tensor(sample.response_attention_mask, dtype=torch.int)
             )
 
+            # position_ids may be 1D (text-only) or 2D (4, L) for multimodal.
+            # Keep per-sample tensors of shape (L,) or (4, L) respectively.
             prompt_position_ids.append(torch.tensor(sample.prompt_position_ids, dtype=torch.int))
             response_position_ids.append(
                 torch.tensor(sample.response_position_ids, dtype=torch.int)
@@ -653,6 +657,13 @@ class VerlRolloutManager(DynamicRolloutManager):
 
             messages.append({"messages": sample.messages})
             step_reward_scores.append(sample.step_reward)  # append reward scalar
+
+            mmi = getattr(sample, "multi_modal_inputs", None)
+            if mmi:
+                any_multi_modal = True
+                multi_modal_inputs_list.append(mmi)
+            else:
+                multi_modal_inputs_list.append({})
 
         max_prompt_length_this_batch = max([p.shape[-1] for p in prompt_ids])
         assert max_prompt_length_this_batch <= self.config.ajet.data.max_prompt_length
@@ -671,12 +682,25 @@ class VerlRolloutManager(DynamicRolloutManager):
             padding_value=0,
             padding_side="left",
         )
-        prompt_position_ids = pad_sequence(
-            prompt_position_ids,
-            batch_first=True,
-            padding_value=0,
-            padding_side="left",
-        )
+        # Detect 4-channel M-RoPE position_ids (shape (4, L) per sample).
+        has_4d_position_ids = (len(prompt_position_ids) > 0 and prompt_position_ids[0].dim() == 2)
+        if has_4d_position_ids:
+            # Left-pad each (4, Lp) to (4, Lp_max_batch); stack → (B, 4, Lp_max_batch)
+            Lp_max = max(t.shape[-1] for t in prompt_position_ids)
+            padded = []
+            for t in prompt_position_ids:
+                pad = Lp_max - t.shape[-1]
+                if pad > 0:
+                    t = torch.cat([torch.zeros(t.shape[0], pad, dtype=t.dtype), t], dim=-1)
+                padded.append(t)
+            prompt_position_ids = torch.stack(padded, dim=0)  # (B, 4, Lp_max)
+        else:
+            prompt_position_ids = pad_sequence(
+                prompt_position_ids,
+                batch_first=True,
+                padding_value=0,
+                padding_side="left",
+            )
         prompt_loss_mask = pad_sequence(
             prompt_loss_mask,
             batch_first=True,
@@ -696,9 +720,19 @@ class VerlRolloutManager(DynamicRolloutManager):
             0,
             left_pad=True,
         )
-        prompt_position_ids = pad_sequence_to_length(
-            prompt_position_ids, max_prompt_length_this_batch, 0, left_pad=True
-        )
+        if has_4d_position_ids:
+            # Left-pad on seq dim to max_prompt_length_this_batch
+            cur = prompt_position_ids.shape[-1]
+            if cur < max_prompt_length_this_batch:
+                pad = max_prompt_length_this_batch - cur
+                prompt_position_ids = torch.cat([
+                    torch.zeros(prompt_position_ids.shape[0], prompt_position_ids.shape[1], pad, dtype=prompt_position_ids.dtype),
+                    prompt_position_ids,
+                ], dim=-1)
+        else:
+            prompt_position_ids = pad_sequence_to_length(
+                prompt_position_ids, max_prompt_length_this_batch, 0, left_pad=True
+            )
         prompt_loss_mask = pad_sequence_to_length(
             prompt_loss_mask, max_prompt_length_this_batch, 0, left_pad=True
         )
@@ -719,12 +753,22 @@ class VerlRolloutManager(DynamicRolloutManager):
             response_loss_mask, max_response_length_this_batch, 0
         )
 
-        delta_position_id = (
-            torch.arange(1, response_ids.size(1) + 1, device=response_ids.device)
-            .unsqueeze(0)
-            .repeat(len(samples), 1)
-        )
-        response_position_ids = prompt_position_ids[:, -1:] + delta_position_id
+        if has_4d_position_ids:
+            # prompt_position_ids: (B, 4, Lp_max). Response continues per channel.
+            # delta shape (1, 1, Lr) broadcasts over (B, 4, Lr)
+            delta_position_id = (
+                torch.arange(1, response_ids.size(1) + 1, device=response_ids.device)
+                .view(1, 1, -1)
+                .repeat(len(samples), prompt_position_ids.shape[1], 1)
+            )
+            response_position_ids = prompt_position_ids[:, :, -1:] + delta_position_id
+        else:
+            delta_position_id = (
+                torch.arange(1, response_ids.size(1) + 1, device=response_ids.device)
+                .unsqueeze(0)
+                .repeat(len(samples), 1)
+            )
+            response_position_ids = prompt_position_ids[:, -1:] + delta_position_id
 
         input_ids = torch.cat((prompt_ids, response_ids), dim=-1)
         attention_mask = torch.cat((prompt_attention_mask, response_attention_mask), dim=-1)
@@ -743,13 +787,19 @@ class VerlRolloutManager(DynamicRolloutManager):
             batch_size=len(samples),
         )
 
+        non_tensor = {
+            "task_ids": np.array(task_ids),
+            "rollout_ids": np.array(rollout_ids),
+            "messages": np.array(messages),
+            "reward_scores": np.array(step_reward_scores),
+            "reference_advantage": np.array(reference_advantage),
+        }
+        if any_multi_modal:
+            # VERL's actor reads non_tensor_batch["multi_modal_inputs"] as a
+            # list of per-sample dicts (e.g. {pixel_values, image_grid_thw}).
+            non_tensor["multi_modal_inputs"] = np.array(multi_modal_inputs_list, dtype=object)
+
         return DataProto(
             batch=batch,
-            non_tensor_batch={
-                "task_ids": np.array(task_ids),
-                "rollout_ids": np.array(rollout_ids),
-                "messages": np.array(messages),
-                "reward_scores": np.array(step_reward_scores),
-                "reference_advantage": np.array(reference_advantage),
-            },
+            non_tensor_batch=non_tensor,
         )

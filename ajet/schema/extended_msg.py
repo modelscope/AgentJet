@@ -8,6 +8,7 @@ from loguru import logger
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from ajet.utils.tokenizer import ajet_apply_chat_template
+from ajet.utils.multimodal import load_image_to_pil
 
 # import numpy as np
 # INVALID_LOG_PROB_VALUE = np.inf # when debuging, set to np.inf, if anything goes wrong, we can sense that immediately
@@ -77,6 +78,8 @@ class ExtendedMessage:
         token_logprob_arr=[],
         name="",    # preserved field, not used currently
         first_message=False,
+        images=None,        # Optional[list] of image refs (PIL / bytes / data URL / path)
+        processor=None,     # Optional HuggingFace ProcessorMixin (e.g. Qwen2_5_VLProcessor)
     ):
         self.author = author
         self.role = role
@@ -101,6 +104,13 @@ class ExtendedMessage:
         self.manual_loss_mask_override = []
         self.lack_normal_eos = False
 
+        # Multimodal: images attached to this message and the resulting
+        # processor-side tensors (pixel_values, image_grid_thw, ...).
+        # Only meaningful on the first user message for single-turn VL tasks.
+        self.images = images
+        self.processor = processor
+        self.multi_modal_inputs = None  # dict[str, torch.Tensor] once tokenized
+
         self.generate_content_for_compare(tokenizer=None)
 
         self.eos_token_id = tokenizer.eos_token_id
@@ -118,6 +128,18 @@ class ExtendedMessage:
             raise ValueError(
                 "The first message is supposed to be the system message, check program bugs, or remove this warning."
             )
+
+        # Multimodal path: any message carrying images goes through the HF
+        # processor (e.g. Qwen2_5_VLProcessor) so image placeholder tokens are
+        # expanded and we can capture pixel_values / image_grid_thw for
+        # downstream training. We compute the delta against a dummy conversation
+        # so tokens for just this message are extracted.
+        if self.images and self.processor is not None:
+            self.token_arr = self._auto_tokenize_with_processor(
+                tokenizer=tokenizer, tools=tools,
+            )
+            return self.token_arr
+
         if not self.first_message:
             self.token_arr = self.auto_tokenize_non_first_message(tokenizer=tokenizer, tools=tools)
         else:
@@ -134,6 +156,79 @@ class ExtendedMessage:
                 tools=tools,
             )
         return self.token_arr
+
+    def _auto_tokenize_with_processor(self, tokenizer, tools):
+        """Tokenize this message via the HF processor, producing token ids
+        with image placeholder tokens expanded, plus multi_modal_inputs
+        (pixel_values, image_grid_thw, ...).
+
+        For non-first messages we tokenize ``DUMMY_MSG + self`` (with images)
+        and subtract ``DUMMY_MSG`` (text-only) to get just this message's delta,
+        matching the existing non-first tokenization contract.
+        """
+        pil_images = [load_image_to_pil(im) for im in self.images]
+        vision_content = [{"type": "image", "image": p} for p in pil_images]
+        vision_content.append({"type": "text", "text": self.content_for_compare})
+        self_msg = {"role": self.role, "content": vision_content}
+        if self.tool_calls:
+            self_msg["tool_calls"] = self.tool_calls
+        if self.tool_call_id:
+            self_msg["tool_call_id"] = self.tool_call_id
+
+        if self.first_message:
+            proc_msgs = [self_msg]
+        else:
+            # The HF processor needs content to be a list of typed blocks for
+            # all messages; DUMMY_MSG's plain-string content would break.
+            dummy_msg_processor_style = [
+                {"role": m["role"], "content": [{"type": "text", "text": m["content"]}]}
+                for m in DUMMY_MSG
+            ]
+            proc_msgs = dummy_msg_processor_style + [self_msg]
+
+        raw_prompt = self.processor.apply_chat_template(
+            proc_msgs, tools=tools or None,
+            add_generation_prompt=False, tokenize=False,
+        )
+        model_inputs = self.processor(
+            text=[raw_prompt], images=pil_images, return_tensors="pt",
+        )
+        model_inputs = dict(model_inputs)
+        input_ids = model_inputs.pop("input_ids")[0].tolist()
+        model_inputs.pop("attention_mask", None)
+        self.multi_modal_inputs = {k: v for k, v in model_inputs.items()}
+
+        if self.first_message:
+            return input_ids
+
+        # Subtract DUMMY_MSG prefix to get the delta tokens for just self.
+        # DUMMY_MSG has no images, but the processor still needs typed content.
+        dummy_msg_processor_style = [
+            {"role": m["role"], "content": [{"type": "text", "text": m["content"]}]}
+            for m in DUMMY_MSG
+        ]
+        dummy_ids = self.processor.apply_chat_template(
+            dummy_msg_processor_style, tools=tools or None,
+            add_generation_prompt=False, tokenize=True,
+        )
+        if hasattr(dummy_ids, "tolist"):
+            dummy_ids = dummy_ids.tolist()
+        # apply_chat_template(tokenize=True) returns a batched list[list[int]]
+        # when the input is a single convo — unwrap the outer batch dim.
+        if dummy_ids and isinstance(dummy_ids[0], list):
+            dummy_ids = dummy_ids[0]
+        # Sanity: the processor-expanded full_ids should start with dummy_ids.
+        if input_ids[: len(dummy_ids)] == dummy_ids:
+            return input_ids[len(dummy_ids):]
+        # Fallback: find DUMMY prefix by longest-match.
+        n = min(len(dummy_ids), len(input_ids))
+        match = 0
+        for i in range(n):
+            if input_ids[i] == dummy_ids[i]:
+                match = i + 1
+            else:
+                break
+        return input_ids[match:]
 
     def auto_tokenize_non_first_message(self, tokenizer, tools):
         try:

@@ -29,6 +29,7 @@ class GeneralRunner(BaseAgentRunner):
         context_tracker = MultiAgentContextTracker(
             llm_inference_fn=self.llm_inference_fn,
             tokenizer=self.tokenizer,
+            processor=self.processor,
             config=self.config,
             workflow_task = workflow_task,
             **hooks,

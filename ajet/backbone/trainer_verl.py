@@ -389,6 +389,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             async_rollout_manager=real_async_rollout_manager,
             max_parallel=self.config.ajet.rollout.max_env_worker,
             tokenizer=self.tokenizer,
+            processor=getattr(self, "processor", None),
         )
 
     def _update_interchange_server_status_flag(self, status: str):

@@ -16,8 +16,9 @@ gc_lock = Lock()
 
 class BaseAgentRunner(object):
 
-    def __init__(self, llm_inference_fn: Callable, tokenizer: Any, config, **kwargs):
+    def __init__(self, llm_inference_fn: Callable, tokenizer: Any, config, processor: Any = None, **kwargs):
         self.tokenizer = tokenizer
+        self.processor = processor  # HuggingFace ProcessorMixin for VL models, or None
         self.instruction_template_ids = self.tokenizer.encode("<|im_start|>user\n")
         self.response_template_ids = self.tokenizer.encode("<|im_start|>assistant\n")
         self.tracker: Union[SingleAgentContextTracker, Any, None] = None

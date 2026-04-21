@@ -7,7 +7,7 @@ from typing import Literal
 
 from loguru import logger
 from omegaconf import DictConfig
-from typing import Dict, List, Literal
+from typing import Any, Dict, List, Literal
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
@@ -31,6 +31,7 @@ class BaseRolloutManager:
         max_llm_retries: int = 3,
         tokenizer: PreTrainedTokenizer = None,  # type: ignore
         llm_mode: Literal["local", "remote", "trinity"] = "local",
+        processor: Any = None,
         **kwargs,
     ):
         """Initialize common rollout state and helpers.
@@ -60,6 +61,7 @@ class BaseRolloutManager:
         self.max_llm_retries: int = max_llm_retries
         self.rollout_n = config.ajet.rollout.num_repeat
         self.tokenizer = tokenizer
+        self.processor = processor  # HuggingFace ProcessorMixin for VL models, or None
         self.pad_token_id: int = self.tokenizer.pad_token_id  # type: ignore
         assert isinstance(self.pad_token_id, int), "pad_token_id must be an integer"
         self.current_token = 0
@@ -71,6 +73,7 @@ class BaseRolloutManager:
             tokenizer=tokenizer,
             llm_mode=llm_mode,
             max_llm_retries=max_llm_retries,
+            processor=processor,
         )
 
         # Memory leak tracking
@@ -119,11 +122,13 @@ class BaseRolloutManager:
                 workflow_task = resource_keeper.prepare()
                 if self.enable_swarm_mode:
                     agent_runner = SwarmRunner(
-                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
+                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config,
+                        processor=self.processor,
                     )
                 else:
                     agent_runner = GeneralRunner(
-                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config
+                        llm_inference_fn=llm_inference_fn, tokenizer=self.tokenizer, config=self.config,
+                        processor=self.processor,
                     )
                 tracker = agent_runner.execute(
                     workflow_task=workflow_task,

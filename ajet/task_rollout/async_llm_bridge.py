@@ -18,6 +18,7 @@ from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatComple
 
 from ajet.schema.logprob import TokenAndProb
 from ajet.utils.tokenizer import ajet_apply_chat_template
+from ajet.utils.multimodal import extract_images_from_openai_messages, load_image_to_pil
 from ajet.schema.convertion import convert_llm_proxy_response_to_oai_response
 from ajet.schema.convertion import convert_llm_proxy_response_to_agentscope_response
 from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
@@ -54,10 +55,12 @@ class AsyncLlmBridge(object):
         tokenizer: Any,
         llm_mode: Literal["local", "remote", "trinity"] = "local",
         max_llm_retries: int = 3,
+        processor: Any = None,
     ):
         self.config = config
         self.async_rollout_manager = async_rollout_manager
         self.tokenizer = tokenizer
+        self.processor = processor  # HuggingFace ProcessorMixin for VL models, or None
         self.llm_mode = llm_mode
         self.max_llm_retries = max_llm_retries
         self.tool_parser = Hermes2ProToolParser(self.tokenizer)
@@ -80,20 +83,64 @@ class AsyncLlmBridge(object):
                 updated_sampling_params.update(custom_sampling_params)
 
             input_messages = copy.deepcopy(messages)
-            prompt_text = ajet_apply_chat_template(
-                tokenizer=self.tokenizer,
-                conversation=input_messages,
-                tools=tools,
-                add_generation_prompt=True,
-                tokenize=False,
-            )
-            prompt_token_ids = self.tokenizer(prompt_text)["input_ids"]
 
-            final_res: TokenOutput = await self.async_rollout_manager.generate(
-                request_id=request_id,
-                prompt_ids=prompt_token_ids,
-                sampling_params=updated_sampling_params,
-            )
+            # Multimodal branch: if messages contain vision content blocks
+            # and we have a HF processor, tokenize via processor so image
+            # placeholder tokens are expanded and we can forward pixel
+            # tensors to the rollout engine.
+            image_refs = extract_images_from_openai_messages(input_messages)
+            multi_modal_inputs = None
+            image_data = None
+            if image_refs and self.processor is not None:
+                pil_images = [load_image_to_pil(r) for r in image_refs]
+                image_data = pil_images
+                # Build processor-style messages (content is list of {"type":..})
+                proc_messages = []
+                img_iter = iter(pil_images)
+                for m in input_messages:
+                    c = m.get("content")
+                    if isinstance(c, list):
+                        new_c = []
+                        for item in c:
+                            if isinstance(item, dict) and item.get("type") in ("image_url", "image"):
+                                new_c.append({"type": "image", "image": next(img_iter)})
+                            else:
+                                new_c.append(item)
+                        proc_messages.append({**m, "content": new_c})
+                    else:
+                        proc_messages.append(m)
+                prompt_text = self.processor.apply_chat_template(
+                    proc_messages,
+                    tools=tools or None,
+                    add_generation_prompt=True,
+                    tokenize=False,
+                )
+                model_inputs = self.processor(
+                    text=[prompt_text], images=pil_images, return_tensors="pt",
+                )
+                model_inputs = dict(model_inputs)
+                prompt_token_ids = model_inputs.pop("input_ids")[0].tolist()
+                model_inputs.pop("attention_mask", None)
+                multi_modal_inputs = {k: v for k, v in model_inputs.items()}
+            else:
+                prompt_text = ajet_apply_chat_template(
+                    tokenizer=self.tokenizer,
+                    conversation=input_messages,
+                    tools=tools,
+                    add_generation_prompt=True,
+                    tokenize=False,
+                )
+                prompt_token_ids = self.tokenizer(prompt_text)["input_ids"]
+
+            generate_kwargs = {
+                "request_id": request_id,
+                "prompt_ids": prompt_token_ids,
+                "sampling_params": updated_sampling_params,
+            }
+            if image_data is not None:
+                generate_kwargs["image_data"] = image_data
+
+            final_res: TokenOutput = await self.async_rollout_manager.generate(**generate_kwargs)
 
             """response token ids"""
             token_array = final_res.token_ids
@@ -160,6 +207,7 @@ class AsyncLlmBridge(object):
                 "tool_calls": tool_calls,
                 "finish_reason": finish_reason,
                 "usage": usage,
+                "multi_modal_inputs": multi_modal_inputs,
                 "tokens": [
                     TokenAndProb(
                         token_id=token_id,

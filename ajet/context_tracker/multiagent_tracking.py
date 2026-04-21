@@ -51,10 +51,12 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         should_interrupt_soft_fn,
         should_interrupt_hard_fn,
         generated_token_callback_fn,
+        processor=None,
         **kwargs,
     ):
         super().__init__(config, tokenizer, **kwargs)
         self.tokenizer = tokenizer
+        self.processor = processor  # HuggingFace ProcessorMixin for VL models, or None
         self.should_interrupt_soft_fn = should_interrupt_soft_fn
         self.should_interrupt_hard_fn = should_interrupt_hard_fn
         self.generated_token_callback_fn = generated_token_callback_fn
@@ -74,35 +76,48 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     tools[i]["function"]["parameters"] = tools[i]["function"].pop("parameters")
         return tools
 
-    def extract_text_content_from_content_dict(self, msg):
+    def extract_text_and_image_content_from_content_dict(self, msg):
+        # OpenAI vision content blocks, e.g.:
         # msg = {
-        #    "role": "assistant",
+        #    "role": "user",
         #    "content": [
-        #        {
-        #           "type": "text",
-        #           "text": "some text"
-        #        },
+        #        {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}},
+        #        {"type": "text",      "text": "What is in this figure?"},
         #    ],
         # }
+        # Returns (str_content, should_skip_message, images).
+        # Images are surfaced so callers can attach them to the ExtendedMessage.
 
         str_content = ""
+        images: list = []
         for item in msg["content"]:
-            # item = {
-            #   "type": "text",
-            #   "text": "some text"
-            # },
             item_type = item.get("type", "")
             assert not item_type == "tool_use", f"never observed such protocal yet"
             assert not item_type == "tool_result", f"never observed such protocal yet"
 
             assert isinstance(item, dict), f"Unsupported non-dict item in message content: {item}. Full message: {msg}"
 
+            if item_type in ("image_url", "image"):
+                # OpenAI: {"type": "image_url", "image_url": {"url": "..."}} or HF style {"type":"image","image":<pil>}
+                url = None
+                if item_type == "image_url":
+                    iu = item.get("image_url")
+                    if isinstance(iu, dict):
+                        url = iu.get("url")
+                    elif isinstance(iu, str):
+                        url = iu
+                else:
+                    url = item.get("image") or item.get("url")
+                if url is not None:
+                    images.append(url)
+                continue
+
             if ("text" not in item):
                 logger.warning(
-                    f"Non-text content in message content detected: {item}. Ignoring."
+                    f"Non-text, non-image content in message content detected: {item}. Ignoring."
                 )
                 should_skip_message = True
-                return str_content, should_skip_message
+                return str_content, should_skip_message, images
 
             if isinstance(item["text"], str):
                 str_content += str(item["text"])
@@ -110,7 +125,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 str_content = ""
 
         should_skip_message = False
-        return str_content, should_skip_message
+        return str_content, should_skip_message, images
 
 
     def step_spawn_timeline(self, messages: List[dict], tools: List = [], disable_toolcalls: bool = False) -> List[ExtendedMessage]:
@@ -133,11 +148,21 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         for i, msg in enumerate(messages):
 
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
-                continue
+                # Allow vision content blocks through (image_url / image /
+                # text); skip only tool_use / tool_result / other exotic blocks.
+                content = msg.get("content") or []
+                if isinstance(content, list) and all(
+                    isinstance(it, dict) and it.get("type") in ("image_url", "image", "text")
+                    for it in content
+                ):
+                    pass  # vision blocks — keep going
+                else:
+                    continue
 
             if msg["role"] not in consider_roles:
                 continue
 
+            msg_images: list = []
             if not isinstance(msg["content"], str):
                 author = "env"
                 should_skip_message = False
@@ -147,7 +172,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     msg["content"] = ""
 
                 elif isinstance(msg["content"], list):
-                    msg["content"], should_skip_message = self.extract_text_content_from_content_dict(msg)
+                    msg["content"], should_skip_message, msg_images = self.extract_text_and_image_content_from_content_dict(msg)
 
                 else:
                     raise ValueError(f"Unsupported non-str message content type: {type(msg['content'])}, Message:\n {msg}")
@@ -178,6 +203,8 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     token_generator="auto",
                     name = (msg["name"] if "name" in msg else ""),
                     first_message=(i == 0),
+                    images=msg_images or None,
+                    processor=getattr(self, "processor", None),
                 )
             ]
 
