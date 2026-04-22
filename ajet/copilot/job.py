@@ -81,6 +81,7 @@ class AgentJetJob:
         layered_summon: Enable layered summon for LoRA (default False).
         gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
         lr: Learning rate for optimizer (default 1e-6).
+        ppo_epochs: Number of PPO epochs per update (default 1).
         compute_madness_checklist: List of madness checks to monitor LLM's abnormal behaviors during rollout (default ["nonsense"], detect infinite repeat such as "但但但但但但但但但但....").
     """
 
@@ -113,6 +114,7 @@ class AgentJetJob:
         layered_summon: bool | None = None,
         gpu_memory_utilization: float | None = None,
         lr: float | None = None,
+        ppo_epochs: int | None = None,
         compute_madness_checklist: List[str] | None = None,
     ) -> None:
 
@@ -170,6 +172,7 @@ class AgentJetJob:
         self.layered_summon: bool = cast(bool, layered_summon)
         self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
         self.lr: float = cast(float, lr)
+        self.ppo_epochs: int = cast(int, ppo_epochs)
         self.compute_madness_checklist: List[str] = cast(List[str], compute_madness_checklist)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
@@ -200,6 +203,7 @@ class AgentJetJob:
             "ajet.lora.layered_summon":                     "layered_summon",
             "ajet.rollout.gpu_memory_utilization":          "gpu_memory_utilization",
             "ajet.trainer_common.optim.lr":                 "lr",
+            "ajet.trainer_common.ppo_epochs":               "ppo_epochs",
             "ajet.rollout.compute_madness_checklist":       "compute_madness_checklist",
         }
 
