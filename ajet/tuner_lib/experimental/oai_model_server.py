@@ -106,10 +106,19 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
             if enable_swarm_mode:
                 assert shared_mem_dict is not None
-                ep_stat = shared_mem_dict[ep_key(episode_uuid)]
-                episode_status = ep_stat.episode_status
+                assert shared_mem_dict_lock is not None
+                if ep_key(episode_uuid) not in shared_mem_dict:
+                    raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
+
+                # update activate timestamp and increment llm call counter
+                with shared_mem_dict_lock:
+                    es:EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
+                    es.latest_activity_timestamp = time.time()
+                    episode_status = es.episode_status
+                    shared_mem_dict[ep_key(episode_uuid)] = es
+
                 if episode_status != "claimed":
-                    raise HTTPException(status_code=404, detail="The episode is not claimed, cannot accept new requests.")
+                    raise HTTPException(status_code=404, detail=f"The episode {episode_uuid} is not claimed, cannot accept new requests.")
 
             try:
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")

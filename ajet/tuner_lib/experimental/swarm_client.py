@@ -457,7 +457,12 @@ class SwarmClient(SwarmClientBase):
                         retry_delay = START_EPISODE_RETRY_DELAY
                         continue
 
+            except SwarmServerOfflineError:
+                # exit immediately without retrying when server is offline, to avoid flooding the logs with errors
+                raise
+
             except Exception as e:
+
                 if self._should_refresh_client_on_error(e):
                     self._refresh_http_client()
                 logger.error(f"Error claiming episode: {e}. Retrying ...")

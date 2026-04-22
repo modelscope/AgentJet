@@ -25,6 +25,11 @@ VERBOSE_LOG_TTL_SECONDS = 30.0
 class SwarmOverwatch:
     """Real-time monitoring interface for swarm rollout pool"""
 
+    REFRESH_TRIGGER_KEYWORDS = (
+        "broken pipe", "disconnected", "connection reset",
+        "connection closed", "connection aborted", "bad file descriptor",
+    )
+
     def __init__(self, server_url: str, refresh_interval: float = 2.0):
         """
         Initialize the overwatch monitor
@@ -42,6 +47,19 @@ class SwarmOverwatch:
         self._httpx_client = httpx.Client(timeout=5.0)
         self._verbose_logs: list = []  # list of dicts {timestamp, tag, message}
 
+    def _refresh_http_client(self):
+        """Close the existing httpx client and create a fresh one."""
+        try:
+            self._httpx_client.close()
+        except Exception:
+            pass
+        self._httpx_client = httpx.Client(timeout=5.0)
+        logger.warning("swarm overwatch httpx client refreshed.")
+
+    def _should_refresh_client_on_error(self, error: Exception) -> bool:
+        msg = str(error).lower()
+        return any(k in msg for k in self.REFRESH_TRIGGER_KEYWORDS)
+
     def fetch_pool_info(self) -> Optional[CurrentBatchRolloutPoolInformation]:
         """Fetch current batch rollout pool information from server"""
         try:
@@ -56,7 +74,8 @@ class SwarmOverwatch:
             return data
         except Exception as e:
             self.error_count += 1
-            # logger.error(f"Failed to fetch pool info: {e}")
+            if self._should_refresh_client_on_error(e):
+                self._refresh_http_client()
             return None
 
     def fetch_verbose_logs(self) -> None:
@@ -69,9 +88,10 @@ class SwarmOverwatch:
             response.raise_for_status()
             data = response.json()
             self._verbose_logs = data.get("entries", [])
-        except Exception:
+        except Exception as e:
+            if self._should_refresh_client_on_error(e):
+                self._refresh_http_client()
             # Keep previously fetched logs; TTL filter still applies at render time.
-            pass
 
     def _latest_verbose_entry(self) -> Optional[dict]:
         """Return the most recent non-expired verbose log entry, or None."""

@@ -21,18 +21,26 @@ from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from tutorial.opencode_build_aime.agent_run_v3 import execute_agent
 from tqdm import tqdm
 
-REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct")
-BATCH_SIZE = 64
+
+REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-14B")
+BATCH_SIZE = 32
+NUM_REPEAT = 8
+MINI_BATCH_NUM = 2
 ajet_job = AgentJetJob(
     algorithm="grpo",
-    experiment_name="aime_swarm_14b_v3_4",
+    experiment_name="aime_swarm_14b_v33_2",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
     batch_size=BATCH_SIZE,
     swarm_mode_sample_collection_method="rollout_until_finish_enough_non_dummy_tasks",
-    num_repeat=8,
-    logging="swanlab"
+    num_repeat=NUM_REPEAT,
+    mini_batch_num=MINI_BATCH_NUM,
+    logging="swanlab",
+    max_prompt_length=3000,
+    max_response_length=15000,
+    max_response_length_in_one_turn=10000,
+    max_model_len=18000
 )
 
 def load_eval_tasks(test_dataset: str) -> list:
@@ -56,7 +64,7 @@ class AIMESwarmTrainer:
     """AIME Math Swarm Trainer using GRPO algorithm."""
 
     NUM_EPOCH = 10000
-    EVAL_INTERVAL = 50  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
+    EVAL_INTERVAL = 20  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
     EVAL_K = 2  # pass@k: run each eval task K times
 
     def __init__(
@@ -186,9 +194,9 @@ class AIMESwarmTrainer:
         # self.run_eval(0)
 
         task_count = 0
-        max_parallel = 512
+        max_parallel = 64
         executor = TaskCountLimitedThreadPoolExecutor(
-            max_parallel_groups=BATCH_SIZE,
+            max_parallel_groups=BATCH_SIZE//2,
             max_workers=max_parallel,
             auto_retry=True,
         )
