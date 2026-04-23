@@ -7,7 +7,7 @@ Usage:
     ajet-swarm start
 
     # Then run this script:
-    python -m tutorial.opencode_build_aime.agent_roll
+    python -m tutorial.opencode_build_aime.agent_roll_v3
 """
 
 import os
@@ -23,7 +23,8 @@ from tqdm import tqdm
 
 
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-14B")
-BATCH_SIZE = 32
+BATCH_SIZE = 16
+PPO_EPOCH = 4
 NUM_REPEAT = 8
 MINI_BATCH_NUM = 1
 ajet_job = AgentJetJob(
@@ -35,7 +36,7 @@ ajet_job = AgentJetJob(
     batch_size=BATCH_SIZE,
     swarm_mode_sample_collection_method="rollout_until_finish_enough_non_dummy_tasks",
     num_repeat=NUM_REPEAT,
-    ppo_epochs=4,
+    ppo_epochs=PPO_EPOCH,
     mini_batch_num=MINI_BATCH_NUM,
     logging="swanlab",
     max_prompt_length=3000,
@@ -197,7 +198,7 @@ class AIMESwarmTrainer:
         task_count = 0
         max_parallel = 64
         executor = TaskCountLimitedThreadPoolExecutor(
-            max_parallel_groups=BATCH_SIZE//2,
+            max_parallel_groups=BATCH_SIZE,
             max_workers=max_parallel,
             auto_retry=True,
         )

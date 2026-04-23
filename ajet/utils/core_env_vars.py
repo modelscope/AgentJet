@@ -53,6 +53,8 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
         "BEST_LOGGER_WEB_SERVICE_URL",
         "AJET_GIT_HASH",
         "AJET_REQ_TXT",
+        "SWANLAB_WEB_HOST",
+        "SWANLAB_API_HOST",
         "AJET_BENCHMARK_NAME",
         "FINANCE_MCP_URL",
         # API Keys for RM Gallery and other services
