@@ -19,6 +19,8 @@ python -m pytest -s tests/bench/benchmark_countdown/execute_benchmark_countdown.
 python -m pytest -s tests/bench/benchmark_learn2ask/execute_benchmark_learn2ask.py
 python -m pytest -s tests/bench/benchmark_frozenlake/execute_benchmark_frozenlake.py
 
+
+别忘了Benchmark Api Key
 VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_math/execute_benchmark_math.py::TestBenchmarkMath::test_01_begin_verl
 VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_appworld/execute_benchmark_appworld.py::TestBenchmarkAppworld::test_01_begin_verl
 VERL_PYTHON="./.venv/bin/python" python -m pytest -s tests/bench/benchmark_countdown/execute_benchmark_countdown.py::TestBenchmarkCountdown::test_01_begin_verl

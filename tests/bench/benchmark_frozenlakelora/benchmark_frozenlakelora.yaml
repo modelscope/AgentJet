@@ -1,6 +1,6 @@
 # ------------------ main config ------------------
 ajet:
-  project_name: benchmarking_lora
+  project_name: benchmarking
 
   task_reader:
     type: random_dummy # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo` or `random_dummy`
