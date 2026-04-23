@@ -118,6 +118,19 @@ def suppress_httpx_aclose_exception():
     logging.getLogger('asyncio').addFilter(HttpxAcloseFilter())
 
 
+def silence_hermes_tool_parser_loggers():
+    """Silence the noisy vllm Hermes tool-parser loggers (import path varies across vllm versions)."""
+    for name in (
+        "vllm.entrypoints.openai.tool_parsers.hermes_tool_parser",
+        "vllm.tool_parsers.hermes_tool_parser",
+    ):
+        lg = logging.getLogger(name)
+        lg.setLevel(logging.CRITICAL)
+        for handler in lg.handlers:
+            handler.setLevel(logging.CRITICAL)
+        lg.propagate = False
+
+
 class IterationSafeDict(dict):
     """A dict subclass that creates snapshots during iteration to avoid RuntimeError when dict changes size."""
 
