@@ -24,12 +24,13 @@ from tqdm import tqdm
 
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-14B")
 BATCH_SIZE = 16
-PPO_EPOCH = 4
+PPO_EPOCH = 2
 NUM_REPEAT = 8
-MINI_BATCH_NUM = 1
+MINI_BATCH_NUM = 2
 ajet_job = AgentJetJob(
+    ensure_new_experiment=True,
     algorithm="grpo",
-    experiment_name="aime_swarm_14b_v33_ppoepoch4",
+    experiment_name="aime_swarm_14b_v33_ppoepoch4_v3",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
@@ -148,6 +149,8 @@ class AIMESwarmTrainer:
         """Run evaluation on AIME-2024 test set."""
         if not self.eval_tasks:
             return
+        eval_log_path = os.path.join(self.swarm_worker.server_experiment_dir(), "eval_results.log")
+        print(eval_log_path)
 
         k = self.EVAL_K
         total_rollouts = len(self.eval_tasks) * k
@@ -182,7 +185,6 @@ class AIMESwarmTrainer:
                 f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
             )
             print(summary)
-            eval_log_path = os.path.join(os.path.dirname(__file__), "eval_results.log")
             with open(eval_log_path, "a") as f:
                 f.write(summary + "\n")
         else:
@@ -193,7 +195,7 @@ class AIMESwarmTrainer:
     def train(self):
         """Main training loop."""
         # Run eval once before training starts (baseline)
-        # self.run_eval(0)
+        self.run_eval(0)
 
         task_count = 0
         max_parallel = 64

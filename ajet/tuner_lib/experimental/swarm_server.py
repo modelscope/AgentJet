@@ -389,6 +389,7 @@ def register_enable_swarm_mode_routes(
                 backbone=backbone,
                 override_param_callback=override_param_callback,
             )
+            shared_mem_dict["server_experiment_dir"] = exe_exp_base
 
             # Setup environment variables
             env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
@@ -490,6 +491,11 @@ def register_enable_swarm_mode_routes(
             "engine_status_detail": engine_status_detail,
             "global_step": global_step,
         }
+
+    @app.get("/get_server_experiment_dir")
+    async def get_server_experiment_dir():
+        """Return the absolute experiment directory once the engine has started."""
+        return {"server_experiment_dir": shared_mem_dict.get("server_experiment_dir", None)}
 
     # --- episode status ---
     @app.post("/register_episode", response_model=BoolResponse)

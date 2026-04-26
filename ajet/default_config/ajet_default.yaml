@@ -356,3 +356,9 @@ ajet:
   # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
   execute_test: False        # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
   execute_testing_lambda: "" # DO NOT EDIT, FOR ROBOT TESTING PURPOSE ONLY. NOT FOR HUMAN.
+
+
+# ------------------ hydra runtime ------------------
+hydra:
+  run:
+    dir: saved_experiments/hydra_outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -747,6 +747,21 @@ class SwarmClient(SwarmClientBase):
             raise RuntimeError("Failed to stop training engine")
         self._wait_until_status_change_to(desired_status="ENGINE.OFFLINE")
 
+    def server_experiment_dir(self) -> str:
+        """
+        Fetch the absolute experiment directory from the Swarm server.
+        Returns None if the engine has not started yet (no experiment dir is set).
+        """
+        try:
+            resp = self._http_client.get(
+                f"{self.server_url}/get_server_experiment_dir",
+                timeout=10
+            )
+            raise_for_status_with_detail(resp)
+            return resp.json().get("server_experiment_dir", None)
+        except Exception as e:
+            return "saved_experiments"
+
     def get_rollout_stat(self) -> CurrentBatchRolloutPoolInformation:
         """
         Get the current batch rollout pool information from the Swarm server.

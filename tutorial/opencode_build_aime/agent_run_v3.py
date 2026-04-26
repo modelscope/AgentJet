@@ -393,7 +393,7 @@ class AgentLoop:
                     except Exception as e:
                         tool_response = {"text": f"Error executing tool: {e}"}
 
-                    truncated_text = self._truncate_response(tool_response.get("text", ""))
+                    truncated_text = self._truncate_response(tool_response.get("text", "")) or "(no output)"
                     formatted_messages.append({
                         "role": "tool",
                         "content": truncated_text,

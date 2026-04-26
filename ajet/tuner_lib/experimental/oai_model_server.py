@@ -39,6 +39,7 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 
 from ajet.utils.networking import get_host_ip
+from ajet.utils.message_utils import log_empty_content_messages
 from ajet.tuner_lib.experimental.interchange_utils import EpisodeStatus
 from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE, API_KEY_PREFIX
 
@@ -287,6 +288,9 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             if first_msg.get("role") != "system":
                 logger.warning(f"First message role is '{first_msg.get('role')}', expected 'system'. Adding default system prompt.")
                 new_req.messages.insert(0, {"role": "system", "content": "You are a helpful assistant, your name is AgentJet."})
+
+        # Detect empty-content messages in the inbound request
+        log_empty_content_messages(new_req.messages, episode_uuid=episode_uuid)
 
         # Create timeline UUID
         timeline_uuid = uuid.uuid4().hex
