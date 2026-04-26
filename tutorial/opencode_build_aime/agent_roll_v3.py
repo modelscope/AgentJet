@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from tutorial.opencode_build_aime.agent_run_v3 import execute_agent
+from tutorial.opencode_build_aime import download_data
 from tqdm import tqdm
 
 
@@ -46,8 +47,8 @@ ajet_job = AgentJetJob(
     max_model_len=18000
 )
 
-def load_eval_tasks(test_dataset: str) -> list:
-    """Load AIME-2024 evaluation tasks."""
+def load_eval_tasks(test_dataset: str, label: str = "") -> list:
+    """Load AIME evaluation tasks from a single parquet file."""
     eval_tasks = []
     if os.path.exists(test_dataset):
         eval_reader = HuggingFaceTaskReader(
@@ -55,9 +56,9 @@ def load_eval_tasks(test_dataset: str) -> list:
         )
         for t in eval_reader.generate_training_tasks():
             eval_tasks.append(t)
-        print(f"[INFO] Loaded {len(eval_tasks)} eval tasks from AIME-2024")
+        print(f"[INFO] Loaded {len(eval_tasks)} eval tasks from {label or test_dataset}")
     else:
-        print(f"[WARN] Eval dataset not found: {test_dataset}. Skipping eval.")
+        print(f"[WARN] Eval dataset not found: {test_dataset}. Skipping {label or test_dataset}.")
     return eval_tasks
 
 
@@ -74,17 +75,21 @@ class AIMESwarmTrainer:
         self,
         swarm_url: str = None,
         train_dataset: str = None,
-        test_dataset: str = None,
+        test_datasets: dict = None,
     ):
         self.swarm_url = swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 
         data_dir = os.path.join(os.path.dirname(__file__), "data")
         self.train_dataset = train_dataset or os.path.join(data_dir, "dapo-math-17k.parquet")
-        self.test_dataset = test_dataset or os.path.join(data_dir, "aime-2024.parquet")
+        self.test_datasets = test_datasets or {
+            "AIME-2024": (os.path.join(data_dir, "aime-2024.parquet"), download_data.ensure_aime_2024),
+            "AIME-2025": (os.path.join(data_dir, "aime-2025.parquet"), download_data.ensure_aime_2025),
+            "AIME-2026": (os.path.join(data_dir, "aime-2026.parquet"), download_data.ensure_aime_2026),
+        }
 
         self.swarm_worker: SwarmClient = None
         self.dataset: RouterTaskReader = None
-        self.eval_tasks: list = []
+        self.eval_tasks_by_set: dict = {}
 
         self.grpo_n: int = None
         self.remote_batch_size: int = None
@@ -120,8 +125,18 @@ class AIMESwarmTrainer:
         self.remote_batch_size = ajet_job.batch_size
         self.max_env_worker = ajet_job.max_env_worker
 
-        # Load eval tasks
-        self.eval_tasks = load_eval_tasks(self.test_dataset)
+        # Load eval tasks for each test set, auto-downloading any missing parquet
+        for label, (path, ensure_fn) in self.test_datasets.items():
+            if not os.path.exists(path):
+                print(f"[INFO] {label} parquet missing, downloading...")
+                try:
+                    ensure_fn()
+                except Exception as e:
+                    print(f"[WARN] Failed to download {label}: {e}")
+                    continue
+            tasks = load_eval_tasks(path, label=label)
+            if tasks:
+                self.eval_tasks_by_set[label] = tasks
 
 
 
@@ -146,22 +161,27 @@ class AIMESwarmTrainer:
 
 
     def run_eval(self, n_global_step: int):
-        """Run evaluation on AIME-2024 test set."""
-        if not self.eval_tasks:
+        """Run evaluation on every loaded AIME test set."""
+        if not self.eval_tasks_by_set:
             return
         eval_log_path = os.path.join(self.swarm_worker.server_experiment_dir(), "eval_results.log")
         print(eval_log_path)
 
+        for label, eval_tasks in self.eval_tasks_by_set.items():
+            self._run_eval_one(n_global_step, label, eval_tasks, eval_log_path)
+
+    def _run_eval_one(self, n_global_step: int, label: str, eval_tasks: list, eval_log_path: str):
+        """Run evaluation on a single AIME test set."""
         k = self.EVAL_K
-        total_rollouts = len(self.eval_tasks) * k
-        print(f"\n[EVAL @ step {n_global_step}] Running AIME-2024 eval on {len(self.eval_tasks)} tasks x {k} (pass@{k})...")
-        per_task_rewards = [[] for _ in self.eval_tasks]
-        pbar = tqdm(total=total_rollouts, desc=f"EVAL @ step {n_global_step}")
+        total_rollouts = len(eval_tasks) * k
+        print(f"\n[EVAL @ step {n_global_step}] Running {label} eval on {len(eval_tasks)} tasks x {k} (pass@{k})...")
+        per_task_rewards = [[] for _ in eval_tasks]
+        pbar = tqdm(total=total_rollouts, desc=f"EVAL {label} @ step {n_global_step}")
 
         with ThreadPoolExecutor(max_workers=self.max_env_worker) as eval_executor:
             future_to_idx = {
                 eval_executor.submit(self.eval_rollout, t): i
-                for i, t in enumerate(self.eval_tasks)
+                for i, t in enumerate(eval_tasks)
                 for _ in range(k)
             }
             for fut in as_completed(future_to_idx):
@@ -180,7 +200,7 @@ class AIMESwarmTrainer:
             solved_tasks = [rs for rs in per_task_rewards if any((r is not None and r > 0) for r in rs)]
             passk = len(solved_tasks) / len(per_task_rewards)
             summary = (
-                f"[EVAL @ step {n_global_step}] avg_reward={avg:.4f}  "
+                f"[EVAL @ step {n_global_step}] {label}  avg_reward={avg:.4f}  "
                 f"pass@1={pass1*100:.2f}%  pass@{k}={passk*100:.2f}%  "
                 f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
             )
@@ -188,7 +208,7 @@ class AIMESwarmTrainer:
             with open(eval_log_path, "a") as f:
                 f.write(summary + "\n")
         else:
-            print(f"[EVAL @ step {n_global_step}] no valid rewards")
+            print(f"[EVAL @ step {n_global_step}] {label}  no valid rewards")
 
 
 

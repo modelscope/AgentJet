@@ -18,6 +18,8 @@ class AjetTrainerCommon:
     algorithm: AjetAlgorithm = field(default_factory=AjetAlgorithm)
     optim: AjetOptim = field(default_factory=AjetOptim)
     ppo_epochs: int = 1
+    val_print_to_markdown_file_path: str | None = None
+    train_print_to_markdown_file_path: str | None = None
 
 
 @dataclass
