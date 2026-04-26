@@ -6,7 +6,11 @@ Process level warm up
 import asyncio
 import logging
 import os
-from ajet.utils.async_utils import apply_httpx_aclose_patch, suppress_httpx_aclose_exception
+from ajet.utils.async_utils import (
+    apply_httpx_aclose_patch,
+    silence_hermes_tool_parser_loggers,
+    suppress_httpx_aclose_exception,
+)
 apply_httpx_aclose_patch()
 suppress_httpx_aclose_exception()
 
@@ -36,10 +40,7 @@ def init_parallel_rollout_logger(experiment_name, experiment_dir):
         debug=False,
     )
 
-    target_logger = logging.getLogger("vllm.entrypoints.openai.tool_parsers.hermes_tool_parser")
-    target_logger.setLevel(logging.CRITICAL)
-    target_logger = logging.getLogger("vllm.tool_parsers.hermes_tool_parser")
-    target_logger.setLevel(logging.CRITICAL)
+    silence_hermes_tool_parser_loggers()
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 

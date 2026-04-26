@@ -106,10 +106,19 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
             if enable_swarm_mode:
                 assert shared_mem_dict is not None
-                ep_stat = shared_mem_dict[ep_key(episode_uuid)]
-                episode_status = ep_stat.episode_status
+                assert shared_mem_dict_lock is not None
+                if ep_key(episode_uuid) not in shared_mem_dict:
+                    raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
+
+                # update activate timestamp and increment llm call counter
+                with shared_mem_dict_lock:
+                    es:EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
+                    es.latest_activity_timestamp = time.time()
+                    episode_status = es.episode_status
+                    shared_mem_dict[ep_key(episode_uuid)] = es
+
                 if episode_status != "claimed":
-                    raise HTTPException(status_code=404, detail="The episode is not claimed, cannot accept new requests.")
+                    raise HTTPException(status_code=404, detail=f"The episode {episode_uuid} is not claimed, cannot accept new requests.")
 
             try:
                 if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | recv_string begin.")
@@ -374,6 +383,34 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
 
 
+def _bind_reuseport_socket(host: str, port: int):
+    import socket as _socket
+    sock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+    sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+    try:
+        sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEPORT, 1)
+    except (AttributeError, OSError):
+        logger.warning("SO_REUSEPORT is not supported on this platform; multi-process workers may conflict on bind.")
+    sock.bind((host, port))
+    return sock
+
+
+def _run_fastapi_worker(port, max_fastapi_threads, enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock):
+    """Entry point for a FastAPI worker subprocess.
+
+    Each worker binds its own socket with SO_REUSEPORT so the kernel load-balances
+    accepted connections across all workers sharing the same (host, port).
+    """
+    sock = _bind_reuseport_socket("0.0.0.0", port)
+    app, _ = get_app(max_fastapi_threads, enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock)
+    config = uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="error")
+    server = uvicorn.Server(config)
+    try:
+        asyncio.run(server.serve(sockets=[sock]))
+    except KeyboardInterrupt:
+        SERVER_SHUTDOWN_EVENT.set()
+
+
 class InterchangeServer(Process):
     def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 2, max_fastapi_threads: int = 512, enable_swarm_mode=False):
         super().__init__()
@@ -386,37 +423,89 @@ class InterchangeServer(Process):
     def run(self):
         logger.info(f"Starting Interchange Server on port {self.port} with {self.num_fastapi_process} processes and {self.max_fastapi_threads} threads per process.")
 
+        multi_process = self.num_fastapi_process > 1
+
         if self.enable_swarm_mode:
-            manager = Manager()
-            shared_mem_dict = manager.dict()
-            shared_mem_dict_lock = manager.Lock()
+            if multi_process:
+                # Cross-process sharing requires Manager proxies (one dedicated server
+                # process arbitrates all reads/writes and lock acquire/release).
+                manager = Manager()
+                shared_mem_dict = manager.dict()
+                shared_mem_dict_lock = manager.Lock()
+            else:
+                # Single-process: plain dict + threading.Lock avoids the manager IPC
+                # roundtrip on every access.
+                shared_mem_dict = {}
+                shared_mem_dict_lock = threading.Lock()
         else:
             shared_mem_dict = None
             shared_mem_dict_lock = None
 
-        app, additional_coro = get_app(self.max_fastapi_threads, self.enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock)
+        if multi_process:
+            # Build the app once in the supervisor to obtain the janitor coroutine
+            # (additional_coro). The supervisor does not serve HTTP — it only runs
+            # the janitor and watches the workers.
+            _, additional_coro = get_app(self.max_fastapi_threads, self.enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock)
 
-        async def serve_with_monitor(additional_coro):
-            # Start the server
-            config = uvicorn.Config(
-                app=app,
-                host="0.0.0.0",
-                port=self.port,
-                log_level="error",
-                workers=self.num_fastapi_process
-            )
-            server = uvicorn.Server(config)
-            if additional_coro:
-                coro_task_1 = asyncio.create_task(additional_coro)
-                coro_task_2 = asyncio.create_task(server.serve())
-                await asyncio.gather(coro_task_1, coro_task_2)
-            else:
-                await server.serve()
-        try:
-            asyncio.run(serve_with_monitor(additional_coro))
-        except KeyboardInterrupt as e:
-            SERVER_SHUTDOWN_EVENT.set()
-            raise e
+            workers = []
+            for _ in range(self.num_fastapi_process):
+                p = Process(
+                    target=_run_fastapi_worker,
+                    args=(self.port, self.max_fastapi_threads, self.enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock),
+                    daemon=True,
+                )
+                p.start()
+                workers.append(p)
+            logger.info(f"Spawned {len(workers)} FastAPI worker processes: pids={[p.pid for p in workers]}")
+
+            async def supervise():
+                async def _watch_workers():
+                    while True:
+                        await asyncio.sleep(1)
+                        for p in workers:
+                            if p.exitcode is not None:
+                                logger.error(f"FastAPI worker (pid={p.pid}) exited unexpectedly with code {p.exitcode}.")
+                                return
+                tasks = [asyncio.create_task(_watch_workers())]
+                if additional_coro:
+                    tasks.append(asyncio.create_task(additional_coro))
+                await asyncio.gather(*tasks)
+
+            try:
+                asyncio.run(supervise())
+            except KeyboardInterrupt as e:
+                SERVER_SHUTDOWN_EVENT.set()
+                raise e
+            finally:
+                for p in workers:
+                    try:
+                        p.terminate()
+                    except Exception:
+                        pass
+
+        else:
+            app, additional_coro = get_app(self.max_fastapi_threads, self.enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock)
+
+            async def serve_with_monitor(additional_coro):
+                # Start the server
+                config = uvicorn.Config(
+                    app=app,
+                    host="0.0.0.0",
+                    port=self.port,
+                    log_level="error",
+                )
+                server = uvicorn.Server(config)
+                if additional_coro:
+                    coro_task_1 = asyncio.create_task(additional_coro)
+                    coro_task_2 = asyncio.create_task(server.serve())
+                    await asyncio.gather(coro_task_1, coro_task_2)
+                else:
+                    await server.serve()
+            try:
+                asyncio.run(serve_with_monitor(additional_coro))
+            except KeyboardInterrupt as e:
+                SERVER_SHUTDOWN_EVENT.set()
+                raise e
 
 
 

@@ -1,6 +1,6 @@
 # ------------------ main configuration ------------------
 ajet:
-  project_name: benchmarking_lora
+  project_name: benchmarking
 
   model:
     # ✨✨✨✨ which model should be trained

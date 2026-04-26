@@ -12,6 +12,9 @@ try:
     from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
 except:
     from vllm.tool_parsers.hermes_tool_parser import Hermes2ProToolParser   # vllm 0.17.x moved this class elsewhere
+
+from ajet.utils.async_utils import silence_hermes_tool_parser_loggers
+silence_hermes_tool_parser_loggers()
 from verl.workers.rollout.replica import TokenOutput
 from agentscope.model import ChatResponse as AgentScopeChatResponse
 from openai.types.chat.chat_completion import ChatCompletion as OpenAIChatCompletion

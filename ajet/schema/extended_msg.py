@@ -111,7 +111,7 @@ class ExtendedMessage:
         self.processor = processor
         self.multi_modal_inputs = None  # dict[str, torch.Tensor] once tokenized
 
-        self.generate_content_for_compare(tokenizer=None)
+        self.generate_content_for_compare(content=self.content)
 
         self.eos_token_id = tokenizer.eos_token_id
 
@@ -268,7 +268,7 @@ class ExtendedMessage:
         if self._content_for_compare == "":
             if not self.tool_calls:
                 logger.exception("content_for_compare is not set, or previous llm output is empty!")
-                self._content_for_compare
+                # self._content_for_compare
         return self._content_for_compare
 
     @property
@@ -280,9 +280,8 @@ class ExtendedMessage:
         ), f"author {self.author} is not identified"
         return self.author in NEED_TRAIN_AUTHORS
 
-    def generate_content_for_compare(self, tokenizer):
-        _content: str = self.content
-        self._content_for_compare = _content
+    def generate_content_for_compare(self, content):
+        self._content_for_compare = content
 
     def get_loss_mask(self, blackout_token_combo):
         if self.need_training:
@@ -397,6 +396,7 @@ class ExtendedMessage:
             )
             merged_content = merged_content[len("<tool_response>\n") :]
             merged_content = merged_content[: -len("</tool_response>\n")]
+            # create merged tool response block
             merged = ExtendedMessage(
                 author=msg0.author,
                 role=msg0.role,

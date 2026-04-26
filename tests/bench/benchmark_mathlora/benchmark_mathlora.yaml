@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
 ajet:
-  project_name: benchmarking_lora
+  project_name: benchmarking
   task_reader:
     type: huggingface_dat_repo # ✨✨✨✨ `env_service` or `dataset_file` or `huggingface_dat_repo`
     huggingface_dat_repo:

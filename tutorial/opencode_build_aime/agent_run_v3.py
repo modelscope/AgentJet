@@ -25,6 +25,7 @@ from uuid import uuid4
 
 from openai import OpenAI
 
+from ajet.copilot.job import AgentJetJob
 from ajet.schema.task import Task, WorkflowOutput
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 
@@ -102,6 +103,7 @@ class PythonExecutor:
             import resource
             import os
             import sys
+            import time
 
             os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
@@ -277,14 +279,16 @@ class AgentLoop:
     def __init__(
         self,
         client: OpenAI,
-        tools: dict,
+        tool_schemas: list[dict],
+        tool_instances: dict,
         max_assistant_turns: int = 5,
         max_response_length: int = 8192,
         max_tool_response_length: int = 8000,
         tool_response_truncate_side: str = "right",
     ):
         self.client = client
-        self.tools = tools
+        self.tool_schemas = tool_schemas
+        self.tool_instances = tool_instances
         self.max_assistant_turns = max_assistant_turns
         self.max_response_length = max_response_length
         self.max_tool_response_length = max_tool_response_length
@@ -343,8 +347,8 @@ class AgentLoop:
             response = self.client.chat.completions.create(
                 model=sampling_params.get("model", "gpt-4o"),
                 messages=formatted_messages,
-                tools=list(self.tools.values()) if self.tools else None,
-                tool_choice="auto" if self.tools else None,
+                tools=self.tool_schemas if self.tool_schemas else None,
+                tool_choice="auto" if self.tool_schemas else None,
                 temperature=sampling_params.get("temperature", 1.0),
                 max_tokens=max_tokens,
             )
@@ -377,15 +381,15 @@ class AgentLoop:
                 tool_name = tool_call.function.name
                 tool_args = json.loads(tool_call.function.arguments)
 
-                if tool_name in self.tools:
+                if tool_name in self.tool_instances:
                     try:
-                        tool_instance, _ = await self.tools[tool_name].create(
+                        tool_instance_id, _ = await self.tool_instances[tool_name].create(
                             history_tool_calls=history_tool_calls[:-1]
                         )
-                        tool_response, _, _ = await self.tools[tool_name].execute(
-                            tool_instance, tool_args
+                        tool_response, _, _ = await self.tool_instances[tool_name].execute(
+                            tool_instance_id, tool_args
                         )
-                        await self.tools[tool_name].release(tool_instance)
+                        await self.tool_instances[tool_name].release(tool_instance_id)
                     except Exception as e:
                         tool_response = {"text": f"Error executing tool: {e}"}
 
@@ -444,7 +448,11 @@ def compute_reward(solution_str: str, ground_truth: str) -> dict:
 
 # ==================== Agent Execution ====================
 
-def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> WorkflowOutput:
+def execute_agent(
+    task: Task,
+    api_baseurl_key: OpenaiBaseUrlAndApiKey,
+    ajet_job: AgentJetJob,
+) -> WorkflowOutput:
     base_url = api_baseurl_key.base_url
     api_key = api_baseurl_key.api_key
 
@@ -484,9 +492,9 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Workfl
             {"role": "user", "content": query}
         ]
 
-    # Tools for the AgentLoop (use schema, not instances, to avoid JSON serialization issues)
-    tools = {
-        "python_code_with_standard_io": PYTHON_TOOL_SCHEMA
+    tool_schemas = [PYTHON_TOOL_SCHEMA]
+    tool_instances = {
+        "python_code_with_standard_io": PythonTool(timeout=30),
     }
 
     client = OpenAI(
@@ -497,15 +505,14 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Workfl
 
     agent_loop = AgentLoop(
         client=client,
-        tools=tools,
+        tool_schemas=tool_schemas,
+        tool_instances=tool_instances,
         max_assistant_turns=5,
-        max_response_length=8192,
+        max_response_length=ajet_job.max_response_length,
     )
 
     sampling_params = {
-        "model": "gpt-4o",
-        "temperature": 1.0,
-        "max_tokens": 4096,
+        "model": ajet_job.model,
     }
 
     try:
@@ -535,13 +542,14 @@ def execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> Workfl
 def run_agent_and_compute_reward(
     task: Task,
     base_url: str,
-    api_key: str
+    api_key: str,
+    ajet_job: AgentJetJob,
 ) -> WorkflowOutput:
     api_baseurl_key = OpenaiBaseUrlAndApiKey(
         base_url=base_url,
         api_key=api_key,
     )
-    return execute_agent(task, api_baseurl_key)
+    return execute_agent(task, api_baseurl_key, ajet_job)
 
 
 if __name__ == "__main__":

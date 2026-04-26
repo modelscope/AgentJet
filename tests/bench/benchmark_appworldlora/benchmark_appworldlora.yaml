@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
 ajet:
-  project_name: example_appworld_lora
+  project_name: benchmarking
   experiment_name: "read_yaml_name"
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数

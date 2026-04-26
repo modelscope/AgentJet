@@ -191,6 +191,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             else:
                 author = "env"
 
+            # extract content block from openai-competible messages and convert to ExtendedMessage
             timeline += [
                 ExtendedMessage(
                     author=author,
@@ -262,6 +263,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
         tool_calls = self.detect_tool_call_madness(llm_output)
 
+        # add llm_output to timeline and save
         llm_ext_msg = ExtendedMessage(
             author="llm",
             role="assistant",

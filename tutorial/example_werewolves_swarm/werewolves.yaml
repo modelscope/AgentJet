@@ -39,7 +39,7 @@ ajet:
   interchange_server:
     interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
     interchange_server_port: 10086
-    num_fastapi_process: 2  # 1, 2 or 4 is fine
+    num_fastapi_process: 1  # 1, 2 or 4 is fine
     max_fastapi_threads: 512  # 64 or 128 is fine
     max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
     already_started: False # do not edit, used by `swarm`

@@ -19,6 +19,7 @@ from ajet.utils.config_utils import (
     read_ajet_hierarchical_config,
 )
 from ajet.utils.dynamic_import import cls_to_path
+from beast_logger import print_dict
 
 
 def override_current_yaml_value_if_given(override_value, current_value):
@@ -68,9 +69,10 @@ class AgentJetJob:
                 useful when the dataset contains many too-easy or too-hard prompts.
         max_env_worker: an estimation about how many episodes will be running in parallel (all swarm clients combined).
         backbone: Training backbone framework (e.g., 'verl').
-        max_prompt_length: Maximum token length for input prompts (token length before the first llm-generated token).
-        max_response_length: Maximum token length for model responses (token length after the first llm-generated token).
-        max_model_len: Maximum total token length (prompt + response) the model can handle (bigger => more GPU memory).
+        max_prompt_length: Maximum token length for input prompts (token length before the first llm-generated token, default 3000).
+        max_response_length: Maximum token length for model responses (token length after the first llm-generated token, default 15000).
+        max_response_length_in_one_turn: Maximum token length for model response in one turn (default 4096, should be <= max_response_length).
+        max_model_len: Maximum total token length (prompt + response) the model can handle (bigger => more GPU memory), default 18000.
         mini_batch_num: Number of mini-batches to split training batch into (how many mini steps, i.e. how many times the `optimizer.step` should be executed, per big train batch).
         lora_rank: LoRA rank for low-rank adaptation (set > 0 to enable LoRA training, default 0 means disabled).
         lora_alpha: LoRA alpha scaling factor (default 16).
@@ -79,6 +81,7 @@ class AgentJetJob:
         layered_summon: Enable layered summon for LoRA (default False).
         gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
         lr: Learning rate for optimizer (default 1e-6).
+        ppo_epochs: Number of PPO epochs per update (default 1).
         compute_madness_checklist: List of madness checks to monitor LLM's abnormal behaviors during rollout (default ["nonsense"], detect infinite repeat such as "但但但但但但但但但但....").
     """
 
@@ -111,6 +114,7 @@ class AgentJetJob:
         layered_summon: bool | None = None,
         gpu_memory_utilization: float | None = None,
         lr: float | None = None,
+        ppo_epochs: int | None = None,
         compute_madness_checklist: List[str] | None = None,
     ) -> None:
 
@@ -168,6 +172,7 @@ class AgentJetJob:
         self.layered_summon: bool = cast(bool, layered_summon)
         self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
         self.lr: float = cast(float, lr)
+        self.ppo_epochs: int = cast(int, ppo_epochs)
         self.compute_madness_checklist: List[str] = cast(List[str], compute_madness_checklist)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
@@ -198,6 +203,7 @@ class AgentJetJob:
             "ajet.lora.layered_summon":                     "layered_summon",
             "ajet.rollout.gpu_memory_utilization":          "gpu_memory_utilization",
             "ajet.trainer_common.optim.lr":                 "lr",
+            "ajet.trainer_common.ppo_epochs":               "ppo_epochs",
             "ajet.rollout.compute_madness_checklist":       "compute_madness_checklist",
         }
 
@@ -236,6 +242,11 @@ class AgentJetJob:
 
         if self.backbone == "trinity":
             raise NotImplementedError("Trinity backbone is not yet supported in AgentJetJob.")
+
+        primary_attributes = {key: getattr(self, key) for key in overrides.values()}
+
+        print_dict(primary_attributes)
+
 
 
     def build_job_from_yaml(self, yaml_path: str | None) -> dict:

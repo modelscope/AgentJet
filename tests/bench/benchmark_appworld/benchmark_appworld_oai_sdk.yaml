@@ -1,6 +1,6 @@
 # ------------------ 主要配置 ------------------
 ajet:
-  project_name: example_appworld
+  project_name: benchmarking
   task_judge:
     # ✨✨✨✨ 编写并选择评价函数
     judge_protocol: ajet.task_judge.env_service_as_judge->EnvServiceJudge
