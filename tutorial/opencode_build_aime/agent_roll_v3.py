@@ -7,7 +7,7 @@ Usage:
     ajet-swarm start
 
     # Then run this script:
-    python -m tutorial.opencode_build_aime.agent_roll
+    python -m tutorial.opencode_build_aime.agent_roll_v3
 """
 
 import os
@@ -23,19 +23,21 @@ from tqdm import tqdm
 
 
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-14B")
-BATCH_SIZE = 32
+BATCH_SIZE = 16
+PPO_EPOCH = 2
 NUM_REPEAT = 8
-MINI_BATCH_NUM = 1
+MINI_BATCH_NUM = 2
 ajet_job = AgentJetJob(
+    ensure_new_experiment=True,
     algorithm="grpo",
-    experiment_name="aime_swarm_14b_v33_ppoepoch4",
+    experiment_name="aime_swarm_14b_v33_ppoepoch4_v3",
     max_env_worker=128,
     n_gpu=8,
     model=REMOTE_MODEL_PATH,
     batch_size=BATCH_SIZE,
     swarm_mode_sample_collection_method="rollout_until_finish_enough_non_dummy_tasks",
     num_repeat=NUM_REPEAT,
-    ppo_epochs=4,
+    ppo_epochs=PPO_EPOCH,
     mini_batch_num=MINI_BATCH_NUM,
     logging="swanlab",
     max_prompt_length=3000,
@@ -147,6 +149,8 @@ class AIMESwarmTrainer:
         """Run evaluation on AIME-2024 test set."""
         if not self.eval_tasks:
             return
+        eval_log_path = os.path.join(self.swarm_worker.server_experiment_dir(), "eval_results.log")
+        print(eval_log_path)
 
         k = self.EVAL_K
         total_rollouts = len(self.eval_tasks) * k
@@ -181,7 +185,6 @@ class AIMESwarmTrainer:
                 f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
             )
             print(summary)
-            eval_log_path = os.path.join(os.path.dirname(__file__), "eval_results.log")
             with open(eval_log_path, "a") as f:
                 f.write(summary + "\n")
         else:
@@ -192,12 +195,12 @@ class AIMESwarmTrainer:
     def train(self):
         """Main training loop."""
         # Run eval once before training starts (baseline)
-        # self.run_eval(0)
+        self.run_eval(0)
 
         task_count = 0
         max_parallel = 64
         executor = TaskCountLimitedThreadPoolExecutor(
-            max_parallel_groups=BATCH_SIZE//2,
+            max_parallel_groups=BATCH_SIZE,
             max_workers=max_parallel,
             auto_retry=True,
         )

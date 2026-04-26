@@ -42,6 +42,7 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
             "TRINITY_PLUGIN_DIRS": str((Path(__file__).parent.parent / "backbone").resolve()),
             # "VLLM_ALLOW_RUNTIME_LORA_UPDATING": "true",
             "SWANLAB_API_KEY": os.getenv("SWANLAB_API_KEY", ""),
+            "SWANLAB_LOG_DIR": os.getenv("SWANLAB_LOG_DIR", "saved_experiments/swanlog"),
             "AJET_CONFIG_REDIRECT": os.getenv("AJET_CONFIG_REDIRECT", ""),
             "AJET_DAT_INTERCHANGE_PORT": os.getenv("AJET_DAT_INTERCHANGE_PORT", data_interchange_port),
             "MASTER_NODE_IP": os.getenv("MASTER_NODE_IP", master_node_ip),
@@ -53,6 +54,8 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
         "BEST_LOGGER_WEB_SERVICE_URL",
         "AJET_GIT_HASH",
         "AJET_REQ_TXT",
+        "SWANLAB_WEB_HOST",
+        "SWANLAB_API_HOST",
         "AJET_BENCHMARK_NAME",
         "FINANCE_MCP_URL",
         # API Keys for RM Gallery and other services
