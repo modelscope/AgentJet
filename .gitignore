@@ -185,3 +185,5 @@ research_*.json
 research_*.jsonc
 daemon_logs*
 paper
+debug_multimodal_prompt
+saved_checkpoints*
