@@ -27,7 +27,10 @@ from ajet.schema.convertion import convert_llm_proxy_response_to_agentscope_resp
 from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
 
 if TYPE_CHECKING:
-    from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+    try:
+        from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+    except ModuleNotFoundError:
+        from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
 
 ChatResponse = Union[OpenAIChatCompletion, AgentScopeChatResponse]
 

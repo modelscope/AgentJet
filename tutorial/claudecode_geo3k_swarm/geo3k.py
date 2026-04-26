@@ -18,11 +18,14 @@ Model:
 import os
 import re
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from textwrap import dedent
+
+from tqdm import tqdm
 
 from ajet.schema.task import Task, WorkflowOutput
 from ajet.copilot.job import AgentJetJob
-from ajet.task_reader import RouterTaskReader
+from ajet.task_reader import RouterTaskReader, HuggingFaceTaskReader
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
@@ -32,10 +35,13 @@ from ajet.utils.multimodal import build_multimodal_messages, extract_image
 
 GRPO_N = 4  # grpo group size
 NUM_EPOCH = 10000
+EVAL_INTERVAL = 20  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE training tasks
+EVAL_K = 2  # pass@k: run each eval task K times
+EVAL_MAX_PARALLEL = 64
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 REMOTE_MODEL_PATH = os.getenv(
     "REMOTE_MODEL_PATH",
-    "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-VL-7B-Instruct",
+    "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-VL-2B-Instruct",
 )
 REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
@@ -43,6 +49,11 @@ REMOTE_ALLOCATE_GPU_PER_NODE = 8
 GEO3K_DATASET_PATH = os.getenv(
     "GEO3K_DATASET_PATH",
     "/mnt/data_cpfs/model_cache/modelscope/dataset/hiyouga/geometry3k/data/train-00000-of-00001.parquet",
+)
+# Geo3k test/validation parquet — used for periodic eval, mirrors rllm's test split.
+GEO3K_TEST_DATASET_PATH = os.getenv(
+    "GEO3K_TEST_DATASET_PATH",
+    "/mnt/data_cpfs/model_cache/modelscope/dataset/hiyouga/geometry3k/data/test-00000-of-00001.parquet",
 )
 
 SYSTEM_PROMPT = dedent(
@@ -66,6 +77,74 @@ def _compute_reward(final_answer: str, reference_answer: str) -> float:
     predicted = _normalize(m.group(1))
     target = _normalize(reference_answer)
     return 1.0 if predicted == target else 0.0
+
+
+def _load_eval_tasks(test_dataset_path: str) -> list:
+    """Load Geo3K test split for periodic evaluation."""
+    if not os.path.exists(test_dataset_path):
+        print(f"[WARN] Eval dataset not found: {test_dataset_path}. Skipping eval.")
+        return []
+    eval_reader = HuggingFaceTaskReader(
+        AjetTaskReader(huggingface_dat_repo=HuggingfaceDatRepo(dataset_path=test_dataset_path))
+    )
+    eval_tasks = list(eval_reader.generate_training_tasks())
+    print(f"[INFO] Loaded {len(eval_tasks)} eval tasks from Geo3K test split")
+    return eval_tasks
+
+
+def _run_eval(swarm_worker: SwarmClient, eval_tasks: list, n_global_step: int):
+    """Run pass@k evaluation on the Geo3K test set; rewards do not feed training."""
+    if not eval_tasks:
+        return
+
+    def eval_rollout(task: Task) -> float:
+        episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
+            discard_episode_timeout=240, episode_type="eval"
+        )
+        try:
+            workflow_output = _execute_agent(task, api_baseurl_key)
+            return workflow_output.reward
+        finally:
+            swarm_worker.abort_episode(episode_uuid)
+
+    k = EVAL_K
+    total = len(eval_tasks) * k
+    print(f"\n[EVAL @ step {n_global_step}] {len(eval_tasks)} tasks x {k} (pass@{k})...")
+    per_task_rewards = [[] for _ in eval_tasks]
+    pbar = tqdm(total=total, desc=f"EVAL @ step {n_global_step}")
+
+    with ThreadPoolExecutor(max_workers=EVAL_MAX_PARALLEL) as eval_executor:
+        future_to_idx = {
+            eval_executor.submit(eval_rollout, t): i
+            for i, t in enumerate(eval_tasks)
+            for _ in range(k)
+        }
+        for fut in as_completed(future_to_idx):
+            idx = future_to_idx[fut]
+            try:
+                per_task_rewards[idx].append(fut.result())
+            except Exception as e:
+                print(f"[EVAL] future error: {e}")
+            pbar.update(1)
+    pbar.close()
+
+    flat = [r for rs in per_task_rewards for r in rs if r is not None]
+    if flat:
+        avg = sum(flat) / len(flat)
+        pass1 = sum(1 for r in flat if r > 0) / len(flat)
+        solved = [rs for rs in per_task_rewards if any((r is not None and r > 0) for r in rs)]
+        passk = len(solved) / len(per_task_rewards)
+        summary = (
+            f"[EVAL @ step {n_global_step}] avg_reward={avg:.4f}  "
+            f"pass@1={pass1*100:.2f}%  pass@{k}={passk*100:.2f}%  "
+            f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
+        )
+        print(summary)
+        eval_log_path = os.path.join(os.path.dirname(__file__), "eval_results.log")
+        with open(eval_log_path, "a") as f:
+            f.write(summary + "\n")
+    else:
+        print(f"[EVAL @ step {n_global_step}] no valid rewards")
 
 
 def _execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> WorkflowOutput:
@@ -134,6 +213,7 @@ def main():
     ajet_job = AgentJetJob(
         experiment_name="geo3k_grpo",
         algorithm="grpo",
+        logging="swanlab",
         n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
         model=REMOTE_MODEL_PATH,
         batch_size=REMOTE_BATCH_SIZE,
@@ -145,6 +225,8 @@ def main():
         force_restart=True,
     )
 
+    eval_tasks = _load_eval_tasks(GEO3K_TEST_DATASET_PATH)
+
     def rollout(task):
         episode_uuid, api_baseurl_key = swarm_worker.begin_episode(discard_episode_timeout=240)
         workflow_output = _execute_agent(task, api_baseurl_key)
@@ -154,10 +236,16 @@ def main():
     executor = PeriodicDrainThreadPoolExecutor(
         workers=GRPO_N * REMOTE_BATCH_SIZE, auto_retry=True
     )
+    task_count = 0
     for _ in range(NUM_EPOCH):
         for _, task in enumerate(dataset.generate_training_tasks()):
             for _ in range(GRPO_N):
                 executor.submit_with_periodic_drain(fn=rollout, task=task)
+
+            task_count += 1
+            if task_count % (EVAL_INTERVAL * REMOTE_BATCH_SIZE) == 0:
+                n_global_step = task_count // REMOTE_BATCH_SIZE
+                _run_eval(swarm_worker, eval_tasks, n_global_step)
 
     return None
 

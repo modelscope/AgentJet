@@ -32,7 +32,10 @@ from multiprocessing import Manager, Process
 from concurrent.futures import ThreadPoolExecutor
 from typing import Coroutine, Optional, Tuple
 
-from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+try:
+    from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+except ModuleNotFoundError:
+    from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
