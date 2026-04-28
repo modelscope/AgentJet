@@ -89,9 +89,24 @@ def ensure_train(use_proxychains: bool = True) -> str:
     return TRAIN_FILE
 
 
+def _dedup_aime_2024_in_place(path: str):
+    """Upstream BytedTsinghua-SIA/AIME-2024 replicates each of the 30 problems 32x.
+    Collapse to 30 unique rows so it lines up with AIME-2025/2026."""
+    import pandas as pd
+
+    df = pd.read_parquet(path)
+    if len(df) == 30:
+        return
+    keys = df["extra_info"].apply(lambda x: x["raw_problem"])
+    df = df.loc[~keys.duplicated()].reset_index(drop=True)
+    df.to_parquet(path)
+    print(f"[DEDUP] {path} -> {len(df)} unique rows")
+
+
 def ensure_aime_2024(use_proxychains: bool = True) -> str:
     out = os.path.join(DATA_DIR, "aime-2024.parquet")
     _download_file(AIME_2024_URL, out, use_proxychains=use_proxychains)
+    _dedup_aime_2024_in_place(out)
     return out
 
 

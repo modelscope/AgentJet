@@ -13,7 +13,7 @@ Usage:
     python -m tutorial.opencode_build_aime.agent_roll
 """
 
-from tutorial.opencode_build_aime.agent_run import (
+from tutorial.opencode_build_aime.agent_run_v3 import (
     execute_agent,
     run_agent_and_compute_reward,
     compute_reward,

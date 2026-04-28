@@ -22,7 +22,9 @@ from tutorial.opencode_build_aime.agent_run_v3 import execute_agent
 from tutorial.opencode_build_aime import download_data
 from tqdm import tqdm
 
-
+NUM_EPOCH = 10000
+EVAL_INTERVAL = 20  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
+EVAL_K = 2  # pass@k: run each eval task K times
 REMOTE_MODEL_PATH = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-14B")
 BATCH_SIZE = 16
 PPO_EPOCH = 2
@@ -67,9 +69,6 @@ def load_eval_tasks(test_dataset: str, label: str = "") -> list:
 class AIMESwarmTrainer:
     """AIME Math Swarm Trainer using GRPO algorithm."""
 
-    NUM_EPOCH = 10000
-    EVAL_INTERVAL = 20  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
-    EVAL_K = 2  # pass@k: run each eval task K times
 
     def __init__(
         self,
@@ -172,7 +171,7 @@ class AIMESwarmTrainer:
 
     def _run_eval_one(self, n_global_step: int, label: str, eval_tasks: list, eval_log_path: str):
         """Run evaluation on a single AIME test set."""
-        k = self.EVAL_K
+        k = EVAL_K
         total_rollouts = len(eval_tasks) * k
         print(f"\n[EVAL @ step {n_global_step}] Running {label} eval on {len(eval_tasks)} tasks x {k} (pass@{k})...")
         per_task_rewards = [[] for _ in eval_tasks]
@@ -226,7 +225,7 @@ class AIMESwarmTrainer:
         )
         self.swarm_worker.add_entering_weight_sync_callback(executor.on_entering_weight_sync)
 
-        for epoch in range(self.NUM_EPOCH):
+        for epoch in range(NUM_EPOCH):
             for _, task in enumerate(self.dataset.generate_training_tasks()):
 
                 args_list = [{"task": task} for _ in range(self.grpo_n)]
@@ -235,7 +234,7 @@ class AIMESwarmTrainer:
                 task_count += 1
 
                 # Periodic evaluation every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
-                time_to_eval = task_count % (self.EVAL_INTERVAL * self.remote_batch_size) == 0
+                time_to_eval = task_count % (EVAL_INTERVAL * self.remote_batch_size) == 0
                 n_global_step = task_count // self.remote_batch_size
                 if time_to_eval:
                     self.run_eval(n_global_step)
