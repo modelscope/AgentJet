@@ -20,6 +20,7 @@ class AjetTrainerCommon:
     ppo_epochs: int = 1
     val_print_to_markdown_file_path: str | None = None
     train_print_to_markdown_file_path: str | None = None
+    total_training_steps: int | None = None
 
 
 @dataclass

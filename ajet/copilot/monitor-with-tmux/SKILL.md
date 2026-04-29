@@ -80,7 +80,7 @@ This means:
 
 ## Using SSH
 
-When using SSH, always use a local tmux window to establish the SSH connection.
+When using SSH, always use a local tmux window to establish the SSH connection. (Use tmux skill, refer to `ajet/copilot/monitor-with-tmux/SKILL.md` under the agentjet codebase)
 
 ## When You Want to Delay Before Reading tmux Window Again
 

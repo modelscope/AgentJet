@@ -87,6 +87,7 @@ class AgentJetJob:
         compute_madness_checklist: List of madness checks to monitor LLM's abnormal behaviors during rollout (default ["nonsense"], detect infinite repeat such as "但但但但但但但但但但....").
         val_print_to_markdown_file_path: Path to a file where validation metrics are appended after every validation pass (default None, disabled).
         train_print_to_markdown_file_path: Path to a file where training metrics are appended after every training step (default None, disabled).
+        total_training_steps: Hard cap on total training steps. If None (default), training runs for `total_epochs` epochs.
     """
 
     def __init__(
@@ -123,6 +124,7 @@ class AgentJetJob:
         compute_madness_checklist: List[str] | None = None,
         val_print_to_markdown_file_path: str | None = None,
         train_print_to_markdown_file_path: str | None = None,
+        total_training_steps: int | None = None,
     ) -> None:
 
         if base_yaml_config is None:
@@ -184,6 +186,7 @@ class AgentJetJob:
         self.compute_madness_checklist: List[str] = cast(List[str], compute_madness_checklist)
         self.val_print_to_markdown_file_path: str = cast(str, val_print_to_markdown_file_path)
         self.train_print_to_markdown_file_path: str = cast(str, train_print_to_markdown_file_path)
+        self.total_training_steps: int = cast(int, total_training_steps)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {
@@ -218,6 +221,7 @@ class AgentJetJob:
             "ajet.rollout.compute_madness_checklist":       "compute_madness_checklist",
             "ajet.trainer_common.val_print_to_markdown_file_path":   "val_print_to_markdown_file_path",
             "ajet.trainer_common.train_print_to_markdown_file_path": "train_print_to_markdown_file_path",
+            "ajet.trainer_common.total_training_steps":     "total_training_steps",
         }
 
         # if any value given in kwargs, override the corresponding value in config
