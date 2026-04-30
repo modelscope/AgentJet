@@ -78,6 +78,8 @@ nav:
       - Vibe RL Who is Spy (ZH): en/example_vibe_rl_who_is_spy.zh.md
       - Vibe Training Werewolves (EN): en/blog_vibe_training_werewolves.md
       - Vibe Training Werewolves (ZH): en/blog_vibe_training_werewolves.zh.md
+      - Deep Finance (EN): en/example_deep_finance.md
+      - Deep Finance (ZH): en/example_deep_finance.zh.md
 
 plugins:
   - search:
