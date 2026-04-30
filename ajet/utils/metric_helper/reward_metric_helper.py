@@ -10,7 +10,7 @@ Data sources:
 SwanLab metrics directory structure:
 - rewards/                    Top-level aggregated scores
 - rewards/dimensions/         Raw scores (unweighted): finance_raw, openjudge_*_raw
-- rewards/contribution/       Weighted contributions: finance_contribution, openjudge_*_contribution  
+- rewards/contribution/       Weighted contributions: finance_contribution, openjudge_*_contribution
 - rewards/openjudge/          OpenJudge grader specific metrics
 - judge_time/                 Judge time consumption statistics
 """

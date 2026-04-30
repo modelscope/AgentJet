@@ -5,8 +5,8 @@ from .audit.grader import AuditGrader
 from .finance.grader import FinanceCompositionEvaluator
 
 __all__ = [
-    "PresentationQualityGrader", 
-    "GroundingGrader", 
-    "AuditGrader", 
+    "PresentationQualityGrader",
+    "GroundingGrader",
+    "AuditGrader",
     "FinanceCompositionEvaluator",
 ]

@@ -8,7 +8,7 @@ FinanceCompositionEvaluator - 基于 OpenJudge 的 Finance 组合评估器
 
 支持的 domain:
 - stock_analysis: 股票分析
-- industry_research: 行业研究  
+- industry_research: 行业研究
 - macro_analysis: 宏观分析
 - event_interpretation: 事件解读
 - stock_search: 股票搜索
@@ -44,20 +44,20 @@ from cookbooks.finance_grader.stock_search.search_timeliness import SearchTimeli
 class FinanceCompositionEvaluator:
     """
     基于 OpenJudge 的 Finance 组合评估器（替代 rm_gallery.FinanceComposition）
-    
+
     功能：
     - 根据 domain 路由到对应的 grader 集合
     - 执行 pairwise 评估（比较 training answer 和 reference answer）
     - 返回 0-1 范围的分数
-    
+
     支持的 domain:
     - stock_analysis: 股票分析
-    - industry_research: 行业研究  
+    - industry_research: 行业研究
     - macro_analysis: 宏观分析
     - event_interpretation: 事件解读
     - stock_search: 股票搜索
     """
-    
+
     # Domain 到 Grader 类的映射（与 RM-Gallery 保持一致）
     DOMAIN_GRADERS: Dict[str, List[Type[BaseGrader]]] = {
         "stock_analysis": [
@@ -113,11 +113,11 @@ class FinanceCompositionEvaluator:
             "SearchTimelinessGrader": SearchTimelinessGrader,
         },
     }
-    
+
     def __init__(self, model: OpenAIChatModel, params: Dict[str, Any] = None):
         """
         初始化 FinanceCompositionEvaluator
-        
+
         Args:
             model: OpenAIChatModel 实例
             params: 额外参数（保留兼容性）
@@ -125,7 +125,7 @@ class FinanceCompositionEvaluator:
         self.model = model
         self.params = params or {}
         self._grader_cache: Dict[str, List[BaseGrader]] = {}
-        
+
     def _get_graders_for_domain(self, domain: str) -> List[BaseGrader]:
         """
         获取指定 domain 的 grader 实例列表（带缓存）
@@ -146,17 +146,17 @@ class FinanceCompositionEvaluator:
     def get_graders_for_domain_class(cls, domain: str) -> List[Type[BaseGrader]]:
         """获取指定 domain 的 grader 类列表（静态方法）"""
         return cls.DOMAIN_GRADERS.get(domain, [])
-    
+
     async def aevaluate(self, query: str, current: str, reference: str, domain: str) -> float:
         """
         执行 pairwise 评估（异步版本，避免重复创建 event loop）
-        
+
         Args:
             query: 用户查询
             current: 当前模型生成的回答 (training)
             reference: 参考答案
             domain: 任务领域（用于路由到对应 graders）
-            
+
         Returns:
             float: 0-1 范围的分数
                 - 1.0: current 优于 reference
@@ -166,12 +166,12 @@ class FinanceCompositionEvaluator:
         if not domain or domain not in self.DOMAIN_GRADERS:
             print(f"⚠️ FinanceCompositionEvaluator: Unknown domain '{domain}', returning 0.5")
             return 0.5
-            
+
         graders = self._get_graders_for_domain(domain)
         if not graders:
             print(f"⚠️ FinanceCompositionEvaluator: No graders for domain '{domain}', returning 0.5")
             return 0.5
-        
+
         # 运行所有 graders
         scores = []
         for grader in graders:
@@ -181,7 +181,7 @@ class FinanceCompositionEvaluator:
                     answer_1=current,    # training model output
                     answer_2=reference,  # reference answer
                 )
-                
+
                 # 解析 GraderRank 结果
                 if hasattr(result, 'rank') and isinstance(result.rank, list):
                     # rank = [1, 2] 表示 answer_1 (current) 更好 -> score = 1.0
@@ -192,12 +192,12 @@ class FinanceCompositionEvaluator:
                         scores.append(0.0)
                 else:
                     scores.append(0.5)  # 无法解析，返回中间值
-                    
+
             except Exception as e:
                 grader_name = getattr(grader, 'name', grader.__class__.__name__)
                 print(f"⚠️ FinanceCompositionEvaluator: Grader {grader_name} failed: {e}")
                 scores.append(0.5)
-        
+
         # 计算平均分数
         if scores:
             return sum(scores) / len(scores)

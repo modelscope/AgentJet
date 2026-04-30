@@ -15,9 +15,9 @@ from ajet.workflow import WorkflowOutput, WorkflowTask
 from openjudge.models.openai_chat_model import OpenAIChatModel
 from openjudge.runner.grading_runner import GraderConfig, GradingRunner
 from tutorial.example_deep_finance.judge import (
-    PresentationQualityGrader, 
-    GroundingGrader, 
-    AuditGrader, 
+    PresentationQualityGrader,
+    GroundingGrader,
+    AuditGrader,
     FinanceCompositionEvaluator,
 )
 # =============================================================================
@@ -139,7 +139,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
     def _init_finance_evaluator(self):
         """
         初始化 FinanceCompositionEvaluator（仅当 finance_weight > 0 时）
-        
+
         使用 OpenJudge 的 finance graders 替代原 rm_gallery 实现
         支持独立的 finance_llm 配置，若未配置则复用 openjudge_llm
         """
@@ -156,7 +156,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
     def _create_finance_evaluator(self):
         """
         创建 FinanceCompositionEvaluator 实例（基于 OpenJudge）
-        
+
         支持独立的 finance_llm 配置：
         - 若 config.ajet.judge.finance_llm 有值，则使用独立的 model
         - 若未配置或为空，则复用已初始化的 OpenJudge model
@@ -164,12 +164,12 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         try:
             # 检查是否配置了独立的 finance_llm
             finance_llm_name = getattr(self.config.ajet.judge, "finance_llm", None)
-            
+
             if finance_llm_name and finance_llm_name.strip():
                 # 使用独立的 finance model
                 finance_base_url = os.environ.get("FINANCE_BASE_URL") or os.environ.get("OPENJUDGE_BASE_URL")
                 finance_api_key = os.environ.get("FINANCE_API_KEY") or os.environ.get("OPENJUDGE_API_KEY")
-                
+
                 finance_model = OpenAIChatModel(
                     model=finance_llm_name,
                     base_url=finance_base_url,
@@ -180,7 +180,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                 # 复用 OpenJudge model（已在 _init_openjudge_model 中初始化）
                 finance_model = self.model
                 print(f"[Init FinanceCompositionEvaluator] Reusing OpenJudge model")
-            
+
             self.finance_evaluator = FinanceCompositionEvaluator(
                 model=finance_model,
                 params={"is_parallel": True}
@@ -307,7 +307,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             # 1.5 准备 Finance Composition 评估参数
             ref_ans, domain = self._get_reference_data(task_id)
             assistants = [extract_text_content(m["content"]) for m in history if m["role"] == "assistant"]
-            
+
             # 准备 Finance 评估参数（将在 event loop 中一起运行）
             finance_eval_params = None
             if self._finance_enabled and self.finance_evaluator and ref_ans and domain:
@@ -330,11 +330,11 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
             # 3. 调用 OpenJudge Runner.arun 和 Finance 评估（在同一个 event loop 中）
             grading_start_time = time.time()
             grader_results, finance_raw = self._run_openjudge_evaluation(
-                [openjudge_sample], 
+                [openjudge_sample],
                 finance_eval_params=finance_eval_params
             )
             grading_time = time.time() - grading_start_time
-            
+
             # 保存 Finance 评估日志
             if finance_eval_params and finance_raw > 0:
                 self._save_finance_eval_log(finance_raw, query, task_id, domain)
@@ -462,13 +462,13 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
         }
 
     def _run_openjudge_evaluation(
-        self, 
+        self,
         dataset: List[Dict[str, Any]],
         finance_eval_params: Optional[Dict[str, Any]] = None
     ) -> Tuple[Dict[str, List[Any]], float]:
         """
         调用 OpenJudge Runner.arun 进行评估（带重试机制）
-        
+
         将 Finance 评估和 OpenJudge graders 评估整合到同一个 event loop 中运行。
 
         输入：
@@ -496,7 +496,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                     # 1. 运行 OpenJudge graders
                     runner = judge_instance._create_runner_in_loop()
                     grader_results = await runner.arun(dataset)
-                    
+
                     # 2. 运行 Finance 评估（在同一个 event loop 中）
                     if finance_eval_params and judge_instance._finance_enabled and judge_instance.finance_evaluator:
                         finance_score = await judge_instance.finance_evaluator.aevaluate(
@@ -505,7 +505,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
                             reference=finance_eval_params.get("reference", ""),
                             domain=finance_eval_params.get("domain", "")
                         )
-                    
+
                     return  # 成功则直接返回
                 except Exception as e:
                     last_exception = e
@@ -626,7 +626,7 @@ class DeepFinanceJudgeByOpenJudge(BaseJudge):
 
         return fused_reward, contributions
 
-    def _save_finance_eval_log(self, score: float, query: str, task_id: str, domain: str):
+    def _save_finance_eval_log(self, score: float, query: str, task_id: str, domain: str | None):
         """保存 FinanceCompositionEvaluator 评估日志"""
         try:
             log = {

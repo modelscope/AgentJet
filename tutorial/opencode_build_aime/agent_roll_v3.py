@@ -139,21 +139,23 @@ class AIMESwarmTrainer:
 
 
 
-    def rollout(self, task: Task) -> float:
+    def rollout(self, task: Task) -> float | None:
         """Execute a single training rollout."""
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
         workflow_output = execute_agent(task, api_baseurl_key, ajet_job)
         self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
-        return workflow_output.reward
+        reward = workflow_output.reward
+        return reward[0] if isinstance(reward, list) else reward
 
 
 
-    def eval_rollout(self, task: Task) -> float:
+    def eval_rollout(self, task: Task) -> float | None:
         """Execute an eval rollout (results do not contribute to training)."""
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120, episode_type="eval")
         try:
             workflow_output = execute_agent(task, api_baseurl_key, ajet_job)
-            return workflow_output.reward
+            reward = workflow_output.reward
+            return reward[0] if isinstance(reward, list) else reward
         finally:
             self.swarm_worker.abort_episode(episode_uuid)
 

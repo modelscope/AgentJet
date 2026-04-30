@@ -131,7 +131,7 @@ export DEEPFINANCE_MCP_CONFIG DEEPFINANCE_TOOL_RESULT_MAX_CHARS
 # 其他服务配置
 HF_ENDPOINT="https://hf-mirror.com"
 ES_HOSTS="http://11.160.132.46:8200"
-export HF_ENDPOINT ES_HOSTS 
+export HF_ENDPOINT ES_HOSTS
 
 # log 文件位置
 CURRENT_TIME=$(date "+%Y%m%d_%H%M%S")
