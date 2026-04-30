@@ -4,7 +4,44 @@ Use prompt below in opencode or claudecode to generate a one-key-to-tune agent
 
 =============================
 
-English prompt to be tranlated ...
+Your task:
+- Write an agent that learns the "Who is the Spy" task, trained via a combination of reinforcement learning and supervised learning. Game rules are as follows:
+  - The game has N players in total, most of whom are **civilians**, and a few are **spies**
+  - At the start of the game, each civilian receives the same **civilian word**, and each spy receives a **spy word** that is similar but different from the civilian word (e.g., civilian word is "apple", spy word is "pear")
+  - In each round, all players take turns giving a **verbal description** of the word they were given. The description must truthfully reflect their own word, but must not state the word itself directly, nor reveal their identity too obviously
+  - After all players finish describing, the game enters the **voting phase**, where all players vote for whom they consider the most suspicious spy. The player with the most votes is eliminated
+  - The game continues for multiple rounds until one of the following end conditions is met:
+    - **Civilians win**: all spies have been eliminated
+    - **Spies win**: the number of spies ≥ the number of civilians (spies gain a numerical advantage)
+  - The agent needs to master two core capabilities through extensive self-play training:
+    - **Description strategy learning**: learn to generate the optimal description based on its own word and the current situation — one that neither reveals its identity nor fails to win recognition from teammates
+    - **Reasoning and decision learning**: learn to accurately identify spies and make optimal voting decisions based on dialogue history, other players' description patterns, and behavioral features
+  - Training objective: maximize the agent's win rate across different roles (civilian/spy), continuously optimizing strategy via self-play and reward mechanisms
+- I want to use the base model `/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2.5-7B-Instruct`
+- Train with 8 GPUs
+- Batch size 16
+- I currently have no dataset; you need to help me mock a small amount of game episode data for testing and initial training
+- Use the OpenAI SDK, flexibly using Tools
+- No Chinese characters are allowed in the code
+
+Your skill (read this SKILL file first to acquire the necessary knowledge):
+./ajet/copilot/write-swarm-client/SKILL.md
+
+- Additional requirements:
+  - optional 0. (agent_roll) team A civilians share a single 7B model; team B spies use qwen-max (DASHSCOPE_API_KEY is already in the environment variables).
+                              For each episode, randomly assign everyone's ID and name (randomly generate a long list of random full names). Winners get reward 1, losers get reward 0
+  - optional 1. (agent_roll_adv) adversarial training: team A civilians share one 7B model (swarm server 1), team B spies share another 7B model (swarm server 2).
+                              For each episode, randomly assign everyone's ID and name (randomly generate a long list of random full names). Winners get reward 1, losers get reward 0
+
+- Additional requirements:
+    agent_roll: use 4 GPUs
+    agent_roll_adv: swarm server 1 and swarm server 2 each use 4 GPUs (8 GPUs in total)
+
+- Additional requirements: debug using tmux + uv's .venv until all bugs are cleared and training starts normally. You may use the three tmux sessions `spy-swarm-server`, `spy-swarm-server-2`, `spy-swarm-client`
+
+    - Current debugging stage:
+        Debug agent_roll 【execute debugging】
+        Debug agent_roll_adv 【skip debugging】
 
 =============================
 
