@@ -2,6 +2,8 @@
 """
 AIME Math Swarm Training - Auto Research Client
 Configurable for batch_size and max_response_length_in_one_turn experiments
+
+python -m tutorial.opencode_build_aime.auto_research.auto_train_kl
 """
 
 import os
@@ -69,10 +71,9 @@ class AIMEAutoResearchTrainer:
         max_response_length_in_one_turn: int,
         experiment_name: str,
         result_dir: str,
-        swarm_url: str = None,
+        swarm_url: str,
         project_name: str = DEFAULT_PROJECT_NAME,
         resolved_yaml_path: str | None = None,
-        prepare_only: bool = False,
         max_prompt_length: int = 3000,
         max_response_length: int = 15000,
         max_model_len: int = 18000,
@@ -92,7 +93,6 @@ class AIMEAutoResearchTrainer:
         self.result_dir = result_dir
         self.project_name = project_name
         self.resolved_yaml_path = resolved_yaml_path or os.path.join(result_dir, "resolved_swarm_config.yaml")
-        self.prepare_only = prepare_only
         self.max_prompt_length = max_prompt_length
         self.max_response_length = max_response_length
         self.max_model_len = max_model_len
@@ -167,9 +167,6 @@ class AIMEAutoResearchTrainer:
             )
 
         self.ajet_job.dump_job_as_yaml(self.resolved_yaml_path)
-
-        if self.prepare_only:
-            return
 
         self.dataset = RouterTaskReader(
             reader_type="huggingface_dat_repo",
@@ -329,9 +326,6 @@ class AIMEAutoResearchTrainer:
 
     def run(self):
         self.setup()
-        if self.prepare_only:
-            print(f"[INFO] Prepared run artifacts only. Resolved config written to {self.resolved_yaml_path}")
-            return
         self.train()
 
 
@@ -384,7 +378,6 @@ def main():
         swarm_url=args.swarm_url,
         project_name=args.project_name,
         resolved_yaml_path=args.resolved_yaml_path,
-        prepare_only=args.prepare_only,
         max_prompt_length=args.max_prompt_length,
         max_response_length=args.max_response_length,
         max_model_len=args.max_model_len,

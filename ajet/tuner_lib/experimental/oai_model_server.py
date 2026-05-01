@@ -419,7 +419,7 @@ def _run_fastapi_worker(port, max_fastapi_threads, enable_swarm_mode, shared_mem
 
 
 class InterchangeServer(Process):
-    def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 2, max_fastapi_threads: int = 512, enable_swarm_mode=False):
+    def __init__(self, experiment_dir: str, port: int, num_fastapi_process: int = 1, max_fastapi_threads: int = 512, enable_swarm_mode=False):
         super().__init__()
         self.experiment_dir = experiment_dir
         self.port = port

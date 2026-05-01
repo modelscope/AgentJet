@@ -69,14 +69,14 @@ def cmd_start(args):
 
     # Setup environment variables
     class SwarmArgs:
-        def __init__(self, conf, backbone, exp_dir):
+        def __init__(self, conf, backbone, exp_dir, debug):
             self.conf = conf
             self.backbone = backbone
             self.exp_dir = exp_dir
             self.swarm_server = True
             self.swarm_overwatch = ""
-            self.debug = ""
-    swarm_args = SwarmArgs(args.conf, "verl", args.exp_dir)
+            self.debug = debug
+    swarm_args = SwarmArgs(args.conf, "verl", args.exp_dir, args.debug)
     env, exp_config = setup_environment_vars(swarm_args, exp_config, main_yaml_fp)
 
     # Start swarm server
@@ -117,6 +117,14 @@ def main():
         default=DEFAULT_DIR,
         required=False,
         help="Path to experiment directory",
+    )
+    parser_start.add_argument(
+        "--debug",
+        "--db",
+        type=str,
+        default="",
+        required=False,
+        help="Debug tags; enables Ray post-mortem and DEBUG_TAGS env",
     )
 
     parser_start.set_defaults(func=cmd_start)
