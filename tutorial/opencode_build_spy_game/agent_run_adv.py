@@ -170,49 +170,30 @@ def run_agent_and_compute_reward(
         api_key=api_key_spies
     )
 
-    try:
-        # Execute game
-        game_result = _execute_agent(task, api_baseurl_key_civilians, api_baseurl_key_spies)
+    # No internal try/except: any failure propagates to the training loop's
+    # own except/return-None path. The previous fallback returned reward=0.5,
+    # which under the new reward scheme (loss=0, win=1) is HIGHER than losing
+    # -- failed rollouts were being silently rewarded above legitimate losses.
+    game_result = _execute_agent(task, api_baseurl_key_civilians, api_baseurl_key_spies)
+    civilian_reward, spy_reward = _compute_rewards(game_result)
 
-        # Compute rewards for both teams
-        civilian_reward, spy_reward = _compute_rewards(game_result)
-
-        # Create separate workflow outputs for each team
-        workflow_output_civilians = WorkflowOutput(
-            reward=civilian_reward,
-            metadata={
-                "team": "civilians",
-                "winner": game_result["winner"],
-                "total_rounds": game_result["total_rounds"],
-                "civilian_word": game_result["civilian_word"],
-                "spy_word": game_result["spy_word"],
-                "final_alive": game_result["final_alive"]
-            }
-        )
-
-        workflow_output_spies = WorkflowOutput(
-            reward=spy_reward,
-            metadata={
-                "team": "spies",
-                "winner": game_result["winner"],
-                "total_rounds": game_result["total_rounds"],
-                "civilian_word": game_result["civilian_word"],
-                "spy_word": game_result["spy_word"],
-                "final_alive": game_result["final_alive"]
-            }
-        )
-
-        return workflow_output_civilians, workflow_output_spies
-
-    except Exception as e:
-        print(f"Error during adversarial game execution: {e}")
-        # Return neutral rewards on failure
-        error_output_civilians = WorkflowOutput(
-            reward=0.5,
-            metadata={"error": str(e), "winner": "error", "team": "civilians"}
-        )
-        error_output_spies = WorkflowOutput(
-            reward=0.5,
-            metadata={"error": str(e), "winner": "error", "team": "spies"}
-        )
-        return error_output_civilians, error_output_spies
+    common_meta = {
+        "winner": game_result["winner"],
+        "aborted_by_role": game_result.get("aborted_by_role"),
+        "team_penalties": game_result.get("team_penalties"),
+        "civilian_reward": game_result["civilian_reward"],
+        "spy_reward": game_result["spy_reward"],
+        "total_rounds": game_result["total_rounds"],
+        "civilian_word": game_result["civilian_word"],
+        "spy_word": game_result["spy_word"],
+        "final_alive": game_result["final_alive"],
+    }
+    workflow_output_civilians = WorkflowOutput(
+        reward=civilian_reward,
+        metadata={"team": "civilians", **common_meta},
+    )
+    workflow_output_spies = WorkflowOutput(
+        reward=spy_reward,
+        metadata={"team": "spies", **common_meta},
+    )
+    return workflow_output_civilians, workflow_output_spies

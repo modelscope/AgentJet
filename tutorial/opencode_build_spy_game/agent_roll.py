@@ -65,6 +65,7 @@ def main():
 
     # Configure and start training
     ajet_job = AgentJetJob(
+        ensure_new_experiment=True,
         algorithm="grpo",
         project_name="spy-game-rl",
         logging="swanlab",

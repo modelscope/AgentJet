@@ -148,32 +148,23 @@ def run_agent_and_compute_reward(task: Task, base_url: str, api_key: str) -> Wor
     """
     api_baseurl_key = OpenaiBaseUrlAndApiKey(base_url=base_url, api_key=api_key)
 
-    try:
-        # Execute game
-        game_result = _execute_agent(task, api_baseurl_key)
-
-        # Compute reward (1.0 if civilians win, 0.0 if spies win)
-        reward = _compute_reward(game_result)
-
-        # Return workflow output
-        return WorkflowOutput(
-            reward=reward,
-            metadata={
-                "winner": game_result["winner"],
-                "total_rounds": game_result["total_rounds"],
-                "civilian_word": game_result["civilian_word"],
-                "spy_word": game_result["spy_word"],
-                "final_alive": game_result["final_alive"]
-            }
-        )
-
-    except Exception as e:
-        print(f"Error during game execution: {e}")
-        # Return 0 reward on failure
-        return WorkflowOutput(
-            reward=0.0,
-            metadata={
-                "error": str(e),
-                "winner": "error"
-            }
-        )
+    # No internal try/except: any failure (NLTK missing, malformed model output,
+    # API timeout) propagates to the training loop, which already has its own
+    # except/return-None path. A second silent layer was hiding bugs (e.g. the
+    # NLTK silent-disable that collapsed all rewards to 0/1).
+    game_result = _execute_agent(task, api_baseurl_key)
+    reward = _compute_reward(game_result)
+    return WorkflowOutput(
+        reward=reward,
+        metadata={
+            "winner": game_result["winner"],
+            "aborted_by_role": game_result.get("aborted_by_role"),
+            "team_penalties": game_result.get("team_penalties"),
+            "civilian_reward": game_result["civilian_reward"],
+            "spy_reward": game_result["spy_reward"],
+            "total_rounds": game_result["total_rounds"],
+            "civilian_word": game_result["civilian_word"],
+            "spy_word": game_result["spy_word"],
+            "final_alive": game_result["final_alive"],
+        },
+    )
