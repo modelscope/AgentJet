@@ -73,6 +73,7 @@ class AIMEAutoResearchTrainer:
         swarm_url: str,
         project_name: str = DEFAULT_PROJECT_NAME,
         resolved_yaml_path: str | None = None,
+        prepare_only: bool = False,
         max_prompt_length: int = 3000,
         max_response_length: int = 15000,
         max_model_len: int = 18000,
@@ -95,6 +96,7 @@ class AIMEAutoResearchTrainer:
         self.result_dir = result_dir
         self.project_name = project_name
         self.resolved_yaml_path = resolved_yaml_path or os.path.join(result_dir, "resolved_swarm_config.yaml")
+        self.prepare_only = prepare_only
         self.max_prompt_length = max_prompt_length
         self.max_response_length = max_response_length
         self.max_model_len = max_model_len
@@ -104,7 +106,7 @@ class AIMEAutoResearchTrainer:
         data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
         self.train_dataset = os.path.join(data_dir, "dapo-math-17k.parquet")
         self.test_datasets = {
-            "AIME-2024": os.path.join(data_dir, "aime-2024.parquet"),
+            # "AIME-2024": os.path.join(data_dir, "aime-2024.parquet"),
             "AIME-2025": os.path.join(data_dir, "aime-2025.parquet"),
             "AIME-2026": os.path.join(data_dir, "aime-2026.parquet"),
             "DAPO-Math-Tiny-Val": os.path.join(data_dir, "dapo-math-tiny-val.parquet"),
@@ -176,6 +178,9 @@ class AIMEAutoResearchTrainer:
 
         self.ajet_job.dump_job_as_yaml(self.resolved_yaml_path)
 
+        if self.prepare_only:
+            return
+
         self.dataset = RouterTaskReader(
             reader_type="huggingface_dat_repo",
             reader_config=AjetTaskReader(
@@ -190,7 +195,7 @@ class AIMEAutoResearchTrainer:
         )
 
         eval_downloaders = {
-            "AIME-2024": download_data.ensure_aime_2024,
+            # "AIME-2024": download_data.ensure_aime_2024,
             "AIME-2025": download_data.ensure_aime_2025,
             "AIME-2026": download_data.ensure_aime_2026,
         }
@@ -295,9 +300,10 @@ class AIMEAutoResearchTrainer:
 
     def train(self):
         assert self.swarm_worker is not None and self.dataset is not None, "setup() must be called before train()"
+
+        last_eval_step = 0
         self.run_eval(0)
 
-        task_count = 0
         max_parallel = 64
         executor = TaskCountLimitedThreadPoolExecutor(
             max_parallel_groups=self.batch_size,
@@ -307,18 +313,17 @@ class AIMEAutoResearchTrainer:
         self.swarm_worker.add_entering_weight_sync_callback(executor.on_entering_weight_sync)
 
         num_epochs = 10000
-        n_global_step = 0
         for epoch in range(num_epochs):
             for _, task in enumerate(self.dataset.generate_training_tasks()):
                 args_list = [{"task": task} for _ in range(self.grpo_n)]
                 executor.submit_group(task_id=task.task_id, fn=self.rollout, args_list=args_list)
 
-                task_count += 1
+                n_global_step = self.swarm_worker.get_global_step()
 
-                time_to_eval = task_count % (self.eval_interval * self.batch_size) == 0
-                n_global_step = task_count // self.batch_size
+                time_to_eval = n_global_step >= last_eval_step + self.eval_interval
                 if time_to_eval:
                     self.run_eval(n_global_step)
+                    last_eval_step = n_global_step
 
                 if n_global_step >= self.total_training_steps:
                     break
@@ -334,6 +339,8 @@ class AIMEAutoResearchTrainer:
 
     def run(self):
         self.setup()
+        if self.prepare_only:
+            return
         self.train()
 
 
@@ -370,7 +377,7 @@ def main():
                         help="Evaluate every N global steps")
     parser.add_argument("--eval-k", type=int, default=4,
                         help="Number of rollouts per eval task (pass@k)")
-    parser.add_argument("--grpo-repeat", type=int, default=8,
+    parser.add_argument("--grpo-repeat", type=int, default=4,
                         help="GRPO num_repeat per training task")
     parser.add_argument("--ppo-epochs", type=int, default=1,
                         help="Number of PPO epochs per update")
@@ -396,6 +403,7 @@ def main():
         swarm_url=args.swarm_url,
         project_name=args.project_name,
         resolved_yaml_path=args.resolved_yaml_path,
+        prepare_only=args.prepare_only,
         max_prompt_length=args.max_prompt_length,
         max_response_length=args.max_response_length,
         max_model_len=args.max_model_len,

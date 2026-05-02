@@ -166,6 +166,11 @@ class SwarmClientBase(object):
             self._engine_status_ready.wait(timeout=15)
         return self._engine_status_cache or ("ENGINE.CANNOT_CONNECT", {})
 
+    def get_global_step(self) -> int:
+        """Return the current global training step from the swarm server."""
+        _, status_json = self.get_engine_status()
+        return status_json.get("global_step", 0)
+
     def _engine_status_poll_loop(self):
         """Background thread: fetch engine status at _engine_status_poll_interval."""
         while not self._engine_status_poll_stop.is_set():

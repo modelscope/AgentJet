@@ -102,7 +102,7 @@ class AIMEAutoResearchTrainer:
         data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
         self.train_dataset = os.path.join(data_dir, "dapo-math-17k.parquet")
         self.test_datasets = {
-            "AIME-2024": os.path.join(data_dir, "aime-2024.parquet"),
+            # "AIME-2024": os.path.join(data_dir, "aime-2024.parquet"),
             "AIME-2025": os.path.join(data_dir, "aime-2025.parquet"),
             "AIME-2026": os.path.join(data_dir, "aime-2026.parquet"),
             "DAPO-Math-Tiny-Val": os.path.join(data_dir, "dapo-math-tiny-val.parquet"),
@@ -292,7 +292,6 @@ class AIMEAutoResearchTrainer:
         assert self.swarm_worker is not None and self.dataset is not None, "setup() must be called before train()"
         self.run_eval(0)
 
-        task_count = 0
         max_parallel = 64
         executor = TaskCountLimitedThreadPoolExecutor(
             max_parallel_groups=self.batch_size,
@@ -302,18 +301,18 @@ class AIMEAutoResearchTrainer:
         self.swarm_worker.add_entering_weight_sync_callback(executor.on_entering_weight_sync)
 
         num_epochs = 10000
-        n_global_step = 0
+        last_eval_step = 0
         for epoch in range(num_epochs):
             for _, task in enumerate(self.dataset.generate_training_tasks()):
                 args_list = [{"task": task} for _ in range(self.grpo_n)]
                 executor.submit_group(task_id=task.task_id, fn=self.rollout, args_list=args_list)
 
-                task_count += 1
+                n_global_step = self.swarm_worker.get_global_step()
 
-                time_to_eval = task_count % (self.eval_interval * self.batch_size) == 0
-                n_global_step = task_count // self.batch_size
+                time_to_eval = n_global_step >= last_eval_step + self.eval_interval
                 if time_to_eval:
                     self.run_eval(n_global_step)
+                    last_eval_step = n_global_step
 
                 if n_global_step >= self.total_training_steps:
                     break
