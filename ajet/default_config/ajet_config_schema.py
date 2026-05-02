@@ -17,6 +17,9 @@ class AjetTrainerCommon:
     n_gpus_per_node: int = 8
     algorithm: AjetAlgorithm = field(default_factory=AjetAlgorithm)
     optim: AjetOptim = field(default_factory=AjetOptim)
+    use_kl_loss: bool = True
+    use_kl_in_reward: bool = False
+    kl_penalty_type: str = "kl"
     ppo_epochs: int = 1
     val_print_to_markdown_file_path: str | None = None
     train_print_to_markdown_file_path: str | None = None

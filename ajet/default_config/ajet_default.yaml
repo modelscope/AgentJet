@@ -261,7 +261,12 @@ ajet:
     # algorithm setting
     algorithm:
       adv_estimator: grpo
-      use_kl_in_reward: False
+
+    # whether to subtract a KL penalty from the reward signal
+    use_kl_in_reward: False
+
+    # how to estimate KL divergence in the reward-shaping path: kl, abs, mse, low_var_kl, full
+    kl_penalty_type: kl
 
     # number of optimizer.step per big batch
     mini_batch_num: 1

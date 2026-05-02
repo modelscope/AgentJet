@@ -115,7 +115,7 @@ ajet:
     logger: swanlab
     algorithm:
       adv_estimator: grpo
-      use_kl_in_reward: False
+    use_kl_in_reward: False
     mini_batch_num: 1
     fsdp_config:
       param_offload: True

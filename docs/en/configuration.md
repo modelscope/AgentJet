@@ -783,7 +783,7 @@ Training loop parameters shared across backends.
     - `"gae"` — Generalized Advantage Estimation (standard PPO-style).
     - Other VeRL-supported estimators: `"reinforce++"`, `"a2c"`, etc.
 
-### `ajet.trainer_common.algorithm.use_kl_in_reward`
+### `ajet.trainer_common.use_kl_in_reward`
 
 - **Type:** bool.
 - **Default:** `false`.

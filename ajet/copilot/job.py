@@ -84,6 +84,9 @@ class AgentJetJob:
         gpu_memory_utilization: GPU memory utilization for vLLM engine (default 0.85).
         lr: Learning rate for optimizer (default 1e-6).
         ppo_epochs: Number of PPO epochs per update (default 1).
+        use_kl_loss: Whether to add a KL-divergence regularization term to the actor's policy loss (default True).
+        use_kl_in_reward: Whether to subtract a KL penalty from the reward signal during advantage computation (default False).
+        kl_penalty_type: KL divergence estimator used for the reward-shaping path (when `use_kl_in_reward=True`). One of 'kl', 'abs', 'mse', 'low_var_kl', 'full' (default 'kl').
         compute_madness_checklist: List of madness checks to monitor LLM's abnormal behaviors during rollout (default ["nonsense"], detect infinite repeat such as "但但但但但但但但但但....").
         val_print_to_markdown_file_path: Path to a file where validation metrics are appended after every validation pass (default None, disabled).
         train_print_to_markdown_file_path: Path to a file where training metrics are appended after every training step (default None, disabled).
@@ -121,6 +124,9 @@ class AgentJetJob:
         gpu_memory_utilization: float | None = None,
         lr: float | None = None,
         ppo_epochs: int | None = None,
+        use_kl_loss: bool | None = None,
+        use_kl_in_reward: bool | None = None,
+        kl_penalty_type: str | None = None,
         compute_madness_checklist: List[str] | None = None,
         val_print_to_markdown_file_path: str | None = None,
         train_print_to_markdown_file_path: str | None = None,
@@ -183,6 +189,9 @@ class AgentJetJob:
         self.gpu_memory_utilization: float = cast(float, gpu_memory_utilization)
         self.lr: float = cast(float, lr)
         self.ppo_epochs: int = cast(int, ppo_epochs)
+        self.use_kl_loss: bool = cast(bool, use_kl_loss)
+        self.use_kl_in_reward: bool = cast(bool, use_kl_in_reward)
+        self.kl_penalty_type: str = cast(str, kl_penalty_type)
         self.compute_madness_checklist: List[str] = cast(List[str], compute_madness_checklist)
         self.val_print_to_markdown_file_path: str = cast(str, val_print_to_markdown_file_path)
         self.train_print_to_markdown_file_path: str = cast(str, train_print_to_markdown_file_path)
@@ -218,6 +227,9 @@ class AgentJetJob:
             "ajet.rollout.gpu_memory_utilization":          "gpu_memory_utilization",
             "ajet.trainer_common.optim.lr":                 "lr",
             "ajet.trainer_common.ppo_epochs":               "ppo_epochs",
+            "ajet.trainer_common.use_kl_loss":              "use_kl_loss",
+            "ajet.trainer_common.use_kl_in_reward":         "use_kl_in_reward",
+            "ajet.trainer_common.kl_penalty_type":          "kl_penalty_type",
             "ajet.rollout.compute_madness_checklist":       "compute_madness_checklist",
             "ajet.trainer_common.val_print_to_markdown_file_path":   "val_print_to_markdown_file_path",
             "ajet.trainer_common.train_print_to_markdown_file_path": "train_print_to_markdown_file_path",
