@@ -1,8 +1,35 @@
 ## Run Appworld AgentScope Agent
 
-### 1. Prepare dataset
+### 1. Install Appworld
+```
+def install_appworld():
+    # run:
+    # `rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp`
+    import shutil
 
-Please download `env_service` and `appworld`. For specific steps, please refer to [EnvService Documentation](https://code.alibaba-inc.com/EconML/EnvService)
+    if os.path.exists("/tmp/pack_all_in_one"):
+        shutil.rmtree("/tmp/pack_all_in_one")
+    if os.path.exists("./appworld_pack_v3.tar.gz"):
+        os.remove("./appworld_pack_v3.tar.gz")
+    subprocess.run(
+        [
+            "wget",
+            "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz",
+        ]
+    )
+    subprocess.run(
+        [
+            "tar",
+            "-xzf",
+            "./appworld_pack_v3.tar.gz",
+            "-C",
+            "/tmp",
+        ]
+    )
+    # write
+    os.environ["APPWORLD_PATH"] = "/tmp/pack_all_in_one"
+    os.environ["APPWORLD_SCRIPT"] = "bash EnvService/env_sandbox/appworld.sh"
+```
 
 
 ### 2. Prepare AgentScope Workflow

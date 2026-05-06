@@ -19,3 +19,4 @@ class CurrentBatchRolloutPoolInformation(BaseModel):
     global_step: int | None = None
     booting_start_time: float | None = None  # timestamp when ENGINE.BOOTING started
     training_model_path: str | None = None  # model path from synced training config
+    swarm_client_instruction: dict = {}

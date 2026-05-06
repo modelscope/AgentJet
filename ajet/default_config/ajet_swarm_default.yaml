@@ -53,6 +53,12 @@ ajet:
   # "rollout_until_finish_enough_non_dummy_tasks":
   #   AgentJet will identify the **task_id** of each episode, and stop when it has collected [>= ajet.data.train_batch_size] unique & FINISHED & NON-DUMMY **task_id**.
   #     (Hint: a **task_id** is considered "NON-DUMMY" at least one of **episodes** of **task_id** has **different** reward value.)
+  # "rollout_until_any_client_agree_sync_weight":
+  #   AgentJet defers the stop decision to swarm clients: stop as soon as ANY active swarm client has called `SwarmClient.agree_sync_weight()`.
+  #     (Hint: a swarm client becomes "active" once it has successfully `end_episode`'d a rewarded (non-abort) episode since the last weight sync,
+  #      and falls off the active list if it does no chat-completion / begin_episode for 10 minutes.)
+  # "rollout_until_all_clients_agree_sync_weight":
+  #   Like the above, but stop only when EVERY active swarm client has agreed (and there is at least one active client).
   swarm_mode_sample_collection_method: "rollout_until_finish_enough_tasks"
 
   data:

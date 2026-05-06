@@ -1,0 +1,84 @@
+# ------------------ main config ------------------
+# Swarm-mode counterpart of tutorial/example_appworld/appworld.yaml.
+# Settings unrelated to swarm wiring are kept identical to the original yaml.
+ajet:
+  project_name: example_appworld_swarm
+  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
+
+  task_judge:
+    # reward is computed by the swarm workflow on the client side
+    judge_protocol: null
+
+  task_reader:
+    # tasks are enumerated by the swarm client (env_service is queried in agent_roll.py)
+    type: random_dummy
+
+  model:
+    # ✨ select model to be trained (matches original appworld.yaml)
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    # workflow is driven from the swarm client, not from the server
+    user_workflow: null
+    force_disable_toolcalls: True
+    temperature: 0.9
+    max_env_worker: 64
+    num_repeat: 6
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 1
+    max_num_seqs: 64
+    compute_madness_checklist:
+      - "nonsense"
+    max_response_length_in_one_turn: 4096
+    max_model_len: 18000
+    multi_turn:
+      max_sample_per_task: 25
+      max_steps: 25
+
+  # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
+  enable_interchange_server: True
+  # train in cloud, run episode locally
+  enable_swarm_mode: True
+  # both swarm / oai share the same interchange server
+  interchange_server:
+    interchange_method: 'ipc' # options: 'tcp' (multi-nodes) or  'ipc' (1 node)
+    interchange_server_port: 10086
+    num_fastapi_process: 1
+    max_fastapi_threads: 512
+    max_inference_tracker_threads: 64
+    already_started: False # do not edit, used by `swarm`
+
+  # Stop the rollout phase only when **every** active swarm client has called
+  # `SwarmClient.agree_sync_weight()`. The driver (see `agent_roll.py`) calls
+  # `agree_sync_weight()` each time `submit_with_periodic_drain` actually
+  # drains, so each weight sync lines up with a complete drain boundary.
+  swarm_mode_sample_collection_method: "rollout_until_all_clients_agree_sync_weight"
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  data:
+    train_batch_size: 64
+    max_prompt_length: 3000
+    max_response_length: 15000
+
+  trainer_common:
+    save_freq: 99999
+    test_freq: 99999
+    total_epochs: 99999
+    nnodes: 1
+    n_gpus_per_node: 8
+
+
+# ------------------ do not edit ------------------
+hydra:
+  searchpath:
+    - file://ajet/default_config
+    - file://ajet/default_config/verl
+
+# ------------------ do not edit ------------------
+defaults:
+  - verl_default
+  - ajet_default
+  - _self_

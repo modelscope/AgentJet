@@ -117,6 +117,17 @@ class SwarmOverwatch:
         header_text = Text()
         header_text.append("AgentJet Swarm Overwatch", style="bold cyan")
         header_text.append(f"\nServer: {self.server_url}", style="dim")
+
+        instr = info.swarm_client_instruction if info else {}
+        active_clients = instr.get("active_clients", [])
+        agreed = sum(1 for c in active_clients if c.get("allowed_sync_weight"))
+        total = len(active_clients)
+        header_text.append(f"\nActive Clients: {total}", style="bold white")
+        if total:
+            parts = [f"{c.get('client_uuid','?')[:8]}{'✓' if c.get('allowed_sync_weight') else ''}" for c in active_clients[:8]]
+            suffix = f", +{total - 8} more" if total > 8 else ""
+            header_text.append(f"  [{', '.join(parts)}{suffix}]", style="cyan")
+
         header_text.append(f"\nCurrent Time: {now}", style="green")
         header_text.append(f"  |  Last Update: {last_update}", style="yellow")
         header_text.append(f"  |  Refresh: {self.refresh_interval}s", style="blue")

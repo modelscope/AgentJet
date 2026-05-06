@@ -304,6 +304,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         # enable_swarm_mode
         if enable_swarm_mode:
             from ajet.tuner_lib.experimental.swarm_server import ep_key
+            from ajet.tuner_lib.experimental.interchange_utils import _refresh_client_activity
             assert shared_mem_dict is not None
             assert shared_mem_dict_lock is not None
 
@@ -322,6 +323,9 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 shared_mem_dict[ep_key(episode_uuid)] = es
             if es.episode_type == "eval":
                 preserve_sampling_params = True
+            # chat-completion counts as activity for keeping the owning client
+            # in the swarm-server active list (no-op if it's not active yet).
+            _refresh_client_activity(es.client_uuid, shared_mem_dict)
 
         # For streaming, we process as non-streaming but return in streaming format
         original_stream = new_req.stream

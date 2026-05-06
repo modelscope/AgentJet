@@ -24,6 +24,8 @@ from ajet.tuner_lib.experimental.interchange_utils import (
     EpisodeStatus,
     EpisodeBufferResponse,
     SwarmThrottlePolicy,
+    AgreeSyncWeightRequest,
+    BoolResponse,
 )
 
 # general http timeout
@@ -33,6 +35,13 @@ CLEAN_RECORD_TIMEOUT = 10
 START_EPISODE_RETRY_DELAY = 15
 TROTTLE_EPISODE_RETRY_DELAY = 2
 WAIT_MORE_AVAIL_EPISODE_RETRY_DELAY = 2
+# agree_sync_weight retry policy. The call must succeed -- a dropped
+# agreement can stall the trainer's stop condition. Retries cover both
+# transport errors and server-side rejection (e.g. when a just-completed
+# end_episode hasn't yet propagated to the server's active list).
+AGREE_SYNC_WEIGHT_MAX_RETRIES = 60
+AGREE_SYNC_WEIGHT_RETRY_DELAY = 2.0
+DELAY_AFTER_AGREE_SYNC_WEIGHT = 30
 
 def raise_for_status_with_detail(resp):
     try:
@@ -766,6 +775,76 @@ class SwarmClient(SwarmClientBase):
             return resp.json().get("server_experiment_dir", None)
         except Exception as e:
             return "saved_experiments"
+
+    def agree_sync_weight(self) -> bool:
+        """Notify the swarm server that this client agrees to a weight sync.
+
+        The server only accepts the agreement if this client is in its
+        active-client list (i.e. has end_episode'd at least one rewarded
+        episode since the last sync). Used together with the
+        `rollout_until_any_client_agree_sync_weight` /
+        `rollout_until_all_clients_agree_sync_weight` stop conditions so the
+        client can decide for itself when its current batch is "good enough".
+
+        Important: this call retries on failure. A dropped agreement can
+        stall the trainer indefinitely (e.g. under "all clients agree"), and
+        the most common rejection -- "client not yet in active list" --
+        clears itself once the just-finished end_episode propagates. Only
+        gives up after AGREE_SYNC_WEIGHT_MAX_RETRIES attempts, or if the
+        engine has left ROLLING/ROLLING_POST (the agreement would be wiped
+        by the server-side reset anyway).
+
+        Returns: True if the agreement was registered, False after
+            exhausting retries (or after the engine left rolling state).
+        """
+        last_failure = ""
+        for attempt in range(1, AGREE_SYNC_WEIGHT_MAX_RETRIES + 1):
+            engine_status, _ = self.get_engine_status()
+            if engine_status not in ("ENGINE.ROLLING", "ENGINE.ROLLING_POST"):
+                logger.warning(
+                    f"agree_sync_weight: engine is {engine_status}, abandoning "
+                    f"agreement (would be reset by server-side cleanup anyway)."
+                )
+                return False
+            try:
+                req_obj = AgreeSyncWeightRequest(client_uuid=self.client_uuid)
+                resp = self._http_client.post(
+                    f"{self.server_url}/agree_sync_weight",
+                    json=req_obj.model_dump(),
+                    timeout=10,
+                )
+                raise_for_status_with_detail(resp)
+                data = BoolResponse.model_validate(resp.json())
+                if data.success:
+                    if self.verbose:
+                        self.logger_info(
+                            f"agree_sync_weight: registered with server "
+                            f"(attempt {attempt})"
+                        )
+                    # time.sleep(DELAY_AFTER_AGREE_SYNC_WEIGHT)
+                    self._wait_until_status_change_to(desired_status="ENGINE.ROLLING_POST")
+                    return True
+                last_failure = data.failure_reason
+                logger.warning(
+                    f"agree_sync_weight rejected (attempt "
+                    f"{attempt}/{AGREE_SYNC_WEIGHT_MAX_RETRIES}): "
+                    f"{data.failure_reason}. Retrying in "
+                    f"{AGREE_SYNC_WEIGHT_RETRY_DELAY}s..."
+                )
+            except Exception as e:
+                last_failure = str(e)
+                if self._should_refresh_client_on_error(e):
+                    self._refresh_http_client()
+                logger.error(
+                    f"agree_sync_weight errored (attempt "
+                    f"{attempt}/{AGREE_SYNC_WEIGHT_MAX_RETRIES}): {e}. Retrying..."
+                )
+            time.sleep(AGREE_SYNC_WEIGHT_RETRY_DELAY)
+        logger.error(
+            f"agree_sync_weight: gave up after {AGREE_SYNC_WEIGHT_MAX_RETRIES} "
+            f"attempts. Last failure: {last_failure}"
+        )
+        return False
 
     def get_rollout_stat(self) -> CurrentBatchRolloutPoolInformation:
         """

@@ -68,6 +68,14 @@ class AgentJetJob:
                 whose ``num_repeat`` episodes do *not* all share the same reward. Tasks with uniform
                 reward (e.g. all 0 or all 1) produce zero advantage under GRPO and are skipped —
                 useful when the dataset contains many too-easy or too-hard prompts.
+              - "rollout_until_any_client_agree_sync_weight": defer the stop decision to the swarm
+                clients themselves. Stops as soon as **any** active swarm client invokes
+                ``SwarmClient.agree_sync_weight()``. A client is "active" once it has successfully
+                ``end_episode``'d at least one rewarded (non-abort) episode since the last weight
+                sync, and falls off the active list after 10 minutes of no chat-completion or
+                ``begin_episode`` activity.
+              - "rollout_until_all_clients_agree_sync_weight": like the above, but stops only when
+                **every** active swarm client has agreed (and there is at least one active client).
         max_env_worker: an estimation about how many episodes will be running in parallel (all swarm clients combined).
         backbone: Training backbone framework (e.g., 'verl').
         max_prompt_length: Maximum token length for input prompts (token length before the first llm-generated token, default 3000).

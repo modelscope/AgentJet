@@ -26,8 +26,9 @@ from ajet.task_rollout.single_worker import BaseRolloutManager
 from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.tuner_lib.experimental.interchange_utils import (
     http_change_engine_status,
-    http_update_rollout_pool_information,
+    http_update_rollout_pool_information_and_fetch_instruction,
     CurrentBatchRolloutPoolInformation,
+    SwarmClientInstruction,
 )
 
 
@@ -292,6 +293,14 @@ class DynamicRolloutManager(BaseRolloutManager):
         completed_task_id_map_ct: Dict[str, List[SingleAgentContextTracker]] = IterationSafeDict()
         executor_lock = threading.Lock()
 
+        accept_client_control = ("client" in self.config.ajet.swarm_mode_sample_collection_method)
+        if accept_client_control:
+            # Latest active-client / agreed-sync-weight snapshot from the swarm server. Refreshed on every pool-information update;
+            # consumed by the `rollout_until_*_agree_sync_weight` stop conditions.
+            latest_swarm_client_instructions: Dict[str, SwarmClientInstruction | None] = {"swarm_clients": None}
+        else:
+            latest_swarm_client_instructions = None
+
         # count tasks to see whether we have reach the finish line for next weight update
         def count_tasks(completed_task_id_map_ct):
             total_completed_episodes = 0
@@ -340,6 +349,20 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_task_id_map_ct.clear()
             return (total_completed_tasks >= n_batch_task)
 
+        def any_client_agree_sync_weight_stop_condition(completed_task_id_map_ct) -> bool:
+            # ajet.swarm_mode_sample_collection_method == "rollout_until_any_client_agree_sync_weight"
+            instr = latest_swarm_client_instructions["swarm_clients"]
+            if instr is None:
+                return False
+            return any(c.allowed_sync_weight for c in instr.active_clients)
+
+        def all_clients_agree_sync_weight_stop_condition(completed_task_id_map_ct) -> bool:
+            # ajet.swarm_mode_sample_collection_method == "rollout_until_all_clients_agree_sync_weight"
+            instr = latest_swarm_client_instructions["swarm_clients"]
+            if instr is None or not instr.active_clients:
+                return False
+            return all(c.allowed_sync_weight for c in instr.active_clients)
+
         def enough_non_dummy_task_stop_condition(completed_task_id_map_ct) -> bool:
             # ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_non_dummy_tasks"
             counts = count_tasks(completed_task_id_map_ct)
@@ -372,6 +395,10 @@ class DynamicRolloutManager(BaseRolloutManager):
             stop_condition = enough_finished_task_stop_condition
         elif self.config.ajet.swarm_mode_sample_collection_method == "rollout_until_finish_enough_non_dummy_tasks":
             stop_condition = enough_non_dummy_task_stop_condition
+        elif self.config.ajet.swarm_mode_sample_collection_method == "rollout_until_any_client_agree_sync_weight":
+            stop_condition = any_client_agree_sync_weight_stop_condition
+        elif self.config.ajet.swarm_mode_sample_collection_method == "rollout_until_all_clients_agree_sync_weight":
+            stop_condition = all_clients_agree_sync_weight_stop_condition
         else:
             logger.error(f"Invalid swarm_mode_sample_collection_method: {self.config.ajet.swarm_mode_sample_collection_method}, fallback to default method: rollout_until_finish_enough_tasks")
             stop_condition = enough_finished_task_stop_condition
@@ -442,9 +469,16 @@ class DynamicRolloutManager(BaseRolloutManager):
             buffer += f"Total completed tasks: {counts['total_completed_tasks']} (target {n_batch_task})\n"
             buffer += f"Total completed non-dummy tasks: {counts['total_completed_non_dummy_tasks']} (target {n_batch_task})\n"
             buffer += f"Current stop condition: {self.config.ajet.swarm_mode_sample_collection_method}\n"
+            if accept_client_control:
+                sc_inst = latest_swarm_client_instructions["swarm_clients"]
+                if sc_inst is not None:
+                    n_active = len(sc_inst.active_clients)
+                    n_agreed = sum(1 for c in sc_inst.active_clients if c.allowed_sync_weight)
+                    buffer += f"Active clients: {n_active} (agreed: {n_agreed})\n"
             observation_window["info"][-1] = buffer
 
-            # Update rollout pool information via API
+            # Update rollout pool information via API and pull the latest
+            # active-client / agreed-sync-weight instruction from the server.
             pool_info = CurrentBatchRolloutPoolInformation(
                 sample_collection_method=self.config.ajet.swarm_mode_sample_collection_method,
                 completed_episodes=counts['total_completed_episodes'],
@@ -457,7 +491,10 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_tasks_details=completed_tasks_details,
                 completed_tasks_rewards=completed_tasks_rewards,
             )
-            http_update_rollout_pool_information(self.config, pool_info)
+            if accept_client_control:
+                instruction = http_update_rollout_pool_information_and_fetch_instruction(self.config, pool_info)
+                if instruction is not None:
+                    latest_swarm_client_instructions["swarm_clients"] = instruction
             return
 
         update_rollout_result_array_preview(observation_window, completed_task_id_map_ct)
