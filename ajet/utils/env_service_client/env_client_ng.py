@@ -207,9 +207,13 @@ class EnvClient:
                 messages=action,
                 params=params,
             )
-            return resp["data"]
+            data = resp["data"]
+            while "data" in data and "state" not in data:
+                data = data["data"]
+            data["state"] = data["state"][0]
+            return data
 
-        res = retry_call(
+        return retry_call(
             call,
             max_retry=max_retry,
             fail_return=fallback,
@@ -217,8 +221,6 @@ class EnvClient:
             instance_id=instance_id,
             action_name="step",
         )
-        res["state"] = res["state"][0]
-        return res
 
     def evaluate(
         self,

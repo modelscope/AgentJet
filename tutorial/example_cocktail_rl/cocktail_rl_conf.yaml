@@ -1,0 +1,103 @@
+# ------------------ Cocktail RL Config ------------------
+# 混合配置：从 client_0 (AppWorld) 和 client_1 (AIME) 中选取最优参数
+# 参数来源标记: [0] = client_0, [1] = client_1
+ajet:
+  project_name: cocktail_rl
+  experiment_dir: "auto"  # {exp-dir}/{experiment_name}
+
+  task_judge:
+    judge_protocol: null
+
+  task_reader:
+    type: random_dummy
+
+  model:
+    # [0] Qwen2.5-14B-Instruct
+    path: /mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen2___5-14B-Instruct
+
+  rollout:
+    user_workflow: null
+    # [1] 不禁用工具调用
+    force_disable_toolcalls: False
+    temperature: 0.9
+    # [1] 并行 worker 数量
+    max_env_worker: 128
+    # [1] GRPO 重复采样次数
+    num_repeat: 4
+    # [0] Agent 失控惩罚奖励
+    agent_madness_reward: -1.0
+    tensor_model_parallel_size: 1
+    max_num_seqs: 64
+    compute_madness_checklist:
+      - "nonsense"
+    # [1] 单轮最大响应长度
+    max_response_length_in_one_turn: 12000
+    # [1] 模型上下文窗口
+    max_model_len: 23000
+    multi_turn:
+      max_sample_per_task: 25
+      # [0] 多轮交互最大步数
+      max_steps: 25
+
+  enable_interchange_server: True
+  enable_swarm_mode: True
+
+  interchange_server:
+    interchange_method: 'ipc'
+    interchange_server_port: 10086
+    num_fastapi_process: 1
+    max_fastapi_threads: 512
+    max_inference_tracker_threads: 64
+    already_started: False
+
+  # [0] 等待所有 client 同意后同步权重
+  swarm_mode_sample_collection_method: "rollout_until_all_clients_agree_sync_weight"
+
+  debug:
+    debug_max_parallel: 1
+    debug_first_n_tasks: 1
+
+  data:
+    # [0] batch size
+    train_batch_size: 64    # Note that this value is ignored when swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight"
+    max_prompt_length: 3000
+    # [1] 最大响应长度
+    max_response_length: 20000
+
+  trainer_common:
+    # [1] 模型保存频率 (几乎不保存)
+    save_freq: 1000000000
+    # [1] 测试频率 = eval_interval
+    test_freq: 10
+    # [0] 总 epoch 数
+    total_epochs: 99999
+    # [0] 总训练步数
+    total_training_steps: 200
+    nnodes: 1
+    n_gpus_per_node: 8
+    # [1] 日志记录方式
+    logger: swanlab
+    # [0] 验证 pass@n
+    val_pass_n: 4
+    val_before_train: False
+
+    algorithm:
+      adv_estimator: grpo
+
+    # [0] KL 相关配置
+    use_kl_loss: True
+    use_kl_in_reward: False
+    kl_penalty_type: kl
+
+
+# ------------------ do not edit ------------------
+hydra:
+  searchpath:
+    - file://ajet/default_config
+    - file://ajet/default_config/verl
+
+# ------------------ do not edit ------------------
+defaults:
+  - verl_default
+  - ajet_default
+  - _self_

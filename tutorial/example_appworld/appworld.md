@@ -1,35 +1,19 @@
 ## Run Appworld AgentScope Agent
 
-### 1. Install Appworld
-```
-def install_appworld():
-    # run:
-    # `rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp`
-    import shutil
+### 1. Install and Run Appworld
 
-    if os.path.exists("/tmp/pack_all_in_one"):
-        shutil.rmtree("/tmp/pack_all_in_one")
-    if os.path.exists("./appworld_pack_v3.tar.gz"):
-        os.remove("./appworld_pack_v3.tar.gz")
-    subprocess.run(
-        [
-            "wget",
-            "https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz",
-        ]
-    )
-    subprocess.run(
-        [
-            "tar",
-            "-xzf",
-            "./appworld_pack_v3.tar.gz",
-            "-C",
-            "/tmp",
-        ]
-    )
-    # write
-    os.environ["APPWORLD_PATH"] = "/tmp/pack_all_in_one"
-    os.environ["APPWORLD_SCRIPT"] = "bash EnvService/env_sandbox/appworld.sh"
+- Install:
 ```
+rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp
+```
+
+- Run:
+```
+export APPWORLD_PATH="/tmp/pack_all_in_one"
+export APPWORLD_SCRIPT="bash EnvService/env_sandbox/appworld.sh"
+ajet --with-appworld --skip-check-avail-gpu
+```
+
 
 
 ### 2. Prepare AgentScope Workflow

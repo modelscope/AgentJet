@@ -1,7 +1,7 @@
 from typing import Any, Tuple
 
-from agentscope.message import Msg
 from loguru import logger
+from openai.types.chat.chat_completion import ChatCompletion
 
 from ajet import WorkflowOutput
 from ajet.schema.task import Task
@@ -21,15 +21,6 @@ class AppworldGymWrapper:
         self.episode_uuid = episode_uuid
 
     def step(self, action: dict) -> Tuple[Any, float, bool, dict]:
-        if not isinstance(action["content"], str):
-            try:
-                action["content"] = action["content"][0]["text"]
-            except Exception:
-                logger.exception(
-                    f"Failed to parse action content from agentscope output. {action['content']}"
-                )
-                action["content"] = str(action["content"])
-
         env_output = self.env_client.step(
             instance_id=self.episode_uuid,
             action=action,
@@ -75,10 +66,6 @@ class ExampleAgentScopeWorkflow:
         self.max_steps = max_steps
 
     async def execute(self, task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> WorkflowOutput:
-        from agentscope.agent import ReActAgent
-        from agentscope.formatter import DashScopeChatFormatter
-        from agentscope.memory import InMemoryMemory
-
         episode_uuid = api_baseurl_key.episode_uuid
         env_client = EnvClient(base_url=self.env_url)
 
@@ -105,35 +92,43 @@ class ExampleAgentScopeWorkflow:
                 first_msg = {"content": "You're a helpful assistant."}
                 init_messages = []
 
-            interaction_message = []
+            interaction_message = [
+                {
+                    "content": first_msg.get("content", "You're a helpful assistant."),
+                    "role": "system",
+                }
+            ]
             for msg in init_messages:
                 interaction_message.append(
-                    Msg(
-                        name=msg.get("name", "user"),
-                        content=msg.get("content", ""),
-                        role=msg.get("role", "user"),
-                    )
+                    {
+                        "content": msg.get("content", ""),
+                        "role": msg.get("role", "user"),
+                    }
                 )
 
-            agent = ReActAgent(
-                name="Qwen",
-                sys_prompt=first_msg.get("content", "You're a helpful assistant."),
-                model=api_baseurl_key.as_agentscope_model(),
-                formatter=DashScopeChatFormatter(),
-                memory=InMemoryMemory(),
-                toolkit=None,
-                print_hint_msg=False,
-            )
-            agent.set_console_output_enabled(False)
-
+            client = api_baseurl_key.as_raw_openai_sdk_client()
             env = AppworldGymWrapper(env_client, episode_uuid)
             step = 0
             for step in range(self.max_steps):
-                reply_message = await agent(interaction_message)
-                obs, _, terminate, _ = env.step(
-                    action={"content": reply_message.content, "role": "assistant"}
+                reply_message: ChatCompletion = await client.chat.completions.create(
+                    model="ajet-model",
+                    messages=interaction_message,
                 )
-                interaction_message = Msg(name="env", content=obs, role="user")
+                obs, _, terminate, _ = env.step(
+                    action={"content": reply_message.choices[0].message.content, "role": "assistant"}
+                )
+                interaction_message.extend(
+                    [
+                        {
+                            "content": reply_message.choices[0].message.content,
+                            "role": "assistant",
+                        },
+                        {
+                            "content": obs,
+                            "role": "user",
+                        }
+                    ]
+                )
                 if terminate:
                     break
 

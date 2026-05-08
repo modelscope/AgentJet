@@ -180,3 +180,11 @@ $ python3 /tmp/tmux_wait.py ajet_session 240 && tmux capture-pane -t ajet_sessio
 tmux kill-session -t ajet_session
 
 ```
+
+
+## For AgentJet Swarm
+
+- You should create seperate tmux session for each agentjet swarm servers and each agentjet swarm clients
+- When debugging, please do not restart agentjet swarm servers frequently, that waste too much time
+- When you really having difficulty for clearing GPU memory, run `ajet --autokill` to automatically kill all python and ray processes (however, I still recommend using this as a last resort).
+- For AgentJet, always use tmux session name that starts with `ajet-*`

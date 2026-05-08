@@ -40,6 +40,7 @@ class AjetModel:
 class AjetData:
     max_prompt_length: int = 3000
     max_response_length: int = 15000
+    # Note that this value is ignored when swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight"
     train_batch_size: int = 32
 
 

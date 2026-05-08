@@ -67,6 +67,7 @@ ajet:
     # max number of tokens for response
     max_response_length: 15000
     # how many tasks per training batch
+    # Note that this value is ignored when swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight"
     train_batch_size: 32
     # [Hint]: The final number of samples per update will be: N_{sample} = (data.train_batch_size * rollout.num_repeat * rollout.multi_turn.expected_steps)
 
