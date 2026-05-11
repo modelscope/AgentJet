@@ -99,6 +99,7 @@ class AgentJetJob:
         val_print_to_markdown_file_path: Path to a file where validation metrics are appended after every validation pass (default None, disabled).
         train_print_to_markdown_file_path: Path to a file where training metrics are appended after every training step (default None, disabled).
         total_training_steps: Hard cap on total training steps. If None (default), training runs for `total_epochs` epochs.
+        timeline_compare_level: Comparison granularity used by the context tracker's timeline merging policy. One of 'text' (relaxed text compare, more aggressive merging, very low cost) or 'token' (strict token compare, less aggressive merging). Default 'text'.
     """
 
     def __init__(
@@ -139,6 +140,7 @@ class AgentJetJob:
         val_print_to_markdown_file_path: str | None = None,
         train_print_to_markdown_file_path: str | None = None,
         total_training_steps: int | None = None,
+        timeline_compare_level: str | None = None,
     ) -> None:
 
         if base_yaml_config is None:
@@ -204,6 +206,7 @@ class AgentJetJob:
         self.val_print_to_markdown_file_path: str = cast(str, val_print_to_markdown_file_path)
         self.train_print_to_markdown_file_path: str = cast(str, train_print_to_markdown_file_path)
         self.total_training_steps: int = cast(int, total_training_steps)
+        self.timeline_compare_level: str = cast(str, timeline_compare_level)
 
         # see `ajet/default_config/ajet_swarm_default.yaml`
         overrides = {
@@ -239,9 +242,10 @@ class AgentJetJob:
             "ajet.trainer_common.use_kl_in_reward":         "use_kl_in_reward",
             "ajet.trainer_common.kl_penalty_type":          "kl_penalty_type",
             "ajet.rollout.compute_madness_checklist":       "compute_madness_checklist",
-            "ajet.trainer_common.val_print_to_markdown_file_path":   "val_print_to_markdown_file_path",
-            "ajet.trainer_common.train_print_to_markdown_file_path": "train_print_to_markdown_file_path",
             "ajet.trainer_common.total_training_steps":     "total_training_steps",
+            "ajet.trainer_common.val_print_to_markdown_file_path":                  "val_print_to_markdown_file_path",
+            "ajet.trainer_common.train_print_to_markdown_file_path":                "train_print_to_markdown_file_path",
+            "ajet.context_tracker.timeline_merging_policy.timeline_compare_level":  "timeline_compare_level",
         }
 
         # if any value given in kwargs, override the corresponding value in config

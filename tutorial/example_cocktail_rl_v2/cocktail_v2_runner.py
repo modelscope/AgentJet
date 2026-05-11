@@ -93,7 +93,20 @@ class CocktailSwarmRunner(ABC):
         self.run_eval(n_global_step=0)
         self.train_loop()
 
+
+
+
+
+
+
+
+
+
+
+
+    # ----------------
     # ---------------- shared training ----------------
+    # ----------------
 
     def _get_local_batch_size(self, step: int) -> int:
         client_0_batch, client_1_batch = self.config.split_local_batch_sizes(step)
@@ -156,7 +169,23 @@ class CocktailSwarmRunner(ABC):
             f.write(f"Training completed at {time.time()}\n")
         print(f"[INFO] {self.CLIENT_LABEL} training complete.")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # ----------------
     # ---------------- shared eval ----------------
+    # ----------------
 
     def run_eval(self, n_global_step: int) -> None:
         if not self.eval_tasks_by_set:
@@ -165,9 +194,9 @@ class CocktailSwarmRunner(ABC):
             self.client_result_dir, f"eval_results_{self.CLIENT_LABEL}.log"
         )
         for label, eval_tasks in self.eval_tasks_by_set.items():
-            self._run_eval_one(n_global_step, label, eval_tasks, eval_log_path)
+            self.run_eval_for_one_benchmark_dataset(n_global_step, label, eval_tasks, eval_log_path)
 
-    def _run_eval_one(
+    def run_eval_for_one_benchmark_dataset(
         self,
         n_global_step: int,
         label: str,

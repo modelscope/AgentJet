@@ -417,13 +417,19 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         prompt_token_ids: List[int],
         previous_ext_context: List[ExtendedMessage],
     ) -> List[ExtendedMessage]:
+        """
+        fix retokenization drift
+        prompt_text: [this llm call] the prompt in text format used in generation
+        prompt_token_ids: [this llm call] the prompt token ids used in generation (prompt_text->prompt_token_ids using tokenizer)
+        previous_ext_context: [from previous context] the context history
+        """
 
-        # remove tailing
+        # remove tailing, usually `<|im_start|> assistant`
         if prompt_text.endswith(self.generation_prompt):
             prompt_text = prompt_text[: -len(self.generation_prompt)]
             # prompt_token_ids = prompt_token_ids[: -len(self.generation_prompt_token)]
 
-        # split prompt token ids into message level
+        # split CURRENT prompt token ids into message level (split_prompt_token_ids is List[List[int]])
         split_prompt_token_ids = []
         tmp = []
         for i in range(len(prompt_token_ids)):
@@ -436,17 +442,19 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         if len(tmp) > 0:
             split_prompt_token_ids += [tmp]
 
-        # split prompt text into message level
+        # split CURRENT prompt text into message level (corresponding to split_prompt_token_ids)
         prompt_text_split = prompt_text.split("<|im_start|>")
         assert prompt_text_split[0] == "", "Prompt text should start with <|im_start|>"
         prompt_text_split = prompt_text_split[1:]  # remove the first empty string
         for i in range(len(prompt_text_split)):
             prompt_text_split[i] = "<|im_start|>" + prompt_text_split[i]
 
+        # context HISTORY prompt text
         current_prompt_text = []
         for j in range(len(previous_ext_context)):
             current_prompt_text += [self.tokenizer.decode(previous_ext_context[j].token_arr)]
 
+        # HISTORY context length vs CURRENT prompt length
         if len(previous_ext_context) != len(prompt_text_split):
             logger.bind(exception=True).error(
                 f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens."
@@ -454,7 +462,12 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
         # try to recover tokens
         if self.config.ajet.context_tracker.fix_retokenization_drift:
-            self.ensure_retokenization_perfect_match(previous_ext_context, split_prompt_token_ids, prompt_text_split, current_prompt_text)
+            self.ensure_retokenization_perfect_match(
+                previous_ext_context,   # HISTORY
+                split_prompt_token_ids, # CURRENT
+                prompt_text_split,      # CURRENT
+                current_prompt_text     # HISTORY
+            )
 
         # remove extra messages
         if len(previous_ext_context) != len(prompt_text_split):
@@ -464,39 +477,37 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
 
     def ensure_retokenization_perfect_match(self, previous_ext_context, split_prompt_token_ids, prompt_text_split, current_prompt_text):
+        """
+        Ensure the retokenization is perfectly matched between HISTORY and CURRENT
+
+        previous_ext_context: the context history in ExtendedMessage format, which contains token_arr (token ids)
+        split_prompt_token_ids: the prompt token ids of CURRENT prompt, split into message level (List[List[int]])
+        prompt_text_split: the prompt text of CURRENT prompt, split into message level (List[str])
+        current_prompt_text: the prompt text of HISTORY context, converted from token_arr to text using tokenizer, in message level (List[str])
+        """
+
         for j in range(len(previous_ext_context)):
-            if prompt_text_split[j] != current_prompt_text[j]:
-                # if prompt text mismatch, we can replace the tokens
+            vllm_token_array = split_prompt_token_ids[j]
+            tracker_token_array = previous_ext_context[j].token_arr
+            if vllm_token_array == tracker_token_array:
+                # good, everything is perfect
+                continue
+            else:
+                # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
                 print_dict(
                     {
                         "expected_prompt_text": prompt_text_split[j],
                         "current_prompt_text": current_prompt_text[j],
+                        "expected_token_ids": split_prompt_token_ids[j],
+                        "current_token_ids": previous_ext_context[j].token_arr,
                     },
                     mod="exception",
-                    header="Prompt text mismatch, Please report a github issue",
+                    header="Prompt token ids mismatch.",
                 )
+                # fix drift
                 previous_ext_context[j].token_arr = self.tokenizer(
                     prompt_text_split[j], return_tensors="pt", padding=False
-                )
-            else:
-                # if prompt text match
-                # we further check whether all token ids matches
-                vllm_token_array = split_prompt_token_ids[j]
-                tracker_token_array = previous_ext_context[j].token_arr
-                if vllm_token_array == tracker_token_array:
-                    # good, everything is perfect
-                    continue
-                else:
-                    # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
-                    print_dict(
-                        {
-                            "expected_token_ids": split_prompt_token_ids[j],
-                            "current_token_ids": previous_ext_context[j].token_arr,
-                        },
-                        mod="exception",
-                        header="Prompt token ids mismatch, Please report a github issue",
-                    )
-
+                )["input_ids"]
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure

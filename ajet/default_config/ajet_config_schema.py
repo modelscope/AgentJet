@@ -99,6 +99,17 @@ class AjetTaskReader:
     jsonl_dataset_file: JsonlDatasetFile = field(default_factory=JsonlDatasetFile)
 
 @dataclass
+class AjetTimelineMergingPolicy:
+    timeline_compare_level: str = "text"
+    ignore_tools: bool = True
+
+
+@dataclass
+class AjetContextTracker:
+    timeline_merging_policy: AjetTimelineMergingPolicy = field(default_factory=AjetTimelineMergingPolicy)
+
+
+@dataclass
 class AjetDefaultConfig:
     project_name: str = "ajet_default_project"
     experiment_name: str = "read_yaml_name"
@@ -111,6 +122,7 @@ class AjetDefaultConfig:
     trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
     lora: AjetLora = field(default_factory=AjetLora)
+    context_tracker: AjetContextTracker = field(default_factory=AjetContextTracker)
     enable_swarm_mode: bool = True
     swarm_mode_sample_collection_method: str = "rollout_until_finish_enough_tasks"
     execute_test: bool = False

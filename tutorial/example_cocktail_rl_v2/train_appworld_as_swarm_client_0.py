@@ -55,6 +55,7 @@ def build_cocktail_ajet_job(cfg: CocktailV2Config) -> AgentJetJob:
         use_kl_in_reward=cfg.use_kl_in_reward,
         kl_penalty_type=cfg.kl_penalty_type,
         total_training_steps=cfg.total_training_steps,
+        timeline_compare_level="token",
     )
 
     # Fields not exposed as AgentJetJob kwargs.
