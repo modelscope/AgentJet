@@ -7,6 +7,7 @@ from ajet import WorkflowOutput
 from ajet.schema.task import Task
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.utils.env_service_client.env_client_ng import EnvClient
+from ajet.utils.message_utils import is_token_overflow_message
 
 
 class AppworldGymWrapper:
@@ -114,8 +115,13 @@ class ExampleAgentScopeWorkflow:
                     model="ajet-model",
                     messages=interaction_message,
                 )
+                reply_content = reply_message.choices[0].message.content
+                # AgentJet signals prompt overflow via a synthetic assistant message; further turns will only push the prompt further past max_model_len,
+                if is_token_overflow_message(reply_content):
+                    logger.warning(f"[appworld_swarm] token overflow detected at step={step} (task_id={task.task_id}); aborting rollout.")
+                    break
                 obs, _, terminate, _ = env.step(
-                    action={"content": reply_message.choices[0].message.content, "role": "assistant"}
+                    action={"content": reply_content, "role": "assistant"}
                 )
                 interaction_message.extend(
                     [

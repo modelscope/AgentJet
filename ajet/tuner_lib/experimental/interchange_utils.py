@@ -64,6 +64,7 @@ class EndEpisodeRequest(BaseModel):
     episode_uuid: str
     workflow_output: WorkflowOutput
     task_id: str
+    declare_client_active: bool = True
 
 class EndEpisodeResponse(BaseModel):
     success: bool

@@ -44,6 +44,15 @@ AGREE_SYNC_WEIGHT_RETRY_DELAY = 2.0
 DELAY_AFTER_AGREE_SYNC_WEIGHT = 30
 
 def raise_for_status_with_detail(resp):
+    """
+    Raise an exception with detailed error information if the response indicates an error.
+
+    Args:
+        resp: The httpx response object to check.
+
+    Raises:
+        RuntimeError: If the response status code indicates an error.
+    """
     try:
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
@@ -75,6 +84,13 @@ class SwarmClientBase(object):
     )
 
     def __init__(self, server_url: str, verbose: bool = True):
+        """
+        Initialize the SwarmClientBase.
+
+        Args:
+            server_url: The URL of the swarm server.
+            verbose: If True, enable verbose logging output.
+        """
         self.server_url = server_url
         self.verbose = verbose
         self.client_uuid = str(uuid.uuid4())
@@ -139,6 +155,15 @@ class SwarmClientBase(object):
             return self._http_client
 
     def _should_refresh_client_on_error(self, error: Exception) -> bool:
+        """
+        Check if the HTTP client should be refreshed based on the error message.
+
+        Args:
+            error: The exception that occurred during an HTTP request.
+
+        Returns:
+            True if the error message contains keywords indicating a connection issue.
+        """
         msg = str(error).lower()
         return any(k in msg for k in self.REFRESH_TRIGGER_KEYWORDS)
 
@@ -150,6 +175,12 @@ class SwarmClientBase(object):
             self._entering_weight_sync_callbacks.append(callback)
 
     def _observe_engine_status(self, new_status: str):
+        """
+        Observe engine status changes and fire callbacks on transitions.
+
+        Args:
+            new_status: The new engine status string.
+        """
         with self._engine_status_callback_lock:
             fresh_entry = (
                 new_status == "ENGINE.WEIGHT_SYNCING"
@@ -190,6 +221,7 @@ class SwarmClientBase(object):
             self._engine_status_poll_stop.wait(self._engine_status_poll_interval)
 
     def _poll_engine_status_once(self):
+        """Fetch engine status from the server once and update the cache."""
         try:
             resp = self._http_client.get(f"{self.server_url}/get_engine_status", timeout=10)
             raise_for_status_with_detail(resp)
@@ -255,8 +287,16 @@ class SwarmClientBase(object):
 
 
 class SwarmClient(SwarmClientBase):
+    """HTTP client for interacting with the Swarm server for distributed RL training."""
 
     def __init__(self, server_url: str, verbose: bool = True):
+        """
+        Initialize the SwarmClient.
+
+        Args:
+            server_url: The URL of the swarm server.
+            verbose: If True, enable verbose logging output.
+        """
         super().__init__(server_url=server_url, verbose=verbose)
         self.previous_warning_time = 0
         self.record_episode_expire_time = {}
@@ -268,7 +308,7 @@ class SwarmClient(SwarmClientBase):
         self._recent_seen_tasks = []
 
     def _clean_up_expired_records(self):
-        # remove records that have expired and expired at least CLEAN_RECORD_TIMEOUT seconds ago
+        """Remove episode records that have expired beyond CLEAN_RECORD_TIMEOUT seconds."""
         current_time = time.time()
         expired_episodes = [
             episode_uuid for episode_uuid, expire_time in self.record_episode_expire_time.items()
@@ -355,6 +395,14 @@ class SwarmClient(SwarmClientBase):
             return False, ""
 
     def _remember_seen_task(self, task_id: str, batch_size, num_repeat):
+        """
+        Record a task_id as recently seen for throttle policy tracking.
+
+        Args:
+            task_id: The task ID to remember.
+            batch_size: Expected batch size, used to calculate buffer limit.
+            num_repeat: Expected number of repeats per task, used to calculate buffer limit.
+        """
         MAX_SEEN_TASK_BUFFER_SIZE = batch_size*num_repeat*3  # keep buffer size manageable, can be tuned
         if task_id not in self._recent_seen_tasks:
             self._recent_seen_tasks.append(task_id)
@@ -362,6 +410,16 @@ class SwarmClient(SwarmClientBase):
                 self._recent_seen_tasks = self._recent_seen_tasks[-MAX_SEEN_TASK_BUFFER_SIZE:]
 
     def _should_throttle(self, throttle_policy: SwarmThrottlePolicy, pool_info: CurrentBatchRolloutPoolInformation) -> bool:
+        """
+        Determine if the client should throttle based on the throttle policy.
+
+        Args:
+            throttle_policy: The throttle policy configuration.
+            pool_info: Current batch rollout pool information from the server.
+
+        Returns:
+            True if the client should throttle and delay starting a new episode.
+        """
         should_throttle, throttle_reason = self._check_throttle_policy(throttle_policy, pool_info)
         if not should_throttle:
             # direct start this episode
@@ -384,6 +442,20 @@ class SwarmClient(SwarmClientBase):
         return self._begin_episode_auto_retry(discard_episode_timeout, episode_type, throttle_policy)
 
     def _begin_episode_auto_retry(self, discard_episode_timeout=240, episode_type="train", throttle_policy: SwarmThrottlePolicy|None = None) -> Tuple[str, OpenaiBaseUrlAndApiKey]:
+        """
+        Internal method to claim an episode with automatic retry logic.
+
+        Args:
+            discard_episode_timeout: Idle timeout in seconds before the server discards the episode.
+            episode_type: Type of episode, either "train" or "eval".
+            throttle_policy: Optional throttle policy for task distribution control.
+
+        Returns:
+            A tuple of (episode_uuid, OpenaiBaseUrlAndApiKey).
+
+        Raises:
+            SwarmServerOfflineError: If the server goes offline during the operation.
+        """
         # max_episode_time: when an episode has **lasted** for more than X seconds, it will be terminated **locally** by client (call `end_episode` will be re-route to `abort_episode`)
         max_episode_time = 8*discard_episode_timeout
         status, status_json = self.get_engine_status()  # warm up connection and log the status
@@ -488,8 +560,21 @@ class SwarmClient(SwarmClientBase):
                     if self._begin_episode_lock.locked():
                         self._begin_episode_lock.release()
 
-    def end_episode(self, task:Task, episode_uuid: str, workflow_output: WorkflowOutput):
+    def end_episode(self, task:Task, episode_uuid: str, workflow_output: WorkflowOutput, declare_client_active: bool = True):
+        """
+        End an episode and submit the workflow output to the server.
 
+        Args:
+            task: The task associated with this episode.
+            episode_uuid: The UUID of the episode to end.
+            workflow_output: The workflow output containing reward and metadata.
+            declare_client_active: If True, register this client as active on the server.
+                This is only useful when you select `rollout_until_all_clients_agree_sync_weight`,
+                because in this case the server has to know how many client nodes are active.
+
+        Raises:
+            RuntimeError: If the server fails to end the episode.
+        """
         if not episode_uuid:
             logger.error("No episode to end.")
             return
@@ -514,7 +599,8 @@ class SwarmClient(SwarmClientBase):
             client_uuid=self.client_uuid,
             episode_uuid=episode_uuid,
             workflow_output=workflow_output,
-            task_id=task_id
+            task_id=task_id,
+            declare_client_active=declare_client_active
         )
 
         resp = self._http_client.post(
@@ -541,7 +627,16 @@ class SwarmClient(SwarmClientBase):
             raise RuntimeError(f"Failed to end episode {episode_uuid}")
 
 
-    def abort_episode(self, episode_uuid: str):
+    def abort_episode(self, episode_uuid: str, declare_client_active: bool = True):
+        """
+        Abort an episode without submitting a valid workflow output.
+
+        Args:
+            episode_uuid: The UUID of the episode to abort.
+            declare_client_active: If True, register this client as active on the server.
+                This is only useful when you select `rollout_until_all_clients_agree_sync_weight`,
+                because in this case the server has to know how many client nodes are active.
+        """
         if not episode_uuid:
             logger.error("No episode to end.")
             return
@@ -552,7 +647,8 @@ class SwarmClient(SwarmClientBase):
                 client_uuid=self.client_uuid,
                 episode_uuid=episode_uuid,
                 workflow_output=workflow_output,
-                task_id=""
+                task_id="",
+                declare_client_active=declare_client_active
             )
 
             resp = self._http_client.post(
@@ -633,6 +729,15 @@ class SwarmClient(SwarmClientBase):
 
 
     def can_continue_episode(self, episode_uuid: str) -> bool:
+        """
+        Check if an episode can continue (still claimed and engine is rolling).
+
+        Args:
+            episode_uuid: The UUID of the episode to check.
+
+        Returns:
+            True if the episode can continue, False otherwise.
+        """
         if not episode_uuid:
             return False
         try:
@@ -655,6 +760,12 @@ class SwarmClient(SwarmClientBase):
             return False
 
     def get_episode_buffer(self) -> List[EpisodeStatus]:
+        """
+        Get the current episode buffer from the server.
+
+        Returns:
+            A list of EpisodeStatus objects representing all active episodes.
+        """
         try:
             resp = self._http_client.post(
                 f"{self.server_url}/get_episode_buffer",
@@ -670,7 +781,7 @@ class SwarmClient(SwarmClientBase):
             logger.error(f"Error getting episode buffer: {e}")
             return []
 
-    def auto_sync_train_config_and_start_engine(self, agent_jet_job: AgentJetJob, force_restart=False):
+    def auto_sync_train_config_and_start_engine(self, agent_jet_job: AgentJetJob, force_restart=False, _retry_once=True) -> None:
         """
         Automatically sync training configuration and start the engine if needed.
         This checks the current engine status and performs actions accordingly.
@@ -703,6 +814,9 @@ class SwarmClient(SwarmClientBase):
             self.logger_info("Engine is already ROLLING. No action needed.")
         elif current_status in ["ENGINE.CANNOT_CONNECT"]:
             logger.error("Unable to connect to swarm server.")
+            if _retry_once:
+                time.sleep(16)
+                return self.auto_sync_train_config_and_start_engine(agent_jet_job, force_restart=force_restart, _retry_once=False)
             raise RuntimeError(f"Unable to connect to swarm server.")
         elif current_status in ["ENGINE.BOOTING", "ENGINE.WEIGHT_SYNCING"]:
             self.logger_info(f"Engine is {current_status}. Waiting until it becomes ROLLING...")
@@ -892,6 +1006,16 @@ class SwarmClient(SwarmClientBase):
             pass
 
 def auto_train_with_dataset(dataset, swarm_worker: SwarmClient, execute_agent, local_grpo_n=2, remote_batch_size=8):
+    """
+    Automatically train with a dataset using the swarm worker.
+
+    Args:
+        dataset: The dataset providing training tasks via generate_training_tasks().
+        swarm_worker: The SwarmClient instance for communication with the server.
+        execute_agent: A callable that executes the agent on a task and returns WorkflowOutput.
+        local_grpo_n: Number of local GRPO repeats per task.
+        remote_batch_size: Number of parallel remote workers.
+    """
     from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 
     def rollout(task) -> float | None:

@@ -55,7 +55,7 @@ class TestBenchmarkAppworldlora(BenchmarkTestCase):
 
     def clear_system_processes(self):
         # kill all python + ray + vllm processes
-        from ajet.utils.cleaner import fast_kill_by_keyword_bash
+        from ajet.utils.cleaner import AUTOKILL_KEYWORDS, fast_kill_by_keyword_bash
 
         total_seconds = 15
         for i in range(total_seconds):
@@ -64,8 +64,7 @@ class TestBenchmarkAppworldlora(BenchmarkTestCase):
             )
             time.sleep(1)
 
-        kill = "ray|vllm|VLLM|python"
-        for keyword in kill.split("|"):
+        for keyword in AUTOKILL_KEYWORDS.split("|"):
             logger.info(f"Killing processes matching keyword: {keyword}")
             killed_pids = fast_kill_by_keyword_bash(keyword)
             if killed_pids:

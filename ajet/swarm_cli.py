@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from loguru import logger
 
-from ajet.utils.cleaner import fast_kill_by_keyword_bash
+from ajet.utils.cleaner import AUTOKILL_KEYWORDS, fast_kill_by_keyword_bash
 from ajet.utils.config_utils import prepare_experiment_config
 from ajet.utils.launch_utils import (
     dict_to_namespace,
@@ -43,7 +43,7 @@ def start_swarm_server(env, config, port):
 def cmd_start(args):
     """Handle the 'start' subcommand."""
     if args.autokill:
-        args.kill = "ray|vllm|VLLM|python"
+        args.kill = AUTOKILL_KEYWORDS
 
     if args.kill:
         logger.info(f"Killing processes matching keywords: {args.kill}")

@@ -83,6 +83,10 @@ class PeriodicDrainThreadPoolExecutor:
         """Submit a task, draining all in-flight work every `drain_every_n_job` submissions."""
         drain_every_n_job = self._max_workers
         results = []
+        self._submitted_count += 1
+        future = self.submit(fn, *args, **kwargs)
+        self.current_futures.append(future)
+
         if self._submitted_count > 0 and self._submitted_count % drain_every_n_job == 0:
             pbar = tqdm(total=len(self.current_futures), desc="Draining in-flight tasks")
             for _ in as_completed(self.current_futures):
@@ -95,9 +99,6 @@ class PeriodicDrainThreadPoolExecutor:
                     logger.exception(f"Error in task execution: {e}")
             self.current_futures = []
 
-        self._submitted_count += 1
-        future = self.submit(fn, *args, **kwargs)
-        self.current_futures.append(future)
         return future, results
 
     def shutdown(self, wait=True):

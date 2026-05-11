@@ -12,7 +12,7 @@ from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
 from ajet.utils.process_killer import kill_process_tree
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
-from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE, CLIENT_ACTIVE_TIMEOUT
+from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
 from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
     ClaimEpisodeRequest,
@@ -692,7 +692,8 @@ def register_enable_swarm_mode_routes(
                 shared_mem_dict_lock,
             )
             # successful, non-abort end_episode marks the client "active"
-            _register_active_client(client_uuid, shared_mem_dict)
+            if req.declare_client_active:
+                _register_active_client(client_uuid, shared_mem_dict)
 
         elif episode_type == "eval":
             if engine_status in ["ENGINE.ROLLING"]:
@@ -731,6 +732,9 @@ def register_enable_swarm_mode_routes(
             await _revert_episode_to_unclaimed(episode_uuid, shared_mem_dict, shared_mem_dict_lock, revert_reason="client_abort")
         else:
             _delete_episode_record(episode_uuid, shared_mem_dict, shared_mem_dict_lock)
+
+        if req.declare_client_active:
+            _register_active_client(req.client_uuid, shared_mem_dict)
 
         return EndEpisodeResponse(success=True)
 

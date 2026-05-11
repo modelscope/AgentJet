@@ -265,7 +265,7 @@ class DynamicRolloutManager(BaseRolloutManager):
 
     def rollout_swarm(  # noqa: C901
         self,
-        tasks: List[Task],
+        tasks: List[Task],  # this is dummy task list, the size is `ajet.data.train_batch_size` * `ajet.rollout.num_repeat`
         mode: Literal["sample", "validate"],
         epoch: str,
         allow_sample_num_change=True,
@@ -282,7 +282,10 @@ class DynamicRolloutManager(BaseRolloutManager):
         tracker_array: List[SingleAgentContextTracker] = []
         rollout_n = self.rollout_n
         n_batch_task = len(tasks)
-        n_task = min(len(tasks), ceil(self.max_parallel / rollout_n))
+        n_task = min(
+            len(tasks),                                 # `ajet.data.train_batch_size` * `ajet.rollout.num_repeat` / `ajet.rollout.num_repeat` = `ajet.data.train_batch_size`
+            ceil(self.max_parallel / rollout_n)         # `ajet.rollout.max_env_worker` / `ajet.rollout.num_repeat`
+        )
         assert n_task > 0, f"n_task is not valid, n_task = min(len(tasks), self.max_parallel // rollout_n) = {n_task}"
         self.current_token_count_time = time.time()
 

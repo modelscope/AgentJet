@@ -14,10 +14,7 @@ from ajet.copilot.job import AgentJetJob
 from ajet.schema.task import Task
 from ajet.utils.env_service_client.env_client_ng import EnvClient
 
-from tutorial.example_cocktail_rl_v2.cocktail_v2_config import (
-    CocktailV2Config,
-    cocktail_v2_config_from_env,
-)
+from tutorial.example_cocktail_rl_v2.cocktail_v2_config import CocktailV2Config, cocktail_v2_config_from_env
 from tutorial.example_cocktail_rl_v2.cocktail_v2_runner import CocktailSwarmRunner
 
 

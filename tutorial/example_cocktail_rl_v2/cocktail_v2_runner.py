@@ -90,6 +90,7 @@ class CocktailSwarmRunner(ABC):
 
     def run(self) -> None:
         self.setup()
+        self.run_eval(n_global_step=0)
         self.train_loop()
 
     # ---------------- shared training ----------------

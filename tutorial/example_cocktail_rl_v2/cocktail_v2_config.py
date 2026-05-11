@@ -67,7 +67,8 @@ class CocktailV2Config:
     schedule_end_step: int = 200
 
     # ---- v2 client-side runtime ----
-    max_env_worker: int = 64
+    max_env_worker: int = 64 * 8
+    max_inference_tracker_threads: int = 128
     eval_interval: int = 10
     eval_k: int = 4
     total_training_steps: int = 200
@@ -91,7 +92,7 @@ class CocktailV2Config:
     max_prompt_length: int = 3000
     max_response_length_in_one_turn: int = 12000
     max_model_len: int = 23000
-    max_num_seqs: int = 64
+    max_num_seqs: int = 128
     n_gpu: int = 8
     use_kl_loss: bool = True
     use_kl_in_reward: bool = False
@@ -100,7 +101,7 @@ class CocktailV2Config:
     # ---- engine knobs not exposed as AgentJetJob kwargs ----
     temperature: float = 0.9
     force_disable_toolcalls: bool = False
-    agent_madness_reward: float = -1.0
+    agent_madness_reward: float = 0.0
     tensor_model_parallel_size: int = 1
     multi_turn_max_sample_per_task: int = 25
     save_freq: int = 1_000_000_000
@@ -156,6 +157,14 @@ def cocktail_v2_config_from_env() -> CocktailV2Config:
           Override schedule_type. The same value MUST be exported in both
           clients' shells, otherwise the two will compute different per-round
           local batch sizes.
+      COCKTAIL_RESULT_DIR = <path>
+          Override result_dir (default './cocktail_results_v2'). Both clients
+          must export the same value; otherwise their logs will diverge.
+      COCKTAIL_SCHEDULE_START = <float in [0, 1]>
+          Override schedule_start (client_0's batch ratio at step 0; for
+          schedule_type=constant this is the ratio at every step). Both clients
+          must export the same value, or they will compute different local
+          batch sizes.
     """
     cfg = CocktailV2Config()
     sched_type = os.getenv("COCKTAIL_RATIO_SCHEDULE")
@@ -164,4 +173,13 @@ def cocktail_v2_config_from_env() -> CocktailV2Config:
         # Re-validate since we mutated.
         cfg.__post_init__()
         print(f"[INFO] env override: COCKTAIL_RATIO_SCHEDULE = {sched_type!r}")
+    result_dir = os.getenv("COCKTAIL_RESULT_DIR")
+    if result_dir is not None:
+        cfg.result_dir = result_dir
+        print(f"[INFO] env override: COCKTAIL_RESULT_DIR = {result_dir!r}")
+    sched_start = os.getenv("COCKTAIL_SCHEDULE_START")
+    if sched_start is not None:
+        cfg.schedule_start = float(sched_start)
+        cfg.__post_init__()
+        print(f"[INFO] env override: COCKTAIL_SCHEDULE_START = {cfg.schedule_start!r}")
     return cfg

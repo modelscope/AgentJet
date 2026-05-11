@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())  # noqa: E402
 
 from loguru import logger  # noqa: E402
 
-from ajet.utils.cleaner import fast_kill_by_keyword_bash  # noqa: E402
+from ajet.utils.cleaner import AUTOKILL_KEYWORDS, fast_kill_by_keyword_bash  # noqa: E402
 from ajet.utils.smart_daemon import LaunchCommandWhenAbsent  # noqa: E402
 
 parser = argparse.ArgumentParser(description="deploy Hugging Face model")
@@ -42,7 +42,7 @@ parser.add_argument("--port", default="2888", type=str, help="Port number")
 args = parser.parse_args()
 
 if args.autokill:
-    args.kill = "ray|vllm|VLLM|python"
+    args.kill = AUTOKILL_KEYWORDS
 
 # Handle kill-keywords argument if provided
 if args.kill:

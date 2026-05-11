@@ -44,7 +44,15 @@ class SwarmOverwatch:
         self.last_update_time = None
         self.error_count = 0
         self.total_requests = 0
-        self._httpx_client = httpx.Client(timeout=5.0)
+        # Disable keep-alive: each poll opens a fresh TCP connection so the kernel
+        # re-picks a worker every time. Without this, a long-lived connection can
+        # stick to a stale/zombie worker after a server restart and silently keep
+        # returning frozen state.
+        self._httpx_client = httpx.Client(
+            timeout=5.0,
+            limits=httpx.Limits(max_keepalive_connections=0, keepalive_expiry=0),
+            headers={"Connection": "close"},
+        )
         self._verbose_logs: list = []  # list of dicts {timestamp, tag, message}
 
     def _refresh_http_client(self):
@@ -53,7 +61,11 @@ class SwarmOverwatch:
             self._httpx_client.close()
         except Exception:
             pass
-        self._httpx_client = httpx.Client(timeout=5.0)
+        self._httpx_client = httpx.Client(
+            timeout=5.0,
+            limits=httpx.Limits(max_keepalive_connections=0, keepalive_expiry=0),
+            headers={"Connection": "close"},
+        )
         logger.warning("swarm overwatch httpx client refreshed.")
 
     def _should_refresh_client_on_error(self, error: Exception) -> bool:
@@ -116,7 +128,7 @@ class SwarmOverwatch:
 
         header_text = Text()
         header_text.append("AgentJet Swarm Overwatch", style="bold cyan")
-        header_text.append(f"\nServer: {self.server_url}", style="dim")
+        header_text.append(f"  |  Server: {self.server_url}", style="dim")
 
         instr = info.swarm_client_instruction if info else {}
         active_clients = instr.get("active_clients", [])
@@ -207,6 +219,13 @@ class SwarmOverwatch:
             info.sample_collection_method
             == "rollout_until_finish_enough_non_dummy_tasks"
         )
+        highlight_any_agree = (
+            info.sample_collection_method == "rollout_until_any_client_agree_sync_weight"
+        )
+        highlight_all_agree = (
+            info.sample_collection_method == "rollout_until_all_clients_agree_sync_weight"
+        )
+        highlight_agree = highlight_any_agree or highlight_all_agree
 
         # Episodes
         ep_cur, ep_tgt, ep_pct = self.create_progress_bar(
@@ -287,6 +306,30 @@ class SwarmOverwatch:
             "-",
             "-"
         )
+
+        # Clients agree sync weight (only shown for agree_sync_weight methods)
+        if highlight_agree:
+            instr = info.swarm_client_instruction if info.swarm_client_instruction else {}
+            active_clients = instr.get("active_clients", [])
+            total_clients = len(active_clients)
+            agreed_clients = sum(1 for c in active_clients if c.get("allowed_sync_weight"))
+            # Target depends on mode: any=1, all=total
+            if highlight_any_agree:
+                agree_target = 1 if total_clients > 0 else 0
+            else:
+                agree_target = total_clients
+            agree_pct = (agreed_clients / agree_target * 100) if agree_target > 0 else 0.0
+            agree_bar = self._create_text_bar(agree_pct)
+            agree_metric = "-> *Clients Agree Sync Weight (chosen)*"
+            agree_style = "bold green"
+            table.add_row(
+                f"[{agree_style}]{agree_metric}[/{agree_style}]",
+                f"{agreed_clients:,}",
+                f"{agree_target:,}",
+                f"{agree_pct:.1f}%",
+                agree_bar,
+                style=agree_style,
+            )
 
         return table
 
