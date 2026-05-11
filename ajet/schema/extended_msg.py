@@ -21,7 +21,7 @@ NON_TRAIN_AUTHORS = [
     "memory",
     "llm(do_not_train)",
 ]
-DUMMY_MSG = [{"role": "assistant", "content": "dummy text"}]
+DUMMY_MSG = [{"role": "user", "content": "dummy text"}]
 
 
 def find_sublist_indices(large_list, small_list, reverse=False):
