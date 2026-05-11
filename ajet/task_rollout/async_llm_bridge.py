@@ -210,6 +210,8 @@ class AsyncLlmBridge(object):
                 "role": "assistant",
                 "request_id": request_id,
                 "content": decoded_text,
+                "prompt_text": prompt_text,
+                "prompt_token_ids": prompt_token_ids,
                 "tool_calls": tool_calls,
                 "finish_reason": finish_reason,
                 "usage": usage,

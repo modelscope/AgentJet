@@ -599,7 +599,7 @@ Controls the Context Tracker, which intercepts LLM calls, builds aligned timelin
 - **Type:** str.
 - **Default:** `"text"`.
 - **Description:** Controls how timelines are compared when deciding whether to merge shared conversation prefixes:
-    - `"text"` (relaxed) — Compares `content_for_compare` strings between timeline messages. More aggressive merging at very little cost, resulting in higher training speedup.
+    - `"text"` (relaxed) — Compares `text_content_for_compare` strings between timeline messages. More aggressive merging at very little cost, resulting in higher training speedup.
     - `"token"` (strict) — Compares exact `token_arr` sequences between timeline messages. Less aggressive merging since tokenization differences (e.g. whitespace handling) prevent matches. Use when tokenization fidelity is critical.
 
 ### `ajet.context_tracker.timeline_merging_policy.ignore_tools`

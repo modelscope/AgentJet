@@ -231,10 +231,10 @@ class SingleAgentContextTracker(BaseTracker):
                     {"type": "image_url", "image_url": {"url": url}}
                     for url in ext_msg.images
                 ]
-                content.append({"type": "text", "text": ext_msg.content_for_compare})
+                content.append({"type": "text", "text": ext_msg.text_content_for_compare})
                 d: dict = {"role": ext_msg.role, "content": content}
             else:
-                d = {"role": ext_msg.role, "content": ext_msg.content_for_compare}
+                d = {"role": ext_msg.role, "content": ext_msg.text_content_for_compare}
             if ext_msg.tool_calls:
                 d.update({"tool_calls": ext_msg.tool_calls})
             if ext_msg.tool_call_id:

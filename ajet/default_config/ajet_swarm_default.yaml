@@ -41,7 +41,7 @@ ajet:
     interchange_server_port: 10086
     num_fastapi_process: 1  # 1, 2 or 4 is fine
     max_fastapi_threads: 512  # 64 or 128 is fine
-    max_inference_tracker_threads: 64 # recommend to be equal to `ajet.rollout.max_env_worker`
+    max_inference_tracker_threads: 128 # recommend to be equal to `ajet.rollout.max_env_worker`
     already_started: False # do not edit, used by `swarm`
 
   # the method to determine when to stop rollout in swarm mode. Options:

@@ -70,7 +70,7 @@ class AjetInterchangeServer:
     interchange_server_port: Any = "auto"
     num_fastapi_process: int = 1
     max_fastapi_threads: int = 512
-    max_inference_tracker_threads: int = 64
+    max_inference_tracker_threads: int = 128
     already_started: bool = False
 
 

@@ -89,7 +89,6 @@ class ExtendedMessage:
         self.token_begin_index = token_begin_index
         self.token_end_index = token_end_index
         self.invalid_log_prob_value = INVALID_LOG_PROB_VALUE
-        self._content_for_compare = ""
         self._info = ""
         self.tools = tools
         self.tool_calls = tool_calls
@@ -111,6 +110,8 @@ class ExtendedMessage:
         self.processor = processor
         self.multi_modal_inputs = None  # dict[str, torch.Tensor] once tokenized
 
+        # text content to compare when timeline merging
+        self._text_content_for_compare = ""
         self.generate_content_for_compare(content=self.content)
 
         self.eos_token_id = tokenizer.eos_token_id
@@ -145,7 +146,7 @@ class ExtendedMessage:
         else:
             auto_tokenize_target:dict = {
                 "role": self.role,
-                "content": self.content_for_compare,
+                "content": self.text_content_for_compare,
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
@@ -168,7 +169,7 @@ class ExtendedMessage:
         """
         pil_images = [load_image_to_pil(im) for im in self.images]
         vision_content = [{"type": "image", "image": p} for p in pil_images]
-        vision_content.append({"type": "text", "text": self.content_for_compare})
+        vision_content.append({"type": "text", "text": self.text_content_for_compare})
         self_msg = {"role": self.role, "content": vision_content}
         if self.tool_calls:
             self_msg["tool_calls"] = self.tool_calls
@@ -235,7 +236,7 @@ class ExtendedMessage:
             # completion_token_arr will contain generation_prompt header
             auto_tokenize_target:dict = {
                 "role": self.role,
-                "content": self.content_for_compare,
+                "content": self.text_content_for_compare,
             }
             if self.tool_calls:
                 auto_tokenize_target.update({"tool_calls": self.tool_calls})
@@ -249,7 +250,7 @@ class ExtendedMessage:
             )
         except Exception as e:
             raise ValueError(
-                f"Cannot tokenize {self.role} --- {self.content_for_compare}, \n\n Error: {e}"
+                f"Cannot tokenize {self.role} --- {self.text_content_for_compare}, \n\n Error: {e}"
             )
         self.token_arr, _ = self.get_inc_simple(
             text_frag_from=ajet_apply_chat_template(
@@ -264,12 +265,11 @@ class ExtendedMessage:
         return self.token_arr
 
     @property
-    def content_for_compare(self):
-        if self._content_for_compare == "":
+    def text_content_for_compare(self):
+        if self._text_content_for_compare == "":
             if not self.tool_calls:
-                logger.exception("content_for_compare is not set, or previous llm output is empty!")
-                # self._content_for_compare
-        return self._content_for_compare
+                logger.exception("text_content_for_compare is not set, or previous llm output is empty!")
+        return self._text_content_for_compare
 
     @property
     def need_training(self):
@@ -281,7 +281,7 @@ class ExtendedMessage:
         return self.author in NEED_TRAIN_AUTHORS
 
     def generate_content_for_compare(self, content):
-        self._content_for_compare = content
+        self._text_content_for_compare = content
 
     def get_loss_mask(self, blackout_token_combo):
         if self.need_training:
@@ -411,7 +411,7 @@ class ExtendedMessage:
             )
             # re-compute token_arr
             auto_tokenize_targets = [
-                {"role": msg.role, "content": msg.content_for_compare} for msg in group
+                {"role": msg.role, "content": msg.text_content_for_compare} for msg in group
             ]
             merged.token_arr, _ = merged.get_inc_simple(
                 text_frag_from=ajet_apply_chat_template(
