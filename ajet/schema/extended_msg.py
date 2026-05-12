@@ -21,7 +21,7 @@ NON_TRAIN_AUTHORS = [
     "memory",
     "llm(do_not_train)",
 ]
-DUMMY_MSG = [{"role": "user", "content": "dummy text"}]
+
 
 
 def find_sublist_indices(large_list, small_list, reverse=False):
@@ -80,6 +80,7 @@ class ExtendedMessage:
         first_message=False,
         images=None,        # Optional[list] of image refs (PIL / bytes / data URL / path)
         processor=None,     # Optional HuggingFace ProcessorMixin (e.g. Qwen2_5_VLProcessor)
+        before_last_query=True,   # whether this message is before the last user query in the conversation, used for auto tokenization logic
     ):
         self.author = author
         self.role = role
@@ -117,6 +118,7 @@ class ExtendedMessage:
         self.eos_token_id = tokenizer.eos_token_id
 
         if token_generator == "auto":
+            self.before_last_query = before_last_query
             self.token_arr = self.auto_tokenize(
                 tokenizer=tokenizer,
                 tools=tools,
@@ -163,8 +165,8 @@ class ExtendedMessage:
         with image placeholder tokens expanded, plus multi_modal_inputs
         (pixel_values, image_grid_thw, ...).
 
-        For non-first messages we tokenize ``DUMMY_MSG + self`` (with images)
-        and subtract ``DUMMY_MSG`` (text-only) to get just this message's delta,
+        For non-first messages we tokenize ``dummy_msg + self`` (with images)
+        and subtract ``dummy_msg`` (text-only) to get just this message's delta,
         matching the existing non-first tokenization contract.
         """
         pil_images = [load_image_to_pil(im) for im in self.images]
@@ -176,14 +178,21 @@ class ExtendedMessage:
         if self.tool_call_id:
             self_msg["tool_call_id"] = self.tool_call_id
 
+        # Mirror the text-only path: the dummy prefix role depends on whether
+        # this message precedes the last user query (see auto_tokenize_non_first_message).
+        if self.before_last_query:
+            dummy_msg = [{"role": "assistant", "content": "dummy text"}]
+        else:
+            dummy_msg = [{"role": "user", "content": "dummy text"}]
+
         if self.first_message:
             proc_msgs = [self_msg]
         else:
             # The HF processor needs content to be a list of typed blocks for
-            # all messages; DUMMY_MSG's plain-string content would break.
+            # all messages; dummy_msg's plain-string content would break.
             dummy_msg_processor_style = [
                 {"role": m["role"], "content": [{"type": "text", "text": m["content"]}]}
-                for m in DUMMY_MSG
+                for m in dummy_msg
             ]
             proc_msgs = dummy_msg_processor_style + [self_msg]
 
@@ -202,11 +211,11 @@ class ExtendedMessage:
         if self.first_message:
             return input_ids
 
-        # Subtract DUMMY_MSG prefix to get the delta tokens for just self.
-        # DUMMY_MSG has no images, but the processor still needs typed content.
+        # Subtract dummy_msg prefix to get the delta tokens for just self.
+        # dummy_msg has no images, but the processor still needs typed content.
         dummy_msg_processor_style = [
             {"role": m["role"], "content": [{"type": "text", "text": m["content"]}]}
-            for m in DUMMY_MSG
+            for m in dummy_msg
         ]
         dummy_ids = self.processor.apply_chat_template(
             dummy_msg_processor_style, tools=tools or None,
@@ -232,6 +241,12 @@ class ExtendedMessage:
         return input_ids[match:]
 
     def auto_tokenize_non_first_message(self, tokenizer, tools):
+        if self.before_last_query:
+            # for example, this will remove the <thinking> block for qwen3's chat template
+            dummy_msg = [{"role": "assistant", "content": "dummy text"}]
+        else:
+            dummy_msg = [{"role": "user", "content": "dummy text"}]
+
         try:
             # completion_token_arr will contain generation_prompt header
             auto_tokenize_target:dict = {
@@ -244,7 +259,7 @@ class ExtendedMessage:
                 auto_tokenize_target.update({"tool_call_id": self.tool_call_id})
             text_frag_to = ajet_apply_chat_template(
                 tokenizer=tokenizer,
-                conversation=DUMMY_MSG + [auto_tokenize_target],
+                conversation=dummy_msg + [auto_tokenize_target],
                 tokenize=False,
                 tools=tools,
             )
@@ -255,7 +270,7 @@ class ExtendedMessage:
         self.token_arr, _ = self.get_inc_simple(
             text_frag_from=ajet_apply_chat_template(
                 tokenizer=tokenizer,
-                conversation=DUMMY_MSG,
+                conversation=dummy_msg,
                 tokenize=False,
                 tools=tools,
             ),
@@ -409,6 +424,8 @@ class ExtendedMessage:
                 token_logprob_arr=msg0.token_logprob_arr,
                 first_message=msg0.first_message,
             )
+            # a dummy msg, not necessary, can be []
+            dummy_msg = [{"role": "user", "content": "dummy text"}]
             # re-compute token_arr
             auto_tokenize_targets = [
                 {"role": msg.role, "content": msg.text_content_for_compare} for msg in group
@@ -416,14 +433,14 @@ class ExtendedMessage:
             merged.token_arr, _ = merged.get_inc_simple(
                 text_frag_from=ajet_apply_chat_template(
                     tokenizer=tokenizer,
-                    conversation=DUMMY_MSG,
+                    conversation=dummy_msg,
                     tokenize=False,
                     tools=merged.tools,
                     add_generation_prompt=False,
                 ),
                 text_frag_to=ajet_apply_chat_template(
                     tokenizer,
-                    conversation=DUMMY_MSG + auto_tokenize_targets,
+                    conversation=dummy_msg + auto_tokenize_targets,
                     tokenize=False,
                     tools=merged.tools,
                     add_generation_prompt=False,

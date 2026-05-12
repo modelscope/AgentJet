@@ -8,7 +8,7 @@ Cocktail RL on AppWorld + AIME with configurable per-client batch ratios and an 
 # install appworld
 rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp
 
-
+cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase
 
 rm -rf cocktail_results_v2
 source .venv/bin/activate && ajet --autokill
@@ -46,6 +46,11 @@ Edit `CocktailV2Config` defaults (cocktail_v2_runner.py) for `total_batch_size`,
 
 ```bash
 
+# install appworld
+rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp
+
+cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase
+
 rm -rf cocktail_results_v2_r025
 source .venv/bin/activate && ajet --autokill
 tmux kill-session -t ajet_swarm
@@ -79,6 +84,10 @@ tmux attach -t ajet_swarm
 Same setup as above, ratio flipped. With `total_batch_size=64`, ratio 0.75 → client_0 (appworld) = 48, client_1 (aime) = 16.
 
 ```bash
+
+rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp
+
+cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase
 
 rm -rf cocktail_results_v2_r075
 source .venv/bin/activate && ajet --autokill

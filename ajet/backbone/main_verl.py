@@ -132,9 +132,16 @@ class TaskRunner:
 
         # Instantiate the tokenizer and processor.
         from verl.utils import hf_processor, hf_tokenizer
+        from ajet.tokenizer.service import start_tokenizer_service
 
         trust_remote_code = config.data.get("trust_remote_code", False)
-        tokenizer = hf_tokenizer(local_path, trust_remote_code=trust_remote_code)
+        local_tokenizer = hf_tokenizer(local_path, trust_remote_code=trust_remote_code)
+        # Cache hot tokenization calls (encode / decode / apply_chat_template)
+        # in a sidecar process; every other tokenizer attribute is served by
+        # the local instance directly.
+        tokenizer = start_tokenizer_service(
+            local_tokenizer, local_path, trust_remote_code=trust_remote_code
+        )
         # Used for multimodal LLM, could be None
         processor = hf_processor(local_path, trust_remote_code=trust_remote_code, use_fast=True)
 

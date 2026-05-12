@@ -636,13 +636,14 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                                 ]
                             )
                         )
-                        logger.info("start fit rollout")
+                        logger.info("start batch rollout")
                         self.parallel_env.current_global_steps = self.global_steps
+                        # rollout stage begin ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
                         context_tracker_arr: List[SingleAgentContextTracker] = self.parallel_env.rollout(
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
 
-                        logger.info("end fit rollout")
+                        logger.info("end batch rollout")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
                         logger.info("end dataproto convertion")
 
@@ -848,7 +849,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                     # implement critic warmup
                     if self.config.trainer.critic_warmup <= self.global_steps:
-                        # update actor
+                        # update actor ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
                         with marked_timer("update_actor", timing_raw, color="red"):
                             actor_output = self._update_actor(batch)
                         actor_output_metrics = reduce_metrics(actor_output.meta_info["metrics"])

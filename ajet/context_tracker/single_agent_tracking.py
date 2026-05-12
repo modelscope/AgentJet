@@ -128,7 +128,7 @@ class SingleAgentContextTracker(BaseTracker):
         self.generated_token_cnt += len(vllm_output_raw_token)
         if not self.generation_prompt_token:
             self.generation_prompt_token = self.get_generation_prompt_token()
-        final_token_arr, token_logprob_arr, loss_mask, lack_normal_eos = replace_token_ids(
+        final_token_arr, token_logprob_arr, loss_mask, lack_normal_eos = replace_token_ids( # pad tokens and logprobs with begin_ids / other_ids / NA
             token_container=completion_token_arr,
             precise_token=vllm_output_raw_token,
             precise_logprob=vllm_output_raw_logprob,

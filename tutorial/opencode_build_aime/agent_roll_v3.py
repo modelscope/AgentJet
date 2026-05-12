@@ -217,8 +217,8 @@ class AIMESwarmTrainer:
         """Main training loop."""
         # Run eval once before training starts (baseline)
         self.run_eval(0)
+        last_eval_step = 0
 
-        task_count = 0
         max_parallel = 64
         executor = TaskCountLimitedThreadPoolExecutor(
             max_parallel_groups=BATCH_SIZE,
@@ -233,13 +233,12 @@ class AIMESwarmTrainer:
                 args_list = [{"task": task} for _ in range(self.grpo_n)]
                 executor.submit_group(task_id=task.task_id, fn=self.rollout, args_list=args_list)
 
-                task_count += 1
+                n_global_step = self.swarm_worker.get_global_step()
 
-                # Periodic evaluation every EVAL_INTERVAL * REMOTE_BATCH_SIZE tasks
-                time_to_eval = task_count % (EVAL_INTERVAL * self.remote_batch_size) == 0
-                n_global_step = task_count // self.remote_batch_size
+                time_to_eval = n_global_step >= last_eval_step + EVAL_INTERVAL
                 if time_to_eval:
                     self.run_eval(n_global_step)
+                    last_eval_step = n_global_step
 
         print("\n[INFO] Training complete!")
 

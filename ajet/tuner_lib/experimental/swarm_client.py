@@ -82,6 +82,11 @@ class SwarmClientBase(object):
         "broken pipe", "disconnected", "connection reset",
         "connection closed", "connection aborted", "bad file descriptor",
     )
+    # Force-refresh the http client after this many consecutive poll failures,
+    # even if none of the error messages match REFRESH_TRIGGER_KEYWORDS. Covers
+    # cases where httpx wedges in ways our keyword heuristic can't detect
+    # (HTTP/2 protocol stalls, sticky timeouts, stale pools).
+    POLL_FORCE_REFRESH_AFTER = 3
 
     def __init__(self, server_url: str, verbose: bool = True):
         """
@@ -105,6 +110,10 @@ class SwarmClientBase(object):
         self._engine_status_ready = threading.Event()
         self._engine_status_last_error_log_time = 0.0
         self._engine_status_poll_interval = self.SLOW_POLL
+        # consecutive failures since the last successful poll. Used to force an
+        # http client refresh when the keyword-based heuristic in
+        # `_should_refresh_client_on_error` misses a wedged connection.
+        self._engine_status_consecutive_failures = 0
 
         # fast-poll window: True for FAST_POLL_WINDOW seconds after each get_engine_status() call
         self._high_freq_update_status = False
@@ -141,16 +150,23 @@ class SwarmClientBase(object):
     # ---- http client --------------------------------------------------
 
     def _refresh_http_client(self):
-        """Close the existing http client and create a fresh one."""
+        """Close the existing http client and create a fresh one.
+
+        HTTP/1.1 only on purpose: swarm endpoints are small, low-frequency
+        polls/heartbeats, so multiplexing buys nothing — and HTTP/2 has a class
+        of stall failures (flow-control deadlock, GOAWAY mishandling, ping
+        timeouts, HPACK desync, server-restart-behind-LB) where the TCP
+        connection stays "alive" but every stream hangs without ever raising
+        connection-reset/broken-pipe. That makes the keyword-based refresh
+        heuristic miss them. Plain HTTP/1.1 fails loudly on the same
+        scenarios, which our refresh logic can detect.
+        """
         with self._http_client_lock:
             try:
                 self._http_client.close()
             except Exception:
                 pass
-            try:
-                self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=True)
-            except Exception:
-                self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=False)
+            self._http_client = httpx.Client(timeout=GENERAL_TIMEOUT, http2=False)
             logger.warning("swarm client httpx client refreshed.")
             return self._http_client
 
@@ -212,12 +228,23 @@ class SwarmClientBase(object):
         return status_json.get("global_step", 0)
 
     def _engine_status_poll_loop(self):
-        """Background thread: fetch engine status at _engine_status_poll_interval."""
+        """Background thread: fetch engine status at _engine_status_poll_interval.
+
+        Top-level try/except is a final safety net: if it dies the cache freezes
+        forever and only a process restart recovers — exactly the failure mode
+        this whole module is trying to prevent.
+        """
         while not self._engine_status_poll_stop.is_set():
-            if self._high_freq_update_status and time.time() >= self._high_freq_update_expiry:
-                self._high_freq_update_status = False
-                self._engine_status_poll_interval = self.SLOW_POLL
-            self._poll_engine_status_once()
+            try:
+                if self._high_freq_update_status and time.time() >= self._high_freq_update_expiry:
+                    self._high_freq_update_status = False
+                    self._engine_status_poll_interval = self.SLOW_POLL
+                self._poll_engine_status_once()
+            except Exception as e:
+                now = time.time()
+                if now - self._engine_status_last_error_log_time > 30:
+                    logger.exception(f"Unexpected error in engine_status poll loop (continuing): {e}")
+                    self._engine_status_last_error_log_time = now
             self._engine_status_poll_stop.wait(self._engine_status_poll_interval)
 
     def _poll_engine_status_once(self):
@@ -231,17 +258,34 @@ class SwarmClientBase(object):
                 logger.warning(f"get_engine_status: {resp_json}")
             self._engine_status_cache = (status, resp_json)
             self._engine_status_ready.set()
+            self._engine_status_consecutive_failures = 0
             self._observe_engine_status(status)
         except Exception as e:
-            if self._should_refresh_client_on_error(e):
-                self._refresh_http_client()
+            self._engine_status_consecutive_failures += 1
+            # Refresh on either: (a) a known-transient error pattern, or
+            # (b) sustained failure even if the error doesn't match — httpx can
+            # wedge in ways the keyword heuristic doesn't catch, and without
+            # this the same broken connection keeps failing forever and the
+            # cached status stays stale until the process is restarted.
+            try:
+                if (
+                    self._should_refresh_client_on_error(e)
+                    or self._engine_status_consecutive_failures >= self.POLL_FORCE_REFRESH_AFTER
+                ):
+                    self._refresh_http_client()
+                    self._engine_status_consecutive_failures = 0
+            except Exception as refresh_err:
+                logger.error(f"engine_status poll: http client refresh failed: {refresh_err}")
             if self._engine_status_cache is None:
                 # unblock waiters on the very first call when the server is unreachable
                 self._engine_status_cache = ("ENGINE.CANNOT_CONNECT", {})
                 self._engine_status_ready.set()
             now = time.time()
             if now - self._engine_status_last_error_log_time > 30:
-                logger.error(f"Error getting engine status in poll loop: {e}")
+                logger.error(
+                    f"Error getting engine status in poll loop "
+                    f"(consecutive failures: {self._engine_status_consecutive_failures}): {e}"
+                )
                 self._engine_status_last_error_log_time = now
 
     def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=3600):
