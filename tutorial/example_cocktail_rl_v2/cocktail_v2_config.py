@@ -59,7 +59,7 @@ class CocktailV2Config:
     client_1's ratio is always 1 - client_0's ratio.
     """
     # ---- v2 batching / schedule ----
-    total_batch_size: int = 64
+    total_batch_size: int = 32
     grpo_n: int = 8
     schedule_type: str = "linear"
     schedule_start: float = 0.5
@@ -83,7 +83,7 @@ class CocktailV2Config:
     project_name: str = "cocktail_rl"
     experiment_name: str = "cocktail_rl_v2"
     experiment_dir: str = "auto"
-    model_path: str = "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-8B"
+    model_path: str = "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-8B-Keep-History"
     algorithm: str = "grpo"
     swarm_mode: bool = True
     swarm_mode_sample_collection_method: str = "rollout_until_all_clients_agree_sync_weight"

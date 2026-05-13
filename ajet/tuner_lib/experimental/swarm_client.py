@@ -39,9 +39,9 @@ WAIT_MORE_AVAIL_EPISODE_RETRY_DELAY = 2
 # agreement can stall the trainer's stop condition. Retries cover both
 # transport errors and server-side rejection (e.g. when a just-completed
 # end_episode hasn't yet propagated to the server's active list).
-AGREE_SYNC_WEIGHT_MAX_RETRIES = 60
 AGREE_SYNC_WEIGHT_RETRY_DELAY = 2.0
 DELAY_AFTER_AGREE_SYNC_WEIGHT = 30
+ENGINE_STATUS_POLL_INTERVAL = 5
 
 def raise_for_status_with_detail(resp):
     """
@@ -288,52 +288,48 @@ class SwarmClientBase(object):
                 )
                 self._engine_status_last_error_log_time = now
 
-    def _wait_until_status_change_to(self, desired_status="ENGINE.ROLLING", verbose=True, timeout=3600):
-        """Block until engine status reaches desired_status, reporting every 30s."""
+    def _wait_until_status_change_to(self, desired_status=None, desired_status_list=None, verbose=True):
+        """Block until engine status reaches desired_status or one of desired_status_list, reporting every 30s."""
+        if desired_status is not None:
+            desired_status_list = [desired_status]
+        assert desired_status_list, "Must specify desired_status or non-empty desired_status_list"
+
         if verbose:
-            self.logger_info(f"Polling engine status until {desired_status}...")
+            self.logger_info(f"Polling engine status until {desired_status_list}...")
+
         start = time.time()
         last_report = start
-        initial_status, _ = self.get_engine_status()
 
         while True:
             try:
                 current_status, _ = self.get_engine_status()
                 now = time.time()
 
-                if now - start >= timeout:
-                    raise TimeoutError(f"Timeout reached while waiting for engine status to change to {desired_status}")
+                if current_status == "ENGINE.OFFLINE" and "ENGINE.OFFLINE" not in desired_status_list:
+                    raise SwarmServerOfflineError(f"Engine status is OFFLINE while waiting for {desired_status_list}. This may indicate an error in the engine. Please check the swarm server logs for details.")
 
-                if initial_status == "ENGINE.OFFLINE" and current_status == "ENGINE.OFFLINE" and desired_status != "ENGINE.OFFLINE":
-                    raise SwarmServerOfflineError(
-                        f"Engine status changed from {initial_status} to OFFLINE while waiting for {desired_status}. "
-                        "This may indicate an error in the engine. Please check the swarm server logs for details."
-                    )
-
-                if current_status == desired_status:
+                if current_status in desired_status_list:
                     if verbose:
-                        self.logger_info(f"Engine status is {desired_status}.")
+                        self.logger_info(f"Engine status is {current_status}.")
                     return
 
-                if verbose and now - last_report >= 30:
+                if verbose and (now - last_report >= 30):
                     self.logger_info(f"Current engine status (already waited {int(now - start)}s): {current_status}")
                     last_report = now
 
-                time.sleep(5)
+                time.sleep(ENGINE_STATUS_POLL_INTERVAL)
             except SwarmServerOfflineError:
                 raise
             except Exception as e:
-                if self._should_refresh_client_on_error(e):
-                    self._refresh_http_client()
                 logger.error(f"Error polling engine status: {e}")
-                time.sleep(5)
+                time.sleep(ENGINE_STATUS_POLL_INTERVAL)
 
 
 
 class SwarmClient(SwarmClientBase):
     """HTTP client for interacting with the Swarm server for distributed RL training."""
 
-    def __init__(self, server_url: str, verbose: bool = True):
+    def __init__(self, server_url: str, verbose: bool = True, agentjet_job = None):
         """
         Initialize the SwarmClient.
 
@@ -347,7 +343,7 @@ class SwarmClient(SwarmClientBase):
         self.auto_batching_tasks = []
         self._begin_episode_lock = threading.Lock()
         # record last registered AgentJetJob
-        self._agent_jet_job = None
+        self._agentjet_job = agentjet_job
         # throttle
         self._recent_seen_tasks = []
 
@@ -370,10 +366,10 @@ class SwarmClient(SwarmClientBase):
         """
         assert throttle_policy is not None, "Throttle policy must be provided."
 
-        if self._agent_jet_job:
+        if self._agentjet_job:
             # check and raise early errors when possible
-            assert self._agent_jet_job.swarm_mode_sample_collection_method == "rollout_until_finish_enough_tasks", \
-                f"Current sample collection method ({self._agent_jet_job.swarm_mode_sample_collection_method}) does not support throttle policy."
+            assert self._agentjet_job.swarm_mode_sample_collection_method == "rollout_until_finish_enough_tasks", \
+                f"Current sample collection method ({self._agentjet_job.swarm_mode_sample_collection_method}) does not support throttle policy."
 
         # only_this_client_uuid = throttle_policy.throttle_method in ["Task_Ratio_Limit"]
         only_this_client_uuid = True
@@ -713,19 +709,19 @@ class SwarmClient(SwarmClientBase):
                 self._refresh_http_client()
             logger.error(f"Error ending episode: {e}")
 
-    def sync_train_config(self, agent_jet_job: AgentJetJob):
+    def sync_train_config(self, agentjet_job: AgentJetJob):
         """
         Sync training configuration to the Swarm server.
         This sends the AgentJetJob config as YAML to the remote server.
         """
         # try get init status
         current_status, _ = self.get_engine_status()
-        self._agent_jet_job = agent_jet_job
+        self._agentjet_job = agentjet_job
         if current_status != "ENGINE.OFFLINE":
             raise RuntimeError(f"Cannot sync train config when engine is NOT ENGINE.OFFLINE. (current status: {current_status})")
 
         try:
-            config_dict = agent_jet_job.config.to_dict()
+            config_dict = agentjet_job.config.to_dict()
             yaml_str = yaml.safe_dump(config_dict, sort_keys=False)
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 f.write(yaml_str)
@@ -825,13 +821,13 @@ class SwarmClient(SwarmClientBase):
             logger.error(f"Error getting episode buffer: {e}")
             return []
 
-    def auto_sync_train_config_and_start_engine(self, agent_jet_job: AgentJetJob, force_restart=False, _retry_once=True) -> None:
+    def auto_sync_train_config_and_start_engine(self, agentjet_job: AgentJetJob, force_restart=False, _retry_once=True) -> None:
         """
         Automatically sync training configuration and start the engine if needed.
         This checks the current engine status and performs actions accordingly.
 
         Args:
-            - agent_jet_job: The AgentJetJob configuration to sync.
+            - agentjet_job: The AgentJetJob configuration to sync.
             - force_restart: If True, forces a restart of the engine.
         """
         if force_restart:
@@ -839,7 +835,7 @@ class SwarmClient(SwarmClientBase):
             self.stop_engine()
             time.sleep(8)
 
-        if agent_jet_job.ensure_new_experiment and not force_restart:
+        if agentjet_job.ensure_new_experiment and not force_restart:
             logger.warning("ensure_new_experiment is set to True, but force_restart is not set! Will still continue the experiment on the current model version!")
             time.sleep(8)
 
@@ -850,7 +846,7 @@ class SwarmClient(SwarmClientBase):
         current_status, _ = self.get_engine_status()
         if current_status == "ENGINE.OFFLINE":
             self.logger_info("Engine is OFFLINE. Syncing train config and starting engine...")
-            self.sync_train_config(agent_jet_job)
+            self.sync_train_config(agentjet_job)
             self.start_engine()
         elif current_status == "ENGINE.ROLLING":
             self.logger_info("Engine is already ROLLING. No action needed.")
@@ -860,7 +856,7 @@ class SwarmClient(SwarmClientBase):
             logger.error("Unable to connect to swarm server.")
             if _retry_once:
                 time.sleep(16)
-                return self.auto_sync_train_config_and_start_engine(agent_jet_job, force_restart=force_restart, _retry_once=False)
+                return self.auto_sync_train_config_and_start_engine(agentjet_job, force_restart=force_restart, _retry_once=False)
             raise RuntimeError(f"Unable to connect to swarm server.")
         elif current_status in ["ENGINE.BOOTING", "ENGINE.WEIGHT_SYNCING"]:
             self.logger_info(f"Engine is {current_status}. Waiting until it becomes ROLLING...")
@@ -944,19 +940,22 @@ class SwarmClient(SwarmClientBase):
         `rollout_until_all_clients_agree_sync_weight` stop conditions so the
         client can decide for itself when its current batch is "good enough".
 
-        Important: this call retries on failure. A dropped agreement can
-        stall the trainer indefinitely (e.g. under "all clients agree"), and
-        the most common rejection -- "client not yet in active list" --
-        clears itself once the just-finished end_episode propagates. Only
-        gives up after AGREE_SYNC_WEIGHT_MAX_RETRIES attempts, or if the
-        engine has left ROLLING/ROLLING_POST (the agreement would be wiped
-        by the server-side reset anyway).
+        Important: this call retries indefinitely on rejection or error. A
+        dropped agreement can stall the trainer (e.g. under "all clients
+        agree"), and the most common rejection -- "client not yet in active
+        list" -- clears itself once the just-finished end_episode propagates.
+        The only early exit is if the engine has left ROLLING/ROLLING_POST,
+        since the agreement would be wiped by the server-side reset anyway.
 
-        Returns: True if the agreement was registered, False after
-            exhausting retries (or after the engine left rolling state).
+        Returns: True once the agreement was registered, False if the engine
+            left rolling state before agreement.
         """
-        last_failure = ""
-        for attempt in range(1, AGREE_SYNC_WEIGHT_MAX_RETRIES + 1):
+
+        assert self._agentjet_job, "Please call sync_train_config with a valid AgentJetJob before starting the engine."
+        assert self._agentjet_job.swarm_mode_sample_collection_method in ["rollout_until_any_client_agree_sync_weight", "rollout_until_all_clients_agree_sync_weight"], \
+            "agree_sync_weight is only applicable when swarm_mode_sample_collection_method is set to rollout_until_any_client_agree_sync_weight or rollout_until_all_clients_agree_sync_weight."
+
+        while True:
             engine_status, _ = self.get_engine_status()
             if engine_status not in ("ENGINE.ROLLING", "ENGINE.ROLLING_POST"):
                 logger.warning(
@@ -975,34 +974,17 @@ class SwarmClient(SwarmClientBase):
                 data = BoolResponse.model_validate(resp.json())
                 if data.success:
                     if self.verbose:
-                        self.logger_info(
-                            f"agree_sync_weight: registered with server "
-                            f"(attempt {attempt})"
-                        )
-                    # time.sleep(DELAY_AFTER_AGREE_SYNC_WEIGHT)
-                    self._wait_until_status_change_to(desired_status="ENGINE.ROLLING_POST")
+                        self.logger_info("agree_sync_weight: registered with server")
+                    self._wait_until_status_change_to(desired_status_list=["ENGINE.ROLLING_POST", "ENGINE.WEIGHT_SYNCING"])
                     return True
-                last_failure = data.failure_reason
-                logger.warning(
-                    f"agree_sync_weight rejected (attempt "
-                    f"{attempt}/{AGREE_SYNC_WEIGHT_MAX_RETRIES}): "
-                    f"{data.failure_reason}. Retrying in "
-                    f"{AGREE_SYNC_WEIGHT_RETRY_DELAY}s..."
-                )
+                logger.warning(f"agree_sync_weight rejected: {data.failure_reason}. Retrying in {AGREE_SYNC_WEIGHT_RETRY_DELAY}s...")
+            except SwarmServerOfflineError:
+                raise
             except Exception as e:
-                last_failure = str(e)
                 if self._should_refresh_client_on_error(e):
                     self._refresh_http_client()
-                logger.error(
-                    f"agree_sync_weight errored (attempt "
-                    f"{attempt}/{AGREE_SYNC_WEIGHT_MAX_RETRIES}): {e}. Retrying..."
-                )
+                logger.error(f"agree_sync_weight errored: {e}. Retrying in {AGREE_SYNC_WEIGHT_RETRY_DELAY}s...")
             time.sleep(AGREE_SYNC_WEIGHT_RETRY_DELAY)
-        logger.error(
-            f"agree_sync_weight: gave up after {AGREE_SYNC_WEIGHT_MAX_RETRIES} "
-            f"attempts. Last failure: {last_failure}"
-        )
-        return False
 
     def get_rollout_stat(self) -> CurrentBatchRolloutPoolInformation:
         """
@@ -1048,6 +1030,7 @@ class SwarmClient(SwarmClientBase):
             print_dict(stat, mod="console", header="Current Swarm Rollout Pool Information")
         except:
             pass
+
 
 def auto_train_with_dataset(dataset, swarm_worker: SwarmClient, execute_agent, local_grpo_n=2, remote_batch_size=8):
     """

@@ -26,7 +26,7 @@ Required env vars (with sensible defaults):
 
 ## Run swarm
 
-```
+```bash
 tmux new-session -d -s "SWARM_SERVER"
 tmux send-keys -t "SWARM_SERVER" "cd /mnt/data_cpfs/qingxu.fu/agentjet/hello-agentjet" Enter
 tmux send-keys -t "SWARM_SERVER" "source .venv/bin/activate" Enter
@@ -42,4 +42,38 @@ tmux send-keys -t "SWARM_CLIENT" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
 tmux send-keys -t "SWARM_CLIENT" "sleep 30s" Enter
 tmux send-keys -t "SWARM_CLIENT" "python -m tutorial.example_appworld_swarm.agent_roll" Enter
 ta "SWARM_CLIENT"
+```
+
+
+## Run Token and Text Level Timeline Merge Compare
+- exp 1
+```bash
+tmux new-session -d -s "EXP1" -n "exp1"
+tmux split-window -h -t "EXP1:exp1"
+tmux send-keys -t "EXP1:exp1.0" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
+tmux send-keys -t "EXP1:exp1.0" "source .venv/bin/activate" Enter
+tmux send-keys -t "EXP1:exp1.0" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP1:exp1.0" "ajet-swarm start" Enter
+tmux send-keys -t "EXP1:exp1.1" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
+tmux send-keys -t "EXP1:exp1.1" "source .venv/bin/activate" Enter
+tmux send-keys -t "EXP1:exp1.1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP1:exp1.1" "sleep 30s" Enter
+tmux send-keys -t "EXP1:exp1.1" "python -m tutorial.example_appworld_swarm.agent_roll_timeline_study_text_level_tl" Enter
+ta "EXP1"
+```
+
+- exp 2
+```bash
+tmux new-session -d -s "EXP2" -n "exp2"
+tmux split-window -h -t "EXP2:exp2"
+tmux send-keys -t "EXP2:exp2.0" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
+tmux send-keys -t "EXP2:exp2.0" "source .venv/bin/activate" Enter
+tmux send-keys -t "EXP2:exp2.0" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP2:exp2.0" "ajet-swarm start" Enter
+tmux send-keys -t "EXP2:exp2.1" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
+tmux send-keys -t "EXP2:exp2.1" "source .venv/bin/activate" Enter
+tmux send-keys -t "EXP2:exp2.1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP2:exp2.1" "sleep 30s" Enter
+tmux send-keys -t "EXP2:exp2.1" "python -m tutorial.example_appworld_swarm.agent_roll_timeline_study_token_level_tl" Enter
+ta "EXP2"
 ```
