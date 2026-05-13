@@ -1,6 +1,6 @@
 ---
 name: train-complex-blackbox
-description: Create a trainable agent loop or agent workflow with AgentJet
+description: Train complex blackbox agents (agents without clear reward signals) using AgentJet. Write dataset collectors, episode runners with LLM-as-Judge reward functions, and integrate with the AgentJet training loop.
 license: Complete terms in LICENSE.txt
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: write-swarm-client
-description: Create a trainable agent loop or agent workflow with AgentJet
+description: Create an active, dataset-driven AgentJet swarm client. Write agent_roll.py and agent_run.py that iterate through a dataset, execute agent workflows, and compute rewards for reinforcement learning training with AgentJet Swarm.
 license: Complete terms in LICENSE.txt
 ---
 

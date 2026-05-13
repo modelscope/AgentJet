@@ -1,6 +1,6 @@
 ---
 name: docker-install-agentjet-swarm-server
-description: Install and run AgentJet Swarm Server via Docker with GPU support
+description: Install and run the AgentJet Swarm Server in a Docker container with NVIDIA GPU support. Use when the user wants to deploy a swarm server on a GPU machine via Docker, including GPU driver setup, Docker mirror configuration, model weight mounting, and server startup.
 license: Complete terms in LICENSE.txt
 ---
 

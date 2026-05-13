@@ -1,3 +1,8 @@
+---
+name: auto-research-blueprint-execute-swarm
+description: Execute AgentJet reinforcement learning experiments using experiment blueprints in swarm mode. Handles full lifecycle: generate blueprint if needed, launch experiment in tmux, monitor progress, analyze errors, collect results, and write finish flag. Use when the user wants to run or debug AgentJet training experiments.
+---
+
 ## 你的任务
 
 0. 如果用户没有提供实验蓝图，则生成一个实验蓝图

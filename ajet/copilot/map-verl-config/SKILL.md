@@ -1,6 +1,6 @@
 ---
 name: map-verl-config
-description: map verl config to agentjet config
+description: Map VERL training configuration to AgentJet configuration. Find VERL config in verl_default.yaml, check for existing mappings in config_auto_convertion_verl.jsonc, add new mappings to ajet_default.yaml and the conversion schema, and optionally add parameters to AgentJetJob.
 license: Complete terms in LICENSE.txt
 ---
 

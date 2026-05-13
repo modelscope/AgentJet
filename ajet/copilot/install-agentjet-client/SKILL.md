@@ -1,6 +1,6 @@
 ---
 name: install-agentjet-client
-description: Install agentjet swarm server with uv package manager
+description: Install AgentJet client for connecting to a swarm server. Use when the user only needs to run the AgentJet client (not a swarm server) and does not need to run models locally, e.g. on a laptop. Installs basic requirements via `pip install -e .`.
 license: Complete terms in LICENSE.txt
 ---
 

@@ -1,3 +1,8 @@
+---
+name: download-from-swanlab-url
+description: Download per-step time-series metric data (reward, entropy, response length, etc.) from a SwanLab cloud run URL as a pandas.DataFrame. Use when the user provides a SwanLab URL and wants to fetch or analyze training curves.
+---
+
 # Skill: Download metric data from a SwanLab run URL
 
 ## Goal

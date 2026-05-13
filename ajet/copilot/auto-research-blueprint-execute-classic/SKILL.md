@@ -1,3 +1,8 @@
+---
+name: auto-research-blueprint-execute-classic
+description: Execute AgentJet reinforcement learning experiments using experiment blueprints in classic (non-swarm) mode. Handles full lifecycle: launch experiment in tmux, monitor progress, analyze errors, collect results, and write finish flag. Use when the user wants to run AgentJet training experiments without the swarm distributed framework.
+---
+
 ## 你的任务
 
 1. 根据实验蓝图，运行实验

@@ -1,6 +1,6 @@
 ---
 name: uv-install-agentjet-swarm-server
-description: Install agentjet swarm server with uv package manager
+description: Install AgentJet swarm server using the UV package manager. Handles virtual environment creation with Python 3.10, dependency installation with the verl training backbone, flash-attn compilation, and optional PyPI mirror for China users.
 license: Complete terms in LICENSE.txt
 ---
 

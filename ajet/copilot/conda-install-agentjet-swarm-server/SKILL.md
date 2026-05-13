@@ -1,6 +1,6 @@
 ---
 name: conda-install-agentjet-swarm-server
-description: Install agentjet swarm server with conda
+description: Install AgentJet swarm server using Conda. Handles Python 3.10 environment creation, dependency installation with the verl training backbone, flash-attn compilation, and optional PyPI mirror for China users.
 license: Complete terms in LICENSE.txt
 ---
 
