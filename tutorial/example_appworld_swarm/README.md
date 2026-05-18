@@ -46,19 +46,34 @@ ta "SWARM_CLIENT"
 
 
 ## Run Token and Text Level Timeline Merge Compare
+
+```bash
+rm -rf /tmp/pack_all_in_one & wget https://dail-wlcb.oss-cn-wulanchabu.aliyuncs.com/astuner_archive/appworld_pack_v3.tar.gz  &&   tar   -xzf   ./appworld_pack_v3.tar.gz  -C /tmp
+cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase
+```
+
+
 - exp 1
 ```bash
 tmux new-session -d -s "EXP1" -n "exp1"
 tmux split-window -h -t "EXP1:exp1"
+tmux split-window -v -t "EXP1:exp1.1"   # 把右半边再上下切
 tmux send-keys -t "EXP1:exp1.0" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
 tmux send-keys -t "EXP1:exp1.0" "source .venv/bin/activate" Enter
 tmux send-keys -t "EXP1:exp1.0" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP1:exp1.0" "export SWANLAB_WEB_HOST=https://cloud-20.agent-matrix.com" Enter
+tmux send-keys -t "EXP1:exp1.0" "export SWANLAB_API_KEY=***REMOVED:SWANLAB_API_KEY***" Enter
+tmux send-keys -t "EXP1:exp1.0" "export SWANLAB_API_HOST=https://cloud-20.agent-matrix.com/api" Enter
 tmux send-keys -t "EXP1:exp1.0" "ajet-swarm start" Enter
 tmux send-keys -t "EXP1:exp1.1" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
 tmux send-keys -t "EXP1:exp1.1" "source .venv/bin/activate" Enter
 tmux send-keys -t "EXP1:exp1.1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP1:exp1.1" "export SWANLAB_WEB_HOST=https://cloud-20.agent-matrix.com" Enter
+tmux send-keys -t "EXP1:exp1.1" "export SWANLAB_API_KEY=***REMOVED:SWANLAB_API_KEY***" Enter
+tmux send-keys -t "EXP1:exp1.1" "export SWANLAB_API_HOST=https://cloud-20.agent-matrix.com/api" Enter
 tmux send-keys -t "EXP1:exp1.1" "sleep 30s" Enter
 tmux send-keys -t "EXP1:exp1.1" "python -m tutorial.example_appworld_swarm.agent_roll_timeline_study_text_level_tl" Enter
+tmux send-keys -t "EXP1:exp1.2" "bash /tmp/pack_all_in_one/EnvService/env_sandbox/appworld.sh" Enter
 ta "EXP1"
 ```
 
@@ -66,14 +81,46 @@ ta "EXP1"
 ```bash
 tmux new-session -d -s "EXP2" -n "exp2"
 tmux split-window -h -t "EXP2:exp2"
+tmux split-window -v -t "EXP2:exp2.1"   # 把右半边再上下切
 tmux send-keys -t "EXP2:exp2.0" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
 tmux send-keys -t "EXP2:exp2.0" "source .venv/bin/activate" Enter
 tmux send-keys -t "EXP2:exp2.0" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP2:exp2.0" "export SWANLAB_WEB_HOST=https://cloud-20.agent-matrix.com" Enter
+tmux send-keys -t "EXP2:exp2.0" "export SWANLAB_API_KEY=***REMOVED:SWANLAB_API_KEY***" Enter
+tmux send-keys -t "EXP2:exp2.0" "export SWANLAB_API_HOST=https://cloud-20.agent-matrix.com/api" Enter
 tmux send-keys -t "EXP2:exp2.0" "ajet-swarm start" Enter
 tmux send-keys -t "EXP2:exp2.1" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
 tmux send-keys -t "EXP2:exp2.1" "source .venv/bin/activate" Enter
 tmux send-keys -t "EXP2:exp2.1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP2:exp2.1" "export SWANLAB_WEB_HOST=https://cloud-20.agent-matrix.com" Enter
+tmux send-keys -t "EXP2:exp2.1" "export SWANLAB_API_KEY=***REMOVED:SWANLAB_API_KEY***" Enter
+tmux send-keys -t "EXP2:exp2.1" "export SWANLAB_API_HOST=https://cloud-20.agent-matrix.com/api" Enter
 tmux send-keys -t "EXP2:exp2.1" "sleep 30s" Enter
 tmux send-keys -t "EXP2:exp2.1" "python -m tutorial.example_appworld_swarm.agent_roll_timeline_study_token_level_tl" Enter
+tmux send-keys -t "EXP2:exp2.2" "bash /tmp/pack_all_in_one/EnvService/env_sandbox/appworld.sh" Enter
 ta "EXP2"
+```
+
+- exp 3
+```bash
+tmux new-session -d -s "EXP3" -n "exp3"
+tmux split-window -h -t "EXP3:exp3"
+tmux split-window -v -t "EXP3:exp3.1"   # 把右半边再上下切
+tmux send-keys -t "EXP3:exp3.0" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
+tmux send-keys -t "EXP3:exp3.0" "source .venv/bin/activate" Enter
+tmux send-keys -t "EXP3:exp3.0" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP3:exp3.0" "export SWANLAB_WEB_HOST=https://cloud-20.agent-matrix.com" Enter
+tmux send-keys -t "EXP3:exp3.0" "export SWANLAB_API_KEY=***REMOVED:SWANLAB_API_KEY***" Enter
+tmux send-keys -t "EXP3:exp3.0" "export SWANLAB_API_HOST=https://cloud-20.agent-matrix.com/api" Enter
+tmux send-keys -t "EXP3:exp3.0" "ajet-swarm start" Enter
+tmux send-keys -t "EXP3:exp3.1" "cd /mnt/data_cpfs/qingxu.fu/alpha_auto_research/agentjet_codebase" Enter
+tmux send-keys -t "EXP3:exp3.1" "source .venv/bin/activate" Enter
+tmux send-keys -t "EXP3:exp3.1" "export SETUPTOOLS_USE_DISTUTILS=local" Enter
+tmux send-keys -t "EXP3:exp3.1" "export SWANLAB_WEB_HOST=https://cloud-20.agent-matrix.com" Enter
+tmux send-keys -t "EXP3:exp3.1" "export SWANLAB_API_KEY=***REMOVED:SWANLAB_API_KEY***" Enter
+tmux send-keys -t "EXP3:exp3.1" "export SWANLAB_API_HOST=https://cloud-20.agent-matrix.com/api" Enter
+tmux send-keys -t "EXP3:exp3.1" "sleep 30s" Enter
+tmux send-keys -t "EXP3:exp3.1" "python -m tutorial.example_appworld_swarm.agent_roll_timeline_study_token_level_tl_qwen3_original" Enter
+tmux send-keys -t "EXP3:exp3.2" "bash /tmp/pack_all_in_one/EnvService/env_sandbox/appworld.sh" Enter
+ta "EXP3"
 ```
