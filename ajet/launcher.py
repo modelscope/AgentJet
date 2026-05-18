@@ -3,6 +3,8 @@ import os
 
 from dotenv import load_dotenv
 from loguru import logger
+from ajet.backbone.warm_up import init_parallel_rollout_logger
+init_parallel_rollout_logger("saved_experiments/launcher")
 
 from ajet.utils.cleaner import AUTOKILL_KEYWORDS, fast_kill_by_keyword_bash
 from ajet.utils.config_utils import prepare_experiment_config

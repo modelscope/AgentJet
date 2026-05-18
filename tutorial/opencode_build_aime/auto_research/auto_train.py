@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 AIME Math Swarm Training - Auto Research Client
-Configurable for batch_size and max_response_length_in_one_turn experiments
+Configurable for batch_size, max_response_length_in_one_turn, and KL-regularization experiments
+
+python -m tutorial.opencode_build_aime.auto_research.auto_train
 """
 
 import os
-import sys
 import argparse
 import time
 import statistics
@@ -84,6 +85,9 @@ class AIMEAutoResearchTrainer:
         grpo_repeat: int = 8,
         ppo_epochs: int = 1,
         mini_batch_num: int = 1,
+        use_kl_loss: bool = True,
+        use_kl_in_reward: bool = False,
+        kl_penalty_type: str = "kl",
     ):
         self.swarm_url = swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
         self.batch_size = batch_size
@@ -116,6 +120,9 @@ class AIMEAutoResearchTrainer:
         self.grpo_n = grpo_repeat
         self.ppo_epochs = ppo_epochs
         self.mini_batch_num = mini_batch_num
+        self.use_kl_loss = use_kl_loss
+        self.use_kl_in_reward = use_kl_in_reward
+        self.kl_penalty_type = kl_penalty_type
         self.max_env_worker = max_env_worker
 
         os.makedirs(result_dir, exist_ok=True)
@@ -141,6 +148,9 @@ class AIMEAutoResearchTrainer:
             num_repeat=grpo_repeat,
             ppo_epochs=ppo_epochs,
             mini_batch_num=mini_batch_num,
+            use_kl_loss=use_kl_loss,
+            use_kl_in_reward=use_kl_in_reward,
+            kl_penalty_type=kl_penalty_type,
             logging="swanlab",
             max_prompt_length=max_prompt_length,
             max_response_length=max_response_length,
@@ -373,6 +383,16 @@ def main():
                         help="Number of PPO epochs per update")
     parser.add_argument("--mini-batch-num", type=int, default=1,
                         help="Number of mini-batches per PPO update")
+    parser.add_argument("--use-kl-loss", action=argparse.BooleanOptionalAction, default=True,
+                        help="Add KL-divergence regularization to the actor's policy loss "
+                             "(use --no-use-kl-loss to disable)")
+    parser.add_argument("--use-kl-in-reward", action=argparse.BooleanOptionalAction, default=False,
+                        help="Subtract a KL penalty from the reward signal during advantage "
+                             "computation (use --no-use-kl-in-reward to disable)")
+    parser.add_argument("--kl-penalty-type", type=str, default="kl",
+                        choices=["kl", "abs", "mse", "low_var_kl", "full"],
+                        help="KL divergence estimator used for the reward-shaping path "
+                             "when --use-kl-in-reward is enabled")
     args = parser.parse_args()
 
     trainer = AIMEAutoResearchTrainer(
@@ -395,6 +415,9 @@ def main():
         grpo_repeat=args.grpo_repeat,
         ppo_epochs=args.ppo_epochs,
         mini_batch_num=args.mini_batch_num,
+        use_kl_loss=args.use_kl_loss,
+        use_kl_in_reward=args.use_kl_in_reward,
+        kl_penalty_type=args.kl_penalty_type,
     )
     trainer.run()
 
