@@ -150,6 +150,7 @@ class BaseRolloutManager:
                 )
                 raise e
 
+        assert tracker.episode_uuid == episode_uuid, "Tracker episode UUID does not match workflow task episode UUID"
         return tracker
 
 

@@ -23,7 +23,7 @@ from tutorial.opencode_build_aime import download_data
 from tqdm import tqdm
 
 
-DEFAULT_PROJECT_NAME = "subject12_aime_kl_reward_study"
+DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_4"
 
 
 def extract_swarm_port(swarm_url: str) -> int:
@@ -70,24 +70,24 @@ class AIMEAutoResearchTrainer:
         max_response_length_in_one_turn: int,
         experiment_name: str,
         result_dir: str,
-        swarm_url: str = None,
-        project_name: str = DEFAULT_PROJECT_NAME,
-        resolved_yaml_path: str | None = None,
-        prepare_only: bool = False,
-        max_prompt_length: int = 3000,
-        max_response_length: int = 15000,
-        max_model_len: int = 18000,
-        total_training_steps: int = 60,
-        n_gpu: int = 8,
-        max_env_worker: int = 128,
-        eval_interval: int = 10,
-        eval_k: int = 4,
-        grpo_repeat: int = 8,
-        ppo_epochs: int = 1,
-        mini_batch_num: int = 1,
-        use_kl_loss: bool = True,
-        use_kl_in_reward: bool = False,
-        kl_penalty_type: str = "kl",
+        swarm_url: str,
+        project_name: str,
+        resolved_yaml_path: str | None,
+        prepare_only: bool,
+        max_prompt_length: int,
+        max_response_length: int,
+        max_model_len: int,
+        total_training_steps: int,
+        n_gpu: int,
+        max_env_worker: int,
+        eval_interval: int,
+        eval_k: int,
+        grpo_repeat: int,
+        ppo_epochs: int,
+        mini_batch_num: int,
+        use_kl_loss: bool,
+        use_kl_in_reward: bool,
+        kl_penalty_type: str,
     ):
         self.swarm_url = swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
         self.batch_size = batch_size
@@ -377,7 +377,7 @@ def main():
                         help="Evaluate every N global steps")
     parser.add_argument("--eval-k", type=int, default=4,
                         help="Number of rollouts per eval task (pass@k)")
-    parser.add_argument("--grpo-repeat", type=int, default=8,
+    parser.add_argument("--grpo-repeat", type=int, default=4,
                         help="GRPO num_repeat per training task")
     parser.add_argument("--ppo-epochs", type=int, default=1,
                         help="Number of PPO epochs per update")

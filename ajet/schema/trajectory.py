@@ -52,6 +52,7 @@ class Sample(BaseModel):
     task_batch_index: int = 0
     task_id: str = ""
     task_tag: str = ""
+    episode_uuid: str = ""
     messages: List[dict] = []
     extras: Dict[str, Any] = {}
     # Multimodal inputs (pixel_values, image_grid_thw, ...) for VL training.

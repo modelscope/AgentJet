@@ -253,6 +253,7 @@ class SingleAgentContextTracker(BaseTracker):
             config=self.config,
             task_batch_index=self.task_batch_index,
             task_tag=self.task_tag,
+            episode_uuid=self.episode_uuid,
             task_id=self.task_id,
             multi_modal_inputs=mm_inputs,
         )
@@ -276,6 +277,7 @@ class SingleAgentContextTracker(BaseTracker):
                 config=self.config,
                 task_batch_index=self.task_batch_index,
                 task_tag=self.task_tag,
+                episode_uuid=self.episode_uuid,
                 task_id=self.task_id,
                 multi_modal_inputs=mm_inputs,
             )

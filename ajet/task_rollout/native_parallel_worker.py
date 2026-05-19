@@ -650,7 +650,7 @@ class VerlRolloutManager(DynamicRolloutManager):
         messages = []
         step_reward_scores = []
         task_ids = []
-        rollout_ids = []
+        episode_uuids = []
         reference_advantage = []
         multi_modal_inputs_list: list = []
         any_multi_modal = False
@@ -668,7 +668,7 @@ class VerlRolloutManager(DynamicRolloutManager):
             ), f"Sample has mismatched lengths: {len(sample.input_ids)=}, {len(sample.attention_mask)=}, pos_seqlen={_pos_seqlen}, {len(sample.loss_mask)=}"
 
             task_ids.append(sample.task_id)
-            rollout_ids.append(sample.task_tag)
+            episode_uuids.append(sample.episode_uuid)
             if len(sample.prompt_ids) > self.config.ajet.data.max_prompt_length:
                 raise RuntimeError(f"Sample has prompt_ids length {len(sample.prompt_ids)} ")
 
@@ -846,7 +846,7 @@ class VerlRolloutManager(DynamicRolloutManager):
 
         non_tensor = {
             "task_ids": np.array(task_ids),
-            "rollout_ids": np.array(rollout_ids),
+            "episode_uuids": np.array(episode_uuids),
             "messages": np.array(messages),
             "reward_scores": np.array(step_reward_scores),
             "reference_advantage": np.array(reference_advantage),
