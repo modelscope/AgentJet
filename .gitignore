@@ -200,3 +200,5 @@ appworld_swarm_results_token
 appworld_swarm_results_text
 appworld_swarm_results
 TODO
+.trash.*
+tutorial/opencode_build_aime/auto_research/results/*

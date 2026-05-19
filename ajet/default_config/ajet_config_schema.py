@@ -29,6 +29,25 @@ class AjetTrainerCommon:
     total_epochs: int = 50
     val_pass_n: int = 4
     val_before_train: bool = False
+    # When enabled, every sample produced by the same episode (same
+    # non_tensor_batch["episode_uuids"]) gets its loss weight multiplied by
+    # 1/N (N = number of samples in that episode) so each episode contributes
+    # equally to the policy-gradient update regardless of how many samples it
+    # generated. Disabled by default (current behaviour: every sample weighted
+    # equally).
+    loss_weight_normalization_episode_level: bool = False
+
+
+@dataclass
+class AjetTrainerVerl:
+    # When enabled, GRPO group statistics (baseline mean / std) are computed at
+    # episode scope instead of sample scope: each episode (same
+    # non_tensor_batch["episode_uuids"]) is first reduced to its mean reward,
+    # then the per-task (same non_tensor_batch["uid"]) baseline is the mean over
+    # those episode means. This makes every episode contribute equally to the
+    # advantage baseline regardless of how many samples it generated. Disabled
+    # by default (current behaviour: baseline is the mean over all samples).
+    advantage_estimation_episode_level: bool = False
 
 
 @dataclass
@@ -120,6 +139,7 @@ class AjetDefaultConfig:
     data: AjetData = field(default_factory=AjetData)
     rollout: AjetRollout = field(default_factory=AjetRollout)
     trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
+    trainer_verl: AjetTrainerVerl = field(default_factory=AjetTrainerVerl)
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
     lora: AjetLora = field(default_factory=AjetLora)
     context_tracker: AjetContextTracker = field(default_factory=AjetContextTracker)

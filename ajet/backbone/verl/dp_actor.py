@@ -161,6 +161,11 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
         # Include rollout_log_probs for computing rollout_corr metrics in bypass mode
         if "rollout_log_probs" in data.batch.keys():
             select_keys.append("rollout_log_probs")
+        # [AJET] per-sample loss weight (episode-level loss normalization).
+        # Present only when ajet.trainer_common.loss_weight_normalization_episode_level
+        # is enabled; absent => every sample weighted equally (default behaviour).
+        if "loss_weight" in data.batch.keys():
+            select_keys.append("loss_weight")
 
         has_multi_modal_inputs = "multi_modal_inputs" in data.non_tensor_batch.keys()
         non_tensor_select_keys = []
@@ -208,6 +213,20 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                     response_mask = model_inputs["response_mask"]
                     old_log_prob = model_inputs["old_log_probs"]
                     advantages = model_inputs["advantages"]
+                    # [AJET] Episode-level loss-weight normalization.
+                    # When ajet.trainer_common.loss_weight_normalization_episode_level
+                    # is enabled, every sample carries a per-token weight (1/N for
+                    # an episode that produced N samples), same shape as advantages.
+                    # Scaling the advantages by this positive weight scales each
+                    # sample's policy-gradient contribution by the same factor (the
+                    # clip/ratio behaviour is unchanged since the weight is a
+                    # positive per-sample constant); the same weight is applied to
+                    # the per-token KL term below, so every episode contributes
+                    # equally to the total loss.
+                    loss_weight = model_inputs.get("loss_weight", None)
+                    if loss_weight is not None:
+                        loss_weight = loss_weight.to(advantages.dtype)
+                        advantages = advantages * loss_weight
                     # [AJET] Debug logging for tensor shapes
                     input_ids = model_inputs["input_ids"]
                     _shape_msg = f'[Update Policy] -> Micro batch shape, input_ids {input_ids.shape}, response {response_mask.shape} @{micro_batch_idx}/{num_micro_batches}'
@@ -294,6 +313,12 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                         kld = kl_penalty(
                             logprob=log_prob, ref_logprob=ref_log_prob, kl_penalty=self.config.kl_loss_type
                         )
+                        # [AJET] apply the per-token episode-level loss weight to
+                        # the KL term as well (same weight/shape used for the
+                        # policy-gradient term above), so each episode contributes
+                        # equally to the KL loss too.
+                        if loss_weight is not None:
+                            kld = kld * loss_weight
                         kl_loss = agg_loss(loss_mat=kld, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
 
                         policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef

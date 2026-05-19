@@ -317,6 +317,28 @@ ajet:
     # whether to save train/eval trajectories to JSON files
     save_trajectory_as_json_file: False
 
+    # Agentic RL fact: different episodes may emit different numbers of samples
+    # (sentences). When enabled, every sample of an episode (identified by the
+    # same non_tensor_batch["episode_uuids"]) has its loss weight multiplied by
+    # 1/N, where N is the number of samples that episode produced, so each
+    # episode contributes equally to the policy-gradient update.
+    # Disabled by default (every sample weighted equally).
+    loss_weight_normalization_episode_level: False
+
+  # (ajet.trainer_verl) verl-backbone-specific trainer configurations
+  trainer_verl:
+
+    # Agentic RL fact: a task rollout may produce a different number of
+    # episodes, and each episode a different number of samples. When enabled,
+    # GRPO advantage baseline statistics are computed at episode scope instead
+    # of sample scope: each episode (same non_tensor_batch["episode_uuids"]) is
+    # first reduced to its mean reward, then the per-task (same
+    # non_tensor_batch["uid"]) baseline is the mean/std over those episode
+    # means, so every episode contributes equally to the advantage estimation
+    # regardless of how many samples it generated.
+    # Disabled by default (baseline is the plain mean over all samples).
+    advantage_estimation_episode_level: False
+
   lora:
     # LoRA configuration (disabled by default, set lora_rank > 0 to enable)
     lora_rank: 0

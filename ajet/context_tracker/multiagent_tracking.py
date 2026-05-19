@@ -466,13 +466,11 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
         # HISTORY context length vs CURRENT prompt length
         if len(previous_ext_context) != len(prompt_text_split):
-            logger.bind(exception=True).error(
-                f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens."
-            )
+            logger.bind(exception=True).error(f"Length mismatch when patching prompt tokens. Previous ext context length: {len(previous_ext_context)}, prompt text split length: {len(prompt_text_split)}. Replacing all tokens.")
 
         # try to recover tokens
         if self.config.ajet.context_tracker.fix_retokenization_drift:
-            self.ensure_retokenization_perfect_match(
+            previous_ext_context = self.ensure_retokenization_perfect_match(
                 previous_ext_context,   # HISTORY
                 split_prompt_token_ids, # CURRENT
                 prompt_text_split,      # CURRENT
@@ -512,12 +510,11 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                         "current_token_ids": tracker_token_array,       # from previous_ext_context[j].token_arr
                     },
                     mod="exception",
-                    header="Prompt token ids mismatch.",
+                    header="Prompt token ids mismatch (fixing drift by `token_arr=vllm_token_array`).",
                 )
-                # # fix drift
-                # previous_ext_context[j].token_arr = self.tokenizer(
-                #     prompt_text_split[j], return_tensors="pt", padding=False
-                # )["input_ids"].tolist()
+                previous_ext_context[j].token_arr = vllm_token_array
+        return previous_ext_context
+
 
     def process_reward(self, reward_structure: Reward):
         self.reward_structure = reward_structure

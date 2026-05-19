@@ -7,6 +7,7 @@ import re
 import yaml
 import tempfile
 from beast_logger import print_dict
+from beast_logger import register_console
 from typing import List, Tuple
 from loguru import logger
 from ajet.schema.task import WorkflowOutput, Task
@@ -96,10 +97,10 @@ class SwarmClientBase(object):
             server_url: The URL of the swarm server.
             verbose: If True, enable verbose logging output.
         """
+        register_console()
         self.server_url = server_url
         self.verbose = verbose
         self.client_uuid = str(uuid.uuid4())
-
         # http client
         self._last_second_print_buffer: dict[str, float] = {}
         self._http_client_lock = threading.Lock()

@@ -7,6 +7,7 @@ import sys
 import time
 
 from beast_logger import print_dict
+from beast_logger import register_console
 from loguru import logger
 from types import SimpleNamespace
 
@@ -72,9 +73,8 @@ def setup_environment_vars(args, exp_config, main_yaml_fp):
 
 
 def set_loguru_default_color():
-    logger.remove()
+    register_console()
     colorize = os.environ.get("LOGURU_COLORIZE", "YES").upper() not in ["NO", "0", "FALSE"]
-    logger.add(sys.stderr, colorize=colorize, enqueue=False)
     if not colorize:
         os.environ["RAY_COLOR_PREFIX"] = "0"
 

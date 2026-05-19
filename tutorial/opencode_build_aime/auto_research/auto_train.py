@@ -23,7 +23,7 @@ from tutorial.opencode_build_aime import download_data
 from tqdm import tqdm
 
 
-DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_4"
+DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_8_bs16"
 
 
 def extract_swarm_port(swarm_url: str) -> int:
@@ -346,7 +346,7 @@ class AIMEAutoResearchTrainer:
 
 def main():
     parser = argparse.ArgumentParser(description="AIME Auto Research Swarm Training")
-    parser.add_argument("--batch-size", default=32, type=int, required=True, help="Training batch size")
+    parser.add_argument("--batch-size", default=16, type=int, required=True, help="Training batch size")
     parser.add_argument("--experiment-name", type=str, required=True,
                         help="Experiment name for this run")
     parser.add_argument("--result-dir", type=str, required=True,
@@ -359,7 +359,7 @@ def main():
                         help="Optional output path for the fully resolved swarm config yaml")
     parser.add_argument("--prepare-only", action="store_true",
                         help="Build the config, dump the resolved yaml, and exit without training")
-    parser.add_argument("--max-response-length-in-one-turn", type=int, default=12000,
+    parser.add_argument("--max-response-length-in-one-turn", type=int, default=10000,
                         help="Max response length in one turn")
     parser.add_argument("--max-prompt-length", type=int, default=3000,
                         help="Maximum prompt length")
@@ -367,7 +367,7 @@ def main():
                         help="Maximum total response length")
     parser.add_argument("--max-model-len", type=int, default=23000,
                         help="Maximum total model context length")
-    parser.add_argument("--total-training-steps", type=int, default=120,
+    parser.add_argument("--total-training-steps", type=int, default=100,
                         help="Hard cap on total training steps")
     parser.add_argument("--n-gpu", type=int, default=8,
                         help="Number of GPUs reserved for the swarm server")
@@ -377,7 +377,7 @@ def main():
                         help="Evaluate every N global steps")
     parser.add_argument("--eval-k", type=int, default=4,
                         help="Number of rollouts per eval task (pass@k)")
-    parser.add_argument("--grpo-repeat", type=int, default=4,
+    parser.add_argument("--grpo-repeat", type=int, default=8,
                         help="GRPO num_repeat per training task")
     parser.add_argument("--ppo-epochs", type=int, default=1,
                         help="Number of PPO epochs per update")
