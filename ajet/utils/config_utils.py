@@ -14,7 +14,6 @@ from omegaconf import DictConfig
 
 from ajet.utils.config_computer import split_keys_and_operators
 
-DEFAULT_DIR = "saved_experiments"
 
 def fix_hydra_searchpath_and_create_copy_when_needed(yaml_fp):
     """Fix Hydra search paths if they don't exist by trying with base directory."""

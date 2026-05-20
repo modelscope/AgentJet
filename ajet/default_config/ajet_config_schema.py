@@ -1,3 +1,7 @@
+# -------------------------- WARNING --------------------------
+# All default values in this file are ONLY for reference and will NOT be really used!
+
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
@@ -15,6 +19,7 @@ class AjetOptim:
 @dataclass
 class AjetTrainerCommon:
     n_gpus_per_node: int = 8
+    nnodes: int = 1
     algorithm: AjetAlgorithm = field(default_factory=AjetAlgorithm)
     optim: AjetOptim = field(default_factory=AjetOptim)
     use_kl_loss: bool = True
@@ -84,7 +89,7 @@ class AjetInterchangeServer:
     interchange_server_port: Any = "auto"
     num_fastapi_process: int = 1
     max_fastapi_threads: int = 512
-    max_inference_tracker_threads: int = 128
+    max_inference_tracker_threads: int = 256
     already_started: bool = False
 
 

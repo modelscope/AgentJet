@@ -494,8 +494,8 @@ class DynamicRolloutManager(BaseRolloutManager):
                 completed_tasks_details=completed_tasks_details,
                 completed_tasks_rewards=completed_tasks_rewards,
             )
+            instruction = http_update_rollout_pool_information_and_fetch_instruction(self.config, pool_info)
             if accept_client_control:
-                instruction = http_update_rollout_pool_information_and_fetch_instruction(self.config, pool_info)
                 if instruction is not None:
                     latest_swarm_client_instructions["swarm_clients"] = instruction
             return

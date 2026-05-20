@@ -59,9 +59,7 @@ def run_ppo(config: DictConfig) -> None:
     if not ray.is_initialized():
         # this is for local ray cluster
         runtime_env = get_runtime_env(config)
-        ray.init(
-            runtime_env=runtime_env,
-        )
+        ray.init(runtime_env=runtime_env)
 
     def on_shutdown():
         if ray.is_initialized():

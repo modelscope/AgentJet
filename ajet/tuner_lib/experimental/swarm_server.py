@@ -371,10 +371,14 @@ def register_enable_swarm_mode_routes(
             backbone = config_dict.get("ajet", {}).get("backbone", "verl")
             DEFAULT_DIR = "saved_experiments"
             experiment_dir = config_dict.get("ajet", {}).get("experiment_dir", DEFAULT_DIR)
+            experiment_name = config_dict.get("ajet", {}).get("experiment_name", '')
             if experiment_dir == "auto":
                 exp_base_dir = DEFAULT_DIR
+            elif experiment_name and experiment_dir and (experiment_name not in experiment_dir):
+                exp_base_dir = os.path.dirname(os.path.join(os.path.abspath(experiment_dir), experiment_name))
             else:
                 exp_base_dir = os.path.dirname(os.path.abspath(experiment_dir))
+            logger.info(f"[start_engine] experiment_dir: {experiment_dir}, exp_base_dir: {exp_base_dir}")
 
             # Save YAML to temporary file
             with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as temp_file:

@@ -471,6 +471,34 @@ Output:
     )
 
 
+def test_compute_string_madness_unpaired_think_examples():
+    assert (
+        compute_string_madness(
+            "<think>reasoning</think> answer",
+            checklist=["un-paired-think"],
+        )
+        == 0
+    )
+
+    assert (
+        compute_string_madness(
+            "<think>reasoning answer",
+            checklist=["un-paired-think"],
+        )
+        == -1.0
+    )
+
+    assert (
+        compute_string_madness(
+            "<think>one</think> <think>two",
+            checklist=["un-paired-think"],
+        )
+        == -1.0
+    )
+
+    assert compute_string_madness("<think>reasoning answer") == 0
+
+
 print("begin test")
 test_compute_string_madness_examples()
 print("end test, test passed")

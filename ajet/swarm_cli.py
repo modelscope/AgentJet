@@ -58,7 +58,8 @@ def cmd_start(args):
                 logger.warning(f"No processes found matching keyword: {keyword}")
 
     # Use default config if not provided
-    exp_base_dir = args.exp_dir or DEFAULT_DIR
+    exp_base_dir = DEFAULT_DIR
+
     if not args.conf:
         args.conf = os.path.abspath(
             os.path.join(
@@ -92,7 +93,7 @@ def cmd_start(args):
             self.swarm_server = True
             self.swarm_overwatch = ""
             self.debug = debug
-    swarm_args = SwarmArgs(args.conf, "verl", args.exp_dir, args.debug)
+    swarm_args = SwarmArgs(args.conf, "verl", exp_base_dir, args.debug)
     env, exp_config = setup_environment_vars(swarm_args, exp_config, main_yaml_fp)
 
     # Start swarm server
@@ -126,13 +127,6 @@ def main():
         default="",
         required=False,
         help="Path to configuration file",
-    )
-    parser_start.add_argument(
-        "--exp-dir",
-        type=str,
-        default=DEFAULT_DIR,
-        required=False,
-        help="Path to experiment directory",
     )
     parser_start.add_argument(
         "--debug",

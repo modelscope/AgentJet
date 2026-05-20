@@ -294,6 +294,7 @@ Controls how the agent interacts during rollout (inference).
     - `"nonsense"` — Detects degenerate text patterns: leaked special tokens (`<|im_start|>`), repeated word sequences (5-word window with patience=10), character-level repetition (4-char window with patience=200).
     - `"wrong_toolcall"` — Validates tool call JSON structure: checks for valid `function` and `arguments` fields, verifies arguments parse as a JSON dict, detects `<tool_call>` tags in content without successfully parsed tool calls.
     - `"non_ascii"` — Flags non-ASCII characters in output. When combined with `"nonsense"`, non-ASCII detection is included in the nonsense check. When only `"nonsense"` is specified (default), non-ASCII detection is skipped.
+    - `"un-paired-think"` — Flags outputs where the number of exact `<think>` and `</think>` tags is not equal, including responses that contain `<think>` without a matching `</think>`.
 
 
 ## `ajet.rollout.multi_turn`

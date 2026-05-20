@@ -87,6 +87,8 @@ def compute_string_madness(completion, detail=False, checklist=["nonsense"]) -> 
             all_reward += compute_string_madness_non_ascii(completion, detail=detail)
         if "format_type_1" in checklist:
             all_reward += compute_string_madness_format(completion, detail=detail, format_type="type_1")
+        if "un-paired-think" in checklist:
+            all_reward += compute_string_madness_unpaired_think(completion, detail=detail)
     except Exception as e:
         return 0
     return all_reward
@@ -168,6 +170,19 @@ def compute_string_madness_non_ascii(completion, detail=False) -> float:
         print(result)
 
     if has_non_ascii(completion):
+        return -1.0
+
+    return 0
+
+
+def compute_string_madness_unpaired_think(completion, detail=False) -> float:
+    think_count = completion.count(r"<think>")
+    close_think_count = completion.count(r"</think>")
+
+    if detail:
+        print({"think_count": think_count, "close_think_count": close_think_count})
+
+    if think_count != close_think_count:
         return -1.0
 
     return 0

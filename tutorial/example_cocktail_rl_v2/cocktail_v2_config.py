@@ -68,7 +68,7 @@ class CocktailV2Config:
 
     # ---- v2 client-side runtime ----
     max_env_worker: int = 64 * 8
-    max_inference_tracker_threads: int = 128
+    max_inference_tracker_threads: int = 256
     eval_interval: int = 10
     eval_k: int = 4
     total_training_steps: int = 200

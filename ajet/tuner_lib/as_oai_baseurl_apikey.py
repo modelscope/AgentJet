@@ -3,7 +3,7 @@ from typing import Any, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from openai.resources.chat.chat import AsyncChat
 from openai.resources.completions import AsyncCompletions
-from ajet.tuner_lib.experimental.interchange_utils import generate_auth_token
+from ajet.tuner_lib.experimental.interchange_utils import generate_auth_token, get_master_node_ip
 
 if TYPE_CHECKING:
     from ajet.context_tracker.multiagent_tracking import MultiAgentContextTracker
@@ -68,7 +68,7 @@ class OpenaiClientBaseUrlTuner(BaseModel):
             port = str(int(config.ajet.interchange_server.interchange_server_port))
 
         assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
-        master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+        master_node_ip = get_master_node_ip()
 
         base_url = f"http://{master_node_ip}:{port}/v1"
         api_key = generate_auth_token(

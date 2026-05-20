@@ -49,7 +49,8 @@ class AgentJetJob:
         project_name: Name of the project for organizing experiments.
         experiment_name: Unique name for this specific experiment run.
         logging: "swanlab", "tensorboard", etc
-        n_gpu: Number of GPUs to use per node for training.
+        n_gpu: Number of GPUs to use **per node** for training.
+        nnodes: Number of nodes to use for training.
         model: Path or identifier of the model to train.
         algorithm: Advantage estimator algorithm (e.g., 'gae', 'vtrace').
         num_repeat: Tell swarm server how many repeated sample it should expect for a same task (same means task_id is identical).
@@ -111,6 +112,7 @@ class AgentJetJob:
         experiment_name: str | None = None,
         logging: str | None = None,
         n_gpu: int | None = None,
+        nnodes: int | None = None,
         model: str | None = None,
         algorithm: str | None = None,
         num_repeat: int | None = None,
@@ -177,6 +179,7 @@ class AgentJetJob:
 
         self.logging: str = cast(str, logging)
         self.n_gpu: int = cast(int, n_gpu)
+        self.nnodes: int = cast(int, nnodes)
         self.model: str = cast(str, model)
         self.algorithm: str = cast(str, algorithm)
         self.num_repeat: int = cast(int, num_repeat)
@@ -217,6 +220,7 @@ class AgentJetJob:
             "ajet.trainer_common.logger":                   "logging",
             "ajet.model.path":                              "model",
             "ajet.trainer_common.n_gpus_per_node":          "n_gpu",
+            "ajet.trainer_common.nnodes":                   "nnodes",
             "ajet.trainer_common.algorithm.adv_estimator":  "algorithm",
             "ajet.rollout.num_repeat":                      "num_repeat",
             "ajet.data.train_batch_size":                   "batch_size",
@@ -280,6 +284,9 @@ class AgentJetJob:
                 raise ValueError("lr should be provided for lora training")
             if self.lr <= 1e-5:
                 raise ValueError(f"lr should usually be greater than 1e-5 for lora training, got {self.lr}")
+
+        if self.nnodes > 1 and self.swarm_mode:
+            self.config.ajet.interchange_server.interchange_method = "tcp"
 
         if self.backbone == "trinity":
             raise NotImplementedError("Trinity backbone is not yet supported in AgentJetJob.")

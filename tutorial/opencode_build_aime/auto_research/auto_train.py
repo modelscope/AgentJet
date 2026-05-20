@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from ajet.schema.task import Task
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader, HuggingFaceTaskReader
-from ajet.utils.thread_executors import TaskCountLimitedThreadPoolExecutor
+from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
@@ -23,7 +23,7 @@ from tutorial.opencode_build_aime import download_data
 from tqdm import tqdm
 
 
-DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_8_bs16"
+DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_8_bs32"
 
 
 def extract_swarm_port(swarm_url: str) -> int:
@@ -79,6 +79,7 @@ class AIMEAutoResearchTrainer:
         max_model_len: int,
         total_training_steps: int,
         n_gpu: int,
+        nnodes: int,
         max_env_worker: int,
         eval_interval: int,
         eval_k: int,
@@ -104,6 +105,7 @@ class AIMEAutoResearchTrainer:
         self.max_model_len = max_model_len
         self.total_training_steps = total_training_steps
         self.n_gpu = n_gpu
+        self.nnodes = nnodes
 
         data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
         self.train_dataset = os.path.join(data_dir, "dapo-math-17k.parquet")
@@ -143,10 +145,11 @@ class AIMEAutoResearchTrainer:
             experiment_name=experiment_name,
             max_env_worker=max_env_worker,
             n_gpu=n_gpu,
+            nnodes=nnodes,
             model=model_path,
             batch_size=batch_size,
             swarm_mode=True,
-            swarm_mode_sample_collection_method="rollout_until_finish_enough_non_dummy_tasks",
+            swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight",
             num_repeat=grpo_repeat,
             ppo_epochs=ppo_epochs,
             mini_batch_num=mini_batch_num,
@@ -158,6 +161,7 @@ class AIMEAutoResearchTrainer:
             max_response_length=max_response_length,
             max_response_length_in_one_turn=max_response_length_in_one_turn,
             max_model_len=max_model_len,
+            compute_madness_checklist=["nonsense", "un-paired-think"],
             val_print_to_markdown_file_path=os.path.join(result_dir, "val_results.md"),
             train_print_to_markdown_file_path=os.path.join(result_dir, "train_results.md"),
             total_training_steps=total_training_steps,
@@ -168,12 +172,8 @@ class AIMEAutoResearchTrainer:
         self.ajet_job.config.ajet.trainer_common.save_freq = 10**9
         self.ajet_job.config.ajet.trainer_common.total_epochs = 10000
         self.ajet_job.config.ajet.trainer_common.val_pass_n = eval_k
-        self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = (
-            loss_weight_normalization_episode_level
-        )
-        self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = (
-            advantage_estimation_episode_level
-        )
+        self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = loss_weight_normalization_episode_level
+        self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = advantage_estimation_episode_level
         # Swarm mode cannot enable val_before_train, so the script runs an explicit step-0 eval instead.
         self.ajet_job.config.ajet.trainer_common.val_before_train = False
 
@@ -196,7 +196,7 @@ class AIMEAutoResearchTrainer:
             )
         )
 
-        self.swarm_worker = SwarmClient(self.swarm_url, verbose=False)
+        self.swarm_worker = SwarmClient(self.swarm_url, verbose=False, agentjet_job=self.ajet_job)
         self.swarm_worker.auto_sync_train_config_and_start_engine(
             self.ajet_job,
             force_restart=os.getenv("AJET_SWARM_RESTART", "0") == "1"
@@ -309,22 +309,26 @@ class AIMEAutoResearchTrainer:
 
     def train(self):
         assert self.swarm_worker is not None and self.dataset is not None, "setup() must be called before train()"
-        self.run_eval(0)
+        if not os.getenv("SKIP_INITIAL_EVAL", False): self.run_eval(0)
 
-        max_parallel = 64
-        executor = TaskCountLimitedThreadPoolExecutor(
-            max_parallel_groups=self.batch_size,
-            max_workers=max_parallel,
+        max_parallel = 128
+        executor = PeriodicDrainThreadPoolExecutor(
+            workers=self.batch_size * self.grpo_n,
+            max_parallel=max_parallel,
             auto_retry=True,
         )
-        self.swarm_worker.add_entering_weight_sync_callback(executor.on_entering_weight_sync)
 
         num_epochs = 10000
         last_eval_step = 0
         for epoch in range(num_epochs):
             for _, task in enumerate(self.dataset.generate_training_tasks()):
-                args_list = [{"task": task} for _ in range(self.grpo_n)]
-                executor.submit_group(task_id=task.task_id, fn=self.rollout, args_list=args_list)
+                for _ in range(self.grpo_n):
+                    _, drained_results = executor.submit_with_periodic_drain(
+                        fn=self.rollout, task=task
+                    )
+                    if drained_results:
+                        # when `self.batch_size * self.grpo_n` episode has completed
+                        self.swarm_worker.agree_sync_weight()
 
                 n_global_step = self.swarm_worker.get_global_step()
 
@@ -380,6 +384,8 @@ def main():
                         help="Hard cap on total training steps")
     parser.add_argument("--n-gpu", type=int, default=8,
                         help="Number of GPUs reserved for the swarm server")
+    parser.add_argument("--nnodes", type=int, default=1,
+                        help="Number of nodes reserved for training")
     parser.add_argument("--max-env-worker", type=int, default=128,
                         help="Estimated number of parallel environment workers")
     parser.add_argument("--eval-interval", type=int, default=10,
@@ -424,6 +430,7 @@ def main():
         max_model_len=args.max_model_len,
         total_training_steps=args.total_training_steps,
         n_gpu=args.n_gpu,
+        nnodes=args.nnodes,
         max_env_worker=args.max_env_worker,
         eval_interval=args.eval_interval,
         eval_k=args.eval_k,

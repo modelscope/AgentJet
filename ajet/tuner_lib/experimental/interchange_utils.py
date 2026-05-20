@@ -8,7 +8,7 @@ from typing import List
 from pydantic import BaseModel, Field
 from loguru import logger
 from ajet.schema.task import WorkflowOutput
-from ajet.utils.networking import find_free_port
+from ajet.utils.networking import find_free_port, get_host_ip
 from ajet.utils.retry import retry_with_backoff
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 
@@ -259,6 +259,26 @@ VERBOSE = True
 
 shared_http_client = httpx.Client(timeout=10.0)
 
+
+def get_master_node_ip() -> str:
+    master_node_ip = os.getenv("MASTER_NODE_IP", "").strip()
+    master_addr = os.getenv("MASTER_ADDR", "").strip()
+    network_interface = os.getenv("NETWORK_INTERFACE", "").strip()
+    if master_node_ip and master_node_ip not in {"localhost", "127.0.0.1", "0.0.0.0"}:
+        return master_node_ip
+    if master_addr:
+        return master_addr
+    # for interface_name in (network_interface, "net0", "eth0", "eno0"):
+    for interface_name in [network_interface]:
+        if not interface_name:
+            continue
+        interface_ip = get_host_ip(interface_name)
+        if interface_ip != "127.0.0.1":
+            return interface_ip
+    interface_ip = get_host_ip(None)
+    return master_node_ip or "localhost"
+
+
 def get_interchange_server_url(config):
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
     if isinstance(config, dict):
@@ -268,7 +288,7 @@ def get_interchange_server_url(config):
     if interchange_server_port != 'auto':
         port = str(int(interchange_server_port))
     assert port is not None, "AJET_DAT_INTERCHANGE_PORT env var must be set"
-    master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+    master_node_ip = get_master_node_ip()
     base_url = f"http://{master_node_ip}:{port}"
     return base_url
 
@@ -337,7 +357,7 @@ def _get_interchange_server_url_from_env():
     port = os.getenv("AJET_DAT_INTERCHANGE_PORT")
     if not port:
         return None
-    master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+    master_node_ip = get_master_node_ip()
     return f"http://{master_node_ip}:{port}"
 
 
@@ -382,17 +402,13 @@ def http_update_rollout_pool_information_and_fetch_instruction(
         SwarmClientInstruction with `active_clients` (List[ActiveSwarmClient]),
         or None if the request failed.
     """
+    url = f"{get_interchange_server_url(config)}/update_current_batch_rollout_pool_information_and_fetch_instruction"
     try:
-        resp = httpx.post(
-            f"{get_interchange_server_url(config)}/update_current_batch_rollout_pool_information_and_fetch_instruction",
-            json=pool_info.model_dump(),
-            timeout=5
-        )
+        resp = httpx.post(url, json=pool_info.model_dump(), timeout=5)
         resp.raise_for_status()
         return SwarmClientInstruction.model_validate(resp.json())
     except Exception as e:
-        if DEBUG:
-            logger.warning(f"Failed to update rollout pool information: {e}")
+        logger.warning(f"Failed to update rollout pool information: {e} ({url})")
         return None
 
 
@@ -400,7 +416,7 @@ def get_zmq_socket(config, episode_uuid: str, tag: str = ""):
     interchange_method = config.ajet.interchange_server.interchange_method
     if interchange_method == 'tcp':
         ipc_path = ""
-        master_node_ip = os.getenv("MASTER_NODE_IP", "localhost")
+        master_node_ip = get_master_node_ip()
         zmq_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
     elif interchange_method == 'ipc':
         ipc_path = f"/tmp/ajet/{episode_uuid}-{tag}.sock"
