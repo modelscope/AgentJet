@@ -613,8 +613,14 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         return self.saved_timelines
 
 
-    def group_tokenize(self):
-        return self.group_tokenize_multi_group()
+    def group_tokenize(self, cache=False):
+        if hasattr(self, "group_tokenized_cache"):
+            return getattr(self, "group_tokenized_cache")
+        else:
+            result = self.group_tokenize_multi_group()
+            if cache:
+                setattr(self, "group_tokenized_cache", result)
+            return result
 
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore

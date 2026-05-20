@@ -220,4 +220,6 @@ class SwarmRunner(BaseAgentRunner):
         observation_window["step"][task_thread_index] = -1
         tuner.terminate_episode()
         context_tracker.log_metrics = workflow_output.log_metrics
+        # finally, tokenize episode and check everything
+        context_tracker.group_tokenize(cache=True)
         return context_tracker
