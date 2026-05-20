@@ -325,9 +325,6 @@ ajet:
     # Disabled by default (every sample weighted equally).
     loss_weight_normalization_episode_level: False
 
-  # (ajet.trainer_verl) verl-backbone-specific trainer configurations
-  trainer_verl:
-
     # Agentic RL fact: a task rollout may produce a different number of
     # episodes, and each episode a different number of samples. When enabled,
     # GRPO advantage baseline statistics are computed at episode scope instead

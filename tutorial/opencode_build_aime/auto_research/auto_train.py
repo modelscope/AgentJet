@@ -88,6 +88,8 @@ class AIMEAutoResearchTrainer:
         use_kl_loss: bool,
         use_kl_in_reward: bool,
         kl_penalty_type: str,
+        loss_weight_normalization_episode_level: bool,
+        advantage_estimation_episode_level: bool,
     ):
         self.swarm_url = swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
         self.batch_size = batch_size
@@ -166,6 +168,12 @@ class AIMEAutoResearchTrainer:
         self.ajet_job.config.ajet.trainer_common.save_freq = 10**9
         self.ajet_job.config.ajet.trainer_common.total_epochs = 10000
         self.ajet_job.config.ajet.trainer_common.val_pass_n = eval_k
+        self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = (
+            loss_weight_normalization_episode_level
+        )
+        self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = (
+            advantage_estimation_episode_level
+        )
         # Swarm mode cannot enable val_before_train, so the script runs an explicit step-0 eval instead.
         self.ajet_job.config.ajet.trainer_common.val_before_train = False
 
@@ -286,6 +294,7 @@ class AIMEAutoResearchTrainer:
             val_result_path = os.path.join(self.result_dir, "val_results.md")
             with open(val_result_path, "a") as f:
                 f.write(f"\n## Step {n_global_step}\n")
+                f.write(f"- dataset: {label}\n")
                 f.write(f"- pass_n: {k}\n")
                 f.write(f"- total_tasks: {len(per_task_rewards)}\n")
                 f.write(f"- num_all_success_tasks: {num_all_success_tasks}\n")
@@ -393,6 +402,12 @@ def main():
                         choices=["kl", "abs", "mse", "low_var_kl", "full"],
                         help="KL divergence estimator used for the reward-shaping path "
                              "when --use-kl-in-reward is enabled")
+    parser.add_argument("--loss-weight-normalization-episode-level", action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help="Weight loss contributions so each episode contributes equally")
+    parser.add_argument("--advantage-estimation-episode-level", action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help="Compute GRPO advantage statistics at episode level")
     args = parser.parse_args()
 
     trainer = AIMEAutoResearchTrainer(
@@ -418,6 +433,8 @@ def main():
         use_kl_loss=args.use_kl_loss,
         use_kl_in_reward=args.use_kl_in_reward,
         kl_penalty_type=args.kl_penalty_type,
+        loss_weight_normalization_episode_level=args.loss_weight_normalization_episode_level,
+        advantage_estimation_episode_level=args.advantage_estimation_episode_level,
     )
     trainer.run()
 

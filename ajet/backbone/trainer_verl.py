@@ -435,7 +435,7 @@ def compute_advantage(
         data.batch["response_mask"] = compute_response_mask(data)
     if advantage_estimation_episode_level and adv_estimator != AdvantageEstimator.GRPO:
         raise NotImplementedError(
-            "ajet.trainer_verl.advantage_estimation_episode_level is only "
+            "ajet.trainer_common.advantage_estimation_episode_level is only "
             f"supported with the GRPO advantage estimator, got {adv_estimator}."
         )
     # prepare response group
@@ -966,11 +966,10 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         )  # GRPO adv normalization factor
 
                         # [AJET] episode-scope advantage baseline (disabled by default)
-                        trainer_verl_cfg = self.config.ajet.get("trainer_verl", None)
                         advantage_estimation_episode_level = bool(
-                            trainer_verl_cfg.get("advantage_estimation_episode_level", False)
-                            if trainer_verl_cfg is not None
-                            else False
+                            self.config.ajet.trainer_common.get(
+                                "advantage_estimation_episode_level", False
+                            )
                         )
 
                         batch = compute_advantage(

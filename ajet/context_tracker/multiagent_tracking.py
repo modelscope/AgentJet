@@ -504,10 +504,10 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 # otherwise, we throw a warning (do not worry, this causes almost no influence in the training)
                 print_dict(
                     {
-                        "expected_prompt_text": prompt_text_split[j],       # from llm_output["prompt_text"]
-                        "current_prompt_text": current_prompt_text[j],      # history prompt text converted from token_arr to text using tokenizer
-                        "expected_token_ids": vllm_token_array,         # from llm_output["prompt_token_ids"]
-                        "current_token_ids": tracker_token_array,       # from previous_ext_context[j].token_arr
+                        "expected_prompt_text": prompt_text_split[j],       # from llm_output["prompt_text"], converted directly from messages using apply_chat_template, passway (messages->apply_chat_template->text)
+                        "current_prompt_text": current_prompt_text[j],      # history prompt text converted from token_arr to text using tokenizer, passway (messages->extended_message->incremental apply_chat_template->token_arr->text)
+                        "expected_token_ids": vllm_token_array,             # from llm_output["prompt_token_ids"], passway (messages->apply_chat_template->token)
+                        "current_token_ids": tracker_token_array,           # from previous_ext_context[j].token_arr, passway (messages->extended_message->incremental apply_chat_template->token_arr)
                     },
                     mod="exception",
                     header="Prompt token ids mismatch (fixing drift by `token_arr=vllm_token_array`).",

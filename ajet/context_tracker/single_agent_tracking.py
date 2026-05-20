@@ -215,7 +215,7 @@ class SingleAgentContextTracker(BaseTracker):
         step_reward = step_reward_base  # reward scalar
         if self.already_mad_flag:
             step_reward = self.config.ajet.rollout.agent_madness_reward
-            self.reward_structure.madness = -1.0
+            self.reward_structure.madness = -1
 
         return step_reward
 

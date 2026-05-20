@@ -36,10 +36,6 @@ class AjetTrainerCommon:
     # generated. Disabled by default (current behaviour: every sample weighted
     # equally).
     loss_weight_normalization_episode_level: bool = False
-
-
-@dataclass
-class AjetTrainerVerl:
     # When enabled, GRPO group statistics (baseline mean / std) are computed at
     # episode scope instead of sample scope: each episode (same
     # non_tensor_batch["episode_uuids"]) is first reduced to its mean reward,
@@ -48,7 +44,6 @@ class AjetTrainerVerl:
     # advantage baseline regardless of how many samples it generated. Disabled
     # by default (current behaviour: baseline is the mean over all samples).
     advantage_estimation_episode_level: bool = False
-
 
 @dataclass
 class AjetModel:
@@ -139,7 +134,7 @@ class AjetDefaultConfig:
     data: AjetData = field(default_factory=AjetData)
     rollout: AjetRollout = field(default_factory=AjetRollout)
     trainer_common: AjetTrainerCommon = field(default_factory=AjetTrainerCommon)
-    trainer_verl: AjetTrainerVerl = field(default_factory=AjetTrainerVerl)
+    trainer_verl: Dict[str, Any] = field(default_factory=dict)
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
     lora: AjetLora = field(default_factory=AjetLora)
     context_tracker: AjetContextTracker = field(default_factory=AjetContextTracker)
