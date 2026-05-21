@@ -10,6 +10,7 @@ import os
 import argparse
 import time
 import statistics
+from inspect import signature
 from urllib.parse import urlparse
 from ajet.schema.task import Task
 from ajet.copilot.job import AgentJetJob
@@ -24,6 +25,11 @@ from tqdm import tqdm
 
 
 DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_8_bs32"
+
+
+def agentjet_job_kwargs_from_args(args: argparse.Namespace) -> dict:
+    job_arg_names = set(signature(AgentJetJob.__init__).parameters) - {"self"}
+    return {name: value for name, value in vars(args).items() if name in job_arg_names}
 
 
 def extract_swarm_port(swarm_url: str) -> int:
@@ -63,145 +69,26 @@ def load_eval_tasks(test_dataset: str, label: str = "") -> list:
     return eval_tasks
 
 
-class AIMEAutoResearchTrainer:
-    def __init__(
-        self,
-        batch_size: int,
-        max_response_length_in_one_turn: int,
-        experiment_name: str,
-        result_dir: str,
-        swarm_url: str,
-        project_name: str,
-        resolved_yaml_path: str | None,
-        prepare_only: bool,
-        max_prompt_length: int,
-        max_response_length: int,
-        max_model_len: int,
-        total_training_steps: int,
-        n_gpu: int,
-        nnodes: int,
-        max_env_worker: int,
-        eval_interval: int,
-        eval_k: int,
-        grpo_repeat: int,
-        ppo_epochs: int,
-        mini_batch_num: int,
-        use_kl_loss: bool,
-        use_kl_in_reward: bool,
-        kl_penalty_type: str,
-        loss_weight_normalization_episode_level: bool,
-        advantage_estimation_episode_level: bool,
-    ):
-        self.swarm_url = swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
-        self.batch_size = batch_size
-        self.max_response_length_in_one_turn = max_response_length_in_one_turn
-        self.experiment_name = experiment_name
-        self.result_dir = result_dir
-        self.project_name = project_name
-        self.resolved_yaml_path = resolved_yaml_path or os.path.join(result_dir, "resolved_swarm_config.yaml")
-        self.prepare_only = prepare_only
-        self.max_prompt_length = max_prompt_length
-        self.max_response_length = max_response_length
-        self.max_model_len = max_model_len
-        self.total_training_steps = total_training_steps
-        self.n_gpu = n_gpu
-        self.nnodes = nnodes
-
+class AIMEAutoResearchEval:
+    def __init__(self, args: argparse.Namespace):
+        self.args = args
+        self.swarm_url = args.swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
+        self.result_dir = args.result_dir
         data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
-        self.train_dataset = os.path.join(data_dir, "dapo-math-17k.parquet")
         self.test_datasets = {
             # "AIME-2024": os.path.join(data_dir, "aime-2024.parquet"),
             "AIME-2025": os.path.join(data_dir, "aime-2025.parquet"),
             "AIME-2026": os.path.join(data_dir, "aime-2026.parquet"),
             "DAPO-Math-Tiny-Val": os.path.join(data_dir, "dapo-math-tiny-val.parquet"),
         }
-
         self.swarm_worker: SwarmClient | None = None
-        self.dataset: RouterTaskReader | None = None
+        self.ajet_job: AgentJetJob | None = None
         self.eval_tasks_by_set: dict[str, list[Task]] = {}
-        self.eval_interval = eval_interval
-        self.eval_k = eval_k
-        self.grpo_n = grpo_repeat
-        self.ppo_epochs = ppo_epochs
-        self.mini_batch_num = mini_batch_num
-        self.use_kl_loss = use_kl_loss
-        self.use_kl_in_reward = use_kl_in_reward
-        self.kl_penalty_type = kl_penalty_type
-        self.max_env_worker = max_env_worker
+        self.eval_interval = args.eval_interval
+        self.eval_k = args.eval_k
+        self.max_env_worker = args.max_env_worker
 
-        os.makedirs(result_dir, exist_ok=True)
-        model_path = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-8B")
-        validate_length_config(
-            max_prompt_length=max_prompt_length,
-            max_response_length=max_response_length,
-            max_response_length_in_one_turn=max_response_length_in_one_turn,
-            max_model_len=max_model_len,
-        )
-        self.ajet_job = AgentJetJob(
-            ensure_new_experiment=True,
-            experiment_dir=result_dir,
-            project_name=project_name,
-            algorithm="grpo",
-            experiment_name=experiment_name,
-            max_env_worker=max_env_worker,
-            n_gpu=n_gpu,
-            nnodes=nnodes,
-            model=model_path,
-            batch_size=batch_size,
-            swarm_mode=True,
-            swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight",
-            num_repeat=grpo_repeat,
-            ppo_epochs=ppo_epochs,
-            mini_batch_num=mini_batch_num,
-            use_kl_loss=use_kl_loss,
-            use_kl_in_reward=use_kl_in_reward,
-            kl_penalty_type=kl_penalty_type,
-            logging="swanlab",
-            max_prompt_length=max_prompt_length,
-            max_response_length=max_response_length,
-            max_response_length_in_one_turn=max_response_length_in_one_turn,
-            max_model_len=max_model_len,
-            compute_madness_checklist=["nonsense", "un-paired-think"],
-            val_print_to_markdown_file_path=os.path.join(result_dir, "val_results.md"),
-            train_print_to_markdown_file_path=os.path.join(result_dir, "train_results.md"),
-            total_training_steps=total_training_steps,
-        )
-        self.ajet_job.config.ajet.execute_test = False
-        self.ajet_job.config.ajet.interchange_server.interchange_server_port = extract_swarm_port(self.swarm_url)
-        self.ajet_job.config.ajet.trainer_common.test_freq = eval_interval
-        self.ajet_job.config.ajet.trainer_common.save_freq = 10**9
-        self.ajet_job.config.ajet.trainer_common.total_epochs = 10000
-        self.ajet_job.config.ajet.trainer_common.val_pass_n = eval_k
-        self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = loss_weight_normalization_episode_level
-        self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = advantage_estimation_episode_level
-        # Swarm mode cannot enable val_before_train, so the script runs an explicit step-0 eval instead.
-        self.ajet_job.config.ajet.trainer_common.val_before_train = False
-
-    def setup(self):
-        if not os.path.exists(self.train_dataset):
-            raise FileNotFoundError(
-                f"Training dataset not found: {self.train_dataset}\n"
-                "Please run: proxychains python -m tutorial.opencode_build_aime.download_data"
-            )
-
-        self.ajet_job.dump_job_as_yaml(self.resolved_yaml_path)
-
-        if self.prepare_only:
-            return
-
-        self.dataset = RouterTaskReader(
-            reader_type="huggingface_dat_repo",
-            reader_config=AjetTaskReader(
-                huggingface_dat_repo=HuggingfaceDatRepo(dataset_path=self.train_dataset)
-            )
-        )
-
-        self.swarm_worker = SwarmClient(self.swarm_url, verbose=False, agentjet_job=self.ajet_job)
-        self.swarm_worker.auto_sync_train_config_and_start_engine(
-            self.ajet_job,
-            force_restart=os.getenv("AJET_SWARM_RESTART", "0") == "1"
-        )
-
+    def setup_eval_tasks(self):
         eval_downloaders = {
             "AIME-2024": download_data.ensure_aime_2024,
             "AIME-2025": download_data.ensure_aime_2025,
@@ -223,15 +110,9 @@ class AIMEAutoResearchTrainer:
             if tasks:
                 self.eval_tasks_by_set[label] = tasks
 
-    def rollout(self, task: Task) -> float:
-        assert self.swarm_worker is not None, "setup() must be called before rollout()"
-        episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
-        workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
-        self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
-        return workflow_output.reward
-
     def eval_rollout(self, task: Task) -> float:
         assert self.swarm_worker is not None, "setup() must be called before eval_rollout()"
+        assert self.ajet_job is not None, "AgentJet job must be initialized before eval_rollout()"
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(
             discard_episode_timeout=120, episode_type="eval"
         )
@@ -307,6 +188,88 @@ class AIMEAutoResearchTrainer:
         else:
             print(f"[EVAL @ step {n_global_step}] {label}  no valid rewards")
 
+
+class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
+    def __init__(self, args: argparse.Namespace):
+        super().__init__(args)
+        self.batch_size = args.batch_size
+        self.resolved_yaml_path = args.resolved_yaml_path or os.path.join(args.result_dir, "resolved_swarm_config.yaml")
+        self.prepare_only = args.prepare_only
+        self.total_training_steps = args.total_training_steps
+        data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+        self.train_dataset = os.path.join(data_dir, "dapo-math-17k.parquet")
+        self.dataset: RouterTaskReader | None = None
+        self.grpo_n = args.grpo_repeat
+
+        os.makedirs(args.result_dir, exist_ok=True)
+        model_path = os.getenv("REMOTE_MODEL_PATH", "/mnt/data_cpfs/xielipeng.xlp/models/Qwen3-8B")
+        validate_length_config(
+            max_prompt_length=args.max_prompt_length,
+            max_response_length=args.max_response_length,
+            max_response_length_in_one_turn=args.max_response_length_in_one_turn,
+            max_model_len=args.max_model_len,
+        )
+        job_kwargs = agentjet_job_kwargs_from_args(args)
+        job_kwargs.update(
+            ensure_new_experiment=True,
+            experiment_dir=args.result_dir,
+            algorithm="grpo",
+            model=model_path,
+            swarm_mode=True,
+            swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight",
+            num_repeat=args.grpo_repeat,
+            logging="swanlab",
+            compute_madness_checklist=["nonsense", "un-paired-think"],
+            val_print_to_markdown_file_path=os.path.join(args.result_dir, "val_results.md"),
+            train_print_to_markdown_file_path=os.path.join(args.result_dir, "train_results.md"),
+            timeline_compare_level='token',
+        )
+        self.ajet_job = AgentJetJob(**job_kwargs)
+        self.ajet_job.config.ajet.execute_test = False
+        self.ajet_job.config.ajet.interchange_server.interchange_server_port = extract_swarm_port(self.swarm_url)
+        self.ajet_job.config.ajet.trainer_common.test_freq = args.eval_interval
+        self.ajet_job.config.ajet.trainer_common.save_freq = 10**9
+        self.ajet_job.config.ajet.trainer_common.total_epochs = 10000
+        self.ajet_job.config.ajet.trainer_common.val_pass_n = args.eval_k
+        self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = args.loss_weight_normalization_episode_level
+        self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = args.advantage_estimation_episode_level
+        # Swarm mode cannot enable val_before_train, so the script runs an explicit step-0 eval instead.
+        self.ajet_job.config.ajet.trainer_common.val_before_train = False
+
+    def setup(self):
+        if not os.path.exists(self.train_dataset):
+            raise FileNotFoundError(
+                f"Training dataset not found: {self.train_dataset}\n"
+                "Please run: proxychains python -m tutorial.opencode_build_aime.download_data"
+            )
+
+        self.ajet_job.dump_job_as_yaml(self.resolved_yaml_path)
+
+        if self.prepare_only:
+            return
+
+        self.dataset = RouterTaskReader(
+            reader_type="huggingface_dat_repo",
+            reader_config=AjetTaskReader(
+                huggingface_dat_repo=HuggingfaceDatRepo(dataset_path=self.train_dataset)
+            )
+        )
+
+        self.swarm_worker = SwarmClient(self.swarm_url, verbose=False, agentjet_job=self.ajet_job)
+        self.swarm_worker.auto_sync_train_config_and_start_engine(
+            self.ajet_job,
+            force_restart=os.getenv("AJET_SWARM_RESTART", "0") == "1"
+        )
+        self.setup_eval_tasks()
+
+    def rollout(self, task: Task) -> float:
+        assert self.swarm_worker is not None, "setup() must be called before rollout()"
+        assert self.ajet_job is not None, "AgentJet job must be initialized before rollout()"
+        episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
+        workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
+        self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
+        return workflow_output.reward
+
     def train(self):
         assert self.swarm_worker is not None and self.dataset is not None, "setup() must be called before train()"
         if not os.getenv("SKIP_INITIAL_EVAL", False): self.run_eval(0)
@@ -380,6 +343,8 @@ def main():
                         help="Maximum total response length")
     parser.add_argument("--max-model-len", type=int, default=23000,
                         help="Maximum total model context length")
+    parser.add_argument("--tensor-model-parallel-size", type=int, default=1,
+                        help="Tensor-parallel size for the vLLM rollout engine")
     parser.add_argument("--total-training-steps", type=int, default=100,
                         help="Hard cap on total training steps")
     parser.add_argument("--n-gpu", type=int, default=8,
@@ -416,33 +381,7 @@ def main():
                         help="Compute GRPO advantage statistics at episode level")
     args = parser.parse_args()
 
-    trainer = AIMEAutoResearchTrainer(
-        batch_size=args.batch_size,
-        max_response_length_in_one_turn=args.max_response_length_in_one_turn,
-        experiment_name=args.experiment_name,
-        result_dir=args.result_dir,
-        swarm_url=args.swarm_url,
-        project_name=args.project_name,
-        resolved_yaml_path=args.resolved_yaml_path,
-        prepare_only=args.prepare_only,
-        max_prompt_length=args.max_prompt_length,
-        max_response_length=args.max_response_length,
-        max_model_len=args.max_model_len,
-        total_training_steps=args.total_training_steps,
-        n_gpu=args.n_gpu,
-        nnodes=args.nnodes,
-        max_env_worker=args.max_env_worker,
-        eval_interval=args.eval_interval,
-        eval_k=args.eval_k,
-        grpo_repeat=args.grpo_repeat,
-        ppo_epochs=args.ppo_epochs,
-        mini_batch_num=args.mini_batch_num,
-        use_kl_loss=args.use_kl_loss,
-        use_kl_in_reward=args.use_kl_in_reward,
-        kl_penalty_type=args.kl_penalty_type,
-        loss_weight_normalization_episode_level=args.loss_weight_normalization_episode_level,
-        advantage_estimation_episode_level=args.advantage_estimation_episode_level,
-    )
+    trainer = AIMEAutoResearchTrainer(args)
     trainer.run()
 
 
