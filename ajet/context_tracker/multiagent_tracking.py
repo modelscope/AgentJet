@@ -541,7 +541,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 index=index,
                 total_steps=len(self.saved_timelines),
             )
-            text_arr = [self.tokenizer.decode(t) for t in tracker_tokenized["input_ids"]]
+            text_arr = self.tokenizer.batch_decode([[t] for t in tracker_tokenized["input_ids"]])
             input_id_arr = [str(t) for t in tracker_tokenized["input_ids"]]
             # loss_mask_color_arr = ["#09ABCF" if mask==1 else "#D98510" for mask in tracker_tokenized["loss_mask"]]
             logprobs = [INVALID_LOG_PROB_VALUE] * len(

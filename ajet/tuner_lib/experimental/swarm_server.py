@@ -4,13 +4,15 @@ import zmq
 import os
 import asyncio
 import threading
+import zipfile
 from loguru import logger
 from functools import lru_cache
 from types import SimpleNamespace
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from multiprocessing.managers import DictProxy
 from typing import Coroutine, Optional, Tuple, List
 from ajet.utils.process_killer import kill_process_tree
+from ajet.utils.sync_train_code import extract_ajet_zip
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 from ajet.tuner_lib.experimental.interchange_utils import DEBUG, VERBOSE
 from ajet.tuner_lib.experimental.interchange_utils import (
@@ -58,6 +60,7 @@ def is_key_finished_episode_status(key: str) -> bool:
 @lru_cache(maxsize=128)
 def ep_key(episode_uuid: str) -> str:
     return f"episodes-{episode_uuid}"
+
 
 @lru_cache(maxsize=128)
 def finished_ep_key(episode_uuid: str) -> str:
@@ -342,6 +345,43 @@ def register_enable_swarm_mode_routes(
             logger.error(f"[sync_train_config] Error: {e}")
             return {"success": False, "error": str(e)}
 
+    @app.post("/sync_train_code")
+    async def sync_train_code(req: Request):
+        """Receive an ajet/ source zip and store the extracted path for start_engine."""
+        if VERBOSE:
+            logger.info(f"Running: /sync_train_code")
+
+        if shared_mem_dict["engine_status"] != "ENGINE.OFFLINE":
+            raise HTTPException(
+                status_code=400,
+                detail="Engine is already started. Call `stop_engine` first before syncing new training code.",
+            )
+
+        try:
+            zip_bytes = await req.body()
+            if not zip_bytes:
+                raise ValueError("Uploaded zip file is empty.")
+
+            temp_ajet_code_path = extract_ajet_zip(zip_bytes)
+            with shared_mem_dict_lock:
+                shared_mem_dict["temp_ajet_code_path"] = temp_ajet_code_path
+
+            logger.info(f"[sync_train_code] Stored training code at {temp_ajet_code_path}")
+            return {
+                "success": True,
+                "message": "Training code synced successfully.",
+                "temp_ajet_code_path": temp_ajet_code_path,
+            }
+        except zipfile.BadZipFile as e:
+            logger.error(f"[sync_train_code] Bad zip file: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded file is not a valid zip file.",
+            ) from e
+        except Exception as e:
+            logger.error(f"[sync_train_code] Error: {e}")
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     @app.post("/start_engine")
     async def start_engine():
         """
@@ -357,6 +397,15 @@ def register_enable_swarm_mode_routes(
             from ajet.utils.launch_utils import execute_training_process
             from ajet.utils.config_utils import prepare_experiment_config
             from ajet.launcher import get_backbone_target, setup_environment_vars
+
+            if shared_mem_dict["engine_status"] != "ENGINE.OFFLINE":
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Cannot start engine when engine is not offline. "
+                        f"Current status: {shared_mem_dict['engine_status']}"
+                    ),
+                )
 
             # Check if config has been synced
             if "train_config_yaml" not in shared_mem_dict:
@@ -415,6 +464,21 @@ def register_enable_swarm_mode_routes(
 
             # Setup environment variables
             env, exp_config = setup_environment_vars(args, exp_config, main_yaml_fp)
+            temp_ajet_code_path = shared_mem_dict.get("temp_ajet_code_path", None)
+            if temp_ajet_code_path and os.path.isdir(temp_ajet_code_path):
+                isolated_agentjet_base_dir = os.path.dirname(
+                    os.path.abspath(temp_ajet_code_path.rstrip(os.sep))
+                )
+                env["ISOLATED_AGENTJET_BASE_DIR"] = isolated_agentjet_base_dir
+                shared_mem_dict["active_ajet_code_path"] = temp_ajet_code_path
+                logger.info(
+                    f"[start_engine] Using synced training code from {temp_ajet_code_path}"
+                )
+            elif temp_ajet_code_path:
+                logger.warning(
+                    "[start_engine] Synced training code path no longer exists: "
+                    f"{temp_ajet_code_path}. Using current code."
+                )
 
             # Start ray if not already started
             if not ray.is_initialized():
@@ -422,7 +486,8 @@ def register_enable_swarm_mode_routes(
 
                 logger.info("[start_engine] Starting Ray service...")
                 # start_ray_service(args, env)
-                await asyncio.to_thread(start_ray_service, args, env)  # start ray in separate thread to avoid blocking
+                # start ray in separate thread to avoid blocking
+                await asyncio.to_thread(start_ray_service, args, env)
             else:
                 logger.info("[start_engine] Ray already initialized")
 
@@ -465,6 +530,8 @@ def register_enable_swarm_mode_routes(
             logger.info(f"[start_engine] Successfully started training process (PID: {p.pid})")
             return {"success": True, "pid": p.pid}
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"[start_engine] Error starting engine: {e}")
             import traceback

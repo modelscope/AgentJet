@@ -6,6 +6,7 @@ import json
 import re
 import yaml
 import tempfile
+import os
 from beast_logger import print_dict
 from beast_logger import register_console
 from typing import List, Tuple
@@ -13,6 +14,7 @@ from loguru import logger
 from ajet.schema.task import WorkflowOutput, Task
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
+from ajet.utils.sync_train_code import create_tracked_ajet_zip_from_dir
 from ajet.tuner_lib.experimental.swarm_overwatch_utils import CurrentBatchRolloutPoolInformation
 from ajet.tuner_lib.experimental.interchange_utils import (
     SyncTrainConfigRequest,
@@ -300,13 +302,17 @@ class SwarmClientBase(object):
 
         start = time.time()
         last_report = start
+        ever_see_non_offline_state = False
 
         while True:
             try:
                 current_status, _ = self.get_engine_status()
                 now = time.time()
 
-                if current_status == "ENGINE.OFFLINE" and "ENGINE.OFFLINE" not in desired_status_list:
+                if current_status != "ENGINE.OFFLINE":
+                    ever_see_non_offline_state = True
+
+                if ever_see_non_offline_state and (current_status == "ENGINE.OFFLINE") and ("ENGINE.OFFLINE" not in desired_status_list):
                     raise SwarmServerOfflineError(f"Engine status is OFFLINE while waiting for {desired_status_list}. This may indicate an error in the engine. Please check the swarm server logs for details.")
 
                 if current_status in desired_status_list:
@@ -738,6 +744,56 @@ class SwarmClient(SwarmClientBase):
         except Exception as e:
             logger.error(f"Error syncing train config: {e}")
             raise
+
+    def sync_train_code(self, zip_file_path: str):
+        """
+        Sync an ajet/ source zip to the Swarm server.
+        The zip must contain a top-level ajet/ directory.
+        """
+        current_status, _ = self.get_engine_status()
+        if current_status != "ENGINE.OFFLINE":
+            raise RuntimeError(
+                "Cannot sync train code when engine is NOT ENGINE.OFFLINE. "
+                f"(current status: {current_status})"
+            )
+        if not os.path.isfile(zip_file_path):
+            raise FileNotFoundError(f"Training code zip file does not exist: {zip_file_path}")
+
+        try:
+            with open(zip_file_path, "rb") as f:
+                resp = self._http_client.post(
+                    f"{self.server_url}/sync_train_code",
+                    content=f.read(),
+                    headers={"Content-Type": "application/zip"},
+                    timeout=600,
+                )
+            raise_for_status_with_detail(resp)
+            result = resp.json()
+            if not result.get("success"):
+                raise RuntimeError(
+                    result.get("message")
+                    or result.get("error")
+                    or "Failed to sync train code"
+                )
+            self.logger_info(
+                f"Synced train code to Swarm server: {result.get('temp_ajet_code_path')}"
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Error syncing train code: {e}")
+            raise
+
+    def sync_train_code_from_dir(self, directory_path: str):
+        """
+        Create a tracked-only ajet/ source zip from a directory, then sync it.
+        The directory must contain an ajet/ folder and be inside a Git work tree.
+        """
+        zip_file_path, file_count = create_tracked_ajet_zip_from_dir(directory_path)
+        logger.warning(f"Created tracked-only training code zip: {zip_file_path}")
+        result = self.sync_train_code(zip_file_path)
+        result["local_zip_file_path"] = zip_file_path
+        result["local_zip_file_count"] = file_count
+        return result
 
     def start_engine(self):
         """

@@ -339,13 +339,26 @@ def execute_training_process(
         env: Environment variables dictionary
     """
 
+    isolated_agentjet_dir = env.get("ISOLATED_AGENTJET_BASE_DIR") or os.getenv(
+        "ISOLATED_AGENTJET_BASE_DIR", ""
+    )
+    if isolated_agentjet_dir:
+        isolated_agentjet_dir = os.path.abspath(isolated_agentjet_dir)
+
+    def resolve_ajet_asset(path):
+        if isolated_agentjet_dir:
+            return os.path.join(isolated_agentjet_dir, path)
+        return path
+
     # Fixed config asset locations
-    TRINITY_BOOT_YAML = "ajet/default_config/trinity/trinity_launch.yaml"  # THIS FILE IS READ ONLY, and ALWAYS FIXED
+    TRINITY_BOOT_YAML = resolve_ajet_asset(
+        "ajet/default_config/trinity/trinity_launch.yaml"
+    )  # THIS FILE IS READ ONLY, and ALWAYS FIXED
     TRINITY_CONFIG_AUTO_CONVERSION = (
-        "ajet/default_config/trinity/config_auto_convertion_trinity.jsonc"
+        resolve_ajet_asset("ajet/default_config/trinity/config_auto_convertion_trinity.jsonc")
     )
     VERL_CONFIG_AUTO_CONVERSION = (
-        "ajet/default_config/verl/config_auto_convertion_verl.jsonc"
+        resolve_ajet_asset("ajet/default_config/verl/config_auto_convertion_verl.jsonc")
     )
 
     os.makedirs('/tmp/ajet', exist_ok=True)
@@ -407,7 +420,19 @@ def execute_training_process(
             header="Final Training Command & Directory",
         )
         verify_python_env(args, exp_config)
-        subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
+        if isolated_agentjet_dir:
+            assert os.path.exists(isolated_agentjet_dir), \
+                f"ISOLATED_AGENTJET_BASE_DIR is set to {isolated_agentjet_dir} but this path does not exist."
+            assert os.path.exists(os.path.join(isolated_agentjet_dir, "ajet")), \
+                f"ISOLATED_AGENTJET_BASE_DIR is set to {isolated_agentjet_dir} but this path does not exist."
+            env["PYTHONPATH"] = (
+                os.path.abspath(isolated_agentjet_dir)
+                + os.pathsep
+                + env.get("PYTHONPATH", "")
+            )
+            subprocess.run(cmd, check=True, cwd=isolated_agentjet_dir, env=env)
+        else:
+            subprocess.run(cmd, check=True, cwd=os.path.abspath("./"), env=env)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running subprocess: {e}")
         if is_swarm_server:

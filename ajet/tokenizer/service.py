@@ -1,9 +1,9 @@
 """Lightweight tokenizer cache service.
 
-A companion process holds an HF tokenizer and serves ``encode``, ``decode``
-and ``apply_chat_template`` calls over a ZMQ ``ipc://`` socket with an LRU
-cache. The caller keeps a local tokenizer for everything else (attributes,
-``__call__``, etc.) — only those three hot methods cross the wire.
+A companion process holds an HF tokenizer and serves ``encode``, ``decode``,
+``batch_decode`` and ``apply_chat_template`` calls over a ZMQ ``ipc://`` socket
+with an LRU cache. The caller keeps a local tokenizer for everything else
+(attributes, ``__call__``, etc.) — only those hot methods cross the wire.
 """
 
 from __future__ import annotations
@@ -19,15 +19,17 @@ import tempfile
 import threading
 import time
 from collections import OrderedDict
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Optional
 
 import msgpack
 import zmq
 
 
-_CACHE_OPS = ("encode", "decode", "apply_chat_template")
-_DEFAULT_CACHE_SIZE = 4096
+_CACHE_OPS = ("encode", "decode", "batch_decode", "apply_chat_template")
+_DEFAULT_CACHE_SIZE = 8192
 _DEFAULT_RECV_TIMEOUT_MS = 120_000
+_DEFAULT_WORKERS = 4
 
 
 # ---------------------------------------------------------------------------
@@ -42,97 +44,159 @@ def _serve(
     trust_remote_code: bool,
     cache_size: int,
     ready_file: Optional[str],
+    workers: int = _DEFAULT_WORKERS,
 ) -> None:
     from loguru import logger
     from verl.utils import hf_tokenizer
 
     tokenizer = hf_tokenizer(model_path, trust_remote_code=trust_remote_code)
 
+    _serve_tokenizer(
+        tokenizer=tokenizer,
+        ipc_path=ipc_path,
+        cache_size=cache_size,
+        ready_file=ready_file,
+        workers=workers,
+        logger=logger,
+    )
+
+
+def _serve_tokenizer(
+    tokenizer,
+    ipc_path: str,
+    *,
+    cache_size: int,
+    ready_file: Optional[str],
+    workers: int = _DEFAULT_WORKERS,
+    logger=None,
+) -> None:
+    workers = max(1, workers)
+
     cache: "OrderedDict[bytes, bytes]" = OrderedDict()
-    ctx = zmq.Context.instance()
-    sock = ctx.socket(zmq.REP)
+    ctx = zmq.Context()
+    sock = ctx.socket(zmq.ROUTER)
     sock.setsockopt(zmq.LINGER, 0)
     sock.bind(f"ipc://{ipc_path}")
+    poller = zmq.Poller()
+    poller.register(sock, zmq.POLLIN)
 
     if ready_file:
         try:
             with open(ready_file, "w") as fh:
                 fh.write(str(os.getpid()))
         except OSError as exc:
-            logger.warning(f"failed to write ready file {ready_file}: {exc}")
+            if logger:
+                logger.warning(f"failed to write ready file {ready_file}: {exc}")
 
-    logger.info(f"Tokenizer cache service ready at ipc://{ipc_path} (pid={os.getpid()})")
+    if logger:
+        logger.info(
+            f"Tokenizer cache service ready at ipc://{ipc_path} "
+            f"(pid={os.getpid()}, workers={workers})"
+        )
 
     hits = misses = 0
-    while True:
-        try:
-            raw = sock.recv()
-        except (zmq.ContextTerminated, KeyboardInterrupt):
-            break
+    pending: dict[Future, tuple[list[bytes], bytes, str]] = {}
 
-        # The request bytes are a stable cache key — msgpack is deterministic
-        # for our payloads (lists/dicts of primitives), so identical calls
-        # produce identical raw frames.
-        if raw in cache:
-            cache.move_to_end(raw)
-            hits += 1
-            sock.send(cache[raw])
-            continue
-
+    def _dispatch(raw: bytes) -> tuple[bytes, str]:
         try:
             req = msgpack.unpackb(raw, raw=False)
             op = req.get("op")
             args = req.get("args") or []
             kwargs = req.get("kwargs") or {}
         except Exception as exc:
-            sock.send(msgpack.packb({"ok": False, "error": f"bad request: {exc}"}, use_bin_type=True))
-            continue
-
-        if op == "shutdown":
-            sock.send(msgpack.packb({"ok": True}, use_bin_type=True))
-            break
-        if op == "stats":
-            total = hits + misses
-            payload = {
-                "hits": hits,
-                "misses": misses,
-                "hit_rate": hits / total if total else 0.0,
-                "size": len(cache),
-                "max_size": cache_size,
-            }
-            sock.send(msgpack.packb({"ok": True, "result": payload}, use_bin_type=True))
-            continue
+            return msgpack.packb(
+                {"ok": False, "error": f"bad request: {exc}"}, use_bin_type=True
+            ), ""
 
         try:
             if op == "encode":
                 result = tokenizer.encode(*args, **kwargs)
             elif op == "decode":
                 result = tokenizer.decode(*args, **kwargs)
+            elif op == "batch_decode":
+                result = tokenizer.batch_decode(*args, **kwargs)
             elif op == "apply_chat_template":
                 result = tokenizer.apply_chat_template(*args, **kwargs)
             else:
-                sock.send(
-                    msgpack.packb({"ok": False, "error": f"unknown op {op!r}"}, use_bin_type=True)
-                )
-                continue
+                return msgpack.packb(
+                    {"ok": False, "error": f"unknown op {op!r}"}, use_bin_type=True
+                ), str(op)
         except Exception as exc:
             import traceback
 
             err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-            sock.send(msgpack.packb({"ok": False, "error": err}, use_bin_type=True))
-            continue
+            return msgpack.packb({"ok": False, "error": err}, use_bin_type=True), str(op)
 
-        misses += 1
-        payload = msgpack.packb({"ok": True, "result": result}, use_bin_type=True)
-        if op in _CACHE_OPS:
-            cache[raw] = payload
-            while len(cache) > cache_size:
-                cache.popitem(last=False)
-        sock.send(payload)
+        return msgpack.packb({"ok": True, "result": result}, use_bin_type=True), str(op)
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        while True:
+            try:
+                events = dict(poller.poll(timeout=10))
+            except (zmq.ContextTerminated, KeyboardInterrupt):
+                break
+
+            if sock in events:
+                frames = sock.recv_multipart()
+                route = frames[:-1]
+                raw = frames[-1]
+
+                try:
+                    req = msgpack.unpackb(raw, raw=False)
+                    op = req.get("op")
+                except Exception:
+                    op = None
+
+                if op == "shutdown":
+                    sock.send_multipart(route + [msgpack.packb({"ok": True}, use_bin_type=True)])
+                    break
+                if op == "stats":
+                    total = hits + misses
+                    payload = {
+                        "hits": hits,
+                        "misses": misses,
+                        "hit_rate": hits / total if total else 0.0,
+                        "size": len(cache),
+                        "max_size": cache_size,
+                        "workers": workers,
+                        "pending": len(pending),
+                    }
+                    sock.send_multipart(
+                        route + [msgpack.packb({"ok": True, "result": payload}, use_bin_type=True)]
+                    )
+                    continue
+
+                # The request bytes are a stable cache key — msgpack is deterministic
+                # for our payloads (lists/dicts of primitives), so identical calls
+                # produce identical raw frames.
+                if raw in cache:
+                    cache.move_to_end(raw)
+                    hits += 1
+                    sock.send_multipart(route + [cache[raw]])
+                    continue
+
+                future = executor.submit(_dispatch, raw)
+                pending[future] = (route, raw, str(op))
+
+            done = [future for future in pending if future.done()]
+            for future in done:
+                route, raw, op = pending.pop(future)
+                payload, result_op = future.result()
+                misses += 1
+                cache_op = result_op or op
+                if cache_op in _CACHE_OPS:
+                    cache[raw] = payload
+                    while len(cache) > cache_size:
+                        cache.popitem(last=False)
+                sock.send_multipart(route + [payload])
+
+        for future in pending:
+            future.cancel()
 
     sock.close(linger=0)
     ctx.term()
-    logger.info("Tokenizer cache service stopped")
+    if logger:
+        logger.info("Tokenizer cache service stopped")
 
 
 # ---------------------------------------------------------------------------
@@ -142,8 +206,8 @@ def _serve(
 
 class CachedTokenizer:
     """Wraps a local HF tokenizer; routes ``encode`` / ``decode`` /
-    ``apply_chat_template`` through a cache process, falls back to the local
-    instance for every other attribute."""
+    ``batch_decode`` / ``apply_chat_template`` through a cache process, falls
+    back to the local instance for every other attribute."""
 
     def __init__(
         self,
@@ -188,7 +252,7 @@ class CachedTokenizer:
             raise RuntimeError(f"tokenizer service error (op={op}): {resp.get('error')}")
         return resp.get("result")
 
-    # -- the three cached methods ----------------------------------------
+    # -- cached methods ---------------------------------------------------
 
     def encode(self, text, **kwargs):
         return self._call("encode", [text], kwargs)
@@ -205,6 +269,19 @@ class CachedTokenizer:
         else:
             ids = list(ids)
         return self._call("decode", [ids], {"skip_special_tokens": skip_special_tokens, **kwargs})
+
+    def batch_decode(self, sequences, skip_special_tokens: bool = False, **kwargs):
+        if hasattr(sequences, "tolist"):
+            sequences = sequences.tolist()
+        sequences = [
+            [sequence] if isinstance(sequence, int) else list(sequence)
+            for sequence in sequences
+        ]
+        return self._call(
+            "batch_decode",
+            [sequences],
+            {"skip_special_tokens": skip_special_tokens, **kwargs},
+        )
 
     def apply_chat_template(
         self,
@@ -252,6 +329,7 @@ def start_tokenizer_service(
     trust_remote_code: bool = False,
     ipc_path: Optional[str] = None,
     cache_size: int = _DEFAULT_CACHE_SIZE,
+    workers: int = _DEFAULT_WORKERS,
     ready_timeout_s: float = 180.0,
     recv_timeout_ms: int = _DEFAULT_RECV_TIMEOUT_MS,
 ) -> CachedTokenizer:
@@ -277,6 +355,7 @@ def start_tokenizer_service(
         "--model-path", model_path,
         "--ipc-path", ipc_path,
         "--cache-size", str(cache_size),
+        "--workers", str(workers),
         "--ready-file", ready_file,
     ]
     if trust_remote_code:
@@ -330,6 +409,7 @@ def _main(argv: Optional[list] = None) -> None:
     p_serve.add_argument("--model-path", required=True)
     p_serve.add_argument("--ipc-path", required=True)
     p_serve.add_argument("--cache-size", type=int, default=_DEFAULT_CACHE_SIZE)
+    p_serve.add_argument("--workers", type=int, default=_DEFAULT_WORKERS)
     p_serve.add_argument("--ready-file", default=None)
     p_serve.add_argument("--trust-remote-code", action="store_true")
 
@@ -345,6 +425,7 @@ def _main(argv: Optional[list] = None) -> None:
             trust_remote_code=args.trust_remote_code,
             cache_size=args.cache_size,
             ready_file=args.ready_file,
+            workers=args.workers,
         )
 
 
