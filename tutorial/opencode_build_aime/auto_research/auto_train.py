@@ -256,6 +256,8 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
         )
 
         self.swarm_worker = SwarmClient(self.swarm_url, verbose=False, agentjet_job=self.ajet_job)
+        if os.getenv("SYNC_CODE", "0") == "1":
+            self.swarm_worker.sync_train_code_from_dir(os.getcwd())
         self.swarm_worker.auto_sync_train_config_and_start_engine(
             self.ajet_job,
             force_restart=os.getenv("AJET_SWARM_RESTART", "0") == "1"
