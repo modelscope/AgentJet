@@ -7,6 +7,7 @@ import re
 import yaml
 import tempfile
 import os
+from urllib.parse import urlparse
 from beast_logger import print_dict
 from beast_logger import register_console
 from typing import List, Tuple
@@ -45,6 +46,38 @@ WAIT_MORE_AVAIL_EPISODE_RETRY_DELAY = 2
 AGREE_SYNC_WEIGHT_RETRY_DELAY = 2.0
 DELAY_AFTER_AGREE_SYNC_WEIGHT = 30
 ENGINE_STATUS_POLL_INTERVAL = 5
+
+
+def _extract_local_swarm_port(server_url: str) -> int:
+    parsed = urlparse(server_url if "://" in server_url else f"http://{server_url}")
+    if parsed.hostname not in {"127.0.0.1", "localhost"}:
+        raise ValueError(
+            f"auto_start_swarm_server only supports local server_url, got {server_url!r}"
+        )
+    if parsed.port is None:
+        raise ValueError(f"server_url must include an explicit port, got {server_url!r}")
+    return parsed.port
+
+
+def _auto_start_local_swarm_server(server_url: str):
+    from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
+
+    swarm_port = _extract_local_swarm_port(server_url)
+    companion = LaunchCommandWhenAbsent(
+        full_argument_list=[
+            "ajet-swarm",
+            "start",
+            f"--swarm-port={swarm_port}",
+        ],
+        dir="./",
+        tag=f"swarm_server_{swarm_port}",
+    )
+    companion.launch(
+        launch_wait_time=60,
+        success_std_string="Interchange server is running in blocking mode",
+        env_dict=os.environ.copy(),
+    )
+
 
 def raise_for_status_with_detail(resp):
     """
@@ -336,14 +369,24 @@ class SwarmClientBase(object):
 class SwarmClient(SwarmClientBase):
     """HTTP client for interacting with the Swarm server for distributed RL training."""
 
-    def __init__(self, server_url: str, verbose: bool = True, agentjet_job = None):
+    def __init__(
+        self,
+        server_url: str,
+        verbose: bool = True,
+        agentjet_job=None,
+        auto_start_swarm_server: bool = False,
+    ):
         """
         Initialize the SwarmClient.
 
         Args:
             server_url: The URL of the swarm server.
             verbose: If True, enable verbose logging output.
+            agentjet_job: The training parameters.
+            auto_start_swarm_server: If True, automatically start the swarm server.
         """
+        if auto_start_swarm_server:
+            _auto_start_local_swarm_server(server_url)
         super().__init__(server_url=server_url, verbose=verbose)
         self.previous_warning_time = 0
         self.record_episode_expire_time = {}
