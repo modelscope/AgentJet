@@ -54,6 +54,7 @@
     ],
 
     "ajet.rollout.max_num_seqs": "actor_rollout_ref.rollout.max_num_seqs",
+    "ajet.rollout.tensor_model_parallel_size": "actor_rollout_ref.rollout.tensor_model_parallel_size",
     "ajet.rollout.temperature": "actor_rollout_ref.rollout.temperature",
     "ajet.rollout.multi_turn": "actor_rollout_ref.rollout.multi_turn",
     "ajet.rollout.val_kwargs": "actor_rollout_ref.rollout.val_kwargs",

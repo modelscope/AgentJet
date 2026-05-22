@@ -49,6 +49,8 @@ ENGINE_STATUS_POLL_INTERVAL = 5
 
 
 def _extract_local_swarm_port(server_url: str) -> int:
+    """When translating client sdk into other programming languages such as typescript, ignore this function.
+    """
     parsed = urlparse(server_url if "://" in server_url else f"http://{server_url}")
     if parsed.hostname not in {"127.0.0.1", "localhost"}:
         raise ValueError(
@@ -60,6 +62,8 @@ def _extract_local_swarm_port(server_url: str) -> int:
 
 
 def _auto_start_local_swarm_server(server_url: str):
+    """When translating client sdk into other programming languages such as typescript, ignore this function.
+    """
     from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
 
     swarm_port = _extract_local_swarm_port(server_url)
@@ -386,6 +390,7 @@ class SwarmClient(SwarmClientBase):
             auto_start_swarm_server: If True, automatically start the swarm server.
         """
         if auto_start_swarm_server:
+            # When translating client sdk into other programming languages such as typescript, delete `auto_start_swarm_server` capability.
             _auto_start_local_swarm_server(server_url)
         super().__init__(server_url=server_url, verbose=verbose)
         self.previous_warning_time = 0
@@ -826,11 +831,19 @@ class SwarmClient(SwarmClientBase):
             logger.error(f"Error syncing train code: {e}")
             raise
 
-    def sync_train_code_from_dir(self, directory_path: str):
+    def sync_train_code_from_dir(self, directory_path: str, force_restart=False):
         """
         Create a tracked-only ajet/ source zip from a directory, then sync it.
         The directory must contain an ajet/ folder and be inside a Git work tree.
+
+        Args:
+            - directory_path: Directory containing the ajet/ source tree.
+            - force_restart: If True, stops the engine before syncing train code.
         """
+        if force_restart:
+            logger.warning("Force restarting the engine...")
+            self.stop_engine()
+
         zip_file_path, file_count = create_tracked_ajet_zip_from_dir(directory_path)
         logger.warning(f"Created tracked-only training code zip: {zip_file_path}")
         result = self.sync_train_code(zip_file_path)

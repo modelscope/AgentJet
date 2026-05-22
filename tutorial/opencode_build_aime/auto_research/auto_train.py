@@ -223,18 +223,11 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
             val_print_to_markdown_file_path=os.path.join(args.result_dir, "val_results.md"),
             train_print_to_markdown_file_path=os.path.join(args.result_dir, "train_results.md"),
             timeline_compare_level='token',
+            tensor_model_parallel_size=1,
         )
         self.ajet_job = AgentJetJob(**job_kwargs)
-        self.ajet_job.config.ajet.execute_test = False
-        self.ajet_job.config.ajet.interchange_server.interchange_server_port = extract_swarm_port(self.swarm_url)
-        self.ajet_job.config.ajet.trainer_common.test_freq = args.eval_interval
-        self.ajet_job.config.ajet.trainer_common.save_freq = 10**9
-        self.ajet_job.config.ajet.trainer_common.total_epochs = 10000
-        self.ajet_job.config.ajet.trainer_common.val_pass_n = args.eval_k
         self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = args.loss_weight_normalization_episode_level
         self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = args.advantage_estimation_episode_level
-        # Swarm mode cannot enable val_before_train, so the script runs an explicit step-0 eval instead.
-        self.ajet_job.config.ajet.trainer_common.val_before_train = False
 
     def setup(self):
         if not os.path.exists(self.train_dataset):
@@ -257,7 +250,7 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
 
         self.swarm_worker = SwarmClient(self.swarm_url, verbose=False, agentjet_job=self.ajet_job)
         if os.getenv("SYNC_CODE", "0") == "1":
-            self.swarm_worker.sync_train_code_from_dir(os.getcwd())
+            self.swarm_worker.sync_train_code_from_dir(os.getcwd(), force_restart=True)
         self.swarm_worker.auto_sync_train_config_and_start_engine(
             self.ajet_job,
             force_restart=os.getenv("AJET_SWARM_RESTART", "0") == "1"
