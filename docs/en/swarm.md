@@ -64,8 +64,10 @@ Now, create a python script and start coding:
 ```python
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 REMOTE_SWARM_URL = "http://localhost:10086" # Change to your swarm remote url
-swarm_worker = SwarmClient(REMOTE_SWARM_URL)
+swarm_worker = SwarmClient(REMOTE_SWARM_URL, auto_start_swarm_server=True)
 ```
+
+Set `auto_start_swarm_server=True` when the swarm server should run on the same machine as the client. The client will start `ajet-swarm start --swarm-port=<port>` automatically if the local port is free. This option only supports `localhost` or `127.0.0.1`; for a remote GPU server, start `ajet-swarm start` on that server and use `SwarmClient(REMOTE_SWARM_URL)`.
 
 Secondly, generate a configuration (basically VERL yaml, but slightly different), **connect** to swarm server and then tell the swarm server **which model to train**, etc. When configuration is ready, tell engine to read yaml and begin VERL training cycles with `auto_sync_train_config_and_start_engine`.
 

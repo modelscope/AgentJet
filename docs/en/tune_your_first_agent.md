@@ -473,6 +473,9 @@ ajet-swarm overwatch --swarm-url=http://localhost:10086
     ajet-swarm start --swarm-port=10086
     ```
 
+!!! tip "Auto-start Local Server"
+    If the client runs on the same machine as the swarm server, you can skip the manual `ajet-swarm start` command and use `SwarmClient(AJET_SWARM_URL, auto_start_swarm_server=True)`. This only supports `localhost` or `127.0.0.1`; for a remote GPU server, start `ajet-swarm start` on that server first.
+
 The Swarm Server will:
 
 - Load the model specified by the client
@@ -520,7 +523,7 @@ Create your client script. The client reads the dataset, runs the agent workflow
         )
 
         # Connect to swarm server and configure training
-        swarm_worker = SwarmClient(AJET_SWARM_URL)
+        swarm_worker = SwarmClient(AJET_SWARM_URL, auto_start_swarm_server=True)
         swarm_worker.auto_sync_train_config_and_start_engine(
             AgentJetJob(
                 experiment_name="math_gsm8k_grpo",
@@ -674,7 +677,7 @@ The server handles gradient computation and model updates automatically.
         )
 
         # Connect to swarm server and configure training
-        swarm_worker = SwarmClient(AJET_SWARM_URL)
+        swarm_worker = SwarmClient(AJET_SWARM_URL, auto_start_swarm_server=True)
         swarm_worker.auto_sync_train_config_and_start_engine(
             AgentJetJob(
                 experiment_name="math_gsm8k_grpo",

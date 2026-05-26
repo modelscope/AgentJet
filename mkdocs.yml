@@ -66,6 +66,8 @@ nav:
       - Platform Comparison: en/platform_comparison.md
 
   - • Blogs:
+      - Sync New Code to Swarm (EN): en/blog_sync_train_code.md
+      - Sync New Code to Swarm (ZH): en/blog_sync_train_code.zh.md
       - Auto Research (EN): en/blog_auto_research.en.md
       - Auto Research (ZH): en/blog_auto_research.md
       - Deep Finance Agent (ZH): en/blog_deep_finance.zh.md

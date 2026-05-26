@@ -91,7 +91,7 @@ from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 
-swarm_worker = SwarmClient("http://localhost:10086")
+swarm_worker = SwarmClient("http://localhost:10086", auto_start_swarm_server=True)
 
 yaml_job = AgentJetJob(
     algorithm="grpo",
@@ -106,6 +106,8 @@ yaml_job = AgentJetJob(
 # Send config to server and start the vLLM engine
 swarm_worker.auto_sync_train_config_and_start_engine(yaml_job)
 ```
+
+For local development, `auto_start_swarm_server=True` starts `ajet-swarm` automatically when `http://localhost:<port>` is not already accepting connections. For remote swarm servers, keep the explicit `ajet-swarm start` step on the GPU server and omit this option.
 
 !!! tip "Inspecting the full config"
     Call `yaml_job.dump_job_as_yaml('./config.yaml')` to see all resolved configuration keys, or `yaml_job.build_job_from_yaml('./config.yaml')` to load overrides from a YAML file.
