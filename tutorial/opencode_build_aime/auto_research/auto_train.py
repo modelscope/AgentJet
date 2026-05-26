@@ -27,6 +27,12 @@ from tqdm import tqdm
 DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_8_bs32"
 
 
+def scalar_reward(reward: float | list[float] | None) -> float:
+    if not isinstance(reward, (int, float)):
+        raise TypeError(f"Expected scalar reward, got {type(reward).__name__}: {reward!r}")
+    return float(reward)
+
+
 def agentjet_job_kwargs_from_args(args: argparse.Namespace) -> dict:
     job_arg_names = set(signature(AgentJetJob.__init__).parameters) - {"self"}
     return {name: value for name, value in vars(args).items() if name in job_arg_names}
@@ -118,22 +124,9 @@ class AIMEAutoResearchEval:
         )
         try:
             workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
-            return self._normalize_reward(workflow_output.reward)
+            return scalar_reward(workflow_output.reward)
         finally:
             self.swarm_worker.abort_episode(episode_uuid)
-
-    @staticmethod
-    def _normalize_reward(reward) -> float:
-        """Coerce reward to a scalar float.
-
-        Some workflows may return per-step rewards (list) or None.
-        """
-        if reward is None:
-            return 0.0
-        if isinstance(reward, (list, tuple)):
-            # Preserve sign and scale in a simple way; reward is expected to be scalar.
-            return float(sum((r or 0.0) for r in reward))
-        return float(reward)
 
     def run_eval(self, n_global_step: int):
         if not self.eval_tasks_by_set:
@@ -278,7 +271,7 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
         workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
         self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
-        return self._normalize_reward(workflow_output.reward)
+        return scalar_reward(workflow_output.reward)
 
     def train(self):
         assert self.swarm_worker is not None and self.dataset is not None, "setup() must be called before train()"

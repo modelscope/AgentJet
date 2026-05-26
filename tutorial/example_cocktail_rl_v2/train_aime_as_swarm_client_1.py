@@ -27,6 +27,12 @@ from tutorial.opencode_build_aime.agent_run_v3 import execute_agent as _execute_
 _THIS_DIR = os.path.dirname(__file__)
 
 
+def _scalar_reward(reward: float | list[float] | None) -> float:
+    if not isinstance(reward, (int, float)):
+        raise TypeError(f"Expected scalar reward, got {type(reward).__name__}: {reward!r}")
+    return float(reward)
+
+
 @dataclass
 class _AimeAgentConfig:
     """Duck-types the subset of AgentJetJob that execute_agent reads."""
@@ -113,7 +119,7 @@ class AimeRunner(CocktailSwarmRunner):
         )
         out = _execute_aime_agent(task, api_baseurl_key, self.agent_config)
         self.swarm_worker.end_episode(task, episode_uuid, out)
-        return out.reward
+        return _scalar_reward(out.reward)
 
     def eval_rollout(self, task: Task) -> float:
         assert self.swarm_worker is not None
@@ -122,7 +128,7 @@ class AimeRunner(CocktailSwarmRunner):
         )
         try:
             out = _execute_aime_agent(task, api_baseurl_key, self.agent_config)
-            return out.reward
+            return _scalar_reward(out.reward)
         finally:
             self.swarm_worker.abort_episode(episode_uuid)
 

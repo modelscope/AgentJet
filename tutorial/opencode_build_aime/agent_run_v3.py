@@ -21,6 +21,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from textwrap import dedent
+from typing import Protocol
 from uuid import uuid4
 
 from openai import OpenAI
@@ -32,6 +33,11 @@ from ajet.utils.message_utils import is_token_overflow_message
 
 
 TIMEOUT_EXIT_CODE = -101
+
+
+class AimeAgentConfigLike(Protocol):
+    model: str
+    max_response_length: int
 
 
 # ==================== Python Code Execution Tool ====================
@@ -457,7 +463,7 @@ def compute_reward(solution_str: str, ground_truth: str) -> dict:
 def execute_agent(
     task: Task,
     api_baseurl_key: OpenaiBaseUrlAndApiKey,
-    ajet_job: AgentJetJob,
+    ajet_job: AimeAgentConfigLike,
 ) -> WorkflowOutput:
     base_url = api_baseurl_key.base_url
     api_key = api_baseurl_key.api_key

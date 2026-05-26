@@ -12,11 +12,8 @@ python -m tutorial.example_appworld_swarm.agent_roll_timeline_study
 """
 
 import os
-import statistics
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Generator, List
 
-from tqdm import tqdm
 
 from ajet.copilot.job import AgentJetJob
 from ajet.schema.task import Task

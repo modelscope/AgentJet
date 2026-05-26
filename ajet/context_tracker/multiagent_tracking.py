@@ -2,7 +2,7 @@
 import copy
 import json
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 from beast_logger import NestedJsonItem, SeqItem, print_dict, print_nested
 from loguru import logger
@@ -197,12 +197,14 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
             any_later_msg_has_user_role = any((m["role"] == "user") for m in messages[i+1:])
 
+            msg_content = cast(str, msg["content"])
+
             # extract content block from openai-competible messages and convert to ExtendedMessage
             timeline += [
                 ExtendedMessage(
                     author=author,
                     role=msg["role"],
-                    content=msg["content"],
+                    content=msg_content,
                     tokenizer=self.tokenizer,
                     tools=tools,
                     tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
@@ -215,7 +217,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     before_last_query=any_later_msg_has_user_role,
                 )
             ]
-            if isinstance(msg["content"], str) and ("<think>" in msg["content"]) and (not previous_message_encounter_user_role):
+            if ("<think>" in msg_content) and (not previous_message_encounter_user_role):
                 logger.warning(f"Warning! Message content contains <think> tag, but no prior message has `user` role! This is not a common scenario. Please check your agent loop carefully.")
 
         return timeline

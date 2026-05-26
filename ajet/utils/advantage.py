@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 from collections import defaultdict
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 import torch
-from verl.trainer.config import AlgoConfig
+
+if TYPE_CHECKING:
+    from verl.trainer.config import AlgoConfig
 
 
 def compute_grpo_outcome_advantage(
