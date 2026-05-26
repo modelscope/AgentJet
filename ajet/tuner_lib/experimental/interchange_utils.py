@@ -419,7 +419,14 @@ def get_zmq_socket(config, episode_uuid: str, tag: str = ""):
         master_node_ip = get_master_node_ip()
         zmq_contect_address = f"tcp://{master_node_ip}:{find_free_port()}"
     elif interchange_method == 'ipc':
-        ipc_path = f"/tmp/ajet/{episode_uuid}-{tag}.sock"
+        # NOTE:
+        # Do not use `/tmp/ajet`.
+        # Many of our workers can run with cwd=`/tmp`, and having a directory named
+        # `ajet` under `/tmp` can shadow the real `ajet` python package via
+        # namespace-package resolution, causing extremely confusing import errors.
+        ipc_dir = os.getenv("AJET_IPC_DIR", "/tmp/agentjet")
+        os.makedirs(ipc_dir, exist_ok=True)
+        ipc_path = f"{ipc_dir}/{episode_uuid}-{tag}.sock"
         zmq_contect_address = f"ipc://{ipc_path}"
     else:
         raise RuntimeError(f"Unknown interchange_method: {interchange_method}")

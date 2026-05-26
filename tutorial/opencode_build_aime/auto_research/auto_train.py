@@ -118,9 +118,22 @@ class AIMEAutoResearchEval:
         )
         try:
             workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
-            return workflow_output.reward
+            return self._normalize_reward(workflow_output.reward)
         finally:
             self.swarm_worker.abort_episode(episode_uuid)
+
+    @staticmethod
+    def _normalize_reward(reward) -> float:
+        """Coerce reward to a scalar float.
+
+        Some workflows may return per-step rewards (list) or None.
+        """
+        if reward is None:
+            return 0.0
+        if isinstance(reward, (list, tuple)):
+            # Preserve sign and scale in a simple way; reward is expected to be scalar.
+            return float(sum((r or 0.0) for r in reward))
+        return float(reward)
 
     def run_eval(self, n_global_step: int):
         if not self.eval_tasks_by_set:
@@ -218,7 +231,9 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
             swarm_mode=True,
             swarm_mode_sample_collection_method="rollout_until_all_clients_agree_sync_weight",
             num_repeat=args.grpo_repeat,
-            logging="swanlab",
+            # Avoid external auth/env requirements (e.g. SWANLAB_API_KEY) by default.
+            # Can be overridden via AJET_LOGGER if needed.
+            logging=os.getenv("AJET_LOGGER", "swanlab"),
             compute_madness_checklist=["nonsense", "un-paired-think"],
             val_print_to_markdown_file_path=os.path.join(args.result_dir, "val_results.md"),
             train_print_to_markdown_file_path=os.path.join(args.result_dir, "train_results.md"),
@@ -263,7 +278,7 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
         workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
         self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
-        return workflow_output.reward
+        return self._normalize_reward(workflow_output.reward)
 
     def train(self):
         assert self.swarm_worker is not None and self.dataset is not None, "setup() must be called before train()"

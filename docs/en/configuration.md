@@ -995,7 +995,7 @@ Swarm mode decouples rollout workers from the training loop. Workers can run on 
 - **Type:** str.
 - **Default:** `"ipc"`.
 - **Description:** Communication protocol for ZMQ messaging between episodes and trainers:
-    - `"ipc"` — Unix domain sockets at `/tmp/ajet/{episode_uuid}-{tag}.sock`. Fastest option, single-node only. Raises a `ValueError` if used with `nnodes > 1`.
+    - `"ipc"` — Unix domain sockets at `/tmp/agentjet/{episode_uuid}-{tag}.sock` (override with `AJET_IPC_DIR`). Fastest option, single-node only. Raises a `ValueError` if used with `nnodes > 1`.
     - `"tcp"` — TCP sockets on dynamically allocated ports. Required for multi-node setups. Uses `MASTER_NODE_IP` environment variable (defaults to `"localhost"` for single-node).
 
 ### `ajet.interchange_server.interchange_server_port`

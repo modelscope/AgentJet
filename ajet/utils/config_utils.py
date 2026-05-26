@@ -15,6 +15,46 @@ from omegaconf import DictConfig
 from ajet.utils.config_computer import split_keys_and_operators
 
 
+
+def normalize_hydra_searchpath_inplace(yaml_fp: str) -> str:
+    """Rewrite `hydra.searchpath` entries to absolute paths when possible.
+
+    Many training entrypoints run Hydra from an arbitrary CWD (e.g. Ray workers).
+    Relative search paths like `file://ajet/default_config` then break.
+    """
+    abs_yaml_fp = os.path.abspath(yaml_fp)
+    with open(abs_yaml_fp, "r", encoding="utf-8") as f:
+        yaml_content = yaml.safe_load(f)
+
+    if not (yaml_content and isinstance(yaml_content, dict)):
+        return abs_yaml_fp
+    hydra_cfg = yaml_content.get("hydra")
+    if not (hydra_cfg and isinstance(hydra_cfg, dict)):
+        return abs_yaml_fp
+    searchpath = hydra_cfg.get("searchpath")
+    if not (searchpath and isinstance(searchpath, list)):
+        return abs_yaml_fp
+
+    base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    modified = False
+    for i, path in enumerate(searchpath):
+        if not isinstance(path, str) or not path.startswith("file://"):
+            continue
+        rel_path = path[7:]
+        if os.path.isabs(rel_path):
+            continue
+        if os.path.exists(rel_path):
+            continue
+        fixed_path = os.path.join(base_dir, rel_path)
+        if os.path.exists(fixed_path):
+            yaml_content["hydra"]["searchpath"][i] = f"file://{fixed_path}"
+            modified = True
+
+    if modified:
+        with open(abs_yaml_fp, "w", encoding="utf-8") as f:
+            yaml.dump(yaml_content, f)
+    return abs_yaml_fp
+
 def fix_hydra_searchpath_and_create_copy_when_needed(yaml_fp):
     """Fix Hydra search paths if they don't exist by trying with base directory."""
     abs_yaml_fp = os.path.abspath(yaml_fp)
@@ -421,6 +461,10 @@ def prepare_experiment_config(yaml_path, exp_base_dir, backbone, override_param_
         override_param_callback=override_param_callback
     )
     config_final = expand_ajet_hierarchical_config(config, write_to=yaml_backup_dst)
+
+    # Hydra will later be executed from arbitrary working directories (e.g. Ray workers),
+    # so make sure `hydra.searchpath` is absolute and points to real files.
+    normalize_hydra_searchpath_inplace(yaml_backup_dst)
 
     _validate_input_yaml_no_overlap_with_auto_convertion_config(input_yaml_config, config_final)
 

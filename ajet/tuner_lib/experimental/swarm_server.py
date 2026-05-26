@@ -480,14 +480,31 @@ def register_enable_swarm_mode_routes(
                     f"{temp_ajet_code_path}. Using current code."
                 )
 
-            # Start ray if not already started
+            # Ray management:
+            # - In swarm mode we can be launched while an external Ray head is already running
+            #   (e.g. started in a dedicated tmux session).
+            # - `ray.is_initialized()` only checks the current process, so it will be False even
+            #   when a cluster exists, and naive `ray start --head` will fail with "already running".
+            # Prefer connecting to an existing cluster; fall back to starting Ray only if needed.
             if not ray.is_initialized():
-                from ajet.utils.launch_utils import start_ray_service
+                connected = False
+                try:
+                    # If a Ray head is running on this node, "auto" discovery should connect.
+                    ray.init(address="auto", ignore_reinit_error=True)
+                    connected = True
+                    logger.info("[start_engine] Connected to existing Ray cluster (address=auto)")
+                except Exception as e:
+                    logger.warning(f"[start_engine] Failed to connect to Ray cluster (address=auto): {e}")
 
-                logger.info("[start_engine] Starting Ray service...")
-                # start_ray_service(args, env)
-                # start ray in separate thread to avoid blocking
-                await asyncio.to_thread(start_ray_service, args, env)
+                if not connected:
+                    from ajet.utils.launch_utils import start_ray_service
+
+                    logger.info("[start_engine] Starting Ray service...")
+                    await asyncio.to_thread(
+                        start_ray_service,
+                        args,
+                        env,
+                    )  # start ray in separate thread to avoid blocking
             else:
                 logger.info("[start_engine] Ray already initialized")
 

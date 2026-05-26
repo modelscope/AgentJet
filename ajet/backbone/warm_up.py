@@ -54,17 +54,17 @@ def warm_up_task_judge_when_needed(config):
 
 
 def clean_up_tmp_ajet_dir(config):
-    """Clean up old IPC socket files in /tmp/ajet directory."""
+    """Clean up old IPC socket files in the IPC socket directory."""
     import time
     if config.ajet.enable_interchange_server is False:
         return
 
-    tmp_dir = "/tmp/ajet"
+    tmp_dir = os.getenv("AJET_IPC_DIR", "/tmp/agentjet")
     if not os.path.exists(tmp_dir):
         return
     current_time = time.time()
     ttl = 4 * 3600
-    print("Clean up old IPC socket files in /tmp/ajet directory.")
+    print(f"Clean up old IPC socket files in {tmp_dir}.")
     try:
         for filename in os.listdir(tmp_dir):
             if not filename.endswith(".sock"):

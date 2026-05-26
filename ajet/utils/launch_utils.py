@@ -345,10 +345,14 @@ def execute_training_process(
     if isolated_agentjet_dir:
         isolated_agentjet_dir = os.path.abspath(isolated_agentjet_dir)
 
+    # Default asset base: the repository root inferred from this file's location, so
+    # the engine works regardless of current working directory (e.g. Ray workers with
+    # cwd=/tmp). An explicit ISOLATED_AGENTJET_BASE_DIR overrides it.
+    agentjet_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
     def resolve_ajet_asset(path):
-        if isolated_agentjet_dir:
-            return os.path.join(isolated_agentjet_dir, path)
-        return path
+        base = isolated_agentjet_dir if isolated_agentjet_dir else agentjet_base_dir
+        return os.path.join(base, path)
 
     # Fixed config asset locations
     TRINITY_BOOT_YAML = resolve_ajet_asset(
@@ -361,8 +365,21 @@ def execute_training_process(
         resolve_ajet_asset("ajet/default_config/verl/config_auto_convertion_verl.jsonc")
     )
 
-    os.makedirs('/tmp/ajet', exist_ok=True)
-    assert os.path.exists('/tmp/ajet'), "Temporary directory /tmp/ajet cannot be create."
+    for required_fp in [TRINITY_BOOT_YAML, TRINITY_CONFIG_AUTO_CONVERSION, VERL_CONFIG_AUTO_CONVERSION]:
+        if not os.path.exists(required_fp):
+            raise FileNotFoundError(
+                f"Required AgentJet config asset not found: {required_fp}. "
+                "Please check your installation and repository layout."
+            )
+
+    # Avoid creating `/tmp/ajet` because Ray workers may run with cwd=`/tmp`,
+    # and then Python can accidentally import a namespace package from `/tmp/ajet`
+    # instead of the real `agentjet_codebase/ajet` package.
+    runtime_tmp_dir = "/tmp/agentjet"
+    os.makedirs(runtime_tmp_dir, exist_ok=True)
+    assert os.path.exists(runtime_tmp_dir), (
+        f"Temporary directory {runtime_tmp_dir} cannot be created."
+    )
 
     # let's begin the training process
     if args.backbone == "trinity":
