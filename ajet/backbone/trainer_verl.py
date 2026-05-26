@@ -179,63 +179,46 @@ def capture_training_token_ids(batch: DataProto, tokenizer, out_path: str, globa
         f.write(_sample_md(chosen, f"batch size: {n} (first image-bearing sample)"))
 
 
-def parse_reward_from_dataproto(data: DataProto, return_dict=False) -> dict | torch.Tensor:
+def parse_reward_from_dataproto(data: DataProto) -> torch.Tensor:
     """
-    Compute reward for a batch of data.
-    Args:
-        data: DataProto object containing the input data.
-        return_dict: Whether to return a dictionary or just the reward tensor.
-
-    Returns:
-        Tensor of shape (bs, response_len) if return_dict is False,
-        or a dict with 'reward_tensor' and 'reward_extra_info'.
+    Reward scalar -> token-level reward tensor conversion.
     """
-    # Within DataFlow, world.execute() will pass a float score, which will be contained in the DataProto.non_tensor_batch('reward_scores')
-
-    # Initialize reward tensor
     reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)  # (bs, reslen)
-    reward_extra_info = defaultdict(list)
 
-    # Batch-level processing
-    prompt_ids_batch = data.batch["prompts"]  # (bs, prompt_len)
-    prompt_lengths = prompt_ids_batch.shape[-1]
+    def get_response_lengths():
+        # Batch-level processing
+        prompt_ids_batch = data.batch["prompts"]  # (bs, prompt_len)
+        prompt_lengths = prompt_ids_batch.shape[-1]
+        # Get attention masks for all items
+        attention_masks = data.batch["attention_mask"]  # (bs, total_len)
+        response_lengths = attention_masks[:, prompt_lengths:].sum(dim=1)  # (bs, )
+        return response_lengths
 
-    # Get attention masks for all items
-    attention_masks = data.batch["attention_mask"]  # (bs, total_len)
-    response_lengths = attention_masks[:, prompt_lengths:].sum(dim=1)  # (bs, )
-
-    # Get reward scores
-    reward_scores_list = [item for item in data.non_tensor_batch["reward_scores"]]
+    # Get scalar reward scores
     reward_scores = torch.tensor(
-        reward_scores_list, device=reward_tensor.device, dtype=torch.float32
+        [item for item in data.non_tensor_batch["reward_scores"]],
+        device=reward_tensor.device, dtype=torch.float32
     )  # (bs, )
 
     # Use advanced indexing to assign rewards (placing reward at the last token position)
-    reward_tensor[torch.arange(len(data)), response_lengths - 1] = reward_scores
+    # e.g.
+    # reward_scores = [1,2,3]
+    # response_lengths = [7,3,4]
+    # reward_tensor = [
+    #     [0,0,0,0,0,0,1,0,0],
+    #     [0,0,2,0,0,0,0,0,0],
+    #     [0,0,0,3,0,0,0,0,0],
+    # ]
+    response_lengths = get_response_lengths()
+    assert len(data) == reward_tensor.shape[0]
+    reward_tensor[torch.arange(reward_tensor.shape[0]), response_lengths - 1] = reward_scores
 
-    if return_dict:
-        return {
-            "reward_tensor": reward_tensor,
-            "reward_extra_info": reward_extra_info,
-        }
-    else:
-        return reward_tensor
+    return reward_tensor
 
 
 def compute_reward(data: DataProto) -> tuple[torch.Tensor, dict[str, Any]]:
-    """
-    Compute reward for a batch of data.
-    Args:
-        data: DataProto object containing the input data.
-        reward_fn: Reward function to compute the reward.
-    Returns:
-        Tuple of reward tensor and extra info dictionary.
-    """
-
-    reward_result = parse_reward_from_dataproto(data, return_dict=True)
-    reward_tensor = reward_result["reward_tensor"]  # type: ignore
-    reward_extra_infos_dict = reward_result.get("reward_extra_info", {})  # type: ignore
-    return reward_tensor, reward_extra_infos_dict
+    reward_tensor = parse_reward_from_dataproto(data)
+    return reward_tensor, {}
 
 
 def union_gen_batch_via_task_id(tasks, batch: DataProto, gen_batch_output: DataProto, discard_original_batch=False):
@@ -324,47 +307,48 @@ def compute_grpo_episode_level_outcome_advantage(
     Returns:
         (advantages, returns) - both (bsz, response_length); identical, as in GRPO.
     """
-    scores = (token_level_rewards * response_mask).sum(dim=-1)  # (bsz,) scalar reward
+    scores = token_level_rewards.sum(dim=-1)    #  (bs, response_length)
     bsz = scores.shape[0]
 
-    # 1) reduce each episode to its mean scalar reward
-    episode_score_sum: dict = defaultdict(float)
-    episode_score_cnt: dict = defaultdict(int)
-    for i in range(bsz):
-        ep = episode_index[i]
-        episode_score_sum[ep] += scores[i].item()
-        episode_score_cnt[ep] += 1
-    episode_mean = {ep: episode_score_sum[ep] / episode_score_cnt[ep] for ep in episode_score_sum}
+    with torch.no_grad():
+        # 1) reduce each episode to its mean scalar reward
+        episode_score_sum: dict = defaultdict(float)
+        episode_score_cnt: dict = defaultdict(int)
+        for i in range(bsz):
+            ep = episode_index[i]
+            episode_score_sum[ep] += scores[i].item()
+            episode_score_cnt[ep] += 1
+        episode_mean = {ep: episode_score_sum[ep] / episode_score_cnt[ep] for ep in episode_score_sum}
 
-    # 2) collect, per task, the set of distinct episodes it produced
-    task2episodes: dict = defaultdict(dict)  # use dict as ordered set
-    for i in range(bsz):
-        task2episodes[index[i]][episode_index[i]] = None
+        # 2) collect, per task, the set of distinct episodes it produced
+        task2episodes: dict = defaultdict(dict)  # use dict as ordered set
+        for i in range(bsz):
+            task2episodes[index[i]][episode_index[i]] = None
 
-    # 3) per-task baseline = mean/std over the per-episode means.
-    #    Single-episode tasks are degenerate -> follow verl's convention
-    #    (mean=0, std=1) so the advantage reduces to the raw score.
-    task_mean: dict = {}
-    task_std: dict = {}
-    for task, episodes in task2episodes.items():
-        vals = torch.tensor([episode_mean[ep] for ep in episodes], dtype=torch.float32)
-        if vals.numel() == 1:
-            task_mean[task] = torch.tensor(0.0)
-            task_std[task] = torch.tensor(1.0)
-        else:
-            task_mean[task] = vals.mean()
-            task_std[task] = vals.std()
+        # 3) per-task baseline = mean/std over the per-episode means.
+        #    Single-episode tasks are degenerate -> follow verl's convention
+        #    (mean=0, std=1) so the advantage reduces to the raw score.
+        task_mean: dict = {}
+        task_std: dict = {}
+        for task, episodes in task2episodes.items():
+            vals = torch.tensor([episode_mean[ep] for ep in episodes], dtype=torch.float32)
+            if vals.numel() == 1:
+                task_mean[task] = torch.tensor(0.0)
+                task_std[task] = torch.tensor(1.0)
+            else:
+                task_mean[task] = vals.mean()
+                task_std[task] = vals.std()
 
-    # 4) centre (and optionally normalise) every sample against its task baseline
-    adv = scores.clone()
-    for i in range(bsz):
-        task = index[i]
-        if norm_adv_by_std_in_grpo:
-            adv[i] = (scores[i] - task_mean[task]) / (task_std[task] + epsilon)
-        else:
-            adv[i] = scores[i] - task_mean[task]
+        # 4) centre (and optionally normalise) every sample against its task baseline
+        adv = scores.clone()
+        for i in range(bsz):
+            task = index[i]
+            if norm_adv_by_std_in_grpo:
+                adv[i] = (scores[i] - task_mean[task]) / (task_std[task] + epsilon)
+            else:
+                adv[i] = scores[i] - task_mean[task]
 
-    adv = adv.unsqueeze(-1) * response_mask
+        adv = adv.unsqueeze(-1) * response_mask
     return adv, adv
 
 
@@ -396,8 +380,18 @@ def compute_episode_level_loss_weight(data: DataProto) -> torch.Tensor:
         dtype=advantages.dtype,
         device=advantages.device,
     )
+
+    # per_sample = tensor([1.0000, 0.3333, 0.3333, 0.3333, 0.5000, 0.5000])
     # broadcast per-sample weight to the same shape as advantages
     weights = per_sample.view(-1, 1) * torch.ones_like(advantages)
+
+    # expected loss_weight:
+    # tensor([[1.0000, 1.0000, 1.0000, 1.0000],
+    #         [0.3333, 0.3333, 0.3333, 0.3333],
+    #         [0.3333, 0.3333, 0.3333, 0.3333],
+    #         [0.3333, 0.3333, 0.3333, 0.3333],
+    #         [0.5000, 0.5000, 0.5000, 0.5000],
+    #         [0.5000, 0.5000, 0.5000, 0.5000]])
     return weights
 
 
@@ -688,8 +682,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
 
         # perform validation before training
-        # currently, we only support validation using the reward_function.
-        if (self.val_reward_fn is not None) and (self.config.ajet.trainer_common.val_before_train) and (not self.config.ajet.enable_swarm_mode):
+        if (self.config.ajet.trainer_common.val_before_train) and (not self.config.ajet.enable_swarm_mode):
             val_metrics = self._validate()
             assert val_metrics, f"{val_metrics=}"
             self.verl_logger.log(data=val_metrics, step=self.global_steps)
@@ -855,7 +848,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                     batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()
 
                     with marked_timer("reward", timing_raw, color="yellow"):
-                        reward_tensor, reward_extra_infos_dict = compute_reward(batch)
+                        reward_tensor = parse_reward_from_dataproto(batch)
 
                     # one-shot debug: dump the training-side token ids (with the
                     # image expanded to <|image_pad|>) so they can be compared
@@ -938,11 +931,8 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                     with marked_timer("adv", timing_raw, color="brown"):
                         # we combine with rule-based rm
-                        reward_extra_infos_dict: dict[str, list]
-                        batch.batch["token_level_scores"] = reward_tensor   # from compute_reward
+                        batch.batch["token_level_scores"] = reward_tensor
 
-                        if reward_extra_infos_dict:
-                            batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
                             batch, kl_metrics = apply_kl_penalty(
@@ -994,17 +984,9 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         # contribute equally to the policy-gradient update
                         # (disabled by default). Consumed in
                         # AjetDataParallelPPOActor.update_policy.
-                        if bool(
-                            self.config.ajet.trainer_common.get(
-                                "loss_weight_normalization_episode_level", False
-                            )
-                        ):
+                        if bool(self.config.ajet.trainer_common.get("loss_weight_normalization_episode_level", False)):
                             if "episode_uuids" not in batch.non_tensor_batch:
-                                raise KeyError(
-                                    "loss_weight_normalization_episode_level is enabled but "
-                                    "non_tensor_batch['episode_uuids'] is missing; cannot "
-                                    "identify same-episode samples."
-                                )
+                                raise KeyError("loss_weight_normalization_episode_level is enabled but non_tensor_batch['episode_uuids'] is missing; cannot identify same-episode samples.")
                             batch.batch["loss_weight"] = compute_episode_level_loss_weight(batch)
 
                     # update critic
@@ -1024,8 +1006,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                     # validate
                     if (
-                        self.val_reward_fn is not None
-                        and self.config.trainer.test_freq > 0
+                        self.config.trainer.test_freq > 0
                         and (is_last_step or self.global_steps % self.config.trainer.test_freq == 0)
                         and (not self.config.ajet.enable_swarm_mode)
                     ):
@@ -1112,7 +1093,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
     # #######################################
     def _validate(self):
         data_source_lst = []
-        reward_extra_infos_dict: dict[str, list] = defaultdict(list)
 
         # Lists to collect samples for the table
         sample_outputs = []
@@ -1205,24 +1185,9 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             # test_batch = test_batch.union(test_output_gen_batch)
             test_batch.meta_info["validate"] = True
 
-            # evaluate using reward_function
-            if self.val_reward_fn is None:
-                raise ValueError("val_reward_fn must be provided for validation.")
-            result = self.val_reward_fn(test_batch, return_dict=True)
-            reward_tensor = result["reward_tensor"]
+            reward_tensor = parse_reward_from_dataproto(test_batch)
             scores = reward_tensor.sum(-1).cpu().tolist()
             sample_scores.extend(scores)
-
-            reward_extra_infos_dict["reward"].extend(scores)
-            logger.info(
-                f"len reward_extra_infos_dict['reward']: {len(reward_extra_infos_dict['reward'])}"
-            )
-            if "reward_extra_info" in result:
-                for key, lst in result["reward_extra_info"].items():
-                    reward_extra_infos_dict[key].extend(lst)
-                    logger.info(
-                        f"len reward_extra_infos_dict['{key}']: {len(reward_extra_infos_dict[key])}"
-                    )
 
             # collect num_turns of each prompt
             if "__num_turns__" in test_batch.non_tensor_batch:

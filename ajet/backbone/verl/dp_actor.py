@@ -25,7 +25,7 @@ import torch
 import torch.distributed as dist
 
 from verl import DataProto
-from verl.trainer.ppo.core_algos import agg_loss, get_policy_loss_fn, kl_penalty
+from ajet.backbone.verl.core_algos import agg_loss, get_policy_loss_fn, kl_penalty
 from verl.utils.device import get_device_id
 from verl.utils.profiler import GPUMemoryLogger
 from verl.utils.py_functional import append_to_dict
@@ -214,15 +214,6 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                     old_log_prob = model_inputs["old_log_probs"]
                     advantages = model_inputs["advantages"]
                     # [AJET] Episode-level loss-weight normalization.
-                    # When ajet.trainer_common.loss_weight_normalization_episode_level
-                    # is enabled, every sample carries a per-token weight (1/N for
-                    # an episode that produced N samples), same shape as advantages.
-                    # Scaling the advantages by this positive weight scales each
-                    # sample's policy-gradient contribution by the same factor (the
-                    # clip/ratio behaviour is unchanged since the weight is a
-                    # positive per-sample constant); the same weight is applied to
-                    # the per-token KL term below, so every episode contributes
-                    # equally to the total loss.
                     loss_weight = model_inputs.get("loss_weight", None)
                     if loss_weight is not None:
                         loss_weight = loss_weight.to(advantages.dtype)
