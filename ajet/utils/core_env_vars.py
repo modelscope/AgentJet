@@ -66,6 +66,12 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
         "OPENAI_BASE_URL",
         "API_KEY",
         "BASE_URL",
+        "AGENTJET_FIND_MAX_PPO_TOKEN_LEN",
+        "AGENTJET_FIND_MAX_START",
+        "AGENTJET_FIND_MAX_CAP",
+        "AGENTJET_FIND_MAX_TOL",
+        "AGENTJET_FIND_MAX_BUDGET_S",
+        "AGENTJET_FIND_MAX_SEQ",
     ]
 
     for var in optional_env_vars:

@@ -49,7 +49,6 @@
     "ajet.rollout.max_model_len": [
         "actor_rollout_ref.rollout.max_model_len",
         "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu",
-        "actor_rollout_ref.actor.ppo_max_token_len_per_gpu",
         "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu"
     ],
 

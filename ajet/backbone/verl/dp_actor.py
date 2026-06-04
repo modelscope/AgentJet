@@ -138,6 +138,14 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
         # make sure we are in training mode
         self.actor_module.train()
 
+        # [AJET] Optional: estimate the GPU-memory limit of ppo_max_token_len_per_gpu and raise.
+        # Triggered by env AGENTJET_FIND_MAX_PPO_TOKEN_LEN. Intercepts the *first* real PPO update
+        # (model + grads + optimizer already resident, so the measurement is realistic). See
+        # ajet.utils.find_max_ppo_token_len. It never returns.
+        if os.environ.get("AGENTJET_FIND_MAX_PPO_TOKEN_LEN"):
+            from ajet.utils.find_max_ppo_token_len import find_max_ppo_token_len_per_gpu
+            find_max_ppo_token_len_per_gpu(self, data)
+
         temperature = data.meta_info["temperature"]  # temperature must be in the data.meta_info to avoid silent error
         pad_token_id = data.meta_info.get("pad_token_id", 0)
 

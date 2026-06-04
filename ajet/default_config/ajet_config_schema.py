@@ -3,7 +3,7 @@
 
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -26,6 +26,7 @@ class AjetTrainerCommon:
     use_kl_in_reward: bool = False
     kl_penalty_type: str = "kl"
     ppo_epochs: int = 1
+    ulysses_sequence_parallel_size: int = 1
     val_print_to_markdown_file_path: str | None = None
     train_print_to_markdown_file_path: str | None = None
     total_training_steps: int | None = None
@@ -34,20 +35,9 @@ class AjetTrainerCommon:
     total_epochs: int = 50
     val_pass_n: int = 4
     val_before_train: bool = False
-    # When enabled, every sample produced by the same episode (same
-    # non_tensor_batch["episode_uuids"]) gets its loss weight multiplied by
-    # 1/N (N = number of samples in that episode) so each episode contributes
-    # equally to the policy-gradient update regardless of how many samples it
-    # generated. Disabled by default (current behaviour: every sample weighted
-    # equally).
+    # When enabled, every sample produced by the same episode (same non_tensor_batch["episode_uuids"]) gets its loss weight multiplied by 1/N (N = number of samples in that episode)
     loss_weight_normalization_episode_level: bool = False
-    # When enabled, GRPO group statistics (baseline mean / std) are computed at
-    # episode scope instead of sample scope: each episode (same
-    # non_tensor_batch["episode_uuids"]) is first reduced to its mean reward,
-    # then the per-task (same non_tensor_batch["uid"]) baseline is the mean over
-    # those episode means. This makes every episode contribute equally to the
-    # advantage baseline regardless of how many samples it generated. Disabled
-    # by default (current behaviour: baseline is the mean over all samples).
+    # When enabled, GRPO group statistics (baseline mean / std) are computed at episode scope instead of sample scope
     advantage_estimation_episode_level: bool = False
 
 @dataclass
@@ -71,6 +61,8 @@ class AjetRollout:
     max_num_seqs: int = 64
     num_repeat: int = 8
     gpu_memory_utilization: float = 0.85
+    # Per-GPU token budget for the PPO actor update (dynamic batching).
+    ppo_max_token_len_per_gpu: Optional[int] = None  # None => track ajet.rollout.max_model_len (legacy behaviour).
     compute_madness_checklist: List[str] = field(default_factory=list)
 
 

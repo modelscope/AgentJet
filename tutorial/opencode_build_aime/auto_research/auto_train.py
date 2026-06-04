@@ -19,12 +19,30 @@ from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
-from tutorial.opencode_build_aime.agent_run_v3 import execute_agent
 from tutorial.opencode_build_aime import download_data
 from tqdm import tqdm
 
 
 DEFAULT_PROJECT_NAME = "subject14_aime_baseline_group_8_bs32"
+
+# Framework-ablation: the OpenAI-SDK agent loop is agent_run_v3 (the baseline); the
+# langchain / agentscope / rawhttp variants reuse v3's sandbox tool + reward and
+# differ only in the LLM client. `--framework` picks which one drives the trainer;
+# data, prompt, tool, reward, and all hyperparameters stay identical across arms.
+_FRAMEWORK_MODULES = {
+    "openai": "tutorial.opencode_build_aime.agent_run_v3",
+    "langchain": "tutorial.opencode_build_aime.agent_run_langchain",
+    "agentscope": "tutorial.opencode_build_aime.agent_run_agentscope",
+    "rawhttp": "tutorial.opencode_build_aime.agent_run_rawhttp",
+}
+
+
+def resolve_execute_agent(framework: str):
+    import importlib
+    module_path = _FRAMEWORK_MODULES.get(framework)
+    if module_path is None:
+        raise ValueError(f"Unknown framework {framework!r}; choose from {sorted(_FRAMEWORK_MODULES)}")
+    return importlib.import_module(module_path).execute_agent
 
 
 def scalar_reward(reward: float | list[float] | None) -> float:
@@ -78,6 +96,8 @@ def load_eval_tasks(test_dataset: str, label: str = "") -> list:
 class AIMEAutoResearchEval:
     def __init__(self, args: argparse.Namespace):
         self.args = args
+        self.framework = getattr(args, "framework", "openai")
+        self.execute_agent = resolve_execute_agent(self.framework)
         self.swarm_url = args.swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
         self.result_dir = args.result_dir
         data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -123,7 +143,7 @@ class AIMEAutoResearchEval:
             discard_episode_timeout=120, episode_type="eval"
         )
         try:
-            workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
+            workflow_output = self.execute_agent(task, api_baseurl_key, self.ajet_job)
             return scalar_reward(workflow_output.reward)
         finally:
             self.swarm_worker.abort_episode(episode_uuid)
@@ -269,7 +289,7 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
         assert self.swarm_worker is not None, "setup() must be called before rollout()"
         assert self.ajet_job is not None, "AgentJet job must be initialized before rollout()"
         episode_uuid, api_baseurl_key = self.swarm_worker.begin_episode(discard_episode_timeout=120)
-        workflow_output = execute_agent(task, api_baseurl_key, self.ajet_job)
+        workflow_output = self.execute_agent(task, api_baseurl_key, self.ajet_job)
         self.swarm_worker.end_episode(task, episode_uuid, workflow_output)
         return scalar_reward(workflow_output.reward)
 
@@ -334,6 +354,11 @@ def main():
                         help="Swarm server URL")
     parser.add_argument("--project-name", type=str, default=DEFAULT_PROJECT_NAME,
                         help="Shared project name used for this research line")
+    parser.add_argument("--framework", type=str, default="openai",
+                        choices=sorted(_FRAMEWORK_MODULES),
+                        help="Client framework for the agent loop "
+                             "(openai=agent_run_v3 baseline / langchain / agentscope / rawhttp). "
+                             "The only variable in the framework-ablation experiment.")
     parser.add_argument("--resolved-yaml-path", type=str, default=None,
                         help="Optional output path for the fully resolved swarm config yaml")
     parser.add_argument("--prepare-only", action="store_true",

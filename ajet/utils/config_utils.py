@@ -206,6 +206,20 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
                 f"[Note]: Aligned parameter from [{from_key}] to [{to_key}] with value: [{value}]"
             )
 
+    # [AJET] ajet.rollout.ppo_max_token_len_per_gpu is the SOLE source of the actor's per-gpu PPO
+    # token budget (it is deliberately NOT pulled in via the ajet.rollout.max_model_len mapping
+    # above). None means "track max_model_len" (legacy behaviour); an explicit int decouples the
+    # PPO update budget from max_model_len. The verl key only carries the resolved value so it can
+    # reach the Ray actor (which receives the actor_rollout_ref subtree, not the ajet namespace).
+    ppo_token_len = _dive_to_fetch_value(from_config, "ajet.rollout.ppo_max_token_len_per_gpu")
+    if ppo_token_len is None:
+        ppo_token_len = _dive_to_fetch_value(from_config, "ajet.rollout.max_model_len")
+    _dive_to_set_value(to_config, "actor_rollout_ref.actor.ppo_max_token_len_per_gpu", ppo_token_len)
+    logger.success(
+        f"[Note]: Resolved [actor_rollout_ref.actor.ppo_max_token_len_per_gpu] = [{ppo_token_len}] "
+        "from [ajet.rollout.ppo_max_token_len_per_gpu] (None => ajet.rollout.max_model_len)."
+    )
+
     # backbone specific safe guard
     to_config = align_parameter_safe_guard(to_config, backbone)
 

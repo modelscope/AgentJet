@@ -49,6 +49,15 @@ ajet:
     # max token length allowed for the model during rollout
     max_model_len: 18000
 
+    # Per-GPU token budget for the PPO actor update under dynamic batching.
+    # null  => follow max_model_len (the four verl *_token_len_per_gpu keys all track max_model_len).
+    # <int> => override ONLY actor_rollout_ref.actor.ppo_max_token_len_per_gpu, so the PPO update
+    #          can pack larger micro-batches (squeeze more out of GPU memory) while keeping the
+    #          rollout/log_prob lengths tied to max_model_len.
+    # Tip: set env AGENTJET_FIND_MAX_PPO_TOKEN_LEN=1 to auto-probe the hardware limit (the run will
+    #      raise with the discovered value, which you then paste here).
+    ppo_max_token_len_per_gpu: null
+
     multi_turn:
       # how many samples should be collected for each task run
       max_sample_per_task: 30

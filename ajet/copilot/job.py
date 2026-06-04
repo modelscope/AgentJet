@@ -128,6 +128,8 @@ class AgentJetJob:
         max_model_len: int | None = None,
         tensor_model_parallel_size: int | None = None,
         max_num_seqs: int | None = None,
+        ppo_max_token_len_per_gpu: int | None = None,
+        ulysses_sequence_parallel_size: int | None = None,
         mini_batch_num: int | None = None,
         lora_rank: int | None = None,
         lora_alpha: int | None = None,
@@ -196,6 +198,8 @@ class AgentJetJob:
         self.max_model_len: int = cast(int, max_model_len)
         self.tensor_model_parallel_size: int = cast(int, tensor_model_parallel_size)
         self.max_num_seqs: int = cast(int, max_num_seqs)
+        self.ppo_max_token_len_per_gpu: int | None = ppo_max_token_len_per_gpu
+        self.ulysses_sequence_parallel_size: int | None = ulysses_sequence_parallel_size
         self.mini_batch_num: int = cast(int, mini_batch_num)
         self.lora_rank: int = cast(int, lora_rank)
         self.lora_alpha: int = cast(int, lora_alpha)
@@ -237,6 +241,8 @@ class AgentJetJob:
             "ajet.rollout.max_model_len":                   "max_model_len",
             "ajet.rollout.tensor_model_parallel_size":      "tensor_model_parallel_size",
             "ajet.rollout.max_num_seqs":                    "max_num_seqs",
+            "ajet.rollout.ppo_max_token_len_per_gpu":       "ppo_max_token_len_per_gpu",
+            "ajet.trainer_common.ulysses_sequence_parallel_size": "ulysses_sequence_parallel_size",
             "ajet.trainer_common.mini_batch_num":           "mini_batch_num",
             "ajet.lora.lora_rank":                          "lora_rank",
             "ajet.lora.lora_alpha":                         "lora_alpha",
