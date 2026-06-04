@@ -18,6 +18,7 @@
 
 ## ✈️ News
 
+- 2026.6.4 Arxiv paper release: *AgentJet - A Flexible Swarm Training Framework for Agentic Reinforcement Learning* [2606.04484](https://arxiv.org/abs/2606.04484).
 - 2026.5.26 From Laptop to GPU Cluster: `sync_train_code` enables remote-controlled Swarm Training and closes the loop for automated RL research. [EN Blog](https://modelscope.github.io/AgentJet/en/blog_sync_train_code/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/blog_sync_train_code.zh/).
 - 2026.4.30 DeepFinance: training a financial deep-research Agent with multi-dimensional reward GRPO. [EN Blog](https://modelscope.github.io/AgentJet/en/example_deep_finance/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/example_deep_finance.zh/).
 - 2026.4.9 AgentJet-powered Auto Research: fully automated overnight RL experiments. [EN Blog](https://modelscope.github.io/AgentJet/en/blog_auto_research.en/) / [ZH Blog](https://modelscope.github.io/AgentJet/en/blog_auto_research/).
