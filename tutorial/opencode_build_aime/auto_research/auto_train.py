@@ -36,12 +36,36 @@ _FRAMEWORK_MODULES = {
     "rawhttp": "tutorial.opencode_build_aime.agent_run_rawhttp",
 }
 
+# API-ablation: which OpenAI endpoint shape does the openai-sdk client hit?
+#   - "chat"      → POST /v1/chat/completions  (legacy default; reuse v3 directly)
+#   - "responses" → POST /v1/responses          (new; uses agent_run_responses)
+# Both share the same model, prompt, tool, reward, and dataset.
+_API_MODULES = {
+    "chat": "tutorial.opencode_build_aime.agent_run_v3",
+    "responses": "tutorial.opencode_build_aime.agent_run_responses",
+}
+
 
 def resolve_execute_agent(framework: str):
     import importlib
     module_path = _FRAMEWORK_MODULES.get(framework)
     if module_path is None:
         raise ValueError(f"Unknown framework {framework!r}; choose from {sorted(_FRAMEWORK_MODULES)}")
+    return importlib.import_module(module_path).execute_agent
+
+
+def resolve_execute_agent_by_api(api: str):
+    """Pick the agent module by OpenAI API surface (chat vs responses).
+
+    Takes precedence over `--framework` when both are given: the API ablation
+    is the actual variable under test, while `--framework` is kept for the
+    separate framework-ablation arms (langchain / agentscope / rawhttp), all
+    of which currently use the chat-completions shape.
+    """
+    import importlib
+    module_path = _API_MODULES.get(api)
+    if module_path is None:
+        raise ValueError(f"Unknown api {api!r}; choose from {sorted(_API_MODULES)}")
     return importlib.import_module(module_path).execute_agent
 
 
@@ -97,7 +121,14 @@ class AIMEAutoResearchEval:
     def __init__(self, args: argparse.Namespace):
         self.args = args
         self.framework = getattr(args, "framework", "openai")
-        self.execute_agent = resolve_execute_agent(self.framework)
+        self.api = getattr(args, "api", "chat")
+        # API ablation takes precedence over framework ablation when set to
+        # "responses"; otherwise we fall back to the framework picker so the
+        # existing langchain/agentscope/rawhttp arms still work.
+        if self.api == "responses":
+            self.execute_agent = resolve_execute_agent_by_api(self.api)
+        else:
+            self.execute_agent = resolve_execute_agent(self.framework)
         self.swarm_url = args.swarm_url or os.getenv("AJET_SWARM_URL", "http://localhost:10086")
         self.result_dir = args.result_dir
         data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -359,6 +390,12 @@ def main():
                         help="Client framework for the agent loop "
                              "(openai=agent_run_v3 baseline / langchain / agentscope / rawhttp). "
                              "The only variable in the framework-ablation experiment.")
+    parser.add_argument("--api", type=str, default="chat",
+                        choices=sorted(_API_MODULES),
+                        help="OpenAI API surface to drive the agent with: "
+                             "'chat' (POST /v1/chat/completions, default) or "
+                             "'responses' (POST /v1/responses, the new endpoint). "
+                             "When 'responses' is selected, --framework is ignored.")
     parser.add_argument("--resolved-yaml-path", type=str, default=None,
                         help="Optional output path for the fully resolved swarm config yaml")
     parser.add_argument("--prepare-only", action="store_true",

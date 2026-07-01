@@ -252,19 +252,16 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         return {"status": "ok"}
 
 
-    @app.post("/v1/chat/completions")
-    async def chat_completions(request: Request, authorization: str = Header(None)):
-        """
-        OpenAI-compatible chat completions endpoint.
-        Receives ChatCompletionRequest and returns ChatCompletion.
-        """
+    def _parse_authorization_header(authorization):
+        """Parse the AgentJet authorization header.
 
-        # Parse authorization header (base64 encoded JSON)
+        Returns (agent_name, target_tag, episode_uuid, episode_address).
+        Raises HTTPException on any failure so callers can `return` it directly.
+        """
         if not authorization:
-            return HTTPException(status_code=401, detail="Missing authorization header")
+            raise HTTPException(status_code=401, detail="Missing authorization header")
 
         try:
-            # Remove "Bearer " prefix if present
             auth_token = authorization.replace("Bearer ", "").replace("bearer ", "").replace(API_KEY_PREFIX, "")
             decoded = base64.b64decode(auth_token).decode('utf-8')
             auth_data = json.loads(decoded)
@@ -275,9 +272,55 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             episode_address = auth_data.get("episode_address")
 
             if not all([agent_name, target_tag, episode_uuid]):
-                return HTTPException(status_code=401, detail="Invalid authorization data")
+                raise HTTPException(status_code=401, detail="Invalid authorization data")
+        except HTTPException:
+            raise
         except Exception as e:
-            return HTTPException(status_code=401, detail=f"Invalid authorization header: {str(e)}")
+            raise HTTPException(status_code=401, detail=f"Invalid authorization header: {str(e)}")
+
+        return agent_name, target_tag, episode_uuid, episode_address
+
+    def _check_swarm_episode_and_refresh(episode_uuid: str):
+        """Verify the engine is ROLLING and the episode is claimed; refresh activity.
+
+        Returns `preserve_sampling_params` (True iff the episode is an eval episode).
+        Mirrors the body of the same name that lived inline in `chat_completions`,
+        so the behaviour of both endpoints stays identical.
+        """
+        from ajet.tuner_lib.experimental.swarm_server import ep_key
+        from ajet.tuner_lib.experimental.interchange_utils import _refresh_client_activity
+        assert shared_mem_dict is not None
+        assert shared_mem_dict_lock is not None
+
+        if shared_mem_dict['engine_status'] not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
+            logger.error(f"The server is not in ENGINE.ROLLING status (current status: [{shared_mem_dict['engine_status']}]), cannot accept new requests.")
+            raise HTTPException(status_code=404, detail="The server is not in ENGINE.ROLLING status, cannot accept new requests.")
+
+        if ep_key(episode_uuid) not in shared_mem_dict:
+            raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
+
+        preserve_sampling_params = False
+        with shared_mem_dict_lock:
+            es: EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
+            es.latest_activity_timestamp = time.time()
+            es.llm_call_count += 1
+            shared_mem_dict[ep_key(episode_uuid)] = es
+        if es.episode_type == "eval":
+            preserve_sampling_params = True
+        # An LLM call counts as activity for keeping the owning client in the
+        # swarm-server active list (no-op if it's not active yet).
+        _refresh_client_activity(es.client_uuid, shared_mem_dict)
+        return preserve_sampling_params
+
+    @app.post("/v1/chat/completions")
+    async def chat_completions(request: Request, authorization: str = Header(None)):
+        """
+        OpenAI-compatible chat completions endpoint.
+        Receives ChatCompletionRequest and returns ChatCompletion.
+        """
+
+        # Parse authorization header (base64 encoded JSON)
+        agent_name, target_tag, episode_uuid, episode_address = _parse_authorization_header(authorization)
 
         if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/chat/completions")
 
@@ -303,29 +346,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
         # enable_swarm_mode
         if enable_swarm_mode:
-            from ajet.tuner_lib.experimental.swarm_server import ep_key
-            from ajet.tuner_lib.experimental.interchange_utils import _refresh_client_activity
-            assert shared_mem_dict is not None
-            assert shared_mem_dict_lock is not None
-
-            if shared_mem_dict['engine_status'] not in ["ENGINE.ROLLING", "ENGINE.ROLLING_POST"]:
-                logger.error(f"The server is not in ENGINE.ROLLING status (current status: [{shared_mem_dict['engine_status']}]), cannot accept new requests.")
-                raise HTTPException(status_code=404, detail="The server is not in ENGINE.ROLLING status, cannot accept new requests.")
-
-            if ep_key(episode_uuid) not in shared_mem_dict:
-                raise HTTPException(status_code=404, detail=f"Episode {episode_uuid} not found.")
-
-            # update activate timestamp and increment llm call counter
-            with shared_mem_dict_lock:
-                es:EpisodeStatus = shared_mem_dict[ep_key(episode_uuid)]
-                es.latest_activity_timestamp = time.time()
-                es.llm_call_count += 1
-                shared_mem_dict[ep_key(episode_uuid)] = es
-            if es.episode_type == "eval":
-                preserve_sampling_params = True
-            # chat-completion counts as activity for keeping the owning client
-            # in the swarm-server active list (no-op if it's not active yet).
-            _refresh_client_activity(es.client_uuid, shared_mem_dict)
+            preserve_sampling_params = _check_swarm_episode_and_refresh(episode_uuid)
 
         # For streaming, we process as non-streaming but return in streaming format
         original_stream = new_req.stream
@@ -358,6 +379,82 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
 
         return result
+
+
+    @app.post("/v1/responses")
+    async def responses(request: Request, authorization: str = Header(None)):
+        """OpenAI Responses API endpoint (mirrors /v1/chat/completions behaviour).
+
+        Translates ResponseCreateParams → ChatCompletionRequest, reuses the
+        same ZMQ → worker → LLM pipeline, then converts the resulting
+        ChatCompletion back into a Responses `Response` object. When the
+        client asks for streaming (`stream: true`) the full Response is
+        chunked into the SSE event sequence the OpenAI SDK expects.
+        """
+        from ajet.tuner_lib.experimental.oai_responses_adapter import (
+            build_chat_completion_request,
+            chat_completion_to_responses_dict,
+            iter_responses_sse_events,
+        )
+
+        agent_name, target_tag, episode_uuid, episode_address = _parse_authorization_header(authorization)
+
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/responses")
+
+        body = await request.json()
+        instructions = body.get("instructions") if isinstance(body, dict) else None
+
+        new_req, original_stream = build_chat_completion_request(body)
+
+        log_empty_content_messages(new_req.messages, episode_uuid=episode_uuid)
+
+        timeline_uuid = uuid.uuid4().hex
+        preserve_sampling_params = False
+
+        if enable_swarm_mode:
+            preserve_sampling_params = _check_swarm_episode_and_refresh(episode_uuid)
+
+        # Always forward as non-streaming; the worker pipeline is non-incremental
+        # and we synthesize Responses SSE events ourselves on the way back.
+        new_req.stream = False
+        new_req.stream_options = None
+
+        int_req = InterchangeCompletionRequest(
+            completion_request=new_req,
+            agent_name=agent_name,
+            target_tag=target_tag,
+            episode_uuid=episode_uuid,
+            timeline_uuid=timeline_uuid,
+            preserve_sampling_params=preserve_sampling_params,
+        )
+        if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new responses request (outside thread)")
+        loop = asyncio.get_running_loop()
+        result: ChatCompletion = await loop.run_in_executor(
+            request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
+        )
+
+        model_name = body.get("model") if isinstance(body, dict) else None
+        response_dict = chat_completion_to_responses_dict(
+            result,
+            model=model_name or result.model or "unknown",
+            instructions=instructions if isinstance(instructions, str) else None,
+        )
+
+        if enable_swarm_mode:
+            assert shared_mem_dict is not None
+            shared_mem_dict["latest_llm_call"] = {
+                "input": body,
+                "output": response_dict,
+                "format": "responses",
+            }
+
+        if original_stream:
+            return StreamingResponse(
+                iter_responses_sse_events(response_dict),
+                media_type="text/event-stream",
+            )
+
+        return response_dict
 
 
     if enable_swarm_mode:
