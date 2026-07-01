@@ -311,108 +311,80 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request, authorization: str = Header(None)):
-        """
-        OpenAI-compatible chat completions endpoint.
-        Receives ChatCompletionRequest and returns ChatCompletion.
-        """
+        """OpenAI-compatible chat completions endpoint (POST /v1/chat/completions)."""
+        return await _run_openai_endpoint(request, authorization, fmt="chat")
 
-        # Parse authorization header (base64 encoded JSON)
+    @app.post("/v1/responses")
+    async def responses(request: Request, authorization: str = Header(None)):
+        """OpenAI Responses API endpoint (POST /v1/responses)."""
+        return await _run_openai_endpoint(request, authorization, fmt="responses")
+
+    @app.post("/v1/messages")
+    async def messages(request: Request, authorization: str = Header(None), x_api_key: str = Header(None, alias="x-api-key")):
+        """Anthropic Messages API endpoint (POST /v1/messages).
+
+        The Anthropic SDK sends the API key as `x-api-key`, not `Authorization`.
+        Accept either header so both a stock SDK client and clients reusing the
+        existing `authorization` convention route correctly.
+        """
+        token = authorization if authorization is not None else x_api_key
+        return await _run_openai_endpoint(request, token, fmt="messages")
+
+    async def _run_openai_endpoint(request: Request, authorization: Optional[str], *, fmt: str):
+        """Shared handler for /v1/chat/completions, /v1/responses, and /v1/messages.
+
+        The three endpoints differ only in (a) how the inbound body is parsed
+        into a ChatCompletionRequest and (b) how the resulting ChatCompletion is
+        rendered back to the client (ChatCompletion object vs. Responses dict
+        vs. Anthropic Message; mock-SSE vs. Responses-SSE vs. Messages-SSE). The
+        auth → swarm-check → executor → worker → LLM pipeline in between is
+        identical and lives here exactly once.
+        """
+        label = {"chat": "chat completion", "responses": "responses", "messages": "messages"}.get(fmt, fmt)
+
         agent_name, target_tag, episode_uuid, episode_address = _parse_authorization_header(authorization)
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/{fmt}")
 
-        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/chat/completions")
-
-        # Parse request body
         body = await request.json()
-        new_req = ChatCompletionRequest.model_validate(body)
 
-        # Check if the first message is a system message, if not, add a default one
-        if new_req.messages:
-            first_msg = new_req.messages[0]
-            if first_msg.get("role") != "system":
-                logger.warning(f"First message role is '{first_msg.get('role')}', expected 'system'. Adding default system prompt.")
-                new_req.messages.insert(0, {"role": "system", "content": "You are a helpful assistant, your name is AgentJet."})
+        # --- Parse inbound body into a ChatCompletionRequest + original_stream ---
+        instructions = None
+        if fmt == "chat":
+            new_req = ChatCompletionRequest.model_validate(body)
+            original_stream = new_req.stream
+            # Ensure the first message is a system message; inject a default if not.
+            if new_req.messages:
+                first_msg = new_req.messages[0]
+                if first_msg.get("role") != "system":
+                    logger.warning(f"First message role is '{first_msg.get('role')}', expected 'system'. Adding default system prompt.")
+                    new_req.messages.insert(0, {"role": "system", "content": "You are a helpful assistant, your name is AgentJet."})
+        elif fmt == "responses":
+            from ajet.tuner_lib.experimental.oai_responses_adapter import (
+                build_chat_completion_request,
+                chat_completion_to_responses_dict,
+                iter_responses_sse_events,
+            )
+            instructions = body.get("instructions") if isinstance(body, dict) else None
+            new_req, original_stream = build_chat_completion_request(body)
+        else:  # fmt == "messages"
+            from ajet.tuner_lib.experimental.anthropic_messages_adapter import (
+                build_chat_completion_request,
+                chat_completion_to_message_dict,
+                iter_anthropic_sse_events,
+            )
+            new_req, original_stream = build_chat_completion_request(body)
 
         # Detect empty-content messages in the inbound request
         log_empty_content_messages(new_req.messages, episode_uuid=episode_uuid)
 
-        # Create timeline UUID
+        # --- Shared pipeline: swarm check -> executor -> worker -> LLM ---
         timeline_uuid = uuid.uuid4().hex
-
-        # if training, ignore all sampling parameters from request
         preserve_sampling_params = False
-
-        # enable_swarm_mode
         if enable_swarm_mode:
             preserve_sampling_params = _check_swarm_episode_and_refresh(episode_uuid)
 
-        # For streaming, we process as non-streaming but return in streaming format
-        original_stream = new_req.stream
-        if original_stream:
-            new_req.stream = False
-            new_req.stream_options = None
-
-        # Add to received queue
-        int_req = InterchangeCompletionRequest(
-            completion_request = new_req,
-            agent_name = agent_name,
-            target_tag = target_tag,
-            episode_uuid = episode_uuid,
-            timeline_uuid = timeline_uuid,
-            preserve_sampling_params = preserve_sampling_params,
-        )
-        if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request (outside thread)")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
-
-        if enable_swarm_mode:
-            assert shared_mem_dict is not None
-            shared_mem_dict["latest_llm_call"] = {
-                "input": body,
-                "output": result,
-            }
-
-        if original_stream:
-            result.model = "unknown_model" if not new_req.model else new_req.model
-            return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
-
-        return result
-
-
-    @app.post("/v1/responses")
-    async def responses(request: Request, authorization: str = Header(None)):
-        """OpenAI Responses API endpoint (mirrors /v1/chat/completions behaviour).
-
-        Translates ResponseCreateParams → ChatCompletionRequest, reuses the
-        same ZMQ → worker → LLM pipeline, then converts the resulting
-        ChatCompletion back into a Responses `Response` object. When the
-        client asks for streaming (`stream: true`) the full Response is
-        chunked into the SSE event sequence the OpenAI SDK expects.
-        """
-        from ajet.tuner_lib.experimental.oai_responses_adapter import (
-            build_chat_completion_request,
-            chat_completion_to_responses_dict,
-            iter_responses_sse_events,
-        )
-
-        agent_name, target_tag, episode_uuid, episode_address = _parse_authorization_header(authorization)
-
-        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/responses")
-
-        body = await request.json()
-        instructions = body.get("instructions") if isinstance(body, dict) else None
-
-        new_req, original_stream = build_chat_completion_request(body)
-
-        log_empty_content_messages(new_req.messages, episode_uuid=episode_uuid)
-
-        timeline_uuid = uuid.uuid4().hex
-        preserve_sampling_params = False
-
-        if enable_swarm_mode:
-            preserve_sampling_params = _check_swarm_episode_and_refresh(episode_uuid)
-
-        # Always forward as non-streaming; the worker pipeline is non-incremental
-        # and we synthesize Responses SSE events ourselves on the way back.
+        # The worker pipeline is non-incremental; we always forward as
+        # non-streaming and synthesize SSE events ourselves on the way back.
         new_req.stream = False
         new_req.stream_options = None
 
@@ -424,34 +396,46 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
             timeline_uuid=timeline_uuid,
             preserve_sampling_params=preserve_sampling_params,
         )
-        if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new responses request (outside thread)")
+        if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new {label} request (outside thread)")
         loop = asyncio.get_running_loop()
         result: ChatCompletion = await loop.run_in_executor(
             request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
         )
 
-        model_name = body.get("model") if isinstance(body, dict) else None
-        response_dict = chat_completion_to_responses_dict(
-            result,
-            model=model_name or result.model or "unknown",
-            instructions=instructions if isinstance(instructions, str) else None,
-        )
+        # --- Render the result back in this endpoint's wire contract ---
+        if fmt == "chat":
+            output = result
+        elif fmt == "responses":
+            model_name = body.get("model") if isinstance(body, dict) else None
+            output = chat_completion_to_responses_dict(
+                result,
+                model=model_name or result.model or "unknown",
+                instructions=instructions if isinstance(instructions, str) else None,
+            )
+        else:  # fmt == "messages"
+            model_name = body.get("model") if isinstance(body, dict) else None
+            output = chat_completion_to_message_dict(
+                result,
+                model=model_name or result.model or "unknown",
+            )
 
         if enable_swarm_mode:
             assert shared_mem_dict is not None
-            shared_mem_dict["latest_llm_call"] = {
-                "input": body,
-                "output": response_dict,
-                "format": "responses",
-            }
+            record: dict = {"input": body, "output": output}
+            if fmt in ("responses", "messages"):
+                record["format"] = fmt
+            shared_mem_dict["latest_llm_call"] = record
 
         if original_stream:
-            return StreamingResponse(
-                iter_responses_sse_events(response_dict),
-                media_type="text/event-stream",
-            )
+            if fmt == "chat":
+                result.model = "unknown_model" if not new_req.model else new_req.model
+                return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
+            if fmt == "responses":
+                return StreamingResponse(iter_responses_sse_events(output), media_type="text/event-stream")
+            # fmt == "messages"
+            return StreamingResponse(iter_anthropic_sse_events(output), media_type="text/event-stream")
 
-        return response_dict
+        return output
 
 
     if enable_swarm_mode:

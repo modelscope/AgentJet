@@ -39,10 +39,12 @@ _FRAMEWORK_MODULES = {
 # API-ablation: which OpenAI endpoint shape does the openai-sdk client hit?
 #   - "chat"      → POST /v1/chat/completions  (legacy default; reuse v3 directly)
 #   - "responses" → POST /v1/responses          (new; uses agent_run_responses)
-# Both share the same model, prompt, tool, reward, and dataset.
+#   - "messages"  → POST /v1/messages           (Anthropic Messages API; uses agent_run_messages)
+# All three share the same model, prompt, tool, reward, and dataset.
 _API_MODULES = {
     "chat": "tutorial.opencode_build_aime.agent_run_v3",
     "responses": "tutorial.opencode_build_aime.agent_run_responses",
+    "messages": "tutorial.opencode_build_aime.agent_run_messages",
 }
 
 
@@ -122,10 +124,11 @@ class AIMEAutoResearchEval:
         self.args = args
         self.framework = getattr(args, "framework", "openai")
         self.api = getattr(args, "api", "chat")
-        # API ablation takes precedence over framework ablation when set to
-        # "responses"; otherwise we fall back to the framework picker so the
-        # existing langchain/agentscope/rawhttp arms still work.
-        if self.api == "responses":
+        # API ablation takes precedence over framework ablation when set to an
+        # OpenAI/Anthropic API surface other than the chat-completions default;
+        # otherwise we fall back to the framework picker so the existing
+        # langchain/agentscope/rawhttp arms still work.
+        if self.api in ("responses", "messages"):
             self.execute_agent = resolve_execute_agent_by_api(self.api)
         else:
             self.execute_agent = resolve_execute_agent(self.framework)
@@ -390,10 +393,11 @@ def main():
                              "The only variable in the framework-ablation experiment.")
     parser.add_argument("--api", type=str, default="chat",
                         choices=sorted(_API_MODULES),
-                        help="OpenAI API surface to drive the agent with: "
-                             "'chat' (POST /v1/chat/completions, default) or "
-                             "'responses' (POST /v1/responses, the new endpoint). "
-                             "When 'responses' is selected, --framework is ignored.")
+                        help="LLM API surface to drive the agent with: "
+                             "'chat' (POST /v1/chat/completions, default), "
+                             "'responses' (POST /v1/responses), or "
+                             "'messages' (POST /v1/messages, Anthropic Messages API). "
+                             "When 'responses' or 'messages' is selected, --framework is ignored.")
     parser.add_argument("--resolved-yaml-path", type=str, default=None,
                         help="Optional output path for the fully resolved swarm config yaml")
     parser.add_argument("--prepare-only", action="store_true",
