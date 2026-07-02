@@ -26,6 +26,16 @@ import torch.distributed as dist
 
 from verl import DataProto
 from ajet.backbone.verl.core_algos import agg_loss, get_policy_loss_fn, kl_penalty
+# [AJET-OPD] On-Policy Distillation loss (ported from verl >=0.8.0 trainer/distillation/losses.py)
+from ajet.backbone.verl.distillation import (
+    OpdLossConfig,
+    compute_distillation_loss,
+    compute_forward_kl_topk,
+    opd_loss_config_from_meta,
+)
+# [AJET-OPD/SimCT] cross-tokenizer path
+from ajet.backbone.verl.simct import student_virtual_logits, simct_reverse_kl
+from verl.utils.torch_functional import logprobs_from_logits, entropy_from_logits
 from verl.utils.device import get_device_id
 from verl.utils.profiler import GPUMemoryLogger
 from verl.utils.py_functional import append_to_dict
@@ -133,6 +143,56 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
 
 
 
+    def _forward_micro_batch_with_logits(
+        self, micro_batch: dict[str, torch.Tensor], temperature: float, calculate_entropy: bool = False
+    ) -> dict[str, torch.Tensor]:
+        """[AJET-OPD] Dense (non-remove-padding) forward that ALSO returns the response-token logits,
+        for the ``forward_kl_topk`` distillation loss (logits-processor path).
+
+        Returns:
+            log_probs: (bs, response_len)
+            logits:    (bs, response_len, vocab_size) — on the grad graph, used to differentiate
+                       the top-k forward KL against the student distribution.
+            entropys:  (bs, response_len) only if ``calculate_entropy``.
+
+        NOTE: intentionally bypasses remove_padding / ulysses SP / fused kernels so the dense
+        ``[bs, response_len, V]`` logits exist. forward_kl_topk at long context / large vocab is
+        memory-heavy — prefer an estimator mode (kl/k1/k3/...) unless you need the distributional
+        signal.
+        """
+        if self.use_remove_padding or self.use_ulysses_sp or self.use_fused_kernels:
+            logger.warning(
+                "[AJET-OPD] forward_kl_topk uses a dense forward (remove_padding/ulysses/fused ignored)."
+            )
+        response_length = micro_batch["responses"].size(-1)
+        multi_modal_inputs = {}
+        if "multi_modal_inputs" in micro_batch.keys():
+            from verl.utils.model import extract_multi_modal_inputs
+
+            multi_modal_inputs = extract_multi_modal_inputs(micro_batch["multi_modal_inputs"])
+
+        with torch.autocast(device_type=self.device_name, dtype=self.param_dtype):
+            input_ids = micro_batch["input_ids"]
+            attention_mask = micro_batch["attention_mask"]
+            position_ids = micro_batch["position_ids"]
+            if position_ids.dim() == 3:  # qwen2vl mrope
+                position_ids = position_ids.transpose(0, 1)
+            output = self.actor_module(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                position_ids=position_ids,
+                use_cache=False,
+                **multi_modal_inputs,
+            )
+            logits = output.logits
+            logits.div_(temperature)
+            logits = logits[:, -response_length - 1 : -1, :]  # (bs, response_len, vocab_size)
+            log_probs = logprobs_from_logits(logits, micro_batch["responses"])
+            outputs = {"log_probs": log_probs, "logits": logits}
+            if calculate_entropy:
+                outputs["entropys"] = entropy_from_logits(logits)
+            return outputs
+
     @GPUMemoryLogger(role="dp actor", logger=logger)
     def update_policy(self, data: DataProto):
         # make sure we are in training mode
@@ -149,6 +209,11 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
         temperature = data.meta_info["temperature"]  # temperature must be in the data.meta_info to avoid silent error
         pad_token_id = data.meta_info.get("pad_token_id", 0)
 
+        # [AJET-OPD] resolve OPD config from meta_info (populated by the trainer driver; the Ray
+        # worker actor only receives the actor_rollout_ref subtree, not the ajet namespace).
+        self._opd_cfg: OpdLossConfig = opd_loss_config_from_meta(data.meta_info.get("opd"), self.config)
+        self._opd_simct = self._opd_cfg.enabled and self._opd_cfg.loss_mode == "simct"  # [AJET-OPD/SimCT]
+
         select_keys = [
             "responses",
             "response_mask",
@@ -158,6 +223,10 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
             "old_log_probs",
             "advantages",
         ]
+        if self._opd_cfg.enabled and not self._opd_simct and "teacher_logprobs" in data.batch.keys():
+            select_keys.append("teacher_logprobs")
+            if self._opd_cfg.use_topk and "teacher_ids" in data.batch.keys():
+                select_keys.append("teacher_ids")
         if self.use_prefix_grouper and "prompts" in data.batch.keys():
             select_keys.append("prompts")
         if self.config.use_kl_loss:
@@ -181,6 +250,8 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
             non_tensor_select_keys.append("multi_modal_inputs")
         if self.use_prefix_grouper and "uid" in data.non_tensor_batch.keys():
             non_tensor_select_keys.append("uid")
+        if self._opd_simct and "simct_specs" in data.non_tensor_batch.keys():
+            non_tensor_select_keys.append("simct_specs")
 
         data = data.select(batch_keys=select_keys, non_tensor_batch_keys=non_tensor_select_keys)
 
@@ -202,9 +273,16 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
         }
         for _ in range(self.config.ppo_epochs):
             for batch_idx, mini_batch in enumerate(mini_batches):
-                if self.config.use_dynamic_bsz:
+                # [AJET-OPD/SimCT] force fixed (non-dynamic) micro-batching so per-sample specs stay aligned
+                if self.config.use_dynamic_bsz and not self._opd_simct:
                     max_token_len = self.config.ppo_max_token_len_per_gpu * self.ulysses_sequence_parallel_size
                     micro_batches, _ = prepare_dynamic_batch(mini_batch, max_token_len=max_token_len)
+                elif self._opd_simct:
+                    # SimCT: one sample per micro-batch — keeps per-sample spec alignment AND bounds the
+                    # per-step [1, resp_len, V] logits memory (the dynamic-bsz config has no
+                    # ppo_micro_batch_size_per_gpu, so we must not touch that field here).
+                    self.gradient_accumulation = int(mini_batch.batch.batch_size[0])
+                    micro_batches = mini_batch.split(1)
                 else:
                     self.gradient_accumulation = (
                         self.config.ppo_mini_batch_size // self.config.ppo_micro_batch_size_per_gpu
@@ -247,9 +325,26 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                     loss_scale_factor *= self.config.loss_extra_scale_ratio  # [AJET] Extra scaling for loss if needed
 
                     # all return: (bsz, response_length)
-                    outputs = self._forward_micro_batch(
-                        model_inputs, temperature=temperature, calculate_entropy=calculate_entropy
+                    # [AJET-OPD] forward_kl_topk needs the student logits alive on the grad graph
+                    # (to differentiate the top-k forward KL), so use the dense with-logits forward.
+                    opd_need_logits = (
+                        self._opd_cfg.enabled
+                        and (self._opd_cfg.use_topk or self._opd_simct)
+                        and (
+                            (self._opd_simct and "simct_specs" in micro_batch.non_tensor_batch)
+                            or ("teacher_logprobs" in model_inputs and "teacher_ids" in model_inputs)
+                        )
                     )
+                    if opd_need_logits:
+                        outputs = self._forward_micro_batch_with_logits(
+                            model_inputs, temperature=temperature, calculate_entropy=calculate_entropy
+                        )
+                        logits_for_opd = outputs["logits"]
+                    else:
+                        outputs = self._forward_micro_batch(
+                            model_inputs, temperature=temperature, calculate_entropy=calculate_entropy
+                        )
+                        logits_for_opd = None
                     log_prob = outputs["log_probs"]
                     entropy = outputs["entropys"] if calculate_entropy else None
 
@@ -323,6 +418,67 @@ class AjetDataParallelPPOActor(DataParallelPPOActor):
                         policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef
                         metrics["actor/kl_loss"] += kl_loss.detach().item() * loss_scale_factor
                         micro_batch_metrics["actor/kl_coef"] = self.config.kl_loss_coef
+
+                    # [AJET-OPD] On-Policy Distillation loss (teacher signal), layered on top of the
+                    # task policy loss. Mirrors verl >=0.8.0 distillation_ppo_loss: the divergence is
+                    # applied under the configured gradient mode (supervised agg_loss, or PG with
+                    # advantage = -KL), then combined with the task loss via distillation_loss_coef.
+                    if self._opd_cfg.enabled and "teacher_logprobs" in model_inputs:
+                        opd_data = {
+                            "teacher_logprobs": model_inputs["teacher_logprobs"].to(log_prob.dtype),
+                            "response_mask": response_mask,
+                            "old_log_probs": old_log_prob,
+                        }
+                        if rollout_is_weights is not None:
+                            opd_data["rollout_is_weights"] = rollout_is_weights
+                        opd_model_output = {"log_probs": log_prob}
+                        if opd_need_logits and logits_for_opd is not None:
+                            topk_out = compute_forward_kl_topk(
+                                student_logits=logits_for_opd,
+                                teacher_topk_log_probs=model_inputs["teacher_logprobs"].to(logits_for_opd.dtype),
+                                teacher_topk_ids=model_inputs["teacher_ids"].long(),
+                                cfg=self._opd_cfg,
+                                response_mask=response_mask,
+                            )
+                            opd_model_output.update(topk_out)
+                        distill_loss, opd_metrics = compute_distillation_loss(
+                            self._opd_cfg, opd_model_output, opd_data
+                        )
+                        if self._opd_cfg.use_task_rewards:
+                            policy_loss = policy_loss + distill_loss * self._opd_cfg.distillation_loss_coef
+                        else:
+                            policy_loss = distill_loss * self._opd_cfg.distillation_loss_coef
+                        micro_batch_metrics.update(opd_metrics)
+                        metrics.setdefault("actor/distill_loss", 0.0)
+                        _dl_val = distill_loss.detach().item() if torch.is_tensor(distill_loss) else float(distill_loss)
+                        metrics["actor/distill_loss"] += _dl_val * loss_scale_factor
+
+                    # [AJET-OPD/SimCT] cross-tokenizer distillation: student virtual logits from
+                    # white-box student logits (response-aligned → spec's response-relative positions
+                    # map directly), reverse-KL vs teacher virtual logits (precomputed driver-side from
+                    # the remote-vLLM prompt_logprobs). Per-sample specs travel via non_tensor_batch.
+                    if self._opd_simct and "simct_specs" in micro_batch.non_tensor_batch and logits_for_opd is not None:
+                        specs = micro_batch.non_tensor_batch["simct_specs"]
+                        mb = logits_for_opd.shape[0]
+                        distill_loss = logits_for_opd.new_zeros(())
+                        n_seg_total = 0
+                        for s in range(mb):
+                            spec = specs[s]
+                            if spec is None:
+                                continue
+                            sv = student_virtual_logits(spec, logits_for_opd[s])  # [num_seg, virtual_dim]
+                            tv = spec.teacher_virtual.to(device=sv.device, dtype=sv.dtype).detach()
+                            distill_loss = distill_loss + simct_reverse_kl(sv, tv)  # scalar (sum over segs)
+                            n_seg_total += spec.num_segments
+                        distill_loss = distill_loss / max(n_seg_total, 1)  # per-segment mean
+                        if self._opd_cfg.use_task_rewards:
+                            policy_loss = policy_loss + distill_loss * self._opd_cfg.distillation_loss_coef
+                        else:
+                            policy_loss = distill_loss * self._opd_cfg.distillation_loss_coef
+                        micro_batch_metrics["opd/distill_loss"] = distill_loss.detach().item()
+                        micro_batch_metrics["opd/segments_per_sample"] = float(n_seg_total) / max(mb, 1)
+                        metrics.setdefault("actor/distill_loss", 0.0)
+                        metrics["actor/distill_loss"] += distill_loss.detach().item() * loss_scale_factor
 
                     if self.config.use_dynamic_bsz:
                         # relative to the dynamic bsz

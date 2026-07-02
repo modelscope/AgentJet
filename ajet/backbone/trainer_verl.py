@@ -54,6 +54,10 @@ from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.metric_helper import save_trajectory_as_json_file, update_metrics
+# [AJET-OPD] remote teacher (vLLM) scoring + OPD loss meta
+from ajet.backbone.verl.distillation import build_opd_meta
+from ajet.backbone.verl.teacher_client import build_teacher_client_from_ajet
+from ajet.backbone.verl.simct import SimCTDriver  # [AJET-OPD/SimCT] cross-tokenizer path
 
 def parse_reward_from_dataproto(data: DataProto) -> torch.Tensor:
     """
@@ -546,6 +550,29 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         )
         self.global_steps = 0
 
+        # [AJET-OPD] build the remote teacher (vLLM) client + resolved loss meta once.
+        # self._opd_meta is a plain dict carried via batch.meta_info["opd"] to the worker actors.
+        self._opd_meta = build_opd_meta(self.config.ajet)
+        self._opd_teacher_client = build_teacher_client_from_ajet(self.config.ajet) if self._opd_meta else None
+        # [AJET-OPD/SimCT] cross-tokenizer driver (built when loss_mode==simct)
+        self._simct_driver = None
+        if self._opd_meta and self._opd_meta.get("loss_mode") == "simct":
+            import numpy as np
+            from transformers import AutoTokenizer
+            from ajet.backbone.verl.teacher_client import build_teacher_client_from_ajet as _btc
+            _tc = _btc(self.config.ajet)  # reuse the same remote-vLLM client (url/name/api_key)
+            _tteacher = getattr(self.config.ajet.teacher_model, "teacher_tokenizer_path", "") or ""
+            if _tc is not None and _tteacher:
+                _tok_t = AutoTokenizer.from_pretrained(_tteacher, trust_remote_code=True)
+                _tok_s = self.tokenizer  # the student tokenizer (the trainer holds it)
+                _topk = int(self._opd_meta.get("topk") or 20)
+                self._simct_driver = SimCTDriver(_tc, _tok_t, _tok_s, topk=_topk)
+                logger.info(f"[AJET-OPD/SimCT] cross-tokenizer driver ready (teacher_tok={_tteacher}, topk={_topk})")
+            else:
+                logger.warning("[AJET-OPD/SimCT] loss_mode=simct but teacher_client/teacher_tokenizer_path missing — SimCT disabled")
+        if self._opd_teacher_client is not None or self._simct_driver is not None:
+            logger.info(f"[AJET-OPD] on-policy distillation enabled: {self._opd_meta}")
+
         # load checkpoint before doing anything
         self._load_checkpoint()
         self.checkpoint_manager.update_weights(self.global_steps)
@@ -850,6 +877,35 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             if "episode_uuids" not in batch.non_tensor_batch:
                                 raise KeyError("loss_weight_normalization_episode_level is enabled but non_tensor_batch['episode_uuids'] is missing; cannot identify same-episode samples.")
                             batch.batch["loss_weight"] = compute_episode_level_loss_weight(batch)
+
+                    # [AJET-OPD] score the student responses with the remote teacher (vLLM) and inject
+                    # teacher_logprobs (and teacher_ids for top-k) into the batch. Placed after advantages
+                    # so response_mask is already materialized. The OPD loss knobs travel via meta_info.
+                    if self._simct_driver is not None or self._opd_teacher_client is not None:
+                        with marked_timer("opd_teacher", timing_raw, color="magenta"):
+                            if "response_mask" not in batch.batch.keys():
+                                batch.batch["response_mask"] = compute_response_mask(batch)
+                            if self._simct_driver is not None:
+                                # [SimCT] cross-tokenizer: build per-sample supervision specs (teacher
+                                # scored via the remote vLLM). Specs travel to the worker actor through
+                                # non_tensor_batch; loss_mode travels via meta_info.
+                                import numpy as np
+                                specs = self._simct_driver.compute_specs(
+                                    input_ids=batch.batch["input_ids"],
+                                    attention_mask=batch.batch["attention_mask"],
+                                    response_mask=batch.batch["response_mask"],
+                                )
+                                batch.non_tensor_batch["simct_specs"] = np.array(specs, dtype=object)
+                            else:
+                                opd_out = self._opd_teacher_client.compute_teacher_logprobs(
+                                    input_ids=batch.batch["input_ids"],
+                                    attention_mask=batch.batch["attention_mask"],
+                                    response_mask=batch.batch["response_mask"],
+                                )
+                                batch.batch["teacher_logprobs"] = opd_out["teacher_logprobs"]
+                                if opd_out.get("teacher_ids") is not None:
+                                    batch.batch["teacher_ids"] = opd_out["teacher_ids"]
+                        batch.meta_info["opd"] = self._opd_meta
 
                     # update critic
                     if self.use_critic:

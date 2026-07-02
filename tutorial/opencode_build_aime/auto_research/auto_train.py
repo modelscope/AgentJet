@@ -289,6 +289,23 @@ class AIMEAutoResearchTrainer(AIMEAutoResearchEval):
         self.ajet_job.config.ajet.trainer_common.loss_weight_normalization_episode_level = args.loss_weight_normalization_episode_level
         self.ajet_job.config.ajet.trainer_common.advantage_estimation_episode_level = args.advantage_estimation_episode_level
 
+        # [OPD] On-Policy Distillation config (off by default; enable via --opd-enabled).
+        if getattr(args, "opd_enabled", False):
+            cfg = self.ajet_job.config.ajet
+            cfg.teacher_model.teacher_opd_enabled = True
+            cfg.teacher_model.teacher_model_vllm_url = args.opd_teacher_url
+            cfg.teacher_model.teacher_model_name = args.opd_teacher_name
+            cfg.teacher_model.teacher_model_api_key = args.opd_teacher_api_key or "EMPTY"
+            cfg.teacher_model.teacher_topk = args.opd_topk
+            cfg.teacher_model.teacher_tokenizer_path = args.opd_teacher_tokenizer
+            cfg.opd.loss_mode = args.opd_loss_mode
+            cfg.opd.use_policy_gradient = args.opd_use_policy_gradient
+            cfg.opd.use_task_rewards = args.opd_use_task_rewards
+            cfg.opd.distillation_loss_coef = args.opd_coef
+            print(f"[OPD] enabled: teacher={args.opd_teacher_name} @ {args.opd_teacher_url} "
+                  f"loss_mode={args.opd_loss_mode} topk={args.opd_topk} "
+                  f"use_pg={args.opd_use_policy_gradient} use_task={args.opd_use_task_rewards} coef={args.opd_coef}")
+
     def setup(self):
         if not os.path.exists(self.train_dataset):
             raise FileNotFoundError(
@@ -446,6 +463,25 @@ def main():
     parser.add_argument("--advantage-estimation-episode-level", action=argparse.BooleanOptionalAction,
                         default=False,
                         help="Compute GRPO advantage statistics at episode level")
+    # ---- OPD (On-Policy Distillation) ----
+    parser.add_argument("--opd-enabled", action=argparse.BooleanOptionalAction, default=False,
+                        help="Enable OPD teacher distillation (ajet.teacher_model.teacher_opd_enabled)")
+    parser.add_argument("--opd-teacher-url", type=str, default="",
+                        help="Remote teacher vLLM OpenAI base URL, e.g. http://22.5.158.93:8000/v1")
+    parser.add_argument("--opd-teacher-name", type=str, default="",
+                        help="Served model name on the teacher vLLM server")
+    parser.add_argument("--opd-teacher-api-key", type=str, default="EMPTY")
+    parser.add_argument("--opd-teacher-tokenizer", type=str, default="",
+                        help="Path to teacher tokenizer (only needed for SimCT cross-tokenizer OPD)")
+    parser.add_argument("--opd-loss-mode", type=str, default="k3",
+                        help="OPD loss: kl|k1|abs|mse|k2|low_var_kl|k3|k1+|k3+|kl+|forward_kl_topk|simct")
+    parser.add_argument("--opd-topk", type=int, default=0,
+                        help="Teacher topk (0=estimator sampled-token logprob; >0=top-k forward KL / SimCT candidates)")
+    parser.add_argument("--opd-use-policy-gradient", action=argparse.BooleanOptionalAction, default=False,
+                        help="OPD-PG (advantage=-KL) vs supervised backprop")
+    parser.add_argument("--opd-use-task-rewards", action=argparse.BooleanOptionalAction, default=True,
+                        help="Blend OPD with task PPO loss (else distillation only)")
+    parser.add_argument("--opd-coef", type=float, default=1.0, help="distillation_loss_coef")
     args = parser.parse_args()
 
     trainer = AIMEAutoResearchTrainer(args)

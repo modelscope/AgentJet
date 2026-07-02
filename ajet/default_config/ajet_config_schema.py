@@ -121,6 +121,47 @@ class AjetContextTracker:
 
 
 @dataclass
+class AjetTeacherModel:
+    """Remote teacher (vLLM OpenAI-compatible server) for On-Policy Distillation (OPD).
+
+    The teacher scores the student's on-policy responses (``prompt_logprobs``) over HTTP; it is NOT
+    launched in-cluster. Teacher and student MUST share a tokenizer/vocabulary (same model family).
+    """
+    teacher_opd_enabled: bool = False
+    teacher_model_vllm_url: str = ""            # e.g. http://teacher-host:8000/v1
+    teacher_model_name: str = ""                # served model name on the vLLM server
+    teacher_model_api_key: str = "EMPTY"
+    # 0 => estimator mode (teacher returns the sampled-token logprob only);
+    # >0 => top-k forward KL (teacher returns top-k ids+logprobs).
+    teacher_topk: int = 0
+    teacher_max_concurrent: int = 32            # HTTP concurrency for teacher scoring
+    teacher_chunk_size: int = 16                # sequences per HTTP request
+    teacher_request_timeout: float = 120.0
+    teacher_max_model_len: Optional[int] = None  # left-truncate prompt if prompt+response exceeds it
+    teacher_log_prob_min_clamp: float = -10.0
+    teacher_tokenizer_path: str = ""  # path to the teacher tokenizer (for SimCT cross-tokenizer OPD)
+
+
+@dataclass
+class AjetOpd:
+    """On-Policy Distillation loss knobs.
+
+    loss_mode: estimator family ``kl|k1|abs|mse|k2|low_var_kl|k3`` (and straight-through ``k1+|k3+|kl+``)
+               or ``forward_kl_topk`` (needs teacher_model.teacher_topk > 0).
+    use_policy_gradient: True => OPD-PG (advantage = -KL); False => supervised backprop.
+    use_task_rewards: blend with the task PPO loss (False => optimize distillation only).
+    """
+    loss_mode: str = "k3"
+    use_policy_gradient: bool = False
+    use_task_rewards: bool = True
+    distillation_loss_coef: float = 1.0
+    loss_max_clamp: float = 10.0
+    log_prob_min_clamp: float = -10.0
+    topk: int = 0  # fallback top-k source if teacher_model.teacher_topk is unset
+    simct_topk: int = 20  # teacher top-K for SimCT overlap candidates (cross-tokenizer OPD)
+
+
+@dataclass
 class AjetDefaultConfig:
     project_name: str = "ajet_default_project"
     experiment_name: str = "read_yaml_name"
@@ -135,6 +176,9 @@ class AjetDefaultConfig:
     task_reader: AjetTaskReader = field(default_factory=AjetTaskReader)
     lora: AjetLora = field(default_factory=AjetLora)
     context_tracker: AjetContextTracker = field(default_factory=AjetContextTracker)
+    # [AJET-OPD] remote teacher (vLLM) + OPD loss config
+    teacher_model: AjetTeacherModel = field(default_factory=AjetTeacherModel)
+    opd: AjetOpd = field(default_factory=AjetOpd)
     enable_swarm_mode: bool = True
     swarm_mode_sample_collection_method: str = "rollout_until_finish_enough_tasks"
     execute_test: bool = False

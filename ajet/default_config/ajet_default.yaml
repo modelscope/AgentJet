@@ -352,6 +352,28 @@ ajet:
     load_format: auto
     layered_summon: false
 
+  # [AJET-OPD] On-Policy Distillation against a REMOTE teacher (vLLM OpenAI-compatible server).
+  # The teacher scores the student's on-policy responses via prompt_logprobs over HTTP.
+  # Teacher and student MUST share a tokenizer (same model family). Disabled by default.
+  teacher_model:
+    teacher_opd_enabled: false
+    teacher_model_vllm_url: ""              # e.g. http://teacher-host:8000/v1
+    teacher_model_name: ""                  # served model name on the vLLM server
+    teacher_model_api_key: "EMPTY"
+    teacher_topk: 0                         # 0=estimator (sampled-token logprob); >0=top-k forward KL
+    teacher_max_concurrent: 32
+    teacher_chunk_size: 16
+    teacher_request_timeout: 120.0
+    teacher_max_model_len: null             # set to the teacher's --max-model-len to left-truncate long prompts
+    teacher_log_prob_min_clamp: -10.0
+  # OPD loss algorithm. loss_mode: kl|k1|abs|mse|k2|low_var_kl|k3 | k1+|k3+|kl+ | forward_kl_topk
+  opd:
+    loss_mode: k3                           # supervised default; OPD-PG => k1 + use_policy_gradient:true
+    use_policy_gradient: false              # true => advantage = -KL (Thinking Machines OPD recipe)
+    use_task_rewards: true                  # blend with task PPO loss (false => distillation only)
+    distillation_loss_coef: 1.0
+    loss_max_clamp: 10.0
+    log_prob_min_clamp: -10.0
 
   # the experimental ZeroMQ interchange server feature that allows `tuner.as_oai_baseurl_apikey` feature
   enable_swarm_mode: False

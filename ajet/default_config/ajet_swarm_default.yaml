@@ -77,6 +77,20 @@ ajet:
     algorithm:
       adv_estimator: grpo
 
+  # [AJET-OPD] On-Policy Distillation against a REMOTE teacher (vLLM). Disabled by default;
+  # enable via CLI, e.g. ajet.teacher_model.teacher_opd_enabled=true plus the url/name below.
+  teacher_model:
+    teacher_opd_enabled: false
+    teacher_model_vllm_url: ""
+    teacher_model_name: ""
+    teacher_model_api_key: "EMPTY"
+    teacher_topk: 0
+  opd:
+    loss_mode: k3
+    use_policy_gradient: false
+    use_task_rewards: true
+    distillation_loss_coef: 1.0
+
 # ------------------ do not edit ------------------
 hydra:
   searchpath:
