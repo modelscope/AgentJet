@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import json
 import os
 import uuid
 from collections import defaultdict
@@ -52,6 +53,112 @@ from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
 from ajet.utils.metric_helper import save_trajectory_as_json_file, update_metrics
+
+
+IMAGE_PAD_ID = 151655  # Qwen2.5-VL <|image_pad|>
+
+
+def capture_training_token_ids(batch: DataProto, tokenizer, out_path: str, global_step: int = 0) -> None:
+    """One-shot debug dump of the *training-side* token ids for a batch.
+
+    Writes each sample's real (unpadded) prompt token id array, tagging the
+    image-pad (151655) tokens, plus per-sample image counts and grid_thw. Used
+    by ``tutorial/claudecode_geo3k_swarm/test_token_ids.py`` to compare the
+    training-side tokenization against the vLLM-side capture in
+    ``token_id_io.md``. Inert during normal training (gated on an env var by
+    the caller).
+    """
+    prompts = batch.batch["prompts"]
+    responses = batch.batch["responses"]
+    attention_mask = batch.batch["attention_mask"]
+    prompt_len = prompts.shape[1]
+    resp_len = responses.shape[1]
+    mmi = batch.non_tensor_batch.get("multi_modal_inputs", None)
+    task_ids = batch.non_tensor_batch.get("task_ids", None)
+
+    def _real_prompt(i):
+        mask = attention_mask[i, :prompt_len].bool()
+        return prompts[i][mask].tolist()
+
+    def _real_response(i):
+        mask = attention_mask[i, prompt_len:prompt_len + resp_len].bool()
+        return responses[i][mask].tolist()
+
+    def _grid(i):
+        if mmi is None:
+            return None
+        d = mmi[i]
+        if not isinstance(d, dict):
+            return None
+        g = d.get("image_grid_thw", None)
+        if g is None:
+            return None
+        try:
+            return g.tolist()
+        except AttributeError:
+            return g
+
+    n = len(prompts)
+    lines = [
+        "# Training-side token ids captured at trainer_verl.py:599",
+        "",
+        "Final tokenization consumed by training (image already expanded to "
+        f"`<|image_pad|>` = {IMAGE_PAD_ID}). Compare against the vLLM-side "
+        "capture in `token_id_io.md`.",
+        "",
+        f"- global_step: {global_step}",
+        f"- batch size: {n}",
+        "",
+        "## Per-sample summary",
+        "",
+        "| idx | task_id | prompt_len | image_tokens | grid_thw |",
+        "|-----|---------|------------|--------------|----------|",
+    ]
+    chosen = None
+    for i in range(n):
+        p = _real_prompt(i)
+        n_img = p.count(IMAGE_PAD_ID)
+        tid = task_ids[i] if task_ids is not None else "?"
+        lines.append(f"| {i} | {tid} | {len(p)} | {n_img} | {_grid(i)} |")
+        if chosen is None and n_img > 0:
+            chosen = i
+    if chosen is None:
+        chosen = 0
+
+    p = _real_prompt(chosen)
+    r = _real_response(chosen)
+    lines += [
+        "",
+        f"## Full arrays for sample idx={chosen} (first image-bearing sample)",
+        "",
+        f"Input (prompt) token ids — length {len(p)}, image_tokens {p.count(IMAGE_PAD_ID)}:",
+        "",
+        "```json",
+        json.dumps(p),
+        "```",
+        "",
+        f"Output (response) token ids — length {len(r)}:",
+        "",
+        "```json",
+        json.dumps(r),
+        "```",
+        "",
+    ]
+    if tokenizer is not None:
+        try:
+            lines += [
+                "Decoded prompt (special tokens kept):",
+                "",
+                "```",
+                tokenizer.decode(p, skip_special_tokens=False),
+                "```",
+                "",
+            ]
+        except Exception:
+            pass
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
 
 
 def compute_reward(data: DataProto, reward_fn) -> tuple[torch.Tensor, dict[str, Any]]:
@@ -596,6 +703,21 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                     with marked_timer("reward", timing_raw, color="yellow"):
                         reward_tensor, reward_extra_infos_dict = compute_reward(batch, self.reward_fn)
+
+                    # one-shot debug: dump the training-side token ids (with the
+                    # image expanded to <|image_pad|>) so they can be compared
+                    # against the vLLM-side capture in token_id_io.md. Inert
+                    # unless AJET_CAPTURE_TOKEN_IDS is set.
+                    _capture_path = os.environ.get("AJET_CAPTURE_TOKEN_IDS", "")
+                    if _capture_path:
+                        try:
+                            capture_training_token_ids(
+                                batch, self.tokenizer, _capture_path, self.global_steps
+                            )
+                        except Exception:
+                            logger.bind(exception=True).exception(
+                                "capture_training_token_ids failed"
+                            )
 
                     # recompute old_log_probs
                     # Operating Mode Selection:

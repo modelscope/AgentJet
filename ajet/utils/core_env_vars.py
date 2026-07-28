@@ -58,6 +58,8 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
         "SWANLAB_API_HOST",
         "AJET_BENCHMARK_NAME",
         "FINANCE_MCP_URL",
+        # one-shot training-side token-id capture (tutorial/claudecode_geo3k_swarm)
+        "AJET_CAPTURE_TOKEN_IDS",
         # API Keys for RM Gallery and other services
         "DASHSCOPE_API_KEY",
         "OPENAI_API_KEY",
