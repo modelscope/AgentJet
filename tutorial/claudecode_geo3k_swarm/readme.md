@@ -47,7 +47,7 @@ tmux new-session -d -s qwen25vl \
 
 ```bash
 tmux new-session -d -s SWARM_SERVER_GEO3K \
-  'ajet-swarm start --swarm-port=10086 2>&1 | tee /tmp/swarm-server-geo3k.log'
+  'ajet-swarm start --swarm-port=10086'
 # Optional: watch the overwatch panel
 tmux new-session -d -s SWARM_OVERWATCH_GEO3K \
   'ajet-swarm overwatch --swarm-url=http://localhost:10086'

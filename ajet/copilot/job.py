@@ -43,6 +43,7 @@ class AgentJetJob:
     """Programmatic interface for configuring ( Arguments + YAML -->  New YAML ) and launching AgentJet training jobs.
 
     Args:
+        ensure_new_experiment: Ensure experiment is saved at new dir, and do not load old checkpoints.
         base_yaml_config: Path to base YAML configuration file. If None, uses default config (at ./ajet/default_config/ajet_swarm_default.yaml).
         experiment_dir: Directory where experiment outputs will be saved.
         project_name: Name of the project for organizing experiments.

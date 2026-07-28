@@ -535,7 +535,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         madness_rate = [
                             traj.reward_structure.madness for traj in context_tracker_arr
                         ]
-                        # reward = [traj.reward_structure.raw_reward for traj in context_tracker_arr]
+                        reward = [traj.reward_structure.raw_reward for traj in context_tracker_arr]
                         llm_call_cnt = [traj.llm_call_cnt for traj in context_tracker_arr]
                         metrics.update(
                             {
@@ -548,6 +548,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                                 "critic/real_reward": np.mean(
                                     context_tracker_arr[0].current_batch_reward
                                 ),
+                                "critic/reward_std": np.std(reward) if reward else 0,
                             }
                         )
                         save_trajectory_as_json_file(context_tracker_arr, self.global_steps, self.config, prefix="train")

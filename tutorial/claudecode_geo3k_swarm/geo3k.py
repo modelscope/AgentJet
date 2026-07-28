@@ -33,17 +33,18 @@ from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from ajet.utils.multimodal import build_multimodal_messages, extract_image
 
 
-GRPO_N = 4  # grpo group size
+GRPO_N = 2  # grpo group size
+
 NUM_EPOCH = 10000
-EVAL_INTERVAL = 20  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE training tasks
+EVAL_INTERVAL = 100  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE training tasks
 EVAL_K = 2  # pass@k: run each eval task K times
-EVAL_MAX_PARALLEL = 64
+MAX_ENV_WORKER = 64  # also used as eval threadpool size
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 REMOTE_MODEL_PATH = os.getenv(
     "REMOTE_MODEL_PATH",
     "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-VL-2B-Instruct",
 )
-REMOTE_BATCH_SIZE = 32
+REMOTE_BATCH_SIZE = 1
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 # Geo3k dataset — either local parquet/dir or a HF repo id
 GEO3K_DATASET_PATH = os.getenv(
@@ -57,12 +58,22 @@ GEO3K_TEST_DATASET_PATH = os.getenv(
 )
 
 SYSTEM_PROMPT = dedent(
-    """You are an agent specialized in solving geometry problems.
-    Look carefully at the provided figure and reason step by step.
-    Return your final answer enclosed in \\boxed{}."""
+    """A conversation between the User and Assistant. The User asks a question, and the Assistant provides a solution. The Assistant first thinks through the reasoning process internally with self-reflection and consistency check and then gives the final analysis and answer. The reasoning process should be enclosed within <think></think>, followed directly by the final thought and answer, the final answer MUST BE put in \\boxed{}, like this: <think> reasoning process here </think> final thought and \\boxed{answer} here."""
 )
 
 ANSWER_RE = re.compile(r"\\boxed\{([^}]*)\}")
+
+ajet_job = AgentJetJob(
+    ensure_new_experiment=True,
+    experiment_name="geo3k_grpo_x1",
+    algorithm="grpo",
+    logging="swanlab",
+    n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
+    model=REMOTE_MODEL_PATH,
+    batch_size=REMOTE_BATCH_SIZE,
+    num_repeat=GRPO_N,
+    max_env_worker=MAX_ENV_WORKER,
+)
 
 
 def _normalize(s: str) -> str:
@@ -79,21 +90,37 @@ def _compute_reward(final_answer: str, reference_answer: str) -> float:
     return 1.0 if predicted == target else 0.0
 
 
-def _load_eval_tasks(test_dataset_path: str) -> list:
-    """Load Geo3K test split for periodic evaluation."""
+def _load_eval_tasks(test_dataset_path: str, label: str = "") -> list:
+    """Load a single eval parquet for periodic evaluation."""
     if not os.path.exists(test_dataset_path):
-        print(f"[WARN] Eval dataset not found: {test_dataset_path}. Skipping eval.")
+        print(f"[WARN] Eval dataset not found: {test_dataset_path}. Skipping {label or test_dataset_path}.")
         return []
     eval_reader = HuggingFaceTaskReader(
         AjetTaskReader(huggingface_dat_repo=HuggingfaceDatRepo(dataset_path=test_dataset_path))
     )
     eval_tasks = list(eval_reader.generate_training_tasks())
-    print(f"[INFO] Loaded {len(eval_tasks)} eval tasks from Geo3K test split")
+    print(f"[INFO] Loaded {len(eval_tasks)} eval tasks from {label or test_dataset_path}")
     return eval_tasks
 
 
-def _run_eval(swarm_worker: SwarmClient, eval_tasks: list, n_global_step: int):
-    """Run pass@k evaluation on the Geo3K test set; rewards do not feed training."""
+def _run_eval(swarm_worker: SwarmClient, eval_tasks_by_set: dict, n_global_step: int):
+    """Run pass@k evaluation on every loaded eval set; rewards do not feed training."""
+    if not eval_tasks_by_set:
+        return
+    eval_log_path = os.path.join(swarm_worker.server_experiment_dir(), "eval_results.log")
+    print(eval_log_path)
+    for label, eval_tasks in eval_tasks_by_set.items():
+        _run_eval_one(swarm_worker, label, eval_tasks, n_global_step, eval_log_path)
+
+
+def _run_eval_one(
+    swarm_worker: SwarmClient,
+    label: str,
+    eval_tasks: list,
+    n_global_step: int,
+    eval_log_path: str,
+):
+    """Run pass@k evaluation on a single eval set."""
     if not eval_tasks:
         return
 
@@ -109,11 +136,11 @@ def _run_eval(swarm_worker: SwarmClient, eval_tasks: list, n_global_step: int):
 
     k = EVAL_K
     total = len(eval_tasks) * k
-    print(f"\n[EVAL @ step {n_global_step}] {len(eval_tasks)} tasks x {k} (pass@{k})...")
+    print(f"\n[EVAL @ step {n_global_step}] Running {label} eval on {len(eval_tasks)} tasks x {k} (pass@{k})...")
     per_task_rewards = [[] for _ in eval_tasks]
-    pbar = tqdm(total=total, desc=f"EVAL @ step {n_global_step}")
+    pbar = tqdm(total=total, desc=f"EVAL {label} @ step {n_global_step}")
 
-    with ThreadPoolExecutor(max_workers=EVAL_MAX_PARALLEL) as eval_executor:
+    with ThreadPoolExecutor(max_workers=MAX_ENV_WORKER) as eval_executor:
         future_to_idx = {
             eval_executor.submit(eval_rollout, t): i
             for i, t in enumerate(eval_tasks)
@@ -135,16 +162,15 @@ def _run_eval(swarm_worker: SwarmClient, eval_tasks: list, n_global_step: int):
         solved = [rs for rs in per_task_rewards if any((r is not None and r > 0) for r in rs)]
         passk = len(solved) / len(per_task_rewards)
         summary = (
-            f"[EVAL @ step {n_global_step}] avg_reward={avg:.4f}  "
+            f"[EVAL @ step {n_global_step}] {label}  avg_reward={avg:.4f}  "
             f"pass@1={pass1*100:.2f}%  pass@{k}={passk*100:.2f}%  "
             f"n_tasks={len(per_task_rewards)}  n_rollouts={len(flat)}"
         )
         print(summary)
-        eval_log_path = os.path.join(os.path.dirname(__file__), "eval_results.log")
         with open(eval_log_path, "a") as f:
             f.write(summary + "\n")
     else:
-        print(f"[EVAL @ step {n_global_step}] no valid rewards")
+        print(f"[EVAL @ step {n_global_step}] {label}  no valid rewards")
 
 
 def _execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> WorkflowOutput:
@@ -210,22 +236,23 @@ def main():
     )
 
     swarm_worker = SwarmClient(AJET_SWARM_URL)
-    ajet_job = AgentJetJob(
-        experiment_name="geo3k_grpo",
-        algorithm="grpo",
-        logging="swanlab",
-        n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
-        model=REMOTE_MODEL_PATH,
-        batch_size=REMOTE_BATCH_SIZE,
-        num_repeat=GRPO_N,
-    )
-    print(ajet_job.config.to_dict())
+
     swarm_worker.auto_sync_train_config_and_start_engine(
         ajet_job,
-        force_restart=True,
+        force_restart=os.environ.get("FORCE_RESTART_SWARM_ENGINE", "0") == "1"
     )
 
-    eval_tasks = _load_eval_tasks(GEO3K_TEST_DATASET_PATH)
+    test_datasets = {
+        "Geo3K-test": GEO3K_TEST_DATASET_PATH,
+    }
+    eval_tasks_by_set = {}
+    for label, path in test_datasets.items():
+        tasks = _load_eval_tasks(path, label=label)
+        if tasks:
+            eval_tasks_by_set[label] = tasks
+
+    # Baseline eval before any training updates
+    _run_eval(swarm_worker, eval_tasks_by_set, 0)
 
     def rollout(task):
         episode_uuid, api_baseurl_key = swarm_worker.begin_episode(discard_episode_timeout=240)
@@ -245,7 +272,7 @@ def main():
             task_count += 1
             if task_count % (EVAL_INTERVAL * REMOTE_BATCH_SIZE) == 0:
                 n_global_step = task_count // REMOTE_BATCH_SIZE
-                _run_eval(swarm_worker, eval_tasks, n_global_step)
+                _run_eval(swarm_worker, eval_tasks_by_set, n_global_step)
 
     return None
 

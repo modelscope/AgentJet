@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument(
         "--debug",
         "--db",
+        "--bp",
         type=str,
         default="",
         required=False,
