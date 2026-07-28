@@ -34,7 +34,7 @@ from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from tutorial.claudecode_geo3k_swarm.geo3k_agent import _execute_agent
 
 
-GRPO_N = 2  # grpo group size
+GRPO_N = 8  # grpo group size
 
 NUM_EPOCH = 10000
 EVAL_INTERVAL = 100  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE training tasks
@@ -45,7 +45,7 @@ REMOTE_MODEL_PATH = os.getenv(
     "REMOTE_MODEL_PATH",
     "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-VL-2B-Instruct",
 )
-REMOTE_BATCH_SIZE = 1
+REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 # Geo3k dataset — either local parquet/dir or a HF repo id
 GEO3K_DATASET_PATH = os.getenv(

@@ -183,12 +183,21 @@ class SingleAgentContextTracker(BaseTracker):
         return step_reward
 
     def to_role_content(self, ext_msg_array: List[ExtendedMessage]) -> List:
+        # Messages that carry images are emitted as OpenAI vision content blocks
+        # (list of {type: image_url|text}) so the image survives into the
+        # outbound chat/completions request. Text-only messages use a plain
+        # string.
         result = []
         for ext_msg in ext_msg_array:
-            d: dict = {
-                "role": ext_msg.role,
-                "content": ext_msg.content_for_compare,
-            }
+            if ext_msg.images:
+                content = [
+                    {"type": "image_url", "image_url": {"url": url}}
+                    for url in ext_msg.images
+                ]
+                content.append({"type": "text", "text": ext_msg.content_for_compare})
+                d: dict = {"role": ext_msg.role, "content": content}
+            else:
+                d = {"role": ext_msg.role, "content": ext_msg.content_for_compare}
             if ext_msg.tool_calls:
                 d.update({"tool_calls": ext_msg.tool_calls})
             if ext_msg.tool_call_id:

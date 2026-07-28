@@ -185,9 +185,10 @@ ajet:
     # timeline merging policy used in Context Tracker
     timeline_merging_policy:
 
-      # compare_level = "text":  relaxed compare with text, more easier to match, at very little cost
-      # compare_level = "token": strict compare with token, cause less aggressive merging
-      timeline_compare_level: "text"  # options: "text", "token"
+      # compare_level = "text" / "text_and_image": relaxed compare with text and image refs, easier to match, at very little cost
+      #                                             (the two are equivalent; images are always forwarded to the model regardless)
+      # compare_level = "token":                    strict compare with token, cause less aggressive merging
+      timeline_compare_level: "text"  # options: "text", "text_and_image", "token"
 
       # whether or not to ignore tool calls when comparing steps, default to `True` to make merging more aggressive
       ignore_tools: True

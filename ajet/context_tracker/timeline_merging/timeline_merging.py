@@ -19,10 +19,14 @@ def is_timeline_mergeable(
     if len(source_timeline) >= len(target_timeline):
         all_msg_match = True
         for i in range(len(target_timeline)):
-            if timeline_compare_level == "text":
+            # "text" is treated as "text_and_image" for backward compatibility:
+            # both match on text plus attached image refs (data URLs), so
+            # timelines that differ only by image are not merged together.
+            if timeline_compare_level in ("text", "text_and_image"):
                 same = (
                     source_timeline[i].content_for_compare
                     == target_timeline[i].content_for_compare
+                    and (source_timeline[i].images or []) == (target_timeline[i].images or [])
                 )
             elif timeline_compare_level == "token":
                 same = source_timeline[i].token_arr == target_timeline[i].token_arr
