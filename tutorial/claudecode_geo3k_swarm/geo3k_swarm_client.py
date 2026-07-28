@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Geo3K multimodal agent, migrated from rllm's examples/geo3k into
+Geo3K multimodal swarm client, migrated from rllm's examples/geo3k into
 AgentJet's swarm architecture.
 
 Run:
-    python -m tutorial.claudecode_geo3k_swarm.geo3k
+    python -m tutorial.claudecode_geo3k_swarm.geo3k_swarm_client
 
 Dataset:
     hiyouga/geometry3k (expected to be pre-downloaded or loadable via
@@ -13,24 +13,25 @@ Dataset:
 Model:
     A vision-language model such as Qwen/Qwen2.5-VL-7B-Instruct. Set
     REMOTE_MODEL_PATH to a local checkpoint.
+
+The per-episode agent logic lives in ``geo3k_agent._execute_agent`` and
+can be tested standalone against DashScope or a vLLM endpoint; see
+``geo3k_agent.py``.
 """
 
 import os
-import re
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from textwrap import dedent
 
 from tqdm import tqdm
 
-from ajet.schema.task import Task, WorkflowOutput
+from ajet.schema.task import Task
 from ajet.copilot.job import AgentJetJob
 from ajet.task_reader import RouterTaskReader, HuggingFaceTaskReader
 from ajet.utils.thread_executors import PeriodicDrainThreadPoolExecutor
-from ajet.tuner_lib.as_oai_baseurl_apikey import OpenaiBaseUrlAndApiKey
 from ajet.default_config.ajet_config_schema import AjetTaskReader, HuggingfaceDatRepo
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
-from ajet.utils.multimodal import build_multimodal_messages, extract_image
+
+from tutorial.claudecode_geo3k_swarm.geo3k_agent import _execute_agent
 
 
 GRPO_N = 2  # grpo group size
@@ -57,12 +58,6 @@ GEO3K_TEST_DATASET_PATH = os.getenv(
     "/mnt/data_cpfs/model_cache/modelscope/dataset/hiyouga/geometry3k/data/test-00000-of-00001.parquet",
 )
 
-SYSTEM_PROMPT = dedent(
-    """A conversation between the User and Assistant. The User asks a question, and the Assistant provides a solution. The Assistant first thinks through the reasoning process internally with self-reflection and consistency check and then gives the final analysis and answer. The reasoning process should be enclosed within <think></think>, followed directly by the final thought and answer, the final answer MUST BE put in \\boxed{}, like this: <think> reasoning process here </think> final thought and \\boxed{answer} here."""
-)
-
-ANSWER_RE = re.compile(r"\\boxed\{([^}]*)\}")
-
 ajet_job = AgentJetJob(
     ensure_new_experiment=True,
     experiment_name="geo3k_grpo_x1",
@@ -74,20 +69,6 @@ ajet_job = AgentJetJob(
     num_repeat=GRPO_N,
     max_env_worker=MAX_ENV_WORKER,
 )
-
-
-def _normalize(s: str) -> str:
-    return re.sub(r"\s+", "", str(s)).strip().lower()
-
-
-def _compute_reward(final_answer: str, reference_answer: str) -> float:
-    """Extract \\boxed{} answer and compare to ground truth string."""
-    m = ANSWER_RE.search(final_answer or "")
-    if not m:
-        return 0.0
-    predicted = _normalize(m.group(1))
-    target = _normalize(reference_answer)
-    return 1.0 if predicted == target else 0.0
 
 
 def _load_eval_tasks(test_dataset_path: str, label: str = "") -> list:
@@ -171,53 +152,6 @@ def _run_eval_one(
             f.write(summary + "\n")
     else:
         print(f"[EVAL @ step {n_global_step}] {label}  no valid rewards")
-
-
-def _execute_agent(task: Task, api_baseurl_key: OpenaiBaseUrlAndApiKey) -> WorkflowOutput:
-    base_url, api_key = api_baseurl_key.base_url, api_baseurl_key.api_key
-
-    # Geo3k row layout (from rllm preprocess):
-    #   question: str, image/images: list[PIL.Image] or dict with bytes,
-    #   answer / ground_truth: str
-    meta = task.metadata
-    question = meta.get("question") or meta.get("problem") or task.main_query
-    if "\\boxed" not in question:
-        question = question + "\nLet's think step by step and output your final answer in \\boxed{}."
-
-    reference_answer = meta.get("ground_truth") or meta.get("answer") or ""
-
-    messages = build_multimodal_messages(
-        system_prompt=SYSTEM_PROMPT,
-        user_text=question,
-        image=extract_image(meta),
-    )
-
-    response = requests.post(
-        f"{base_url}/chat/completions",
-        json={
-            "model": "fill_whatever_model",
-            "messages": messages,
-            "stream": False,
-            "max_tokens": 2048,
-        },
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Connection": "close",
-        },
-        timeout=600,
-    )
-    response.raise_for_status()
-    final_answer = response.json()["choices"][0]["message"]["content"]
-
-    raw_reward = _compute_reward(final_answer, reference_answer)
-    return WorkflowOutput(
-        reward=raw_reward,
-        metadata={"final_answer": final_answer, "reference": reference_answer},
-    )
-
-
-def run_agent_and_compute_reward(task: Task, base_url: str, api_key: str) -> WorkflowOutput:
-    return _execute_agent(task, OpenaiBaseUrlAndApiKey(base_url=base_url, api_key=api_key))
 
 
 def main():

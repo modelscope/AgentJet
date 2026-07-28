@@ -87,7 +87,6 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         # }
         # Returns (str_content, should_skip_message, images).
         # Images are surfaced so callers can attach them to the ExtendedMessage.
-        from ajet import bp; bp("IMG")
         str_content = ""
         images: list = []
         for item in msg["content"]:
