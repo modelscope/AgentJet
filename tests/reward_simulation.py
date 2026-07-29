@@ -28,8 +28,8 @@ from ajet.backbone.trainer_verl import (  # noqa: E402
     compute_episode_level_loss_weight,
     compute_grpo_episode_level_outcome_advantage,
     compute_reward,
-    parse_reward_from_dataproto,
 )
+from ajet.utils.credit_assignment.basic_reward import parse_reward_from_dataproto  # noqa: E402
 
 
 def build_mock_config() -> SimpleNamespace:

@@ -14,7 +14,6 @@
 
 
 import asyncio
-import json
 import os
 import uuid
 from collections import defaultdict
@@ -54,166 +53,9 @@ from ajet.context_tracker.single_agent_tracking import SingleAgentContextTracker
 from ajet.schema.task import Task
 from ajet.task_reader import dict_to_ajet_task
 from ajet.task_rollout.native_parallel_worker import VerlRolloutManager
+from ajet.utils.credit_assignment.basic_reward import parse_reward_from_dataproto
+from ajet.utils.debugging.token_id_debugging import capture_training_token_ids
 from ajet.utils.metric_helper import save_trajectory_as_json_file, update_metrics
-
-
-IMAGE_PAD_ID = 151655  # Qwen2.5-VL <|image_pad|>
-
-
-def capture_training_token_ids(batch: DataProto, tokenizer, out_path: str, global_step: int = 0) -> None:
-    """One-shot debug dump of the *training-side* token ids for a batch.
-
-    Writes each sample's real (unpadded) prompt token id array, tagging the
-    image-pad (151655) tokens, plus per-sample image counts and grid_thw. Used
-    by ``tutorial/claudecode_geo3k_swarm/test_token_ids.py`` to compare the
-    training-side tokenization against the vLLM-side capture in
-    ``token_id_io.md``. Inert during normal training (gated on an env var by
-    the caller).
-    """
-    prompts = batch.batch["prompts"]
-    responses = batch.batch["responses"]
-    attention_mask = batch.batch["attention_mask"]
-    prompt_len = prompts.shape[1]
-    resp_len = responses.shape[1]
-    mmi = batch.non_tensor_batch.get("multi_modal_inputs", None)
-    task_ids = batch.non_tensor_batch.get("task_ids", None)
-
-    def _real_prompt(i):
-        mask = attention_mask[i, :prompt_len].bool()
-        return prompts[i][mask].tolist()
-
-    def _real_response(i):
-        mask = attention_mask[i, prompt_len:prompt_len + resp_len].bool()
-        return responses[i][mask].tolist()
-
-    def _grid(i):
-        if mmi is None:
-            return None
-        d = mmi[i]
-        if not isinstance(d, dict):
-            return None
-        g = d.get("image_grid_thw", None)
-        if g is None:
-            return None
-        try:
-            return g.tolist()
-        except AttributeError:
-            return g
-
-    n = len(prompts)
-
-    def _sample_md(idx: int, header_note: str) -> str:
-        """Full markdown dump (summary row + arrays + decoded) for one sample."""
-        p = _real_prompt(idx)
-        r = _real_response(idx)
-        tid = task_ids[idx] if task_ids is not None else "?"
-        lines = [
-            "# Training-side token ids captured at trainer_verl.py:599",
-            "",
-            "Final tokenization consumed by training (image already expanded to "
-            f"`<|image_pad|>` = {IMAGE_PAD_ID}). Compare against the vLLM-side "
-            "ground-truth capture.",
-            "",
-            f"- global_step: {global_step}",
-            f"- {header_note}",
-            f"- task_id: {tid}",
-            f"- image_tokens: {p.count(IMAGE_PAD_ID)}",
-            f"- grid_thw: {_grid(idx)}",
-            "",
-            f"## Full arrays for sample idx={idx}",
-            "",
-            f"Input (prompt) token ids — length {len(p)}, image_tokens {p.count(IMAGE_PAD_ID)}:",
-            "",
-            "```json",
-            json.dumps(p),
-            "```",
-            "",
-            f"Output (response) token ids — length {len(r)}:",
-            "",
-            "```json",
-            json.dumps(r),
-            "```",
-            "",
-        ]
-        if tokenizer is not None:
-            try:
-                lines += [
-                    "Decoded prompt (special tokens kept):",
-                    "",
-                    "```",
-                    tokenizer.decode(p, skip_special_tokens=False),
-                    "```",
-                    "",
-                ]
-            except Exception:
-                pass
-        return "\n".join(lines)
-
-    # Directory mode: AJET_CAPTURE_TOKEN_IDS points at a directory -> write one
-    # <task_id>.debug.md per distinct task_id (first sample of each), so the
-    # multimodal test can compare each case independently. File mode keeps the
-    # original single-file behavior (first image-bearing sample) for the
-    # existing single-image test_token_ids.py.
-    is_dir = os.path.isdir(out_path) or out_path.endswith(("/", os.sep))
-    if is_dir:
-        os.makedirs(out_path, exist_ok=True)
-        seen = set()
-        for i in range(n):
-            tid = str(task_ids[i]) if task_ids is not None else str(i)
-            if tid in seen:
-                continue
-            seen.add(tid)
-            safe = tid.replace("/", "_").replace(os.sep, "_")
-            with open(os.path.join(out_path, f"{safe}.debug.md"), "w", encoding="utf-8") as f:
-                f.write(_sample_md(i, f"batch size: {n} (per-task capture)"))
-        return
-
-    chosen = None
-    for i in range(n):
-        if _real_prompt(i).count(IMAGE_PAD_ID) > 0:
-            chosen = i
-            break
-    if chosen is None:
-        chosen = 0
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(_sample_md(chosen, f"batch size: {n} (first image-bearing sample)"))
-
-
-def parse_reward_from_dataproto(data: DataProto) -> torch.Tensor:
-    """
-    Reward scalar -> token-level reward tensor conversion.
-    """
-    reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)  # (bs, reslen)
-
-    def get_response_lengths():
-        # Batch-level processing
-        prompt_ids_batch = data.batch["prompts"]  # (bs, prompt_len)
-        prompt_lengths = prompt_ids_batch.shape[-1]
-        # Get attention masks for all items
-        attention_masks = data.batch["attention_mask"]  # (bs, total_len)
-        response_lengths = attention_masks[:, prompt_lengths:].sum(dim=1)  # (bs, )
-        return response_lengths
-
-    # Get scalar reward scores
-    reward_scores = torch.tensor(
-        [item for item in data.non_tensor_batch["reward_scores"]],
-        device=reward_tensor.device, dtype=torch.float32
-    )  # (bs, )
-
-    # Use advanced indexing to assign rewards (placing reward at the last token position)
-    # e.g.
-    # reward_scores = [1,2,3]
-    # response_lengths = [7,3,4]
-    # reward_tensor = [
-    #     [0,0,0,0,0,0,1,0,0],
-    #     [0,0,2,0,0,0,0,0,0],
-    #     [0,0,0,3,0,0,0,0,0],
-    # ]
-    response_lengths = get_response_lengths()
-    assert len(data) == reward_tensor.shape[0]
-    reward_tensor[torch.arange(reward_tensor.shape[0]), response_lengths - 1] = reward_scores
-
-    return reward_tensor
 
 
 def compute_reward(data: DataProto) -> tuple[torch.Tensor, dict[str, Any]]:
@@ -242,36 +84,6 @@ def union_gen_batch_via_task_id(tasks, batch: DataProto, gen_batch_output: DataP
                 task_id_counter[tid] = 1
         logger.info(f'task_id_counter: {task_id_counter}')
         return gen_batch_output
-
-def import_or_export_data_proto(batch: DataProto, direction: str = "export", file: str = "./tmp.pkl") -> DataProto:
-    """Import or export a DataProto batch to/from a pickle file.
-
-    Args:
-        batch: The DataProto batch object. Used when direction is "export";
-               ignored (can be None) when direction is "import".
-        direction: "import" to load a batch from file, "export" to save the batch to file.
-        file: Path to the pickle file. Defaults to "./tmp.pkl".
-
-    Returns:
-        The DataProto batch — either the one just loaded (import) or the one just saved (export).
-
-    Raises:
-        ValueError: If direction is not "import" or "export".
-        FileNotFoundError: If direction is "import" and the file does not exist.
-    """
-    import pickle
-    if direction == "export":
-        with open(file, "wb") as f:
-            pickle.dump(batch, f)
-        logger.info(f"[import_or_export_data_proto] Exported batch to {file}")
-        return batch
-    elif direction == "import":
-        with open(file, "rb") as f:
-            batch = pickle.load(f)
-        logger.info(f"[import_or_export_data_proto] Imported batch from {file}")
-        return batch
-    else:
-        raise ValueError(f"direction must be 'import' or 'export', got '{direction}'")
 
 def compute_grpo_episode_level_outcome_advantage(
     token_level_rewards: torch.Tensor,

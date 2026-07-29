@@ -217,7 +217,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     before_last_query=any_later_msg_has_user_role,
                 )
             ]
-            if ("<think>" in msg_content) and (not previous_message_encounter_user_role):
+            if msg_content.startswith("<think>") and (not previous_message_encounter_user_role):
                 logger.warning(f"Warning! Message content contains <think> tag, but no prior message has `user` role! This is not a common scenario. Please check your agent loop carefully.")
 
         return timeline

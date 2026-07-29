@@ -6,6 +6,7 @@ tmux window one:
 ```bash
 tmux new -s a_session_running_swarm_server
 source .venv/bin/activate
+ajet-swarm start
 
 tmux new -s a_session_running_swarm_client
 source .venv/bin/activate
