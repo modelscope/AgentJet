@@ -642,8 +642,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             tasks, mode="sample", epoch=f"train.{epoch}"
                         )
 
-                        # from ajet import bp; bp("BATCH")
-
                         logger.info("end fit rollout")
                         gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
                         logger.info("end dataproto convertion")
@@ -802,7 +800,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
 
                         if reward_extra_infos_dict:
                             batch.non_tensor_batch.update({k: np.array(v) for k, v in reward_extra_infos_dict.items()})
-                        from ajet import bp; bp("KL")
                         # compute rewards. apply_kl_penalty if available
                         if self.config.algorithm.use_kl_in_reward:
                             batch, kl_metrics = apply_kl_penalty(

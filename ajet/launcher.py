@@ -57,6 +57,7 @@ def parse_args():
         "--debug",
         "--db",
         "--bp",
+        "--breakpoint",
         type=str,
         default="",
         required=False,

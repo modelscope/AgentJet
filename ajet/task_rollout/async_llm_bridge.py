@@ -205,7 +205,6 @@ class AsyncLlmBridge(object):
                 "completion_tokens": len(token_array), # type: ignore
                 "total_tokens": len(prompt_token_ids) + len(token_array), # type: ignore
             }
-            # from ajet import bp; bp("DECODE")
             return {
                 "role": "assistant",
                 "request_id": request_id,

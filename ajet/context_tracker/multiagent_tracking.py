@@ -347,7 +347,6 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             )
         ):
             logger.bind(exception=True).info(f"General Warning: merge failure discovered.\n")
-            # from ajet import bp; bp("SWARM")
         return
 
 
