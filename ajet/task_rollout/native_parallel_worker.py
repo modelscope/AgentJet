@@ -686,6 +686,19 @@ class VerlRolloutManager(DynamicRolloutManager):
             padding_value=0,
             padding_side="left",
         )
+        # A batch may mix multimodal samples (4-channel M-RoPE position ids,
+        # shape (4, L)) with text-only samples (1-D, shape (L,)). VERL's actor
+        # requires a uniform channel count across the batch, so promote every
+        # text-only sample to the same C-channel layout by repeating its 1-D
+        # sequential position ids across all channels. This matches what
+        # get_rope_index yields for non-vision tokens (all channels sequential).
+        any_2d = any(p.dim() == 2 for p in prompt_position_ids)
+        if any_2d:
+            n_channels = next(p.shape[0] for p in prompt_position_ids if p.dim() == 2)
+            prompt_position_ids = [
+                (p if p.dim() == 2 else p.unsqueeze(0).repeat(n_channels, 1))
+                for p in prompt_position_ids
+            ]
         # Detect 4-channel M-RoPE position_ids (shape (4, L) per sample).
         has_4d_position_ids = (len(prompt_position_ids) > 0 and prompt_position_ids[0].dim() == 2)
         if has_4d_position_ids:

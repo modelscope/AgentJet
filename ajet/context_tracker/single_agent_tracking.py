@@ -13,6 +13,43 @@ from ajet.schema.trajectory import Reward, Sample
 from ajet.utils.tokenizer import ajet_apply_chat_template
 
 
+def merge_multi_modal_inputs(ext_steps):
+    """Concatenate per-message ``multi_modal_inputs`` into one dict.
+
+    A conversation may carry images in several messages (e.g. image in turn 1
+    and another image in a later turn). Each such ``ExtendedMessage`` holds its
+    own processor tensors (``pixel_values``, ``image_grid_thw``, ...). Training
+    needs a single merged dict whose rows line up, in message order, with the
+    ``<|image_pad|>`` spans already present in ``input_ids`` — this reproduces
+    what a single whole-conversation processor call (the vLLM request path)
+    would have produced. Concatenating along dim 0 matches verl's own
+    ``verl.utils.model.extract_multi_modal_inputs`` (which cats per-sample dicts
+    the same way) and has been verified to yield byte-identical tensors and
+    identical ``get_rope_index`` output.
+
+    Returns ``(merged_dict_or_None, processor_or_None)``.
+    """
+    collected = {}  # key -> list[tensor], in message order
+    processor = None
+    for m in ext_steps:
+        mmi = getattr(m, "multi_modal_inputs", None)
+        if not mmi:
+            continue
+        if processor is None:
+            processor = getattr(m, "processor", None)
+        for k, v in mmi.items():
+            collected.setdefault(k, []).append(v)
+    if not collected:
+        return None, None
+    merged = {}
+    for k, vals in collected.items():
+        if all(hasattr(v, "dim") for v in vals):
+            merged[k] = torch.cat(vals, dim=0)
+        else:
+            merged[k] = vals[0]
+    return merged, processor
+
+
 class SingleAgentContextTracker(BaseTracker):
     """
     A linear context tracker template that handles the conversation flow between LLM and environment.
@@ -209,12 +246,7 @@ class SingleAgentContextTracker(BaseTracker):
         sample_arr = []
         ext_steps = timeline
         tracker_tokenized = self.tokenize_steps(ext_steps=ext_steps, index=0, total_steps=1)
-        mm_inputs = None
-        for m in ext_steps:
-            mmi = getattr(m, "multi_modal_inputs", None)
-            if mmi:
-                mm_inputs = mmi
-                break
+        mm_inputs, _ = merge_multi_modal_inputs(ext_steps)
         sample = Sample(
             tracker_tokenized=tracker_tokenized,
             messages=self.to_role_content(ext_steps),
@@ -237,12 +269,7 @@ class SingleAgentContextTracker(BaseTracker):
                 index=index,
                 total_steps=len(self.saved_timelines),
             )
-            mm_inputs = None
-            for m in ext_steps:
-                mmi = getattr(m, "multi_modal_inputs", None)
-                if mmi:
-                    mm_inputs = mmi
-                    break
+            mm_inputs, _ = merge_multi_modal_inputs(ext_steps)
             sample = Sample(
                 tracker_tokenized=tracker_tokenized,
                 messages=self.to_role_content(ext_steps),
@@ -346,14 +373,9 @@ class SingleAgentContextTracker(BaseTracker):
         # ids: [text_cumsum, T_rope, H_rope, W_rope]. VERL's qwen2_vl actor
         # forward requires this exact layout. For text-only samples we keep
         # the 1D text position ids as before.
-        mm_inputs_for_rope = None
-        mm_processor = None
-        for m in ext_steps:
-            mmi = getattr(m, "multi_modal_inputs", None)
-            if mmi and "image_grid_thw" in mmi:
-                mm_inputs_for_rope = mmi
-                mm_processor = getattr(m, "processor", None)
-                break
+        mm_inputs_for_rope, mm_processor = merge_multi_modal_inputs(ext_steps)
+        if mm_inputs_for_rope is not None and "image_grid_thw" not in mm_inputs_for_rope:
+            mm_inputs_for_rope = None
 
         if mm_inputs_for_rope is not None and mm_processor is not None:
             from verl.models.transformers.qwen2_vl import get_rope_index
