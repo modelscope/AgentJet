@@ -23,13 +23,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from ajet.backbone.trainer_verl import (  # noqa: E402
+from ajet.backbone.trainer_verl import compute_reward  # noqa: E402
+from ajet.backbone.verl.loss_balance import compute_episode_level_loss_weight  # noqa: E402
+from ajet.credit_assignment.basic_reward import (  # noqa: E402
     compute_advantage,
-    compute_episode_level_loss_weight,
     compute_grpo_episode_level_outcome_advantage,
-    compute_reward,
+    parse_reward_from_dataproto,
 )
-from ajet.utils.credit_assignment.basic_reward import parse_reward_from_dataproto  # noqa: E402
 
 
 def build_mock_config() -> SimpleNamespace:

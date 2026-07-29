@@ -61,7 +61,7 @@ def parse_args():
         type=str,
         default="",
         required=False,
-        help="Path to configuration file",
+        help="Debug tags; enables Ray post-mortem and DEBUG_TAGS env",
     )
     parser.add_argument(
         "--with-ray", action="store_true", default=False, help="Launch ray"

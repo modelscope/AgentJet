@@ -131,6 +131,8 @@ def main():
     parser_start.add_argument(
         "--debug",
         "--db",
+        "--bp",
+        "--breakpoint",
         type=str,
         default="",
         required=False,
