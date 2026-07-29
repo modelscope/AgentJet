@@ -39,7 +39,7 @@ def main():
     )
 
     # Hand shake with remote swarm server
-    swarm_worker = SwarmClient(AJET_SWARM_URL)
+    swarm_worker = SwarmClient(AJET_SWARM_URL, auto_start_swarm_server=True)
     ajet_job = AgentJetJob(
         experiment_name="math_gsm8k_grpo",
         algorithm="grpo",

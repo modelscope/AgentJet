@@ -375,7 +375,7 @@ def execute_training_process(
     # Avoid creating `/tmp/ajet` because Ray workers may run with cwd=`/tmp`,
     # and then Python can accidentally import a namespace package from `/tmp/ajet`
     # instead of the real `agentjet_codebase/ajet` package.
-    runtime_tmp_dir = "/tmp/agentjet"
+    runtime_tmp_dir = os.getenv("AJET_IPC_DIR", "/tmp/agentjet")
     os.makedirs(runtime_tmp_dir, exist_ok=True)
     assert os.path.exists(runtime_tmp_dir), (
         f"Temporary directory {runtime_tmp_dir} cannot be created."

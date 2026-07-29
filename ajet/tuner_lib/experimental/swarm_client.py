@@ -7,6 +7,7 @@ import re
 import yaml
 import tempfile
 import os
+import socket
 from urllib.parse import urlparse
 from beast_logger import print_dict
 from beast_logger import register_console
@@ -67,6 +68,13 @@ def _auto_start_local_swarm_server(server_url: str):
     from ajet.utils.smart_daemon import LaunchCommandWhenAbsent
 
     swarm_port = _extract_local_swarm_port(server_url)
+    parsed = urlparse(server_url if "://" in server_url else f"http://{server_url}")
+    try:
+        with socket.create_connection((parsed.hostname, swarm_port), timeout=1):
+            logger.warning("Swarm server is already running at %s. No need to auto-start.", server_url)
+    except ConnectionRefusedError:
+        pass
+
     companion = LaunchCommandWhenAbsent(
         full_argument_list=[
             "ajet-swarm",
