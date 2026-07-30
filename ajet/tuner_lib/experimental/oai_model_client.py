@@ -69,12 +69,10 @@ class InterchangeClient:
         if self.should_soft_terminate or self.should_hard_terminate:
             return self.episode_contect_address
 
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting InterchangeClient service loop...")
         self.socket = context.socket(zmq.REP)
         self.socket.bind(f"{self.episode_contect_address}")
 
         self.executor = SharedInterchangeThreadExecutor(self.max_inference_tracker_threads).get_shared_executor()
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Submitting _run_service_loop to executor...")
         future = self.executor.submit(self._run_service_loop)
 
         # wait till service begin running
@@ -111,7 +109,6 @@ class InterchangeClient:
 
         begin_time = time.time()
         ever_receive_anything = False
-        if DEBUG: logger.info(f"[client] {self.episode_uuid} | Starting ZMQ socket bind complete")
 
         poller = zmq.asyncio.Poller()
         poller.register(self.socket, zmq.POLLIN)
@@ -122,11 +119,8 @@ class InterchangeClient:
                 if self.socket not in events:
                     if self.should_hard_terminate:
                         # abort_episode()
-                        if DEBUG: logger.info(f"[client] {self.episode_uuid} | episode over")
                         break
                     timepassed = time.time() - begin_time
-                    if (not ever_receive_anything) and (timepassed > 100):
-                        if DEBUG: logger.warning(f"[client] {self.episode_uuid} | Still waiting for first message... (time passed {timepassed}) for episode_uuid:{self.episode_uuid}...")
                     continue
 
                 # <wait for>:
@@ -137,12 +131,10 @@ class InterchangeClient:
                 ever_receive_anything = True
 
                 # parse the incoming request
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before json.loads(message)")
                 data_as_json = json.loads(message)
                 parsed_msg = InterchangeCompletionRequest(**data_as_json)
 
                 # run the llm request, monitored by context tracker
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before awaiting self.llm_infer")
                 response = await self.llm_proxy_with_tracker.chat_completion_request(
                     req=parsed_msg.completion_request,
                     timeline_uuid=parsed_msg.timeline_uuid,
@@ -152,15 +144,14 @@ class InterchangeClient:
                 )
                 result = response.model_dump_json()
 
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | before send_string (send llm call result)")
-
                 # <send to>
                 #   <to_sourcefile>: ajet/tuner_lib/experimental/oai_model_server.py
                 #   <to_code>: result_str = socket.recv_string()
                 await self.socket.send_string(result)
-
-                if DEBUG: logger.info(f"[client] {self.episode_uuid} | after send_string (send llm call result)")
-        except:
+        except BaseException as e:
+            import traceback
+            print(f"[client] {self.episode_uuid} | Exception occurred in service loop: {e!r}", flush=True)
+            traceback.print_exc()
             logger.exception(f"[client] {self.episode_uuid} | Exception occurred in service loop.")
         finally:
             self.socket.close()

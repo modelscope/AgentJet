@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import asyncio
 import os
 import uuid
 from pprint import pprint
@@ -43,7 +42,6 @@ from verl.utils.checkpoint.checkpoint_manager import should_save_ckpt_esi
 from verl.utils.config import omega_conf_to_dataclass
 from verl.utils.debug import marked_timer
 from verl.utils.metric import reduce_metrics
-from verl.utils.ray_utils import auto_await
 
 from ajet.backbone.verl.loss_balance import compute_episode_level_loss_weight
 from ajet.backbone.warm_up import warm_up_process
@@ -225,11 +223,6 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
                 http_change_engine_status(self.config, status, global_step=self.global_steps)
 
-    @auto_await
-    async def _sleep_rollout_replicas(self):
-        await asyncio.gather(*[replica.abort_all_requests() for replica in self.checkpoint_manager.replicas])
-        await self.checkpoint_manager.sleep_replicas()
-
     # #######################################
     # training loop
     # #######################################
@@ -251,7 +244,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         # load checkpoint before doing anything
         self._load_checkpoint()
         self.checkpoint_manager.update_weights(self.global_steps)
-        self._sleep_rollout_replicas()
+        self.checkpoint_manager.sleep_replicas()
 
         # [oc] swarm_mode is not compatible with `val_before_train` and `val_only`
         assert not (self.config.ajet.enable_swarm_mode and (self.config.ajet.trainer_common.val_before_train or self.config.ajet.trainer_common.val_only)), \
@@ -400,7 +393,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}"
                         )
                         self._update_interchange_server_status_flag("ENGINE.WEIGHT_SYNCING")
-                        self._sleep_rollout_replicas()
+                        self.checkpoint_manager.sleep_replicas()
                     logger.info("rollout step end")
 
                     batch.non_tensor_batch["uid"] = np.array(
@@ -743,7 +736,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             )
             logger.info("Completed validate rollout")
             test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
-            self._sleep_rollout_replicas()
+            self.checkpoint_manager.sleep_replicas()
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]

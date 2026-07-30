@@ -146,7 +146,9 @@ class AsyncLlmBridge(object):
             if image_data is not None:
                 generate_kwargs["image_data"] = image_data
 
+            # print(f"self.async_rollout_manager.generate: {generate_kwargs}")
             final_res: TokenOutput = await self.async_rollout_manager.generate(**generate_kwargs)
+            # print(f"final_res: {final_res}")
 
             """response token ids"""
             token_array = final_res.token_ids
