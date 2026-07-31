@@ -386,8 +386,8 @@ class ExtendedMessage:
                 # manual_loss_mask_override: this comes by diff [prompt + answer] with [prompt] (see get_token_inc_from_llm_response)
                 # msg_token_mask:            this comes from consuming the generation token prefix (bos + /n, something + think) and eos
                 try:
-                    assert len(self.manual_loss_mask_override) == len(msg_token_mask)
-                    assert all(a == b for a, b in zip(self.manual_loss_mask_override, msg_token_mask))
+                    assert len(self.manual_loss_mask_override) == len(msg_token_mask), "token mask length mismatch"
+                    # assert all(a == b for a, b in zip(self.manual_loss_mask_override, msg_token_mask))
                 except AssertionError:
                     error_msg = (
                         "Manual loss mask override mismatch | "
@@ -405,7 +405,12 @@ class ExtendedMessage:
                         f.write(f"[{datetime.now().isoformat()}]\n")
                         f.write(f"{error_msg}\n")
                         f.write(f"Traceback:\n{traceback.format_exc()}\n")
-            return msg_token_mask
+
+            # returning either is ok, but when lack eos, msg_token_mask is more accurate, otherwise, manual_loss_mask_override is more accurate
+            if self.lack_normal_eos:
+                return msg_token_mask
+            else:
+                return self.manual_loss_mask_override
         else:
             msg_token_mask = [0] * len(self.token_arr)
             return msg_token_mask

@@ -7,6 +7,7 @@ from ajet.schema.extended_msg import (
     find_sublist_indices,
 )
 from ajet.schema.trajectory import Reward
+from ajet.utils.get_blackout_token_combo import get_blackout_token_combo
 
 
 def replace_token_ids(
@@ -126,7 +127,12 @@ class BaseTracker(object):
 
         # tokenizer
         self.tokenizer = tokenizer
-        self.blackout_token_combo = tokenizer.encode("<|im_start|>assistant\n")
+        # Select the loss-mask blackout header via config
+        # (ajet.rollout.chat_template_generate_prompt_type): default is
+        # "<|im_start|>assistant\n"; "qwen3.6" extends it to
+        # "<|im_start|>assistant\n<think>" so the reasoning-scaffold <think>
+        # opener injected by the Qwen3.6 template is also blacked out.
+        self.blackout_token_combo = get_blackout_token_combo(tokenizer, config)
         self._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
 
         # config

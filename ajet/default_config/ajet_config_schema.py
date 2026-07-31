@@ -64,6 +64,12 @@ class AjetRollout:
     # Per-GPU token budget for the PPO actor update (dynamic batching).
     ppo_max_token_len_per_gpu: Optional[int] = None  # None => track ajet.rollout.max_model_len (legacy behaviour).
     compute_madness_checklist: List[str] = field(default_factory=list)
+    # Controls the loss-mask blackout header (get_blackout_token_combo).
+    # "default" => "<|im_start|>assistant\n" (3 tokens).
+    # "qwen3.6" => "<|im_start|>assistant\n<think>" so the reasoning-scaffold
+    #              <think> opener injected by the Qwen3.6 template is also
+    #              blacked out (not trained on).
+    chat_template_generate_prompt_type: str = "default"
 
 
 @dataclass
