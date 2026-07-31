@@ -7,6 +7,36 @@ from dotenv import load_dotenv
 from ajet.utils.networking import find_free_port, get_host_ip
 
 
+def _discover_nvidia_lib_dirs() -> list:
+    """Return lib dirs of installed nvidia-* pip wheels (e.g. .../nvidia/cu13/lib,
+    .../nvidia/cuda_nvrtc/lib). These ship versioned CUDA .so files that vLLM's
+    cumem_allocator needs but that carry no RUNPATH, so they must be on
+    LD_LIBRARY_PATH. Discovered from the running interpreter's site-packages so
+    the result is correct regardless of how the launcher set up its environment."""
+    import site
+    import sysconfig
+
+    roots = set()
+    for getter in (lambda: [sysconfig.get_paths().get("purelib")],
+                   lambda: site.getsitepackages() if hasattr(site, "getsitepackages") else []):
+        try:
+            for p in getter():
+                if p:
+                    roots.add(p)
+        except Exception:
+            pass
+
+    lib_dirs = []
+    for root in roots:
+        nvidia_root = Path(root) / "nvidia"
+        if not nvidia_root.is_dir():
+            continue
+        for lib_dir in sorted(nvidia_root.glob("*/lib")):
+            if lib_dir.is_dir() and str(lib_dir) not in lib_dirs:
+                lib_dirs.append(str(lib_dir))
+    return lib_dirs
+
+
 def get_runtime_env(config, is_trinity: bool = False) -> dict:
     if os.path.exists(".env"):
         load_dotenv(".env")
@@ -77,6 +107,26 @@ def get_runtime_env(config, is_trinity: bool = False) -> dict:
     for var in optional_env_vars:
         if os.getenv(var):
             runtime_env["env_vars"].update({var: os.getenv(var, "")})
+
+    # Propagate the CUDA toolkit / loader paths from the driver process to all
+    # Ray actors on every node. Without this, actors on remote nodes inherit
+    # only the raylet's env and may fail to load versioned CUDA .so files
+    # (e.g. vLLM's cumem_allocator needs libnvrtc.so.13 for sleep-mode weight
+    # sync). These are only forwarded when set in the driver environment.
+    for var in ("LD_LIBRARY_PATH", "CUDA_HOME", "PATH"):
+        if os.getenv(var):
+            runtime_env["env_vars"].update({var: os.getenv(var, "")})
+
+    # Ensure the CUDA runtime libs shipped as nvidia-* pip wheels are on the
+    # loader path. vLLM's cumem_allocator.abi3.so links libnvrtc.so.13 with no
+    # RUNPATH, so it can only be found via LD_LIBRARY_PATH. The wheels install
+    # under site-packages/nvidia/<component>/lib; discover and prepend them so
+    # sleep-mode weight sync works without relying on the operator's env.
+    nvidia_lib_dirs = _discover_nvidia_lib_dirs()
+    if nvidia_lib_dirs:
+        existing = runtime_env["env_vars"].get("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", ""))
+        parts = nvidia_lib_dirs + ([existing] if existing else [])
+        runtime_env["env_vars"]["LD_LIBRARY_PATH"] = os.pathsep.join(parts)
 
     if is_trinity:
         assert "AJET_CONFIG_REDIRECT" in runtime_env["env_vars"]

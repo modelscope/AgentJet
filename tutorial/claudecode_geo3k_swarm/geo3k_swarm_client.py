@@ -34,7 +34,7 @@ from ajet.tuner_lib.experimental.swarm_client import SwarmClient
 from tutorial.claudecode_geo3k_swarm.geo3k_agent import _execute_agent
 
 
-GRPO_N = 8  # grpo group size
+GRPO_N = 4  # grpo group size
 
 NUM_EPOCH = 10000
 EVAL_INTERVAL = 100  # Evaluate every EVAL_INTERVAL * REMOTE_BATCH_SIZE training tasks
@@ -43,10 +43,14 @@ MAX_ENV_WORKER = 64  # also used as eval threadpool size
 AJET_SWARM_URL = os.getenv("AJET_SWARM_URL", "http://localhost:10086")
 REMOTE_MODEL_PATH = os.getenv(
     "REMOTE_MODEL_PATH",
-    "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3-VL-2B-Instruct",
+    "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3___6-35B-A3B",
 )
-REMOTE_BATCH_SIZE = 32
+REMOTE_BATCH_SIZE = 4
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
+REMOTE_NNODES = 2
+# Qwen3.6-35B-A3B has 2 KV heads, so TP must divide 2 (1 or 2). TP=2 for the
+# 35B MoE VL model on 97GB H20 GPUs.
+REMOTE_TENSOR_PARALLEL_SIZE = 8
 # Geo3k dataset — either local parquet/dir or a HF repo id
 GEO3K_DATASET_PATH = os.getenv(
     "GEO3K_DATASET_PATH",
@@ -58,16 +62,25 @@ GEO3K_TEST_DATASET_PATH = os.getenv(
     "/mnt/data_cpfs/model_cache/modelscope/dataset/hiyouga/geometry3k/data/test-00000-of-00001.parquet",
 )
 
+# vLLM sleep-mode resume (wake_up) re-maps the KV cache + weights on top of the
+# colocated FSDP training state. At 0.85 the wake_up allocation OOMs
+# (cumem_allocator.cpp:163) because the actor params/optimizer are still
+# resident during weight sync. 0.5 leaves headroom for the 35B MoE actor.
+REMOTE_GPU_MEMORY_UTILIZATION = float(os.getenv("REMOTE_GPU_MEMORY_UTILIZATION", "0.8"))
+
 ajet_job = AgentJetJob(
     ensure_new_experiment=True,
-    experiment_name="geo3k_grpo_x1",
+    experiment_name="geo3k_grpo_y1",
     algorithm="grpo",
     logging="swanlab",
     n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
+    nnodes=REMOTE_NNODES,
     model=REMOTE_MODEL_PATH,
     batch_size=REMOTE_BATCH_SIZE,
     num_repeat=GRPO_N,
     max_env_worker=MAX_ENV_WORKER,
+    tensor_model_parallel_size=REMOTE_TENSOR_PARALLEL_SIZE,
+    gpu_memory_utilization=REMOTE_GPU_MEMORY_UTILIZATION,
 )
 
 
@@ -185,8 +198,12 @@ def main():
         if tasks:
             eval_tasks_by_set[label] = tasks
 
-    # Baseline eval before any training updates
-    _run_eval(swarm_worker, eval_tasks_by_set, 0)
+    # Baseline eval before any training updates. Gated behind RUN_BASELINE_EVAL
+    # (default off): the step-0 baseline over the full 1202-task test set takes
+    # very long under the current per-episode routing throughput and delays the
+    # start of training. Set RUN_BASELINE_EVAL=1 to re-enable it.
+    if os.environ.get("RUN_BASELINE_EVAL", "0") == "1":
+        _run_eval(swarm_worker, eval_tasks_by_set, 0)
 
     def rollout(task):
         episode_uuid, api_baseurl_key = swarm_worker.begin_episode(discard_episode_timeout=240)

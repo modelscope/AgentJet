@@ -29,6 +29,19 @@ def merge_multi_modal_inputs(ext_steps):
 
     Returns ``(merged_dict_or_None, processor_or_None)``.
     """
+    # Keys whose tensors are NOT concatenable along dim 0 across samples and
+    # that verl's training forward never consumes. Qwen3-VL / qwen3_5_moe's
+    # processor emits ``mm_token_type_ids`` of shape (1, seq_len): its seq_len
+    # varies per sample, so verl.utils.model.extract_multi_modal_inputs
+    # (torch.cat(dim=0)) crashes with "Sizes of tensors must match except in
+    # dimension 0". Qwen2-VL never produced this key, which is why Qwen2.5-VL
+    # trained fine here. It is only read inside the model's
+    # compute_3d_position_ids (M-RoPE), which runs solely when position_ids is
+    # None; verl always passes its own precomputed M-RoPE position_ids, so the
+    # key is dead weight in the training path. Drop it so verl only sees the
+    # dim-0-safe raw tensors (pixel_values, image_grid_thw), matching the
+    # Qwen2-VL tensor set.
+    DROP_KEYS = {"mm_token_type_ids"}
     collected = {}  # key -> list[tensor], in message order
     processor = None
     for m in ext_steps:
@@ -38,6 +51,8 @@ def merge_multi_modal_inputs(ext_steps):
         if processor is None:
             processor = getattr(m, "processor", None)
         for k, v in mmi.items():
+            if k in DROP_KEYS:
+                continue
             collected.setdefault(k, []).append(v)
     if not collected:
         return None, None
@@ -495,7 +510,15 @@ class SingleAgentContextTracker(BaseTracker):
         return
 
     def get_generation_prompt_token(self):
-        dummy_msg = [{"role": "assistant", "content": "dummy text"}]
+        # A leading user turn is required: some chat templates (e.g. Qwen3.6 /
+        # qwen3_5_moe) reverse-scan for a user query and raise "No user query
+        # found in messages" if the conversation has no user turn. The
+        # generation-prompt delta is identical with or without it, so this only
+        # keeps the probe renderable across templates.
+        dummy_msg = [
+            {"role": "user", "content": "dummy"},
+            {"role": "assistant", "content": "dummy text"},
+        ]
         self.generation_prompt_token, _ = self.get_inc(
             ajet_apply_chat_template(
                 tokenizer=self.tokenizer,

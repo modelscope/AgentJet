@@ -22,6 +22,41 @@ NON_TRAIN_AUTHORS = [
     "llm(do_not_train)",
 ]
 
+# Throwaway user-role messages used to anchor per-message tokenization.
+# Newer chat templates (Qwen3.x / Qwen3.6-VL) raise "No user query found in
+# messages" when a rendered conversation contains no real user turn, and they
+# only preserve an assistant <think> block for messages that come AFTER the
+# last user query (loop.index0 > last_query_index). To tokenize a single
+# message in isolation while (a) keeping a user query present and (b)
+# controlling whether the target's think block is stripped, we sandwich the
+# target between these anchors and then strip the anchors' tokens back off.
+#   - DUMMY_USER_ANCHOR: a leading user turn (satisfies the "user query" check).
+#   - DUMMY_USER_TRAIL:  a trailing user turn placed AFTER the target so the
+#                        target is at/before the last query => think stripped.
+DUMMY_USER_ANCHOR = {"role": "user", "content": "dummy text"}
+DUMMY_USER_TRAIL = {"role": "user", "content": "dummy trailing query"}
+
+
+def _longest_common_prefix_len(a, b):
+    n = min(len(a), len(b))
+    m = 0
+    for i in range(n):
+        if a[i] == b[i]:
+            m = i + 1
+        else:
+            break
+    return m
+
+
+def _longest_common_suffix_len(a, b):
+    n = min(len(a), len(b))
+    m = 0
+    for i in range(1, n + 1):
+        if a[-i] == b[-i]:
+            m = i
+        else:
+            break
+    return m
 
 
 def find_sublist_indices(large_list, small_list, reverse=False):
@@ -146,19 +181,50 @@ class ExtendedMessage:
         if not self.first_message:
             self.token_arr = self.auto_tokenize_non_first_message(tokenizer=tokenizer, tools=tools)
         else:
-            auto_tokenize_target:dict = {
-                "role": self.role,
-                "content": self.text_content_for_compare,
-            }
-            if self.tool_calls:
-                auto_tokenize_target.update({"tool_calls": self.tool_calls})
-            self.token_arr = ajet_apply_chat_template(
-                tokenizer=tokenizer,
-                conversation=[auto_tokenize_target],
-                tokenize=True,
-                tools=tools,
-            )
+            self.token_arr = self.auto_tokenize_first_message(tokenizer=tokenizer, tools=tools)
         return self.token_arr
+
+    def _render_to_ids(self, tokenizer, conversation, tools):
+        """Render a conversation to text (chat template) then tokenize to a
+        plain list[int]. We tokenize the *rendered text* rather than calling
+        apply_chat_template(tokenize=True) so the result is always list[int]
+        (apply_chat_template(tokenize=True) can return a BatchEncoding), and so
+        it matches the get_inc_simple text->ids path used elsewhere."""
+        text = ajet_apply_chat_template(
+            tokenizer=tokenizer,
+            conversation=conversation,
+            tokenize=False,
+            tools=tools,
+            add_generation_prompt=False,
+        )
+        output = tokenizer(text, return_tensors="pt", padding=False)
+        return output["input_ids"][0].tolist()
+
+    def auto_tokenize_first_message(self, tokenizer, tools):
+        """Tokenize the (system) first message in isolation.
+
+        A system-only conversation makes newer chat templates raise
+        "No user query found in messages". We append a throwaway user anchor,
+        render+tokenize, then strip the anchor's tokens off the tail. The
+        system message renders identically whether or not a user turn follows,
+        so the leading slice is exactly this message's tokens."""
+        auto_tokenize_target: dict = {
+            "role": self.role,
+            "content": self.text_content_for_compare,
+        }
+        if self.tool_calls:
+            auto_tokenize_target.update({"tool_calls": self.tool_calls})
+
+        full_ids = self._render_to_ids(
+            tokenizer, [auto_tokenize_target, DUMMY_USER_ANCHOR], tools
+        )
+        anchor_ids = self._render_to_ids(tokenizer, [DUMMY_USER_ANCHOR], tools)
+        suffix_len = _longest_common_suffix_len(full_ids, anchor_ids)
+        # The anchor render should appear verbatim as the suffix; fall back to
+        # the longest common suffix if templates interleave unexpectedly.
+        if suffix_len < len(anchor_ids):
+            suffix_len = _longest_common_suffix_len(full_ids, anchor_ids)
+        return full_ids[: len(full_ids) - suffix_len]
 
     def _auto_tokenize_with_processor(self, tokenizer, tools):
         """Tokenize this message via the HF processor, producing token ids
@@ -178,23 +244,23 @@ class ExtendedMessage:
         if self.tool_call_id:
             self_msg["tool_call_id"] = self.tool_call_id
 
-        # Mirror the text-only path: the dummy prefix role depends on whether
-        # this message precedes the last user query (see auto_tokenize_non_first_message).
-        if self.before_last_query:
-            dummy_msg = [{"role": "assistant", "content": "dummy text"}]
-        else:
-            dummy_msg = [{"role": "user", "content": "dummy text"}]
+        # Mirror the text-only anchor strategy so newer templates never see a
+        # user-less conversation and think-stripping matches the target's
+        # position relative to the last user query. Anchors are text-only user
+        # turns; render them processor-style (typed content blocks).
+        def _anchor_processor_style(msg):
+            return {"role": msg["role"], "content": [{"type": "text", "text": msg["content"]}]}
+
+        anchor_pre = _anchor_processor_style(DUMMY_USER_ANCHOR)
+        anchor_trail = _anchor_processor_style(DUMMY_USER_TRAIL)
 
         if self.first_message:
             proc_msgs = [self_msg]
+        elif self.before_last_query:
+            # Sandwich: leading + trailing user anchors strip the think block.
+            proc_msgs = [anchor_pre, self_msg, anchor_trail]
         else:
-            # The HF processor needs content to be a list of typed blocks for
-            # all messages; dummy_msg's plain-string content would break.
-            dummy_msg_processor_style = [
-                {"role": m["role"], "content": [{"type": "text", "text": m["content"]}]}
-                for m in dummy_msg
-            ]
-            proc_msgs = dummy_msg_processor_style + [self_msg]
+            proc_msgs = [anchor_pre, self_msg]
 
         raw_prompt = self.processor.apply_chat_template(
             proc_msgs, tools=tools or None,
@@ -211,72 +277,67 @@ class ExtendedMessage:
         if self.first_message:
             return input_ids
 
-        # Subtract dummy_msg prefix to get the delta tokens for just self.
-        # dummy_msg has no images, but the processor still needs typed content.
-        dummy_msg_processor_style = [
-            {"role": m["role"], "content": [{"type": "text", "text": m["content"]}]}
-            for m in dummy_msg
-        ]
-        dummy_ids = self.processor.apply_chat_template(
-            dummy_msg_processor_style, tools=tools or None,
-            add_generation_prompt=False, tokenize=True,
-        )
-        if hasattr(dummy_ids, "tolist"):
-            dummy_ids = dummy_ids.tolist()
-        # apply_chat_template(tokenize=True) returns a batched list[list[int]]
-        # when the input is a single convo — unwrap the outer batch dim.
-        if dummy_ids and isinstance(dummy_ids[0], list):
-            dummy_ids = dummy_ids[0]
-        # Sanity: the processor-expanded full_ids should start with dummy_ids.
-        if input_ids[: len(dummy_ids)] == dummy_ids:
-            return input_ids[len(dummy_ids):]
-        # Fallback: find DUMMY prefix by longest-match.
-        n = min(len(dummy_ids), len(input_ids))
-        match = 0
-        for i in range(n):
-            if input_ids[i] == dummy_ids[i]:
-                match = i + 1
-            else:
-                break
-        return input_ids[match:]
+        def _anchor_ids(anchor_msg):
+            ids = self.processor.apply_chat_template(
+                [anchor_msg], tools=tools or None,
+                add_generation_prompt=False, tokenize=True,
+            )
+            if hasattr(ids, "tolist"):
+                ids = ids.tolist()
+            # apply_chat_template(tokenize=True) returns a batched list[list[int]]
+            # when the input is a single convo — unwrap the outer batch dim.
+            if ids and isinstance(ids[0], list):
+                ids = ids[0]
+            return ids
+
+        prefix_ids = _anchor_ids(anchor_pre)
+        prefix_len = _longest_common_prefix_len(input_ids, prefix_ids)
+        if self.before_last_query:
+            suffix_ids = _anchor_ids(anchor_trail)
+            suffix_len = _longest_common_suffix_len(input_ids, suffix_ids)
+            return input_ids[prefix_len: len(input_ids) - suffix_len]
+        return input_ids[prefix_len:]
 
     def auto_tokenize_non_first_message(self, tokenizer, tools):
-        if self.before_last_query:
-            # for example, this will remove the <thinking> block for qwen3's chat template
-            dummy_msg = [{"role": "assistant", "content": "dummy text"}]
-        else:
-            dummy_msg = [{"role": "user", "content": "dummy text"}]
+        """Tokenize a non-first message in isolation using user anchors.
+
+        Every rendered conversation needs a real user query or newer templates
+        raise "No user query found". We always lead with DUMMY_USER_ANCHOR and
+        subtract it back off. Whether the target's assistant <think> block is
+        preserved is decided by the template via loop.index0 vs last_query_index:
+          - before_last_query=True  => this msg is followed by a later user turn,
+            so we also append DUMMY_USER_TRAIL to push the target to/before the
+            last query and get the think block STRIPPED, then subtract both ends.
+          - before_last_query=False => the target is the last (or after last)
+            query, so a leading anchor alone keeps the think block."""
+        auto_tokenize_target: dict = {
+            "role": self.role,
+            "content": self.text_content_for_compare,
+        }
+        if self.tool_calls:
+            auto_tokenize_target.update({"tool_calls": self.tool_calls})
+        if self.tool_call_id:
+            auto_tokenize_target.update({"tool_call_id": self.tool_call_id})
 
         try:
-            # completion_token_arr will contain generation_prompt header
-            auto_tokenize_target:dict = {
-                "role": self.role,
-                "content": self.text_content_for_compare,
-            }
-            if self.tool_calls:
-                auto_tokenize_target.update({"tool_calls": self.tool_calls})
-            if self.tool_call_id:
-                auto_tokenize_target.update({"tool_call_id": self.tool_call_id})
-            text_frag_to = ajet_apply_chat_template(
-                tokenizer=tokenizer,
-                conversation=dummy_msg + [auto_tokenize_target],
-                tokenize=False,
-                tools=tools,
-            )
+            if self.before_last_query:
+                conversation = [DUMMY_USER_ANCHOR, auto_tokenize_target, DUMMY_USER_TRAIL]
+                full_ids = self._render_to_ids(tokenizer, conversation, tools)
+                prefix_ids = self._render_to_ids(tokenizer, [DUMMY_USER_ANCHOR], tools)
+                suffix_ids = self._render_to_ids(tokenizer, [DUMMY_USER_TRAIL], tools)
+                prefix_len = _longest_common_prefix_len(full_ids, prefix_ids)
+                suffix_len = _longest_common_suffix_len(full_ids, suffix_ids)
+                self.token_arr = full_ids[prefix_len: len(full_ids) - suffix_len]
+            else:
+                conversation = [DUMMY_USER_ANCHOR, auto_tokenize_target]
+                full_ids = self._render_to_ids(tokenizer, conversation, tools)
+                prefix_ids = self._render_to_ids(tokenizer, [DUMMY_USER_ANCHOR], tools)
+                prefix_len = _longest_common_prefix_len(full_ids, prefix_ids)
+                self.token_arr = full_ids[prefix_len:]
         except Exception as e:
             raise ValueError(
                 f"Cannot tokenize {self.role} --- {self.text_content_for_compare}, \n\n Error: {e}"
             )
-        self.token_arr, _ = self.get_inc_simple(
-            text_frag_from=ajet_apply_chat_template(
-                tokenizer=tokenizer,
-                conversation=dummy_msg,
-                tokenize=False,
-                tools=tools,
-            ),
-            text_frag_to=text_frag_to,
-            tokenizer=tokenizer,
-        )
         return self.token_arr
 
     @property
@@ -322,6 +383,8 @@ class ExtendedMessage:
                 )
             if self.manual_loss_mask_override:
                 # assert two list is identical
+                # manual_loss_mask_override: this comes by diff [prompt + answer] with [prompt] (see get_token_inc_from_llm_response)
+                # msg_token_mask:            this comes from consuming the generation token prefix (bos + /n, something + think) and eos
                 try:
                     assert len(self.manual_loss_mask_override) == len(msg_token_mask)
                     assert all(a == b for a, b in zip(self.manual_loss_mask_override, msg_token_mask))
