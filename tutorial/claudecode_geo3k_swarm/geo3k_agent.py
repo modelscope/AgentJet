@@ -97,7 +97,7 @@ def _execute_agent(
             "Authorization": f"Bearer {api_key}",
             "Connection": "close",
         },
-        timeout=600,
+        timeout=1260,  # 21 min, must exceed server ZMQ budget (20 min) so it doesn't cut in first
     )
     response.raise_for_status()
     final_answer = response.json()["choices"][0]["message"]["content"]

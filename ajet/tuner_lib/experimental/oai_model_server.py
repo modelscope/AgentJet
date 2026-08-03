@@ -93,8 +93,10 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         """
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | Received new chat completion request (inside thread)")
 
+        _handle_start_ts = time.time()
         socket = context.socket(zmq.REQ)
-        socket.setsockopt(zmq.RCVTIMEO, 6*1000)  # 6 second recv timeout
+        timeout_recv_ms = 6*1000 # 6 second recv timeout
+        socket.setsockopt(zmq.RCVTIMEO, timeout_recv_ms)
         socket.connect(f"{episode_address}")
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | connect done")
 
@@ -103,10 +105,14 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         #   <to_code>: message = self.socket.recv_string()
         socket.send_string(int_req.model_dump_json())
 
+        logger.info(f"[server][SENT] episode_uuid={episode_uuid} tl={int_req.timeline_uuid} addr={episode_address} -> REQ sent, awaiting reply.")
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | send_string")
 
         result_str = ""
-        for _ in range(50):  # max 5 minutes wait
+        _retry_n = 0
+        timeout_sec = 1200 * 1000   # max 20 minutes wait = 20 * 60 * 1000 ms
+        for _ in range(timeout_sec//timeout_recv_ms):
+            _retry_n += 1
 
             if enable_swarm_mode:
                 assert shared_mem_dict is not None
@@ -145,7 +151,22 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 continue
 
         if not result_str:
-            raise RuntimeError(f"Failed to get response from episode_address: {episode_address} after 5 attempts.")
+            _elapsed = time.time() - _handle_start_ts
+            _eng = shared_mem_dict.get('engine_status') if (enable_swarm_mode and shared_mem_dict is not None) else "n/a"
+            _ep_present = (enable_swarm_mode and shared_mem_dict is not None and ep_key(episode_uuid) in shared_mem_dict)
+            _ep_status = "n/a"
+            if _ep_present:
+                try:
+                    _ep_status = shared_mem_dict[ep_key(episode_uuid)].episode_status
+                except Exception:
+                    _ep_status = "err"
+            logger.error(
+                f"[server][TIMEOUT] episode_uuid={episode_uuid} addr={episode_address} "
+                f"retries={_retry_n} elapsed={_elapsed:.1f}s engine_status={_eng} "
+                f"ep_in_shared_mem={_ep_present} ep_status={_ep_status} "
+                f"tl={int_req.timeline_uuid} -> no reply from trainer service loop within window."
+            )
+            raise RuntimeError(f"Failed to get response from episode_address: {episode_address} after {timeout_sec // 1000} seconds, consider decrease `max_response_length_in_one_turn`.")
         else:
             if DEBUG: logger.success(f"[server] episode_uuid: {episode_uuid} | recv_string done.")
         result_object = ChatCompletion(**json.loads(result_str))

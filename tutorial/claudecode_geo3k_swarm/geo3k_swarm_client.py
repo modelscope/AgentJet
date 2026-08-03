@@ -45,7 +45,7 @@ REMOTE_MODEL_PATH = os.getenv(
     "REMOTE_MODEL_PATH",
     "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3___6-35B-A3B",
 )
-REMOTE_BATCH_SIZE = 4
+REMOTE_BATCH_SIZE = 32
 REMOTE_ALLOCATE_GPU_PER_NODE = 8
 REMOTE_NNODES = 2
 # Qwen3.6-35B-A3B has 2 KV heads, so TP must divide 2 (1 or 2). TP=2 for the
@@ -70,7 +70,7 @@ REMOTE_GPU_MEMORY_UTILIZATION = float(os.getenv("REMOTE_GPU_MEMORY_UTILIZATION",
 
 ajet_job = AgentJetJob(
     ensure_new_experiment=True,
-    experiment_name="geo3k_grpo_y1",
+    experiment_name="geo3k_grpo_z1",
     algorithm="grpo",
     logging="swanlab",
     n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
@@ -81,6 +81,14 @@ ajet_job = AgentJetJob(
     max_env_worker=MAX_ENV_WORKER,
     tensor_model_parallel_size=REMOTE_TENSOR_PARALLEL_SIZE,
     gpu_memory_utilization=REMOTE_GPU_MEMORY_UTILIZATION,
+    # Length params must all be set together (job.py enforces all-None or
+    # all-non-None). Only max_response_length_in_one_turn changes here:
+    # 4096 -> 1024 to test whether shorter per-turn decode stays under the
+    # interchange server's 300s ZMQ receive budget (~12 tok/s -> ~85s worst case).
+    max_prompt_length=3000,
+    max_response_length=15000,
+    max_model_len=18000,
+    max_response_length_in_one_turn=3000,
 )
 
 

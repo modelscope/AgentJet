@@ -113,6 +113,8 @@ class InterchangeClient:
         poller = zmq.asyncio.Poller()
         poller.register(self.socket, zmq.POLLIN)
 
+        _idle_polls = 0
+        _in_flight_tl = None
         try:
             while not self.should_hard_terminate:
                 events = dict(await poller.poll(timeout=1000))  # 1 second
@@ -120,6 +122,11 @@ class InterchangeClient:
                     if self.should_hard_terminate:
                         # abort_episode()
                         break
+                    _idle_polls += 1
+                    # heartbeat every ~30s so we can tell "idle waiting for request"
+                    # apart from "stuck mid-request" in the logs.
+                    if _idle_polls % 30 == 0:
+                        logger.info(f"[client][IDLE-POLL] episode_uuid={self.episode_uuid} addr={self.episode_contect_address} idle_polls={_idle_polls} last_tl={_in_flight_tl} -> REP socket alive, no request pending.")
                     timepassed = time.time() - begin_time
                     continue
 
@@ -130,9 +137,14 @@ class InterchangeClient:
                 message = await self.socket.recv_string()
                 ever_receive_anything = True
 
+                _t_recv = time.time()
                 # parse the incoming request
                 data_as_json = json.loads(message)
                 parsed_msg = InterchangeCompletionRequest(**data_as_json)
+                _tl = parsed_msg.timeline_uuid
+                _in_flight_tl = _tl
+                _idle_polls = 0
+                logger.info(f"[client][RECV] episode_uuid={self.episode_uuid} tl={_tl} -> got request, dispatching to LLM.")
 
                 # run the llm request, monitored by context tracker
                 response = await self.llm_proxy_with_tracker.chat_completion_request(
@@ -142,18 +154,27 @@ class InterchangeClient:
                     target_tag=parsed_msg.target_tag,
                     episode_uuid=parsed_msg.episode_uuid,
                 )
+                _t_infer = time.time()
+                logger.info(f"[client][INFER-DONE] episode_uuid={self.episode_uuid} tl={_tl} infer_took={_t_infer-_t_recv:.1f}s -> sending reply.")
                 result = response.model_dump_json()
 
                 # <send to>
                 #   <to_sourcefile>: ajet/tuner_lib/experimental/oai_model_server.py
                 #   <to_code>: result_str = socket.recv_string()
                 await self.socket.send_string(result)
+                logger.info(f"[client][SENT-REPLY] episode_uuid={self.episode_uuid} tl={_tl} send_took={time.time()-_t_infer:.2f}s total={time.time()-_t_recv:.1f}s.")
         except BaseException as e:
             import traceback
             print(f"[client] {self.episode_uuid} | Exception occurred in service loop: {e!r}", flush=True)
             traceback.print_exc()
             logger.exception(f"[client] {self.episode_uuid} | Exception occurred in service loop.")
         finally:
+            logger.warning(
+                f"[client][SVC-LOOP-CLOSE] episode_uuid={self.episode_uuid} "
+                f"addr={self.episode_contect_address} ever_received={ever_receive_anything} "
+                f"hard_terminate={self.should_hard_terminate} soft_terminate={self.should_soft_terminate} "
+                f"uptime={time.time()-begin_time:.1f}s -> closing REP socket; further requests to this addr will time out."
+            )
             self.socket.close()
             if DEBUG: logger.info(f"[client] {self.episode_uuid} | ZMQ socket closed, service loop terminated.")
             if self.interchange_method == 'ipc':
