@@ -195,11 +195,14 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             if msg["role"] == "user":
                 previous_message_encounter_user_role = True
 
-            any_later_msg_has_user_role = any((m["role"] == "user") for m in messages[i+1:])
-
             msg_content = cast(str, msg["content"])
 
             # extract content block from openai-competible messages and convert to ExtendedMessage
+            # token_arr is left empty here (token_generator="manual"); the whole
+            # timeline is tokenized once and sliced per-message in step_prepare
+            # via tokenize_and_slice_timeline, so each message's token_arr is an
+            # exact contiguous slice of the full-conversation render (drift-free
+            # by construction, matching vLLM's prompt_token_ids).
             timeline += [
                 ExtendedMessage(
                     author=author,
@@ -207,14 +210,13 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     content=msg_content,
                     tokenizer=self.tokenizer,
                     tools=tools,
-                    tool_calls=(msg["tool_calls"] if "tool_calls" in msg else []),
+                    tool_calls=(msg["tool_calls"] if "tool_calls" in msg else ""),
                     tool_call_id=(msg["tool_call_id"] if "tool_call_id" in msg else ""),
-                    token_generator="auto",
+                    token_generator="manual",
                     name = (msg["name"] if "name" in msg else ""),
                     first_message=(i == 0),
                     images=msg_images or None,
                     processor=getattr(self, "processor", None),
-                    before_last_query=any_later_msg_has_user_role,
                 )
             ]
             if msg_content.startswith("<think>") and (not previous_message_encounter_user_role):
@@ -223,16 +225,143 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         return timeline
 
 
+    def tokenize_and_slice_timeline(self, timeline: List[ExtendedMessage], tools: List = []) -> None:
+        """Tokenize the whole timeline once, then slice per message.
+
+        Renders the entire conversation (the OpenAI-style message list produced
+        by ``to_role_content``) with the chat template in one shot, tokenizes
+        the rendered text, and splits the resulting token-id list on the
+        ``<|im_start|>`` boundary into one contiguous chunk per message. Each
+        message's ``token_arr`` is then an exact slice of the single
+        whole-conversation render — so ``concat(token_arr)`` reconstructs the
+        same token stream vLLM produces, making retokenization drift
+        impossible by construction (``patch_prompt_tokens`` becomes a no-op).
+
+        The template's own ``loop.index0 vs last_query_index`` logic decides
+        think-block stripping / tool-block placement on the full render, so we
+        no longer need per-message anchors or suffix math.
+
+        Consecutive ``tool`` messages fold into one ``<|im_start|>user`` segment
+        in the template; the slicer assigns that folded segment's tokens to the
+        first tool message of the run and leaves the rest empty (tool messages
+        are non-training, so only the concatenation matters).
+        """
+        if not timeline:
+            return
+
+        conversation = self.to_role_content(timeline)
+
+        # VL path: if any message carries images and we have a processor,
+        # render+tokenize the whole conversation through the HF processor so
+        # image placeholder tokens are expanded and pixel_values / image_grid_thw
+        # are captured for the whole conversation in one combined dict.
+        has_images = any(getattr(m, "images", None) for m in timeline)
+        if has_images and getattr(self, "processor", None) is not None:
+            from ajet.utils.multimodal import load_image_to_pil
+
+            pil_images = []
+            for m in timeline:
+                if m.images:
+                    pil_images.extend(load_image_to_pil(im) for im in m.images)
+            raw_prompt = self.processor.apply_chat_template(
+                conversation, tools=tools or None,
+                add_generation_prompt=False, tokenize=False,
+            )
+            model_inputs = dict(self.processor(
+                text=[raw_prompt], images=pil_images, return_tensors="pt",
+            ))
+            full_ids = model_inputs.pop("input_ids")[0].tolist()
+            model_inputs.pop("attention_mask", None)
+            # One combined multi_modal_inputs for the whole conversation; attach
+            # it to the first message so merge_multi_modal_inputs picks it up.
+            # Drop mm_token_type_ids (not dim-0 concatenable; see
+            # merge_multi_modal_inputs).
+            mmi = {k: v for k, v in model_inputs.items() if k != "mm_token_type_ids"}
+            timeline[0].multi_modal_inputs = mmi or None
+        else:
+            # Text path: render the whole conversation, then tokenize the text.
+            prompt_text = ajet_apply_chat_template(
+                tokenizer=self.tokenizer,
+                conversation=conversation,
+                tools=tools,
+                add_generation_prompt=False,
+                tokenize=False,
+            )
+            full_ids = self.tokenizer(
+                prompt_text, return_tensors="pt", padding=False
+            )["input_ids"][0].tolist()
+
+        # Split full_ids on the <|im_start|> token into segments, mirroring the
+        # split logic in patch_prompt_tokens (so the two agree).
+        split_ids = []
+        tmp = []
+        for tid in full_ids:
+            if tid != self._im_start_token_id:
+                tmp.append(tid)
+            else:
+                if tmp:
+                    split_ids.append(tmp)
+                tmp = [tid]
+        if tmp:
+            split_ids.append(tmp)
+
+        # Assign segments to messages. Consecutive ``tool`` messages fold into
+        # ONE ``<|im_start|>user`` segment in the chat template, so the segment
+        # count can be less than the timeline length. We assign the folded
+        # segment's tokens to the first tool message in the run and leave the
+        # rest empty — tool messages are non-training (author="env", loss-mask
+        # all-zeros), so their per-message token split is irrelevant; only the
+        # concatenation matters, and concat(token_arr) still == full_ids.
+        seg_idx = 0
+        i = 0
+        while i < len(timeline):
+            msg = timeline[i]
+            if msg.role == "tool":
+                # Consume the whole run of consecutive tool messages.
+                run_end = i
+                while run_end + 1 < len(timeline) and timeline[run_end + 1].role == "tool":
+                    run_end += 1
+                if seg_idx < len(split_ids):
+                    msg.token_arr = split_ids[seg_idx]
+                    seg_idx += 1
+                else:
+                    msg.token_arr = []
+                for k in range(i + 1, run_end + 1):
+                    timeline[k].token_arr = []
+                i = run_end + 1
+            else:
+                assert seg_idx < len(split_ids), (
+                    f"tokenize_and_slice_timeline: ran out of <|im_start|> segments "
+                    f"at message {i} ({msg.role}); got {len(split_ids)} segments "
+                    f"for {len(timeline)} messages — a non-tool template quirk that "
+                    f"must be handled explicitly."
+                )
+                msg.token_arr = split_ids[seg_idx]
+                seg_idx += 1
+                i += 1
+        assert seg_idx == len(split_ids), (
+            f"tokenize_and_slice_timeline: {len(split_ids) - seg_idx} segments "
+            f"left unassigned after consuming all {len(timeline)} messages — "
+            f"a template quirk that must be handled explicitly."
+        )
+
+
     def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):
         disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
         tools = self.preprocess_tools_field(tools, disable_toolcalls=disable_toolcalls)
         timeline = self.step_spawn_timeline(messages, tools, disable_toolcalls)
 
-        # check token overflow
+        # Tokenize the whole timeline once and slice per message so each
+        # token_arr is an exact contiguous slice of the full-conversation
+        # render (drift-free by construction; see the method docstring).
+        # Consecutive tool messages (which the chat template folds into one
+        # <|im_start|>user segment) are handled inside the slicer, so no
+        # separate merge step is needed here.
+        self.tokenize_and_slice_timeline(timeline, tools)
+
+        # check token overflow (converted_message reflects the timeline the
+        # slicer just tokenized, so the overflow check sees the same tokens)
         converted_message = self.to_role_content(timeline)
-        timeline = ExtendedMessage.check_and_merge_chained_tool_response(
-            timeline, self.tokenizer
-        )
         context_safe, token_overflow, info = self.check_context_token_num_safe(
             converted_message, tools
         )

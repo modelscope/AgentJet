@@ -243,8 +243,7 @@ class SingleAgentContextTracker(BaseTracker):
         for ext_msg in ext_msg_array:
             if ext_msg.images:
                 content = [
-                    {"type": "image_url", "image_url": {"url": url}}
-                    for url in ext_msg.images
+                    {"type": "image_url", "image_url": {"url": url}} for url in ext_msg.images
                 ]
                 content.append({"type": "text", "text": ext_msg.text_content_for_compare})
                 d: dict = {"role": ext_msg.role, "content": content}
