@@ -612,6 +612,13 @@ class VerlRolloutManager(DynamicRolloutManager):
                 sample_arr = tracker.group_tokenize()
             except Exception as e:
                 logger.bind(exception=True).exception("Error during tracker.group_tokenize()")
+                # Dump the failing tracker's saved_timelines for root-cause.
+                try:
+                    self._dump_failing_tracker(tracker)
+                except Exception as dump_err:
+                    logger.bind(exception=True).error(
+                        f"failed to dump failing tracker: {dump_err}"
+                    )
                 raise e
             finally:
                 tracker.generate_log(global_step=self.current_global_steps)
@@ -635,6 +642,49 @@ class VerlRolloutManager(DynamicRolloutManager):
                     sample_arr_final.pop(idx)
 
         return sample_arr_final
+
+    def _dump_failing_tracker(self, tracker):
+        """Dump a tracker's saved_timelines (message-by-message) to a file when
+        group_tokenize() raises, for root-cause analysis of length-mismatch
+        crashes in truncate_output_ids."""
+        import json
+        from datetime import datetime
+
+        log_dir = os.environ.get("AJET_TRACKER_SCENE_DIR", "./tracker_scene")
+        os.makedirs(log_dir, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        path = os.path.join(log_dir, f"tracker_{ts}.json")
+
+        timelines = getattr(tracker, "saved_timelines", [])
+        out = {
+            "episode_uuid": getattr(tracker, "episode_uuid", "n/a"),
+            "task_id": getattr(tracker, "task_id", "n/a"),
+            "n_saved_timelines": len(timelines),
+            "timelines": [],
+        }
+        for ti, tl in enumerate(timelines):
+            msgs = []
+            for mi, m in enumerate(tl):
+                arr = getattr(m, "token_arr", None)
+                msgs.append({
+                    "idx": mi,
+                    "role": getattr(m, "role", "?"),
+                    "author": getattr(m, "author", "?"),
+                    "token_arr_len": len(arr) if arr is not None else None,
+                    "token_logprob_arr_len": len(getattr(m, "token_logprob_arr", [])),
+                    "manual_loss_mask_override_len": len(getattr(m, "manual_loss_mask_from_diff", [])),
+                    "lack_normal_eos": getattr(m, "lack_normal_eos", None),
+                    "tool_calls": bool(getattr(m, "tool_calls", None)),
+                    "tool_call_id": getattr(m, "tool_call_id", ""),
+                    "content_preview": str(getattr(m, "content", ""))[:200],
+                })
+            out["timelines"].append({"timeline_idx": ti, "n_msgs": len(tl), "msgs": msgs})
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(out, f, ensure_ascii=False, indent=2)
+        logger.bind(exception=True).error(
+            f"failing tracker scene dumped to {path} "
+            f"(n_saved_timelines={len(timelines)})"
+        )
 
     def samples_to_dataproto(self, samples: list[Sample]) -> DataProto:
         """Pad sample fields and pack them into the `DataProto` structure expected by VERL."""

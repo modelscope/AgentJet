@@ -96,7 +96,7 @@ class ExtendedMessage:
         self.uuid = uuid.uuid4().hex
         self.build_from_uuid = build_from_uuid
         self.first_message = first_message
-        self.manual_loss_mask_override = []
+        self.manual_loss_mask_from_diff = []
         self.lack_normal_eos = False
 
         # Multimodal: images attached to this message and the resulting
@@ -153,20 +153,20 @@ class ExtendedMessage:
                     token_arr=self.token_arr,
                     eos_token_id=self.eos_token_id,
                 )
-            if self.manual_loss_mask_override:
+            if self.manual_loss_mask_from_diff:
                 # assert two list is identical
-                # manual_loss_mask_override: this comes by diff [prompt + answer] with [prompt] (see get_token_inc_from_llm_response)
+                # manual_loss_mask_from_diff: this comes by diff [prompt + answer] with [prompt] (see get_token_inc_from_llm_response)
                 # msg_token_mask:            this comes from consuming the generation token prefix (bos + /n, something + think) and eos
                 try:
-                    assert len(self.manual_loss_mask_override) == len(msg_token_mask), "token mask length mismatch"
-                    # assert all(a == b for a, b in zip(self.manual_loss_mask_override, msg_token_mask))
+                    assert len(self.manual_loss_mask_from_diff) == len(msg_token_mask), "token mask length mismatch"
+                    # assert all(a == b for a, b in zip(self.manual_loss_mask_from_diff, msg_token_mask))
                 except AssertionError:
                     error_msg = (
                         "Manual loss mask override mismatch | "
                         f"author={self.author} role={self.role} uuid={self.uuid} | "
-                        f"override_len={len(self.manual_loss_mask_override)} mask_len={len(msg_token_mask)} | "
+                        f"override_len={len(self.manual_loss_mask_from_diff)} mask_len={len(msg_token_mask)} | "
                         f"token_arr_len={len(self.token_arr)} content_preview={self.content[:100]!r} | "
-                        f"override={self.manual_loss_mask_override} | "
+                        f"override={self.manual_loss_mask_from_diff} | "
                         f"generated_mask={msg_token_mask}"
                     )
                     logger.bind(exception=True).error(error_msg)
@@ -178,11 +178,11 @@ class ExtendedMessage:
                         f.write(f"{error_msg}\n")
                         f.write(f"Traceback:\n{traceback.format_exc()}\n")
 
-            # returning either is ok, but when lack eos, msg_token_mask is more accurate, otherwise, manual_loss_mask_override is more accurate
-            if self.lack_normal_eos:
+            # returning either is ok, but when lack eos, msg_token_mask is more accurate, otherwise, manual_loss_mask_from_diff is more accurate
+            if self.manual_loss_mask_from_diff and self.lack_normal_eos:
                 return msg_token_mask
             else:
-                return self.manual_loss_mask_override
+                return self.manual_loss_mask_from_diff
         else:
             msg_token_mask = [0] * len(self.token_arr)
             return msg_token_mask

@@ -90,6 +90,8 @@ def toggle_author_and_mask(
             source_timeline[i].author = target_timeline[i].author
             source_timeline[i].token_arr = target_timeline[i].token_arr
             source_timeline[i].token_logprob_arr = target_timeline[i].token_logprob_arr
+            if target_timeline[i].manual_loss_mask_from_diff:
+                source_timeline[i].manual_loss_mask_from_diff = target_timeline[i].manual_loss_mask_from_diff
             assert source_timeline[i].need_training
     return source_timeline
 

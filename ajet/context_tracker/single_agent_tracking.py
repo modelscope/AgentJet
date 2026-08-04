@@ -361,7 +361,20 @@ class SingleAgentContextTracker(BaseTracker):
                 input_logprobs += ext_msg.token_logprob_arr
             input_ids_len += [len(input_ids)]
             attention_mask += [1] * len(ext_msg.token_arr)
-            loss_mask += ext_msg.get_loss_mask(blackout_token_combo=self.blackout_token_combo)
+            _this_loss_mask = ext_msg.get_loss_mask(blackout_token_combo=self.blackout_token_combo)
+            if len(_this_loss_mask) != len(ext_msg.token_arr):
+                # Diagnostic: a message whose loss_mask length != token_arr
+                # length would misalign input_ids/attention_mask/loss_mask and
+                # crash truncate_output_ids. Report exactly which message.
+                logger.bind(exception=True).error(
+                    f"[tokenize_steps] msg {i} ({ext_msg.role}/{ext_msg.author}) "
+                    f"token_arr_len={len(ext_msg.token_arr)} "
+                    f"loss_mask_len={len(_this_loss_mask)} "
+                    f"manual_override_len={len(ext_msg.manual_loss_mask_from_diff)} "
+                    f"lack_normal_eos={ext_msg.lack_normal_eos} "
+                    f"content_preview={getattr(ext_msg, 'content', '')[:100]!r}"
+                )
+            loss_mask += _this_loss_mask
 
         # if [prompt_token | response_token] is splited at a place where loss_mask == 0,
         # move the split index forward

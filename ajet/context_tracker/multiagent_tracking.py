@@ -19,7 +19,7 @@ from ajet.schema.extended_msg import INVALID_LOG_PROB_VALUE
 from ajet.schema.trajectory import Reward
 from ajet.utils.color_hsl import adjust_color_hsl_batch
 from ajet.utils.compute_madness import compute_string_madness
-from ajet.utils.tokenizer import ajet_apply_chat_template
+from ajet.utils.tokenizer import ajet_apply_chat_template, derive_tool_sep_and_fold, flush_pending_tool_run
 
 @dataclass
 class TimelineMergingPolicyConfig:
@@ -64,6 +64,12 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         self.output_kwargs = {}
         self.input_kwargs = {}
         self.timeline_cache = {}
+
+        # Whether the chat template folds a run of consecutive `tool` messages
+        # into ONE <|im_start|>user segment (Qwen3 text -> True) or renders each
+        # as its own segment (Qwen2.5-VL -> False), and the inter-tool separator
+        # for merging. Derived once at init (cached per-tokenizer in utils).
+        self.tool_res_sep, self.tool_res_fold = derive_tool_sep_and_fold(tokenizer)
 
 
     def preprocess_tools_field(self, tools: List[dict] = [], disable_toolcalls: bool = False):
@@ -130,6 +136,25 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
     def step_spawn_timeline(self, messages: List[dict], tools: List = [], disable_toolcalls: bool = False) -> List[ExtendedMessage]:
         """Spawn a timeline from messages.
 
+        Consecutive ``role == "tool"`` messages are handled so the timeline
+        stays 1:1 aligned with the chat template's ``<|im_start|>`` segments:
+
+        - If the template FOLDS a run of tool turns into ONE ``<|im_start|>user``
+          segment (Qwen3 text), they are MERGED into one ExtendedMessage whose
+          content is the per-tool contents joined by the template's inter-tool
+          separator (``self.tool_res_sep``), so the merged message renders
+          identically to the folded segment.
+        - If the template renders each tool as its OWN segment (Qwen2.5-VL:
+          ``<|im_start|>tool`` each), they are kept separate, else the timeline
+          would be shorter than the segment count.
+
+        Whether to fold is detected once at init via
+        ``derive_tool_sep_and_fold`` (cached) and stored on
+        ``self.tool_res_fold`` / ``self.tool_res_sep``. The merging itself is
+        done by ``flush_pending_tool_run`` (in ajet.utils.tokenizer). This keeps
+        ``len(timeline) == segment_count`` so ``patch_prompt_tokens`` (which
+        assumes 1:1 message-to-segment) never goes out of range.
+
         Args:
             messages: List of message dictionaries
             tools: List of tool dictionaries
@@ -146,6 +171,10 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
         previous_message_encounter_user_role = False
 
+        # Buffered run of consecutive tool messages pending merge.
+        pending_tool_run: List[dict] = []
+
+
         for i, msg in enumerate(messages):
 
             if (disable_toolcalls) and (not isinstance(msg["content"], str)):
@@ -156,7 +185,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     isinstance(it, dict) and it.get("type") in ("image_url", "image", "text")
                     for it in content
                 ):
-                    pass  # vision blocks — keep going
+                    pass  # vision blocks - keep going
                 else:
                     continue
 
@@ -165,7 +194,6 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
             msg_images: list = []
             if not isinstance(msg["content"], str):
-                author = "env"
                 should_skip_message = False
 
                 # fix msg content
@@ -184,18 +212,29 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 if not isinstance(msg["content"], str):
                     msg["content"] = str(msg["content"])  # TODO: better handling mm data
 
+            msg_content = cast(str, msg["content"])
+
+            # Buffer consecutive tool messages; flush on any non-tool message.
+            if msg["role"] == "tool":
+                pending_tool_run.append({
+                    "content": msg_content,
+                    "tool_call_id": msg.get("tool_call_id", ""),
+                    "first_index": i,
+                })
+                continue
+            flush_pending_tool_run(
+                timeline, pending_tool_run, self.tokenizer,
+                getattr(self, "processor", None), tools,
+                self.tool_res_sep, self.tool_res_fold,
+            )
+
             if msg["role"] == "system":
                 author = "initialization"
-
-            if msg["role"] == "tool":
-                author = "env"
             else:
                 author = "env"
 
             if msg["role"] == "user":
                 previous_message_encounter_user_role = True
-
-            msg_content = cast(str, msg["content"])
 
             # extract content block from openai-competible messages and convert to ExtendedMessage
             # token_arr is left empty here (token_generator="manual"); the whole
@@ -220,10 +259,14 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 )
             ]
             if msg_content.startswith("<think>") and (not previous_message_encounter_user_role):
-                logger.warning(f"Warning! Message content contains <think> tag, but no prior message has `user` role! This is not a common scenario. Please check your agent loop carefully.")
+                logger.warning(f"Warning! Message content contains a think tag, but no prior message has `user` role! This is not a common scenario. Please check your agent loop carefully.")
 
+        flush_pending_tool_run(
+            timeline, pending_tool_run, self.tokenizer,
+            getattr(self, "processor", None), tools,
+            self.tool_res_sep, self.tool_res_fold,
+        )
         return timeline
-
 
     def tokenize_and_slice_timeline(self, timeline: List[ExtendedMessage], tools: List = []) -> None:
         """Tokenize the whole timeline once, then slice per message.
@@ -416,13 +459,13 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         (
             precise_manual_token,
             token_logprob_arr,
-            loss_mask,
+            loss_mask_from_diff,
             lack_normal_eos,
         ) = self.get_token_inc_from_llm_response(input_msg_ref, llm_output, tools=tools)
         llm_ext_msg.token_arr = precise_manual_token
         llm_ext_msg.token_logprob_arr = token_logprob_arr
         llm_ext_msg.lack_normal_eos = lack_normal_eos
-        llm_ext_msg.manual_loss_mask_override = loss_mask
+        llm_ext_msg.manual_loss_mask_from_diff = loss_mask_from_diff
 
         assert (
             len(precise_manual_token)
