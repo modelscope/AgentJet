@@ -134,6 +134,7 @@ class BaseTracker(object):
         # opener injected by the Qwen3.6 template is also blacked out.
         self.blackout_token_combo = get_blackout_token_combo(tokenizer, config)
         self._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
+        self._im_end_token_id = tokenizer.encode("<|im_end|>")[0]
 
         # config
         self.config = config

@@ -268,7 +268,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         )
         return timeline
 
-    def tokenize_and_slice_timeline(self, timeline: List[ExtendedMessage], tools: List = []) -> None:
+    def tokenize_and_slice_timeline(self, timeline: List[ExtendedMessage], tools: List = [], sep_via_eos: bool = False) -> None:
         """Tokenize the whole timeline once, then slice per message.
 
         Renders the entire conversation (the OpenAI-style message list produced
@@ -284,10 +284,14 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         think-block stripping / tool-block placement on the full render, so we
         no longer need per-message anchors or suffix math.
 
-        Consecutive ``tool`` messages fold into one ``<|im_start|>user`` segment
-        in the template; the slicer assigns that folded segment's tokens to the
-        first tool message of the run and leaves the rest empty (tool messages
-        are non-training, so only the concatenation matters).
+        ``sep_via_eos`` (default False): when True, always split on
+        ``<|im_end|>`` (via ``_recover_segments_via_im_end``) regardless of
+        whether the ``<|im_start|>`` split already aligns. This forces the
+        EOS-based segmentation path — useful for templates where im_start is
+        not a reliable per-message boundary but im_end is. When False, the
+        ``<|im_start|>`` split is used, and only falls back to im_end recovery
+        when ``len(split_ids) != len(timeline)`` (e.g. an LLM generated stray
+        ``<|im_start|>`` tokens inside a message's content during rollout).
         """
         if not timeline:
             return
@@ -334,10 +338,39 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 prompt_text, return_tensors="pt", padding=False
             )["input_ids"][0].tolist()
 
-        # Split full_ids on the <|im_start|> token into segments, mirroring the
-        # split logic in patch_prompt_tokens (so the two agree).
-        split_ids = []
-        tmp = []
+        # Split full_ids on <|im_start|> into one segment per message (mirrors
+        # patch_prompt_tokens so the two agree).
+        split_ids = self._split_on_im_start(full_ids)
+
+        # Defensive recovery: an LLM may *generate* <|im_start|> as an ordinary
+        # output token during rollout (degenerate/looping samples). Those stray
+        # ids land inside a message's content and are wrongly treated as segment
+        # boundaries, inflating split_ids far beyond the timeline length. Every
+        # real chat-template segment spans <|im_start|>...<|im_end|>, so when
+        # the im_start split diverges from the timeline, re-split on <|im_end|>
+        # (absorbing stray content-internal <|im_start|> ids into the real
+        # segment they belong to), restoring 1:1.
+        #
+        # sep_via_eos=True forces this EOS-based split unconditionally, even
+        # when the im_start split already aligns — for templates where im_start
+        # is not a reliable per-message boundary but im_end is.
+        if sep_via_eos or len(split_ids) != len(timeline):
+            split_ids = self._recover_segments_via_im_end(full_ids, timeline, force=sep_via_eos)
+
+        assert len(split_ids) == len(timeline), (
+            f"tokenize_and_slice_timeline: {len(split_ids)} segments for "
+            f"{len(timeline)} messages after recovery — a template quirk that "
+            f"must be handled explicitly."
+        )
+        for m, seg in zip(timeline, split_ids):
+            m.token_arr = seg
+
+
+    def _split_on_im_start(self, full_ids: List[int]) -> List[List[int]]:
+        """Split full_ids on the <|im_start|> token; each segment starts with
+        the <|im_start|> id. Mirrors patch_prompt_tokens so the two agree."""
+        split_ids: List[List[int]] = []
+        tmp: List[int] = []
         for tid in full_ids:
             if tid != self._im_start_token_id:
                 tmp.append(tid)
@@ -347,46 +380,90 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                 tmp = [tid]
         if tmp:
             split_ids.append(tmp)
+        return split_ids
 
-        # Assign segments to messages. Consecutive ``tool`` messages fold into
-        # ONE ``<|im_start|>user`` segment in the chat template, so the segment
-        # count can be less than the timeline length. We assign the folded
-        # segment's tokens to the first tool message in the run and leave the
-        # rest empty — tool messages are non-training (author="env", loss-mask
-        # all-zeros), so their per-message token split is irrelevant; only the
-        # concatenation matters, and concat(token_arr) still == full_ids.
-        seg_idx = 0
-        i = 0
-        while i < len(timeline):
-            msg = timeline[i]
-            if msg.role == "tool":
-                # Consume the whole run of consecutive tool messages.
-                run_end = i
-                while run_end + 1 < len(timeline) and timeline[run_end + 1].role == "tool":
-                    run_end += 1
-                if seg_idx < len(split_ids):
-                    msg.token_arr = split_ids[seg_idx]
-                    seg_idx += 1
-                else:
-                    msg.token_arr = []
-                for k in range(i + 1, run_end + 1):
-                    timeline[k].token_arr = []
-                i = run_end + 1
+    def _recover_segments_via_im_end(
+        self, full_ids: List[int], timeline: List[ExtendedMessage],
+        force: bool = False,
+    ) -> List[List[int]]:
+        """Recover 1:1 message↔segment alignment when a message's content
+        contains spurious ``<|im_start|>`` tokens (an LLM generated the special
+        token during rollout, breaking the im_start-based split).
+
+        Every real chat-template segment spans ``<|im_start|>...<|im_end|>``,
+        so re-splitting on ``<|im_end|>`` — keeping each segment from an
+        ``<|im_start|>`` up to and including the next ``<|im_end|>`` — restores
+        one segment per message regardless of stray ``<|im_start|>`` ids inside
+        content.
+
+        ``force`` (set by ``sep_via_eos=True``): skip the spurious-im_start
+        precondition check and always re-split on ``<|im_end|>``, even when no
+        content contains a literal ``<|im_start|>``. Used when the caller knows
+        im_end is the right boundary regardless of why im_start diverged.
+
+        Without ``force``, raises if no message content contains a literal
+        ``<|im_start|>``: then the divergence is an unknown template quirk,
+        not the recoverable spurious-im_start case, and must surface rather
+        than misalign silently.
+        """
+        # If no content contains a literal <|im_start|>, the im_start split and
+        # the timeline disagree for an unknown reason — surface it (unless the
+        # caller forced the im_end path via sep_via_eos).
+        if not force and not any(
+            (getattr(m, "content", "") or "").count("<|im_start|>") > 0
+            for m in timeline
+        ):
+            raise AssertionError(
+                f"tokenize_and_slice_timeline: <|im_start|> segment count "
+                f"({len(self._split_on_im_start(full_ids))}) != timeline length "
+                f"({len(timeline)}), but no message content contains a literal "
+                f"<|im_start|> — unknown template quirk, not the recoverable "
+                f"spurious-im_start case."
+            )
+
+        # Re-split matching _split_on_im_start on well-formed renders (each
+        # segment = one <|im_start|> ... up-to-next-<|im_start|>, so the \n
+        # after an <|im_end|> stays in its segment) while absorbing stray
+        # content-internal <|im_start|> ids emitted by the LLM.
+        #
+        # A <|im_start|> is a real segment boundary only if it opens a segment
+        # that an <|im_end|> eventually closes. Stray <|im_start|> ids inside
+        # content are never followed by their own <|im_end|>, so they don't
+        # open a segment and are absorbed into the surrounding real segment.
+        # We track open/closed state: open at a real <|im_start|>, close at the
+        # <|im_end|> that terminates it; between close and the next real
+        # <|im_start|> (e.g. the trailing \n) belongs to the just-closed
+        # segment, matching _split_on_im_start.
+        im_start, im_end = self._im_start_token_id, self._im_end_token_id
+        segments: List[List[int]] = []
+        cur: List[int] = []
+        open_seg = False
+        for tid in full_ids:
+            if not open_seg:
+                if tid == im_start:
+                    # Start of a new real segment. (Leading filler, if any,
+                    # was already attached to the previous closed segment.)
+                    cur = [tid]
+                    open_seg = True
+                elif segments:
+                    # Between segments: trailing filler (e.g. \n after the
+                    # last <|im_end|>) belongs to the previous segment.
+                    segments[-1].append(tid)
+                # else: pre-first-segment filler — drop (none in well-formed).
             else:
-                assert seg_idx < len(split_ids), (
-                    f"tokenize_and_slice_timeline: ran out of <|im_start|> segments "
-                    f"at message {i} ({msg.role}); got {len(split_ids)} segments "
-                    f"for {len(timeline)} messages — a non-tool template quirk that "
-                    f"must be handled explicitly."
-                )
-                msg.token_arr = split_ids[seg_idx]
-                seg_idx += 1
-                i += 1
-        assert seg_idx == len(split_ids), (
-            f"tokenize_and_slice_timeline: {len(split_ids) - seg_idx} segments "
-            f"left unassigned after consuming all {len(timeline)} messages — "
-            f"a template quirk that must be handled explicitly."
-        )
+                cur.append(tid)
+                if tid == im_end:
+                    segments.append(cur)
+                    cur = []
+                    open_seg = False
+        # Trailing tokens after the last <|im_end|> without a following real
+        # <|im_start|> belong to the last closed segment.
+        if cur:
+            if segments:
+                segments[-1].extend(cur)
+            else:
+                segments.append(cur)
+        return segments
 
 
     def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):

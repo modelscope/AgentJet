@@ -148,6 +148,10 @@ vsdb.py
 appworld_pack_v3.tar*
 saved_checkpoints
 data
+!tests/data/
+!tests/data/patch_prompt_scene_24msgs.json
+/patch_prompt_scene/
+/tracker_scene/
 datasets
 tutorial2
 site

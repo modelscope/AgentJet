@@ -118,13 +118,16 @@ def _load_tokenizer(path):
 
 
 def _make_tracker(tokenizer):
-    """Build a tracker with only the attributes tokenize_and_slice_timeline
-    / to_role_content need (bypasses the heavy __init__ that wants config /
-    workflow_task / GPUs)."""
+    """Build a tracker with only the attributes tokenize_and_slice_timeline /
+    to_role_content / step_spawn_timeline need (bypasses the heavy __init__ that
+    wants config / workflow_task / GPUs)."""
+    from ajet.utils.tokenizer import derive_tool_sep_and_fold
     tr = MultiAgentContextTracker.__new__(MultiAgentContextTracker)
     tr.tokenizer = tokenizer
     tr.processor = None
     tr._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
+    tr._im_end_token_id = tokenizer.encode("<|im_end|>")[0]
+    tr.tool_res_sep, tr.tool_res_fold = derive_tool_sep_and_fold(tokenizer)
     return tr
 
 
@@ -562,10 +565,12 @@ def _load_processor(path):
 def _make_vl_tracker(processor):
     """Tracker stub with the processor set, the way step_spawn_timeline would
     (it passes processor=getattr(self, 'processor', None))."""
+    from ajet.utils.tokenizer import derive_tool_sep_and_fold
     tr = MultiAgentContextTracker.__new__(MultiAgentContextTracker)
     tr.tokenizer = processor.tokenizer
     tr.processor = processor
     tr._im_start_token_id = processor.tokenizer.encode("<|im_start|>")[0]
+    tr.tool_res_sep, tr.tool_res_fold = derive_tool_sep_and_fold(processor.tokenizer)
     return tr
 
 
@@ -698,3 +703,301 @@ def test_vl_image_pad_in_correct_message(name, path):
     # assert both are present, not that they differ.)
     assert timeline[1].token_arr.count(image_pad_id) > 0, f"[{name}] msg1 has no image_pad"
     assert timeline[3].token_arr.count(image_pad_id) > 0, f"[{name}] msg3 has no image_pad"
+
+
+# =============================================================================
+# Spurious <|im_start|> in message content (LLM-generated special token).
+#
+# During rollout an LLM may *generate* the <|im_start|> token as an ordinary
+# output token (degenerate/looping samples). Those ids land inside a message's
+# content and would be wrongly treated as segment boundaries, inflating the
+# im_start-based segment count far beyond the timeline length.
+#
+# tokenize_and_slice_timeline recovers by re-splitting on <|im_end|>: every
+# real chat-template segment is <|im_start|>...<|im_end|>, so splitting on
+# <|im_end|> (absorbing content-internal stray <|im_start|> ids into the
+# surrounding segment) restores 1:1 message<->segment alignment, and
+# concat(token_arr) still == the full render.
+# =============================================================================
+
+_IM_START = "<|im_start|>"
+_IM_END = "<|im_end|>"
+
+
+def _stray_im_start_in_content(n, sep="\n"):
+    """A string of n stray <|im_start|> tokens, joined by sep (mimics the
+    degenerate repeating-token output vLLM produced in the real crash)."""
+    return sep.join([_IM_START] * n)
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_no_im_start_in_content_normal_path(name, path):
+    """Baseline: clean content (no stray <|im_start|>) slices with the normal
+    im_start split and stays 1:1. Guards that the defensive recovery branch
+    is NOT entered when it isn't needed."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    tools = _build_tools()
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT},
+        {"role": "user", "content": "What is 2+2?"},
+        {"role": "assistant", "content": "Let me compute.", "tool_calls": [
+            {"id": "call_1", "type": "function",
+             "function": {"name": "execute_python_code", "arguments": '{"code": "print(2+2)"}'}}]},
+        {"role": "tool", "content": "4", "tool_call_id": "call_1"},
+        {"role": "assistant", "content": "The answer is 4."},
+    ]
+    timeline = _make_timeline(tr, messages, tools)
+    tr.tokenize_and_slice_timeline(timeline, tools)
+    # Every message got a non-empty token_arr (no empty-slice fallback).
+    assert all(len(m.token_arr) > 0 for m in timeline), f"[{name}] empty token_arr"
+    _assert_no_drift(tr, tokenizer, messages, tools, name)
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_assistant_content_with_stray_im_start(name, path):
+    """The real crash scene: an assistant message whose content ends with a
+    burst of stray <|im_start|> tokens (LLM generated the special token).
+    The im_start split would yield far more segments than messages; recovery
+    re-splits on <|im_end|> and restores 1:1, with concat == full render."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    tools = _build_tools()
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT},
+        {"role": "user", "content": "If two piles of toys make 120 in total, and the larger is twice the smaller, how many in the larger?"},
+        {"role": "assistant", "content": "Let's denote the smaller pile as x. The larger is 2x. So x + 2x = 120.\n"
+                                          "IGHL\n" + _stray_im_start_in_content(120), "tool_calls": [
+            {"id": "call_1", "type": "function",
+             "function": {"name": "execute_python_code", "arguments": '{"code": "x = 120/3\\nprint(2*x)"}'}}]},
+        {"role": "tool", "content": "80.0", "tool_call_id": "call_1"},
+    ]
+    timeline = _make_timeline(tr, messages, tools)
+    tr.tokenize_and_slice_timeline(timeline, tools)
+    # Recovery restored 1:1: every message has a token_arr (the assistant's
+    # absorbs all 120 stray im_start ids since none has a matching im_end).
+    assert len(timeline) == 4, f"[{name}] timeline length changed"
+    assert all(len(m.token_arr) > 0 for m in timeline), f"[{name}] empty token_arr after recovery"
+    # concat(token_arr) == full render (drift-free invariant holds).
+    full_ids = _full_render_ids(tokenizer, messages, tools, add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, (
+        f"[{name}] concat != full render after spurious-im_start recovery "
+        f"(concat={len(concat)} full={len(full_ids)})"
+    )
+    # The stray im_start ids live inside the assistant message's token_arr,
+    # NOT as separate segments: im_start count in full render > timeline len,
+    # but timeline stayed 4 messages.
+    n_im_start = full_ids.count(tokenizer.encode(_IM_START)[0])
+    assert n_im_start > len(timeline), f"[{name}] precondition: stray im_start must inflate count"
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_stray_im_start_in_multiple_messages(name, path):
+    """Stray <|im_start|> in BOTH the user and the assistant message. Recovery
+    must still restore 1:1 with concat == full render."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT},
+        {"role": "user", "content": "hello " + _stray_im_start_in_content(10)},
+        {"role": "assistant", "content": "hi " + _stray_im_start_in_content(15)},
+    ]
+    timeline = _make_timeline(tr, messages, [])
+    tr.tokenize_and_slice_timeline(timeline, [])
+    assert len(timeline) == 3
+    full_ids = _full_render_ids(tokenizer, messages, [], add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, f"[{name}] concat != full (multi-stray)"
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_stray_im_start_in_tool_message(name, path):
+    """A tool (return) message carrying stray <|im_start|> in its content
+    (e.g. the tool printed the token). Recovery must still align."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    tools = _build_tools()
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT},
+        {"role": "user", "content": "run code"},
+        {"role": "assistant", "content": "ok", "tool_calls": [
+            {"id": "call_1", "type": "function",
+             "function": {"name": "execute_python_code", "arguments": '{"code": "1"}'}}]},
+        {"role": "tool", "content": "out\n" + _stray_im_start_in_content(20), "tool_call_id": "call_1"},
+        {"role": "assistant", "content": "done"},
+    ]
+    timeline = _make_timeline(tr, messages, tools)
+    tr.tokenize_and_slice_timeline(timeline, tools)
+    full_ids = _full_render_ids(tokenizer, messages, tools, add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, f"[{name}] concat != full (stray in tool)"
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_stray_im_start_in_every_message(name, path):
+    """Stray <|im_start|> in system, user AND assistant content at once.
+    Recovery must still restore 1:1 with concat == full render."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT + " " + _stray_im_start_in_content(5)},
+        {"role": "user", "content": "q " + _stray_im_start_in_content(5)},
+        {"role": "assistant", "content": "a " + _stray_im_start_in_content(3)},
+    ]
+    timeline = _make_timeline(tr, messages, [])
+    tr.tokenize_and_slice_timeline(timeline, [])
+    assert len(timeline) == 3, f"[{name}] timeline length changed"
+    full_ids = _full_render_ids(tokenizer, messages, [], add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, f"[{name}] concat != full (stray in every msg)"
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_unknown_quirk_raises(name, path):
+    """If segment count != timeline length AND no content contains a literal
+    <|im_start|>, the divergence is an unknown template quirk — recovery must
+    raise rather than silently misalign.
+
+    We force this by directly building a timeline that the template would render
+    with extra segments but whose message contents are clean. The cleanest
+    repro: a single user message with NO system message, where Qwen auto-injects
+    a default <|im_start|>system segment (so 2 segments, 1 message, clean
+    content)."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    messages = [
+        {"role": "user", "content": "hello with no system message"},
+    ]
+    timeline = _make_timeline(tr, messages, [])
+    # Precondition: the template really does emit an extra segment here and the
+    # content has no literal <|im_start|> (so recovery cannot apply).
+    full_ids = _full_render_ids(tokenizer, messages, [], add_generation_prompt=False)
+    n_segs = len(_split_on_im_start(tokenizer, full_ids))
+    assert n_segs != len(timeline), f"[{name}] precondition: need segment!=timeline for this test"
+    assert all(_IM_START not in (m.content or "") for m in timeline), \
+        f"[{name}] precondition: contents must be clean"
+    with pytest.raises(AssertionError, match="unknown template quirk"):
+        tr.tokenize_and_slice_timeline(timeline, [])
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+def test_real_crash_scene_from_dump(name, path):
+    """Regression pinned to the real production crash captured in
+    /tmp/ajet_assert_dump.jsonl: a 4-message conversation (system, user,
+    assistant-with-tool_call, tool) where the assistant content ends with 120
+    stray <|im_start|> tokens (vLLM generated the special token during
+    rollout). Pre-fix this raised; post-fix it recovers and stays drift-free."""
+    import os
+    dump_path = "/tmp/ajet_assert_dump.jsonl"
+    if not os.path.exists(dump_path):
+        pytest.skip("no production crash dump captured")
+    import json
+    d = json.loads(open(dump_path).readline())
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    # Rebuild timeline from the dump's conversation (the source of truth for
+    # how the template rendered it).
+    timeline = _make_timeline(tr, d["conversation"], [])
+    tr.tokenize_and_slice_timeline(timeline, [])
+    assert len(timeline) == len(d["conversation"]), f"[{name}] timeline length changed"
+    full_ids = _full_render_ids(tokenizer, d["conversation"], [], add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, f"[{name}] concat != full render on real crash scene"
+
+
+# =============================================================================
+# Fuzz: enumerate content-shape variants × stray <|im_start|> placements and
+# assert the slicer never raises and concat(token_arr) == full render for all.
+# Migrated from the ad-hoc fuzz_repro.py into the test suite.
+# =============================================================================
+
+# Assistant-with-tool_call content variants an agent can actually produce.
+_FUZZ_AST_CONTENTS = [
+    "Let me compute.",          # plain
+    "",                          # empty content + tool_calls
+    "   ",                       # whitespace
+    "thinking... final answer",  # plain with ellipsis
+]
+# How many stray <|im_start|> tokens to inject, and where (prefix / suffix).
+_FUZZ_N_STRAY = [0, 1, 3, 50]
+_FUZZ_POSITIONS = ["prefix", "suffix", "both"]
+
+
+def _inject_stray(content, n, position):
+    """Inject n stray <|im_start|> tokens at the given position."""
+    if n == 0:
+        return content
+    stray = _stray_im_start_in_content(n)
+    if position == "prefix":
+        return stray + content
+    if position == "suffix":
+        return content + stray
+    # both
+    return stray + content + stray
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+@pytest.mark.parametrize("ast_content", _FUZZ_AST_CONTENTS)
+@pytest.mark.parametrize("n_stray", _FUZZ_N_STRAY)
+@pytest.mark.parametrize("position", _FUZZ_POSITIONS)
+def test_fuzz_stray_im_start_placements(name, path, ast_content, n_stray, position):
+    """Fuzz over assistant-content shape × stray <|im_start|> count × placement.
+    Every combination must: not raise, keep timeline length, and have
+    concat(token_arr) == the full-conversation render."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    tools = _build_tools()
+    ast_content = _inject_stray(ast_content, n_stray, position)
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT},
+        {"role": "user", "content": "What is 2+2?"},
+        {"role": "assistant", "content": ast_content, "tool_calls": [
+            {"id": "call_1", "type": "function",
+             "function": {"name": "execute_python_code", "arguments": '{"code": "print(2+2)"}'}}]},
+        {"role": "tool", "content": "4", "tool_call_id": "call_1"},
+        {"role": "assistant", "content": "The answer is 4."},
+    ]
+    timeline = _make_timeline(tr, messages, tools)
+    tr.tokenize_and_slice_timeline(timeline, tools)
+    assert len(timeline) == len(messages), f"[{name}] timeline length changed"
+    full_ids = _full_render_ids(tokenizer, messages, tools, add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, (
+        f"[{name}] concat != full (ast_content={ast_content!r:.30} "
+        f"n_stray={n_stray} pos={position}): concat={len(concat)} full={len(full_ids)}"
+    )
+
+
+@pytest.mark.parametrize("name,path", _available_tokenizers())
+@pytest.mark.parametrize("n_turns", [1, 2, 3, 4])
+@pytest.mark.parametrize("n_stray", [0, 1, 10])
+def test_fuzz_multi_turn_react_with_stray(name, path, n_turns, n_stray):
+    """Fuzz over multi-turn ReAct conversations (n_turns) with stray
+    <|im_start|> injected into each assistant's content. Must stay drift-free."""
+    tokenizer = _load_tokenizer(path)
+    tr = _make_tracker(tokenizer)
+    tools = _build_tools()
+    messages = [
+        {"role": "system", "content": SYSTEM_CONTENT},
+        {"role": "user", "content": "Solve a multi-step problem."},
+    ]
+    for i in range(n_turns):
+        messages.append({
+            "role": "assistant",
+            "content": f"Step {i}." + _stray_im_start_in_content(n_stray),
+            "tool_calls": [{"id": f"c{i}", "type": "function",
+                            "function": {"name": "execute_python_code",
+                                         "arguments": '{"code": "1"}'}}],
+        })
+        messages.append({"role": "tool", "content": f"r{i}", "tool_call_id": f"c{i}"})
+        messages.append({"role": "assistant", "content": f"Step {i} done."})
+    timeline = _make_timeline(tr, messages, tools)
+    tr.tokenize_and_slice_timeline(timeline, tools)
+    assert len(timeline) == len(messages), f"[{name}] timeline length changed"
+    full_ids = _full_render_ids(tokenizer, messages, tools, add_generation_prompt=False)
+    concat = [t for m in timeline for t in m.token_arr]
+    assert concat == full_ids, (
+        f"[{name}] concat != full (n_turns={n_turns} n_stray={n_stray}): "
+        f"concat={len(concat)} full={len(full_ids)}"
+    )
