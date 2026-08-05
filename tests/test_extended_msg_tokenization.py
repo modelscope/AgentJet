@@ -878,17 +878,20 @@ def test_stray_im_start_in_every_message(name, path):
 
 @pytest.mark.parametrize("name,path", _available_tokenizers())
 def test_unknown_quirk_raises(name, path):
-    """If segment count != timeline length AND no content contains a literal
-    <|im_start|>, the divergence is an unknown template quirk — recovery must
-    raise rather than silently misalign (it cannot apply the im_end path, which
-    needs a stray <|im_start|> in some content to be the recoverable case).
+    """On the legacy im_start path (sep_via_eos=False), if segment count !=
+    timeline length AND no content contains a literal <|im_start|>, the
+    divergence is an unknown template quirk — the recovery guard must raise
+    rather than silently misalign (the im_end path needs a stray <|im_start|>
+    in some content to be the recoverable case).
+
+    The default (sep_via_eos=True) path instead runs the im_end split, which
+    would still mismatch and raise at the final length assert; this test pins
+    the stricter guard on the legacy path explicitly.
 
     The only clean-content way the template emits an extra segment is when it
     auto-injects a default <|im_start|>system block for a conversation that has
-    no system message (Qwen2.5-7B does this; Qwen3 family does not). So this test
-    only runs where that precondition holds, and is skipped elsewhere — the
-    guard itself is the behavior under test, and it can only be exercised when
-    a clean-content divergence actually exists."""
+    no system message (Qwen2.5-7B does this; Qwen3 family does not). So this
+    test only runs where that precondition holds, and is skipped elsewhere."""
     tokenizer = _load_tokenizer(path)
     tr = _make_tracker(tokenizer)
     messages = [{"role": "user", "content": "hello with no system message"}]
@@ -901,7 +904,7 @@ def test_unknown_quirk_raises(name, path):
     assert all(_IM_START not in (m.content or "") for m in timeline), \
         f"[{name}] precondition: contents must be clean"
     with pytest.raises(AssertionError, match="unknown template quirk"):
-        tr.tokenize_and_slice_timeline(timeline, [])
+        tr.tokenize_and_slice_timeline(timeline, [], sep_via_eos=False)
 
 
 @pytest.mark.parametrize("name,path", _available_tokenizers())
