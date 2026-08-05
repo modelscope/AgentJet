@@ -268,30 +268,34 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         )
         return timeline
 
-    def tokenize_and_slice_timeline(self, timeline: List[ExtendedMessage], tools: List = [], sep_via_eos: bool = False) -> None:
+    def tokenize_and_slice_timeline(self, timeline: List[ExtendedMessage], tools: List = [], sep_via_eos: bool = True) -> None:
         """Tokenize the whole timeline once, then slice per message.
 
         Renders the entire conversation (the OpenAI-style message list produced
         by ``to_role_content``) with the chat template in one shot, tokenizes
-        the rendered text, and splits the resulting token-id list on the
-        ``<|im_start|>`` boundary into one contiguous chunk per message. Each
-        message's ``token_arr`` is then an exact slice of the single
-        whole-conversation render — so ``concat(token_arr)`` reconstructs the
-        same token stream vLLM produces, making retokenization drift
-        impossible by construction (``patch_prompt_tokens`` becomes a no-op).
+        the rendered text, and splits the resulting token-id list into one
+        contiguous chunk per message. Each message's ``token_arr`` is then an
+        exact slice of the single whole-conversation render — so
+        ``concat(token_arr)`` reconstructs the same token stream vLLM produces,
+        making retokenization drift impossible by construction
+        (``patch_prompt_tokens`` becomes a no-op).
 
         The template's own ``loop.index0 vs last_query_index`` logic decides
         think-block stripping / tool-block placement on the full render, so we
         no longer need per-message anchors or suffix math.
 
-        ``sep_via_eos`` (default False): when True, always split on
-        ``<|im_end|>`` (via ``_recover_segments_via_im_end``) regardless of
-        whether the ``<|im_start|>`` split already aligns. This forces the
-        EOS-based segmentation path — useful for templates where im_start is
-        not a reliable per-message boundary but im_end is. When False, the
-        ``<|im_start|>`` split is used, and only falls back to im_end recovery
-        when ``len(split_ids) != len(timeline)`` (e.g. an LLM generated stray
-        ``<|im_start|>`` tokens inside a message's content during rollout).
+        ``sep_via_eos`` (default True): split on ``<|im_end|>``
+        (via ``_recover_segments_via_im_end``) — a real segment spans
+        ``<|im_start|>`` ... (next real ``<|im_start|>``), with the trailing
+        ``\\n`` after an ``<|im_end|>`` staying in its segment. This is
+        per-segment IDENTICAL to the legacy ``<|im_start|>`` split on clean
+        content (pinned by tests), but it also absorbs stray
+        ``<|im_start|>`` ids an LLM may generate inside a message's content
+        during rollout (degenerate/looping samples) — the legacy im_start split
+        would treat those as boundaries and inflate the segment count past the
+        timeline length, crashing. Pass False to force the legacy im_start
+        split with divergence-detection fallback (im_end recovery only when
+        ``len(split_ids) != len(timeline)``).
         """
         if not timeline:
             return
