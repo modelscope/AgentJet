@@ -478,6 +478,85 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         return response_dict
 
 
+    @app.post("/v1/messages")
+    async def messages(request: Request, authorization: str = Header(None), x_api_key: str = Header(None, alias="x-api-key")):
+        """Anthropic Messages API endpoint (POST /v1/messages).
+
+        Anthropic-compatible endpoint reusing the same ZMQ → worker → LLM
+        pipeline as /v1/chat/completions and /v1/responses. The inbound
+        Anthropic body is translated to a ChatCompletionRequest, the resulting
+        ChatCompletion is translated back to an Anthropic Message dict (or
+        Messages-style SSE events when streaming).
+
+        The Anthropic SDK sends the API key as `x-api-key`, not `Authorization`;
+        accept either header so both a stock SDK client and clients reusing the
+        existing `authorization` convention route correctly.
+        """
+        from ajet.tuner_lib.experimental.anthropic_messages_adapter import (
+            build_chat_completion_request,
+            chat_completion_to_message_dict,
+            iter_anthropic_sse_events,
+        )
+
+        token = authorization if authorization is not None else x_api_key
+        agent_name, target_tag, episode_uuid, episode_address = _parse_authorization_header(token)
+
+        if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/messages")
+
+        body = await request.json()
+
+        new_req, original_stream = build_chat_completion_request(body)
+
+        log_empty_content_messages(new_req.messages, episode_uuid=episode_uuid)
+
+        timeline_uuid = uuid.uuid4().hex
+        preserve_sampling_params = False
+
+        if enable_swarm_mode:
+            preserve_sampling_params = _check_swarm_episode_and_refresh(episode_uuid)
+
+        # Always forward as non-streaming; the worker pipeline is non-incremental
+        # and we synthesize Messages SSE events ourselves on the way back.
+        new_req.stream = False
+        new_req.stream_options = None
+
+        int_req = InterchangeCompletionRequest(
+            completion_request=new_req,
+            agent_name=agent_name,
+            target_tag=target_tag,
+            episode_uuid=episode_uuid,
+            timeline_uuid=timeline_uuid,
+            preserve_sampling_params=preserve_sampling_params,
+        )
+        if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new messages request (outside thread)")
+        loop = asyncio.get_running_loop()
+        result: ChatCompletion = await loop.run_in_executor(
+            request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
+        )
+
+        model_name = body.get("model") if isinstance(body, dict) else None
+        message_dict = chat_completion_to_message_dict(
+            result,
+            model=model_name or result.model or "unknown",
+        )
+
+        if enable_swarm_mode:
+            assert shared_mem_dict is not None
+            shared_mem_dict["latest_llm_call"] = {
+                "input": body,
+                "output": message_dict,
+                "format": "messages",
+            }
+
+        if original_stream:
+            return StreamingResponse(
+                iter_anthropic_sse_events(message_dict),
+                media_type="text/event-stream",
+            )
+
+        return message_dict
+
+
     if enable_swarm_mode:
         from ajet.tuner_lib.experimental.swarm_server import register_enable_swarm_mode_routes
 

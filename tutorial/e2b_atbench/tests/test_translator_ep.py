@@ -15,14 +15,15 @@ for p in (HELLO, MAT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from slime.agent.sandbox import E2BSandbox  # noqa: E402
-from slime.agent.aiohttp_threaded import run_app_in_thread  # noqa: E402
-from cc_anthropic_proxy import build_app  # noqa: E402
-from generate_claudecode import _run_claudecode_in_sandbox, _reward_from_output  # noqa: E402
+from tutorial.e2b_atbench.atbench_runtime.sandbox import E2BSandbox  # noqa: E402
+from tutorial.e2b_atbench.atbench_runtime.aiohttp_threaded import run_app_in_thread  # noqa: E402
+from tutorial.e2b_atbench.atbench_runtime.generate_claudecode import _run_claudecode_in_sandbox, _reward_from_output  # noqa: E402
 from tutorial.e2b_atbench.anthropic_to_openai_proxy import build_translator_app  # noqa: E402
 
-GATEWAY_ANTHROPIC = os.environ.get("GATEWAY_ANTHROPIC", "http://localhost:12928")      # judge 透传
-GATEWAY_OPENAI = os.environ.get("POLICY_OPENAI_URL", "http://localhost:12928/v1")      # solver translator->openai
+# judge 独立转发进程 (judge_forwarder.py) → dashscope; 无 cc_anthropic_proxy 中转层.
+GATEWAY_JUDGE = os.environ.get(
+    "JUDGE_MODEL_SERVER", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+GATEWAY_OPENAI = os.environ.get("POLICY_OPENAI_URL", GATEWAY_JUDGE)      # solver translator->openai
 DUMMY = os.environ.get(
     "CC_ANTHROPIC_AUTH_TOKEN",
     "sk-wefjoewfewhviuwhoewjfoiwehfiuewhvbdjnasjcoqjfdow",
@@ -41,14 +42,14 @@ async def main():
         host="0.0.0.0", port=0, thread_name="ep-sol",
     )
     jud = run_app_in_thread(
-        build_app(GATEWAY_ANTHROPIC, model=JUDGE),
+        build_translator_app(GATEWAY_JUDGE, DUMMY, JUDGE),
         host="0.0.0.0", port=0, thread_name="ep-jud",
     )
     sol_url = f"http://{HOST}:{sol.port}"
     jud_url = f"http://{HOST}:{jud.port}"
     print(f"[ep] task={TASK_DIR}")
     print(f"[ep] solver(translator)->{GATEWAY_OPENAI} {sol_url}")
-    print(f"[ep] judge(passthrough)->{GATEWAY_ANTHROPIC} {jud_url}")
+    print(f"[ep] judge(translator)->{GATEWAY_JUDGE} {jud_url}")
     try:
         async with E2BSandbox(image="qwenpaw", timeout=3600) as sb:
             output = await _run_claudecode_in_sandbox(

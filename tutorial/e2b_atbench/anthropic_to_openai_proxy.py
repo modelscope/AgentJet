@@ -23,7 +23,7 @@ from aiohttp import ClientSession, ClientTimeout, web
 
 logger = logging.getLogger("anthropic_to_openai")
 
-# 与 cc_anthropic_proxy 一致: 转发时不带的逐跳头
+# 转发时不带的逐跳头 (与透传代理一致)
 _HOP_REQ = {
     "host", "content-length", "transfer-encoding", "connection", "keep-alive",
     "proxy-authenticate", "proxy-authorization", "te", "trailers", "upgrade",
@@ -367,6 +367,9 @@ def build_translator_app(
             "Authorization": f"Bearer {upstream_api_key}",
             "Content-Type": "application/json",
             "Connection": "close",
+            # 上游默认 gzip; 非流式分支用 up.json() 解不了压缩, 流式 SSE 压缩会破坏
+            # 事件解析. 强制明文 (identity), 两种分支都无需解压.
+            "Accept-Encoding": "identity",
         }
 
         try:
