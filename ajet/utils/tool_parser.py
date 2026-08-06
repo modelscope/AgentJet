@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import uuid
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ def _make_tool_call(name: str, arguments: Any) -> Dict[str, Any]:
     else:
         args_str = json.dumps(arguments, ensure_ascii=False)
     return {
+        "id": f"toolu_{uuid.uuid4().hex[:24]}",
         "type": "function",
         "function": {"name": name, "arguments": args_str},
     }

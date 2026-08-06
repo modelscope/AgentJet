@@ -69,9 +69,7 @@ class AsyncLlmBridge(object):
         self.llm_mode = llm_mode
         self.max_llm_retries = max_llm_retries
         # 工具调用解析器: ajet.rollout.vllm_tool_parser (hermes / qwen3_coder), 可切换.
-        self.tool_parser_name = (
-            getattr(config.ajet.rollout, "vllm_tool_parser", None) or "hermes"
-        )
+        self.tool_parser_name = (getattr(config.ajet.rollout, "vllm_tool_parser", None) or "hermes")
 
 
     def get_llm_inference_fn_async(self, sampling_params: dict = {}) -> Callable:  # noqa: C901

@@ -174,6 +174,11 @@ def anthropic_messages_to_chat_messages(
             continue
         role = (msg.get("role") or "user").lower()
         content = msg.get("content")
+        # Qwen/verl tokenizer 要求 system 唯一且在开头; 顶层 system 已 prepend,
+        # messages 里再出现的 system (claude code 多轮可能带上) 一律跳过, 否则
+        # apply_chat_template 报 "System message must be at the beginning".
+        if role == "system":
+            continue
 
         # Plain string content — the common case.
         if isinstance(content, str):
@@ -211,7 +216,8 @@ def anthropic_messages_to_chat_messages(
                 tool_calls.append(
                     {
                         "id": call_id,
-                        "type": "function",
+                        # verl 0.8 的 ChatCompletionMessageCustomToolCall 要求 type="custom"
+                        "type": "custom",
                         "function": {"name": name, "arguments": str(arguments)},
                     }
                 )

@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import sys
 
 from ajet.schema.task import Task, WorkflowOutput
@@ -50,6 +51,16 @@ async def _run_episode(
 ) -> WorkflowOutput:
     task_dir = task.metadata.get("task_dir") or task.main_query
     session_id = f"atb_{api_baseurl_key.episode_uuid[:8]}"
+    # api_baseurl_key.base_url 的 host 是 swarm server 视角的 localhost, 但沙盒内
+    # claude 访问的是沙盒自己的 localhost —— 必须换成 ADAPTER_PUBLIC_HOST (master 可达 IP).
+    # 且 claude 的 ANTHROPIC_BASE_URL 语义是根地址 (claude 自己拼 /v1/messages),
+    # 而 base_url 已含 /v1 -> 需去掉尾部 /v1, 否则 claude 请求 /v1/v1/messages -> 404.
+    # 例: http://localhost:10086/v1 -> http://10.29.255.115:10086
+    solver_base_url = re.sub(
+        r"/v1$", "",
+        re.sub(r"^https?://[^/:]+", f"http://{ADAPTER_PUBLIC_HOST}", api_baseurl_key.base_url),
+    )
+    assert "/" in solver_base_url, f"unexpected base_url: {api_baseurl_key.base_url!r}"
     async with E2BSandbox(image="qwenpaw", timeout=EPISODE_TIMEOUT) as sb:
         try:
             output = await _run_claudecode_in_sandbox(
@@ -57,8 +68,8 @@ async def _run_episode(
                 task_id=task_dir,
                 adapter_url="",
                 session_id=session_id,
-                # solver: claude 直连 interchange (假设有 Anthropic /v1/messages)
-                solver_base_url=api_baseurl_key.base_url,
+                # solver: claude 直连 interchange (Anthropic /v1/messages)
+                solver_base_url=solver_base_url,
                 # judge: 独立转发进程 (judge_forwarder.py) → dashscope
                 judge_base_url=JUDGE_FORWARDER_URL,
                 solver_model=POLICY_MODEL,
