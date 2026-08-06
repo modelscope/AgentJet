@@ -220,6 +220,19 @@ def align_parameters(from_config_fp, to_config_fp, convertion_json_fg, backbone)
         "from [ajet.rollout.ppo_max_token_len_per_gpu] (None => ajet.rollout.max_model_len)."
     )
 
+    # [AJET] ajet.rollout.vllm_tool_parser (single switch) -> verl engine_kwargs.vllm.
+    # jsonc maps it to engine_kwargs.vllm.tool_call_parser; here we also force
+    # enable_auto_tool_choice=true (a companion flag required by vLLM for tool parsing).
+    _vllm_tp = _dive_to_fetch_value(from_config, "ajet.rollout.vllm_tool_parser")
+    if _vllm_tp:
+        vllm_cfg = to_config.setdefault("actor_rollout_ref", {}).setdefault("rollout", {}).setdefault(
+            "engine_kwargs", {}).setdefault("vllm", {})
+        vllm_cfg["enable_auto_tool_choice"] = True
+        logger.success(
+            f"[Note]: engine_kwargs.vllm.enable_auto_tool_choice = True "
+            f"(from ajet.rollout.vllm_tool_parser={_vllm_tp})."
+        )
+
     # backbone specific safe guard
     to_config = align_parameter_safe_guard(to_config, backbone)
 

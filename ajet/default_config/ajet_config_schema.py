@@ -61,6 +61,10 @@ class AjetRollout:
     max_num_seqs: int = 64
     num_repeat: int = 8
     gpu_memory_utilization: float = 0.85
+    # Single switch for vLLM tool parsing (hermes / qwen3_coder). Drives both the
+    # verl engine_kwargs.vllm.tool_call_parser (enable_auto_tool_choice=True forced)
+    # and ajet's async_llm_bridge <tool_call> text parser.
+    vllm_tool_parser: str = "hermes"
     # Per-GPU token budget for the PPO actor update (dynamic batching).
     ppo_max_token_len_per_gpu: Optional[int] = None  # None => track ajet.rollout.max_model_len (legacy behaviour).
     compute_madness_checklist: List[str] = field(default_factory=list)

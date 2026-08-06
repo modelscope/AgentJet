@@ -8,10 +8,9 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from omegaconf import DictConfig
 from pydantic import BaseModel
-try:
-    from vllm.entrypoints.openai.tool_parsers.hermes_tool_parser import Hermes2ProToolParser
-except:
-    from vllm.tool_parsers.hermes_tool_parser import Hermes2ProToolParser   # vllm 0.17.x moved this class elsewhere
+
+# 可切换的 <tool_call> 解析器 (hermes JSON / qwen3_coder XML), 由 ajet.rollout.tool_parser 配置决定.
+from ajet.utils.tool_parser import parse_tool_calls
 
 from ajet.utils.async_utils import silence_hermes_tool_parser_loggers
 silence_hermes_tool_parser_loggers()
@@ -69,7 +68,10 @@ class AsyncLlmBridge(object):
         self.processor = processor  # HuggingFace ProcessorMixin for VL models, or None
         self.llm_mode = llm_mode
         self.max_llm_retries = max_llm_retries
-        self.tool_parser = Hermes2ProToolParser(self.tokenizer)
+        # 工具调用解析器: ajet.rollout.vllm_tool_parser (hermes / qwen3_coder), 可切换.
+        self.tool_parser_name = (
+            getattr(config.ajet.rollout, "vllm_tool_parser", None) or "hermes"
+        )
 
 
     def get_llm_inference_fn_async(self, sampling_params: dict = {}) -> Callable:  # noqa: C901
@@ -168,7 +170,7 @@ class AsyncLlmBridge(object):
             if decoded_text.endswith("<|im_end|>"):
                 decoded_text = decoded_text[: -len("<|im_end|>")]
 
-            # if tool call, use vLLM tool parser to extract tool calls and validate them
+            # if tool call, use ajet's switchable tool parser (hermes / qwen3_coder)
             tool_calls = None
             if (
                 ("<tool_call>" in decoded_text)
@@ -176,8 +178,7 @@ class AsyncLlmBridge(object):
                 and (not self.config.ajet.rollout.force_disable_toolcalls)
             ):
 
-                parsed_tool_calls = self.tool_parser.extract_tool_calls(decoded_text, None)  # type: ignore
-                parsed_tool_calls = parsed_tool_calls.model_dump(mode='json')
+                parsed_tool_calls = parse_tool_calls(decoded_text, self.tool_parser_name)
 
                 model_called = parsed_tool_calls["tools_called"]
                 if model_called:

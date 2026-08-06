@@ -22,6 +22,8 @@ ajet:
     agent_madness_termination: True # terminate_after_gone_mad
     # punish the LLM when it is detected as lost control
     agent_madness_reward: 0.0
+    # vLLM 工具调用解析器 (单一开关): hermes(JSON) / qwen3_coder(XML). Qwen3.6 用 qwen3_coder.
+    vllm_tool_parser: hermes
 
 
   task_reader:
