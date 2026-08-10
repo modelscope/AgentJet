@@ -34,7 +34,7 @@ REMOTE_MODEL_PATH = os.getenv(
     "/mnt/data_cpfs/model_cache/modelscope/hub/Qwen/Qwen/Qwen3___6-35B-A3B",
 )
 REMOTE_ALLOCATE_GPU_PER_NODE = 8   # 每节点 8 卡
-REMOTE_NNODES = int(os.getenv("REMOTE_NNODES", "4"))   # 8851+8852+8853+8854 = 32 卡
+REMOTE_NNODES = int(os.getenv("REMOTE_NNODES", "2"))   # 8861 + 8862 = 16 卡
 REMOTE_TENSOR_PARALLEL_SIZE = 8
 REMOTE_ULYSSES_SP = int(os.getenv("ULYSSES_SEQUENCE_PARALLEL_SIZE", "2"))
 # 用户指定: ppo_max_token_len_per_gpu (PPO 更新每 GPU token 预算). 若 OOM 二分下调.

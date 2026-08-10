@@ -343,39 +343,15 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                         )
                         logger.info("start batch rollout")
                         self.parallel_env.current_global_steps = self.global_steps
-                        # rollout stage begin ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
-                        context_tracker_arr: List[SingleAgentContextTracker] = self.parallel_env.rollout(
-                            tasks, mode="sample", epoch=f"train.{epoch}"
-                        )
-
-                        logger.info("end batch rollout")
-                        gen_batch_output = self.parallel_env.to_dataproto(context_tracker_arr)
-                        logger.info("end dataproto convertion")
-
-                        success_rate = [
-                            traj.reward_structure.success_rate for traj in context_tracker_arr
-                        ]
-                        madness_rate = [
-                            traj.reward_structure.madness for traj in context_tracker_arr
-                        ]
-                        reward = [traj.reward_structure.raw_reward for traj in context_tracker_arr]
-                        llm_call_cnt = [traj.llm_call_cnt for traj in context_tracker_arr]
-                        metrics.update(
-                            {
-                                "critic/llm_call_cnt": np.mean(llm_call_cnt),
-                                "critic/madness_rate": np.mean(madness_rate),
-                                "critic/success_rate": np.mean(success_rate),
-                                "critic/real_success_rate": np.mean(
-                                    context_tracker_arr[0].current_batch_success_rate
-                                ),
-                                "critic/real_reward": np.mean(
-                                    context_tracker_arr[0].current_batch_reward
-                                ),
-                                "critic/reward_std": np.std(reward) if reward else 0,
-                            }
-                        )
-                        save_trajectory_as_json_file(context_tracker_arr, self.global_steps, self.config, prefix="train")
-                        update_metrics(context_tracker_arr, metrics, prefix="train_")
+                        import pickle as _dbg_pickle
+                        logger.warning("[DEBUG] skip rollout, loading /tmp/ajet_debug_rollout/gen_batch_output.pkl")
+                        with open("/tmp/ajet_debug_rollout/gen_batch_output.pkl", "rb") as _dbg_f:
+                            gen_batch_output = _dbg_pickle.load(_dbg_f)
+                        metrics.update({
+                            "critic/llm_call_cnt": 0.0, "critic/madness_rate": 0.0,
+                            "critic/success_rate": 0.0, "critic/real_success_rate": 0.0,
+                            "critic/real_reward": 0.0, "critic/reward_std": 0.0,
+                        })
                         if self.config.ajet.execute_test:  # apply a test probe
                             from swanlab.data.run.main import get_run
 

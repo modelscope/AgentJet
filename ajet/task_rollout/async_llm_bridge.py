@@ -147,10 +147,7 @@ class AsyncLlmBridge(object):
                 generate_kwargs["image_data"] = image_data
 
             # print(f"self.async_rollout_manager.generate: {generate_kwargs}")
-            _t_gen0 = time.time()
-            logger.info(f"[bridge][GEN-START] request_id={request_id} n_prompt_tok={len(prompt_token_ids)} has_image={image_data is not None} -> awaiting vLLM generate.")
             final_res: TokenOutput = await self.async_rollout_manager.generate(**generate_kwargs)
-            logger.info(f"[bridge][GEN-DONE] request_id={request_id} gen_took={time.time()-_t_gen0:.1f}s n_out_tok={len(final_res.token_ids)}.")
             # print(f"final_res: {final_res}")
 
             """response token ids"""

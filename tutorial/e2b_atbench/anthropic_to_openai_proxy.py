@@ -14,6 +14,7 @@ tools / tool_choice / max_tokens / stop_sequences / temperature / top_p / stream
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -23,7 +24,7 @@ from aiohttp import ClientSession, ClientTimeout, web
 
 logger = logging.getLogger("anthropic_to_openai")
 
-# 转发时不带的逐跳头 (与透传代理一致)
+# 与 cc_anthropic_proxy 一致: 转发时不带的逐跳头
 _HOP_REQ = {
     "host", "content-length", "transfer-encoding", "connection", "keep-alive",
     "proxy-authenticate", "proxy-authorization", "te", "trailers", "upgrade",
@@ -372,54 +373,60 @@ def build_translator_app(
             "Accept-Encoding": "identity",
         }
 
-        try:
-            sess = ClientSession(timeout=timeout_obj)
-            up = await sess.post(url, json=oai_body, headers=headers, auto_decompress=False)
-        except Exception as e:
-            await sess.close()
-            logger.exception("[translator] upstream connect failed: %s", e)
-            return web.Response(status=502, text=f"upstream connect failed: {e}")
+        # 每次请求独立 session, 用 async with 确保连接总被释放 (并发时不泄漏,
+        # 否则 16 并行 judge 会攒出大量 Unclosed connection 到 dashscope).
+        async with ClientSession(timeout=timeout_obj) as sess:
+            # 429 (上游限流, dashscope 并发时偶发) -> 退避重试
+            _retries = 0
+            up = None
+            while True:
+                try:
+                    up = await sess.post(url, json=oai_body, headers=headers, auto_decompress=False)
+                except Exception as e:
+                    logger.exception("[translator] upstream connect failed: %s", e)
+                    return web.Response(status=502, text=f"upstream connect failed: {e}")
+                if up.status != 429 or _retries >= 2:
+                    break
+                _retries += 1
+                await asyncio.sleep(0.5 * _retries)   # 0.5s, 1s
+                logger.warning("[translator] upstream 429, retry %d/2", _retries)
 
-        if up.status >= 400:
-            txt = await up.text()
-            await sess.close()
-            # 把上游错误包成 Anthropic 风格错误返回, claude code 能识别
-            return web.json_response(
-                {
-                    "type": "error",
-                    "error": {
-                        "type": "api_error",
-                        "message": f"upstream {up.status}: {txt[:800]}",
+            if up.status >= 400:
+                txt = await up.text()
+                # 把上游错误包成 Anthropic 风格错误返回, claude code 能识别
+                return web.json_response(
+                    {
+                        "type": "error",
+                        "error": {
+                            "type": "api_error",
+                            "message": f"upstream {up.status}: {txt[:800]}",
+                        },
                     },
+                    status=up.status,
+                )
+
+            if not is_stream:
+                # 非流式: 翻译成 Anthropic message 一次返回
+                data = await up.json()
+                return web.json_response(_openai_completion_to_anthropic(data, model_name))
+
+            # 流式
+            resp = web.StreamResponse(
+                status=200,
+                headers={
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
                 },
-                status=up.status,
             )
-
-        if not is_stream:
-            # 非流式: 翻译成 Anthropic message 一次返回
-            data = await up.json()
-            await sess.close()
-            return web.json_response(_openai_completion_to_anthropic(data, model_name))
-
-        # 流式
-        resp = web.StreamResponse(
-            status=200,
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            },
-        )
-        await resp.prepare(request)
-        try:
-            async for chunk in _iter_openai_sse(up, model_name):
-                await resp.write(chunk)
-            await resp.write_eof()
-        except Exception as e:
-            logger.exception("[translator] stream error: %s", e)
-        finally:
-            await sess.close()
-        return resp
+            await resp.prepare(request)
+            try:
+                async for chunk in _iter_openai_sse(up, model_name):
+                    await resp.write(chunk)
+                await resp.write_eof()
+            except Exception as e:
+                logger.exception("[translator] stream error: %s", e)
+            return resp
 
     async def handle_count_tokens(request: web.Request) -> web.Response:
         try:

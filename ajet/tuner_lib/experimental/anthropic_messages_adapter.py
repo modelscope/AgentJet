@@ -216,8 +216,7 @@ def anthropic_messages_to_chat_messages(
                 tool_calls.append(
                     {
                         "id": call_id,
-                        # verl 0.8 的 ChatCompletionMessageCustomToolCall 要求 type="custom"
-                        "type": "custom",
+                        "type": "function",
                         "function": {"name": name, "arguments": str(arguments)},
                     }
                 )

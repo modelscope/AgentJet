@@ -349,9 +349,7 @@ class SingleAgentContextTracker(BaseTracker):
                     split_point_message_left_index >= 0
                 ), "There should be at least one message before the first training message"
                 assert split_prompt_response_index == input_ids_len[split_point_message_left_index]
-                assert (
-                    ext_msg.author == "llm"
-                ), "The first message after initialization should be from LLM, not from env or user"
+                assert (ext_msg.author == "llm"), "The first message after initialization should be from LLM, not from env or user"
 
             # cat all tokens
             input_ids += ext_msg.token_arr
