@@ -1,3 +1,4 @@
+import threading
 from typing import Any, Dict, List, Optional, Tuple, Union
 from ajet.schema.task import WorkflowTask
 
@@ -117,6 +118,7 @@ class BaseTracker(object):
         # disable read only mode
         self._read_only = False
         self._discarded = False
+        self._stop_writing_new_timeline = False
 
         # task related info
         self.workflow_task = workflow_task
@@ -170,6 +172,7 @@ class BaseTracker(object):
         # disable read only mode
         self._read_only = False
         self._discarded = False
+        self._stop_writing_new_timeline = False
 
         self.saved_timelines: List[List[ExtendedMessage]] = []
         self.current_context_status = ""

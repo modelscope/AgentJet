@@ -103,6 +103,8 @@ class SwarmRunner(BaseAgentRunner):
                     raise RuntimeError(f"Unknown special message received: {message}")
 
             final_output = WorkflowOutput(**json.loads(message))
+            with context_tracker._lock:
+                context_tracker._stop_writing_new_timeline = True
             reward = final_output.reward
             logger.success(f"Received workflow output for episode {episode_uuid} (Reward: {reward})")
             observation_window["info"][task_thread_index] += f"[Received workflow output]\n"

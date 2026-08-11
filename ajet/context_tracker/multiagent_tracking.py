@@ -573,9 +573,30 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
 
 
 
+    def remove_claude_code_generate_title_timeline(self, timeline) -> bool:
+        """Detect a Claude Code "generate session title" meta-request timeline.
+
+        Such meta-interactions are not part of the real task and must NOT enter
+        `saved_timelines` for training. Returns True if the timeline's system
+        message contains the title-generation keyword.
+        """
+        keyword = "Generate a concise, sentence-case title (3-7 words)"
+        for msg in timeline:
+            if getattr(msg, "role", None) == "system":
+                content = getattr(msg, "content", None) or ""
+                if keyword in content:
+                    return True
+        return False
+
     def save_llm_interaction_timeline(self, tools, llm_ext_msg, timeline):
         """Save the LLM interaction timeline by adding the LLM response to `self.saved_timelines`
         """
+        # Skip Claude Code "generate title" meta-requests: these are side calls
+        # Claude Code makes to produce a session title, not real task interactions.
+        if self.remove_claude_code_generate_title_timeline(timeline):
+            logger.info(f"[{self.episode_uuid}] timeline save skipped (claude code generate-title request)")
+            return
+
         timeline += [llm_ext_msg]
         _, length = self.get_context_token_num_and_safety(timeline, tools)
         if length > self.config.ajet.rollout.max_model_len:

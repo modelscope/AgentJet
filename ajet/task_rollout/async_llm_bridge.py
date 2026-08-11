@@ -443,7 +443,8 @@ class OpenaiLlmProxyWithTracker(object):
         llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools)
 
         # context tracking
-        self.context_tracker.step_track(llm_output, context_safe, converted_message, tools, timeline_uuid=timeline_uuid)
+        if not self.context_tracker._stop_writing_new_timeline:
+            self.context_tracker.step_track(llm_output, context_safe, converted_message, tools, timeline_uuid=timeline_uuid)
         return llm_output
 
 
