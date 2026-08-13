@@ -114,7 +114,6 @@ def replace_token_ids(
 
 class BaseTracker(object):
     def __init__(self, config, tokenizer, workflow_task: WorkflowTask, **kwargs):
-
         # disable read only mode
         self._read_only = False
         self._discarded = False
@@ -129,11 +128,6 @@ class BaseTracker(object):
 
         # tokenizer
         self.tokenizer = tokenizer
-        # Select the loss-mask blackout header via config
-        # (ajet.rollout.chat_template_generate_prompt_type): default is
-        # "<|im_start|>assistant\n"; "qwen3.6" extends it to
-        # "<|im_start|>assistant\n<think>" so the reasoning-scaffold <think>
-        # opener injected by the Qwen3.6 template is also blacked out.
         self.blackout_token_combo = get_blackout_token_combo(tokenizer, config)
         self._im_start_token_id = tokenizer.encode("<|im_start|>")[0]
         self._im_end_token_id = tokenizer.encode("<|im_end|>")[0]
@@ -184,7 +178,7 @@ class BaseTracker(object):
         self.llm_call_cnt = 0
         self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None
 
-    def group_tokenize(self):
+    def group_tokenize(self, cache=False, dump_to=None):
         raise NotImplementedError
 
     def group_tokenize_multi_group(self):

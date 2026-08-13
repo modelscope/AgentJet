@@ -72,6 +72,55 @@ atexit.register(context.term)
 def ep_key(episode_uuid: str) -> str:
     return f"episodes-{episode_uuid}"
 
+# ---------------------------------------------------------------------------
+# Streaming keepalive for the non-incremental SSE proxy
+# ---------------------------------------------------------------------------
+#
+# The ZMQ worker pipeline (oai_model_client.py) is NON-incremental: each request
+# returns exactly one complete ChatCompletion, only AFTER the full generation
+# finishes (see the 20-minute recv budget in _begin_handle_chat_completion). The
+# three HTTP endpoints translate that single result into OpenAI / Anthropic SSE
+# event sequences. The naive version -- await the worker, THEN return a
+# StreamingResponse -- sends no bytes to the client for the entire generation, so
+# streaming harnesses (Claude Code over /v1/messages, Codex over /v1/responses)
+# trip their stream-inactivity / first-byte timeout and abort. The worker cannot
+# stream real tokens without re-architecting the rollout, so instead we open the
+# SSE response immediately and hold it open with periodic keepalive frames until
+# the result is ready. SSE comment lines (": ...") and the Anthropic `ping` event
+# are ignored by every compliant SSE parser, so they keep the connection alive
+# without corrupting the event stream.
+STREAM_KEEPALIVE_INTERVAL_SEC = 5.0
+
+
+async def _drain_result_with_keepalives(executor, fn, fn_args, keepalive_sse):
+    """Run ``fn(*fn_args)`` in ``executor``; emit ``keepalive_sse`` immediately and
+    every ``STREAM_KEEPALIVE_INTERVAL_SEC`` while it is pending, then yield the
+    ChatCompletion result as the final item.
+
+    Yields ``keepalive_sse`` (str) one or more times, then a single ChatCompletion.
+    If the background call raises after the stream has already opened (so we can no
+    longer return a clean HTTP error), the failure is logged and the generator ends
+    -- the caller treats this as "drained without a result" and closes the stream.
+
+    ``asyncio.shield`` lets the executor thread run to completion if the client
+    disconnects, matching the pre-existing behaviour (the ZMQ recv cannot be
+    cancelled mid-flight).
+    """
+    loop = asyncio.get_running_loop()
+    fut = loop.run_in_executor(executor, fn, *fn_args)
+    # Immediate first byte so short time-to-first-byte timeouts are satisfied.
+    yield keepalive_sse
+    while True:
+        try:
+            result = await asyncio.wait_for(asyncio.shield(fut), timeout=STREAM_KEEPALIVE_INTERVAL_SEC)
+            yield result
+            return
+        except asyncio.TimeoutError:
+            yield keepalive_sse
+        except Exception as e:  # pragma: no cover - rare mid-stream worker failure
+            logger.exception(f"[stream-proxy] background LLM call failed: {e!r}; closing SSE stream early.")
+            return
+
 def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
 
     @asynccontextmanager
@@ -367,19 +416,46 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         )
         if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new chat completion request (outside thread)")
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
+        executor = request.app.state.executor
 
+        if original_stream:
+            # Open the SSE stream IMMEDIATELY and hold it open with comment
+            # keepalives while the non-incremental worker computes the full
+            # response (see _drain_result_with_keepalives). Awaiting the worker
+            # before opening the stream would send no bytes for the whole
+            # generation and trip streaming clients' first-byte / inactivity timeout.
+            async def _stream_chat_completions():
+                result = None
+                async for item in _drain_result_with_keepalives(
+                    executor, _begin_handle_chat_completion,
+                    (episode_address, int_req, episode_uuid), ": keepalive\n\n",
+                ):
+                    if isinstance(item, ChatCompletion):
+                        result = item
+                        break
+                    yield item
+                if result is None:
+                    return
+                if enable_swarm_mode:
+                    assert shared_mem_dict is not None
+                    shared_mem_dict["latest_llm_call"] = {"input": body, "output": result}
+                result.model = "unknown_model" if not new_req.model else new_req.model
+                async for chunk in mock_as_stream_response(result):
+                    yield chunk
+
+            return StreamingResponse(
+                _stream_chat_completions(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+
+        result = await loop.run_in_executor(executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid)
         if enable_swarm_mode:
             assert shared_mem_dict is not None
             shared_mem_dict["latest_llm_call"] = {
                 "input": body,
                 "output": result,
             }
-
-        if original_stream:
-            result.model = "unknown_model" if not new_req.model else new_req.model
-            return StreamingResponse(mock_as_stream_response(result), media_type="text/event-stream")
-
         return result
 
 
@@ -431,11 +507,44 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         )
         if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new responses request (outside thread)")
         loop = asyncio.get_running_loop()
-        result: ChatCompletion = await loop.run_in_executor(
-            request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
-        )
-
+        executor = request.app.state.executor
         model_name = body.get("model") if isinstance(body, dict) else None
+
+        if original_stream:
+            # Open the SSE stream immediately; comment keepalives hold it open
+            # while the non-incremental worker computes the full response.
+            async def _stream_responses():
+                result = None
+                async for item in _drain_result_with_keepalives(
+                    executor, _begin_handle_chat_completion,
+                    (episode_address, int_req, episode_uuid), ": keepalive\n\n",
+                ):
+                    if isinstance(item, ChatCompletion):
+                        result = item
+                        break
+                    yield item
+                if result is None:
+                    return
+                response_dict = chat_completion_to_responses_dict(
+                    result,
+                    model=model_name or result.model or "unknown",
+                    instructions=instructions if isinstance(instructions, str) else None,
+                )
+                if enable_swarm_mode:
+                    assert shared_mem_dict is not None
+                    shared_mem_dict["latest_llm_call"] = {"input": body, "output": response_dict, "format": "responses"}
+                for chunk in iter_responses_sse_events(response_dict):
+                    yield chunk
+
+            return StreamingResponse(
+                _stream_responses(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+
+        result: ChatCompletion = await loop.run_in_executor(
+            executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
+        )
         response_dict = chat_completion_to_responses_dict(
             result,
             model=model_name or result.model or "unknown",
@@ -449,12 +558,6 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 "output": response_dict,
                 "format": "responses",
             }
-
-        if original_stream:
-            return StreamingResponse(
-                iter_responses_sse_events(response_dict),
-                media_type="text/event-stream",
-            )
 
         return response_dict
 
@@ -511,11 +614,45 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         )
         if DEBUG: logger.info(f"episode_uuid: {episode_uuid} | Received new messages request (outside thread)")
         loop = asyncio.get_running_loop()
-        result: ChatCompletion = await loop.run_in_executor(
-            request.app.state.executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
-        )
-
+        executor = request.app.state.executor
         model_name = body.get("model") if isinstance(body, dict) else None
+
+        if original_stream:
+            async def _stream_messages():
+                result = None
+                # Anthropic's own API sends `event: ping` keepalives during long
+                # generations; the SDK ignores them, so they hold the stream open
+                # without disturbing the message event sequence.
+                async for item in _drain_result_with_keepalives(
+                    executor, _begin_handle_chat_completion,
+                    (episode_address, int_req, episode_uuid),
+                    'event: ping\ndata: {"type": "ping"}\n\n',
+                ):
+                    if isinstance(item, ChatCompletion):
+                        result = item
+                        break
+                    yield item
+                if result is None:
+                    return
+                message_dict = chat_completion_to_message_dict(
+                    result,
+                    model=model_name or result.model or "unknown",
+                )
+                if enable_swarm_mode:
+                    assert shared_mem_dict is not None
+                    shared_mem_dict["latest_llm_call"] = {"input": body, "output": message_dict, "format": "messages"}
+                for chunk in iter_anthropic_sse_events(message_dict):
+                    yield chunk
+
+            return StreamingResponse(
+                _stream_messages(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+
+        result: ChatCompletion = await loop.run_in_executor(
+            executor, _begin_handle_chat_completion, episode_address, int_req, episode_uuid
+        )
         message_dict = chat_completion_to_message_dict(
             result,
             model=model_name or result.model or "unknown",
@@ -528,12 +665,6 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 "output": message_dict,
                 "format": "messages",
             }
-
-        if original_stream:
-            return StreamingResponse(
-                iter_anthropic_sse_events(message_dict),
-                media_type="text/event-stream",
-            )
 
         return message_dict
 

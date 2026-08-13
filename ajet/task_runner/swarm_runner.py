@@ -103,8 +103,7 @@ class SwarmRunner(BaseAgentRunner):
                     raise RuntimeError(f"Unknown special message received: {message}")
 
             final_output = WorkflowOutput(**json.loads(message))
-            with context_tracker._lock:
-                context_tracker._stop_writing_new_timeline = True
+            context_tracker._stop_writing_new_timeline = True
             reward = final_output.reward
             logger.success(f"Received workflow output for episode {episode_uuid} (Reward: {reward})")
             observation_window["info"][task_thread_index] += f"[Received workflow output]\n"
@@ -223,5 +222,13 @@ class SwarmRunner(BaseAgentRunner):
         tuner.terminate_episode()
         context_tracker.log_metrics = workflow_output.log_metrics
         # finally, tokenize episode and check everything
-        context_tracker.group_tokenize(cache=True)
+        # dump the tokenized sample to a temp pkl so swarm clients can fetch it
+        # via HTTP (GET /get_episode_tokenized_sample/{episode_uuid}). The file
+        # is removed after the rollout stage consumes it (see to_dataproto).
+        _cached_sample_path = os.path.join(
+            self.config.ajet.experiment_dir,
+            "temp",
+            f"{context_tracker.episode_uuid}_cached_sample.pkl",
+        )
+        context_tracker.group_tokenize(cache=True, dump_to=_cached_sample_path)
         return context_tracker

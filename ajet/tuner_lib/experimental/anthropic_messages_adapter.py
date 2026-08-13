@@ -78,10 +78,16 @@ def _system_to_text(system: Any) -> str:
     if isinstance(system, str):
         return system
     if isinstance(system, list):
-        return " ".join(
-            part.get("text", "")
-            for part in system
-            if isinstance(part, dict) and part.get("type") == "text"
+        # Mirror vLLM's vllm/entrypoints/anthropic/serving.py::_convert_system_message:
+        # drop Claude Code's `x-anthropic-billing-header` block (it carries a
+        # per-request hash that defeats KV prefix caching) and join surviving
+        # parts with NO separator. This keeps 链路A (agentjet -> /chat/completions)
+        # token-for-token aligned with 链路B (claude-code -> vLLM /v1/messages).
+        return "".join(
+            part["text"] for part in system
+            if isinstance(part, dict)
+            and part.get("type") == "text" and part.get("text")
+            and not part["text"].startswith("x-anthropic-billing-header")
         )
     return str(system)
 

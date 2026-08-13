@@ -601,7 +601,35 @@ class VerlRolloutManager(DynamicRolloutManager):
         """Convert completed context trackers into a `DataProto` minibatch."""
         samples = self.trajectories_to_samples(tracker_array)
         dataproto = self.samples_to_dataproto(samples)
+        # The rollout stage has consumed the samples; remove the per-episode cached_sample.pkl temp files written by SwarmRunner to bound disk.
+        self._cleanup_cached_sample_temp(tracker_array)
         return dataproto
+
+    def _cleanup_cached_sample_temp(self, tracker_array):
+        """Remove per-episode ``temp/{episode_uuid}_cached_sample.pkl`` files
+        after the rollout stage has converted them into a DataProto.
+
+        Only the episodes in ``tracker_array`` (this stage's episodes) are
+        removed, so historical / other-stage files are never touched. Errors
+        are downgraded to warnings -- cleanup must never block training.
+        """
+        try:
+            temp_dir = os.path.join(self.config.ajet.experiment_dir, "temp")
+            if not os.path.isdir(temp_dir):
+                return
+            for tracker in tracker_array:
+                ep = getattr(tracker, "episode_uuid", None)
+                if not ep:
+                    continue
+                p = os.path.join(temp_dir, f"{ep}_cached_sample.pkl")
+                try:
+                    os.remove(p)
+                except FileNotFoundError:
+                    pass
+                except OSError as e:
+                    logger.warning(f"[rollout] failed to remove cached sample {p}: {e}")
+        except Exception as e:
+            logger.warning(f"[rollout] cached-sample temp cleanup error: {e}")
 
     def trajectories_to_samples(self, tracker_array: List[SingleAgentContextTracker]) -> List[Sample]:
         """Tokenize each tracker into `Sample` objects ready for tensorization."""

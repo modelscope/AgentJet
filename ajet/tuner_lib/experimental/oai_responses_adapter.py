@@ -26,7 +26,11 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from loguru import logger
 
-from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+try:
+    from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+except ModuleNotFoundError:
+    # vllm >=0.10 moved this to ...openai.chat_completion.protocol
+    from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
 from openai.types.chat.chat_completion import ChatCompletion
 
 

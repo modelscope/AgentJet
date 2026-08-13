@@ -1051,6 +1051,27 @@ class SwarmClient(SwarmClientBase):
         except Exception as e:
             return "saved_experiments"
 
+    def get_episode_tokenized_sample(self, episode_uuid: str):
+        """
+        Fetch the cached tokenized sample for an episode as structured JSON.
+
+        Returns a dict ``{"episode_uuid", "found", "num_samples", "samples"}``
+        on success, or None if the file is not ready / not found / on error.
+        The ``samples`` list contains one JSON object per ``Sample`` (torch
+        tensors / numpy arrays are already converted to lists by the server).
+        """
+        try:
+            resp = self._http_client.get(
+                f"{self.server_url}/get_episode_tokenized_sample/{episode_uuid}",
+                timeout=30,
+            )
+            if resp.status_code != 200:
+                return None
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"[swarm_client] get_episode_tokenized_sample({episode_uuid}) failed: {e}")
+            return None
+
     def agree_sync_weight(self) -> bool:
         """Notify the swarm server that this client agrees to a weight sync.
 

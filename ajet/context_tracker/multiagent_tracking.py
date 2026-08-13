@@ -1,6 +1,8 @@
 # flake8: noqa: F541, F841
 import copy
 import json
+import os
+import pickle
 from dataclasses import dataclass, field
 from typing import List, Tuple, cast
 
@@ -611,7 +613,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             assert not timeline[i].first_message
 
         # no longer write anything
-        if self._read_only:
+        if self._read_only or self._stop_writing_new_timeline:
             logger.exception("Timeline is in read-only mode, should not save new timeline. Please report a github issue if you see this error.")
             return
 
@@ -889,14 +891,22 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         return self.saved_timelines
 
 
-    def group_tokenize(self, cache=False):
+    def group_tokenize(self, cache=False, dump_to=None):
         if hasattr(self, "group_tokenized_cache"):
-            return getattr(self, "group_tokenized_cache")
+            result = getattr(self, "group_tokenized_cache")
         else:
             result = self.group_tokenize_multi_group()
             if cache:
                 setattr(self, "group_tokenized_cache", result)
-            return result
+        # Optionally persist the tokenized sample to disk so that out-of-process consumers
+        if dump_to is not None:
+            try:
+                os.makedirs(os.path.dirname(os.path.abspath(dump_to)), exist_ok=True)
+                with open(dump_to, "wb") as f:
+                    pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
+            except Exception as e:
+                logger.warning(f"[group_tokenize] failed to dump sample to {dump_to}: {e}")
+        return result
 
 
     def get_context_token_num_and_safety(self, ext_messages: List[ExtendedMessage], tools: List = []) -> Tuple[bool, int]:  # type: ignore

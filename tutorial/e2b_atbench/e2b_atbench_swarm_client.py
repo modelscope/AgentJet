@@ -92,6 +92,10 @@ def main():
         force_restart=os.environ.get("FORCE_RESTART_SWARM_ENGINE", "0") == "1",
     )
 
+    exp_dir = swarm_worker.server_experiment_dir() or "saved_experiments"
+    os.makedirs(exp_dir, exist_ok=True)
+    os.environ.setdefault("LLM_IO_LOG", os.path.join(exp_dir, "cc_dump_tree.log"))
+
     def rollout(task):
         episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
             discard_episode_timeout=3600  # claude code episode 慢, idle 超时给足

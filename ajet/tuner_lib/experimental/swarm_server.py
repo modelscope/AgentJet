@@ -5,6 +5,7 @@ import os
 import asyncio
 import threading
 import zipfile
+import pickle
 from loguru import logger
 from functools import lru_cache
 from types import SimpleNamespace
@@ -602,6 +603,87 @@ def register_enable_swarm_mode_routes(
     async def get_server_experiment_dir():
         """Return the absolute experiment directory once the engine has started."""
         return {"server_experiment_dir": shared_mem_dict.get("server_experiment_dir", None)}
+
+    @app.get("/get_episode_tokenized_sample/{episode_uuid}")
+    async def get_episode_tokenized_sample(episode_uuid: str):
+        """Return the cached tokenized sample for an episode as structured JSON.
+
+        SwarmRunner writes ``List[Sample]`` as a pickle at
+        ``{experiment_dir}/temp/{episode_uuid}_cached_sample.pkl`` after each
+        episode's ``group_tokenize``. This endpoint loads it and returns the
+        samples as JSON (torch tensors / numpy arrays are recursively converted
+        to lists so the response is plain JSON-serializable).
+        """
+        def _to_jsonable(obj, _path="root"):
+            # Primitives pass through unchanged.
+            if obj is None or isinstance(obj, (bool, int, float, str)):
+                return obj
+            # torch tensors -> nested lists.
+            try:
+                import torch
+                if isinstance(obj, torch.Tensor):
+                    return obj.detach().cpu().tolist()
+            except Exception:
+                pass
+            # numpy scalars/arrays -> lists / python scalars.
+            try:
+                import numpy as np
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                if isinstance(obj, np.generic):
+                    return obj.item()
+            except Exception:
+                pass
+            # Raw bytes (e.g. an image payload) -> lossless base64 string.
+            if isinstance(obj, (bytes, bytearray)):
+                import base64
+                return base64.b64encode(bytes(obj)).decode("ascii")
+            # PIL images (HF-style {"type":"image","image":<PIL>} can put one
+            # into sample.messages) -> base64 PNG data URL so the response stays
+            # plain JSON instead of silently stringifying the object.
+            if obj.__class__.__module__.startswith("PIL.") and obj.__class__.__name__ == "Image":
+                import base64, io
+                buf = io.BytesIO()
+                obj.save(buf, format="PNG")
+                return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+            if isinstance(obj, dict):
+                return {str(k): _to_jsonable(v, f"{_path}.{k}") for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [_to_jsonable(v, f"{_path}[{i}]") for i, v in enumerate(obj)]
+            dump = getattr(obj, "model_dump", None)
+            if callable(dump):
+                return _to_jsonable(dump(), f"{_path}.model_dump")
+            # Nothing above matched: do NOT silently str() (that loses data
+            # invisibly). Log the path+type so it is diagnosable, and emit a
+            # clear placeholder the client can detect.
+            logger.warning(
+                f"[get_episode_tokenized_sample] unsupported type {type(obj).__name__} at {_path}; substituting placeholder"
+            )
+            return f"<<UNSUPPORTED:{type(obj).__name__}>>"
+
+        # path-traversal guard: episode_uuid is a uuid4().hex
+        if episode_uuid and not all(c in "0123456789abcdefABCDEF" for c in episode_uuid):
+            raise HTTPException(status_code=400, detail="invalid episode_uuid")
+        exp_dir = shared_mem_dict.get("server_experiment_dir")
+        if not exp_dir:
+            raise HTTPException(status_code=404, detail="experiment_dir not ready")
+        pkl_path = os.path.join(exp_dir, "temp", f"{episode_uuid}_cached_sample.pkl")
+        if not os.path.exists(pkl_path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"cached sample for {episode_uuid} not found (still tokenizing or already cleaned up)",
+            )
+        try:
+            with open(pkl_path, "rb") as f:
+                sample_arr = pickle.load(f)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"failed to load cached sample: {e}")
+        return {
+            "episode_uuid": episode_uuid,
+            "found": True,
+            "num_samples": len(sample_arr),
+            "samples": [_to_jsonable(s) for s in sample_arr],
+        }
 
     # --- episode status ---
     @app.post("/register_episode", response_model=BoolResponse)
