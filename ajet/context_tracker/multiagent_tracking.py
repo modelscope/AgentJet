@@ -4,7 +4,7 @@ import json
 import os
 import pickle
 from dataclasses import dataclass, field
-from typing import List, Tuple, cast
+from typing import List, Optional, Tuple, cast
 
 from beast_logger import NestedJsonItem, SeqItem, print_dict, print_nested
 from loguru import logger
@@ -65,7 +65,6 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         self.context_overflow = False
         self.output_kwargs = {}
         self.input_kwargs = {}
-        self.timeline_cache = {}
 
         # Whether the chat template folds a run of consecutive `tool` messages
         # into ONE <|im_start|>user segment (Qwen3 text -> True) or renders each
@@ -472,7 +471,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         return segments
 
 
-    def step_prepare(self, messages: List[dict], tools: List = [], timeline_uuid: str = ""):
+    def step_prepare(self, messages: List[dict], tools: List = []):
         disable_toolcalls = self.config.ajet.rollout.force_disable_toolcalls
         tools = self.preprocess_tools_field(tools, disable_toolcalls=disable_toolcalls)
         timeline = self.step_spawn_timeline(messages, tools, disable_toolcalls)
@@ -497,26 +496,26 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             logger.warning(f"[{self.workflow_task.episode_uuid}] Stop tracking timelines because {info}.")
 
 
-        self.timeline_cache[timeline_uuid] = timeline
-        return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools
+        return context_safe, token_overflow, info, converted_message, custom_sampling_params, tools, timeline
 
 
 
     def step_track(
         self,
         llm_output,
-        context_safe,
+        context,
         converted_message: List[dict],
         tools: List = [],
-        timeline_uuid: str = "",
+        timeline: Optional[List] = None
     ):
-        assert timeline_uuid in self.timeline_cache, "Timeline UUID not found in cache. Please ensure `step_prepare` is called before `step_track`."
+        if timeline is None:
+            timeline = []
 
         # round ++
         self.llm_call_cnt += 1
+        context_safe = context["is_safe"]
 
         # get timeline from cache
-        timeline = self.timeline_cache.pop(timeline_uuid, [])
         if not self.already_mad_flag:
             if (
                 compute_string_madness(
@@ -570,7 +569,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     previous_ext_context=timeline,
                 )
 
-            self.save_llm_interaction_timeline(tools, llm_ext_msg, timeline)
+            self.save_llm_interaction_timeline(tools, llm_ext_msg, timeline, context)
         return None
 
 
@@ -590,7 +589,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
                     return True
         return False
 
-    def save_llm_interaction_timeline(self, tools, llm_ext_msg, timeline):
+    def save_llm_interaction_timeline(self, tools, llm_ext_msg, timeline, context):
         """Save the LLM interaction timeline by adding the LLM response to `self.saved_timelines`
         """
         # Skip Claude Code "generate title" meta-requests: these are side calls
@@ -613,7 +612,7 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
             assert not timeline[i].first_message
 
         # no longer write anything
-        if self._read_only or self._stop_writing_new_timeline:
+        if self._read_only or self._stop_writing_new_timeline or context["pre_inference_timestamp"] < self.start_from_time:
             logger.exception("Timeline is in read-only mode, should not save new timeline. Please report a github issue if you see this error.")
             return
 

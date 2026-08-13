@@ -417,6 +417,7 @@ class OpenaiLlmProxyWithTracker(object):
     ) -> Dict:
         # generate timeline uuid
         timeline_uuid = uuid.uuid4().hex
+        pre_inference_timestamp = time.time()
 
         # prepare context tracker, check context safety
         (
@@ -426,7 +427,8 @@ class OpenaiLlmProxyWithTracker(object):
             converted_message,
             custom_sampling_params,
             tools,
-        ) = self.context_tracker.step_prepare(messages, tools, timeline_uuid=timeline_uuid)
+            timeline
+        ) = self.context_tracker.step_prepare(messages, tools)
 
         # if context not safe to infer further
         if not context_safe:
@@ -442,9 +444,18 @@ class OpenaiLlmProxyWithTracker(object):
         # run llm inference ✨ (llm_chat_verl)
         llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools)
 
-        # context tracking
-        if not self.context_tracker._stop_writing_new_timeline:
-            self.context_tracker.step_track(llm_output, context_safe, converted_message, tools, timeline_uuid=timeline_uuid)
+        # check timestamp
+        if pre_inference_timestamp < self.context_tracker.start_from_time:
+            logger.warning(f"[{timeline_uuid}] request outdated: pre_inference_timestamp {pre_inference_timestamp} < context_tracker.start_from_time {self.context_tracker.start_from_time}.")
+        elif self.context_tracker._stop_writing_new_timeline:
+            logger.warning(f"[{timeline_uuid}] request outdated: stop_writing_new_timeline.")
+        else:
+            context = {
+                "is_safe": context_safe,
+                "token_overflow": token_overflow,
+                "pre_inference_timestamp": pre_inference_timestamp,
+            }
+            self.context_tracker.step_track(llm_output, context, converted_message, tools, timeline=timeline)
         return llm_output
 
 

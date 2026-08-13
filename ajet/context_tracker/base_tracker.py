@@ -1,4 +1,4 @@
-import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from ajet.schema.task import WorkflowTask
 
@@ -141,7 +141,6 @@ class BaseTracker(object):
         max_response_length = self.config.ajet.rollout.max_response_length_in_one_turn
         max_model_len: int = self.config.ajet.rollout.max_model_len
         self.max_seq_length: int = max_model_len - max_response_length
-
         self.generation_prompt_token = None
         self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None  # Initialize workflow_metadata to store tool statistics
 
@@ -155,6 +154,7 @@ class BaseTracker(object):
         # reward and madness detection
         self.reward_structure: Union[Reward, None] = None
         self.already_mad_flag: bool = False
+        self.start_from_time = time.time()
 
         assert (
             self.config.ajet.data.max_prompt_length
@@ -177,6 +177,7 @@ class BaseTracker(object):
         self.already_mad_flag: bool = False
         self.llm_call_cnt = 0
         self.log_metrics: Optional[Dict[str, Union[float, List[float], Dict[str, Any]]]] = None
+        self.start_from_time = time.time()
 
     def group_tokenize(self, cache=False, dump_to=None):
         raise NotImplementedError
