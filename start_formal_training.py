@@ -125,7 +125,7 @@ def setup_environment():
     if _missing:
         raise SystemExit(
             "FATAL: required secrets not in env: " + ", ".join(_missing)
-            + ". Export them locally (e.g. via load_research_env.sh); never commit them."
+            + ". Export them in ~/.bashrc (then source it); never commit them."
         )
     os.environ.update(env)
 

@@ -21,7 +21,7 @@ done
 
 # E2B 沙箱 (PAI-EAS template)
 export E2B_DOMAIN=sandbox01.vpc.cn-hongkong.pai-eas.aliyuncs.com
-export E2B_API_KEY="${E2B_API_KEY:?ERROR: set E2B_API_KEY in your env (e.g. via load_research_env.sh); NEVER commit the key}"
+export E2B_API_KEY="${E2B_API_KEY:?ERROR: E2B_API_KEY missing/empty — export it in ~/.bashrc}"
 export E2B_VALIDATE_API_KEY=false
 export SLIME_AGENT_E2B_TEMPLATE=agentscope-qwenpaw-0604
 
@@ -29,7 +29,7 @@ export SLIME_AGENT_E2B_TEMPLATE=agentscope-qwenpaw-0604
 export ADAPTER_PUBLIC_HOST="${ADAPTER_PUBLIC_HOST:-10.29.255.115}"
 export JUDGE_FORWARDER_PORT="${JUDGE_FORWARDER_PORT:-18005}"
 export JUDGE_MODEL_SERVER="${JUDGE_MODEL_SERVER:-https://dashscope.aliyuncs.com/compatible-mode/v1}"
-export JUDGE_DASHSCOPE_KEY="${JUDGE_DASHSCOPE_KEY:-}"
+export JUDGE_DASHSCOPE_KEY="${JUDGE_DASHSCOPE_KEY:?ERROR: JUDGE_DASHSCOPE_KEY missing/empty — export it in ~/.bashrc}"
 
 # coding-agent-material 路径 + 二进制
 export E2B_ATBENCH_MATERIAL="$MAT"
