@@ -21,7 +21,7 @@ done
 
 # E2B 沙箱 (PAI-EAS template)
 export E2B_DOMAIN=sandbox01.vpc.cn-hongkong.pai-eas.aliyuncs.com
-export E2B_API_KEY=***REMOVED:E2B_API_KEY***
+export E2B_API_KEY="${E2B_API_KEY:?ERROR: set E2B_API_KEY in your env (e.g. via load_research_env.sh); NEVER commit the key}"
 export E2B_VALIDATE_API_KEY=false
 export SLIME_AGENT_E2B_TEMPLATE=agentscope-qwenpaw-0604
 

@@ -85,7 +85,7 @@ def setup_environment():
 
         # E2B 沙箱 (PAI-EAS)
         "E2B_DOMAIN": "sandbox01.vpc.cn-hongkong.pai-eas.aliyuncs.com",
-        "E2B_API_KEY": "***REMOVED:E2B_API_KEY***",
+        "E2B_API_KEY": os.environ.get("E2B_API_KEY", ""),
         "E2B_VALIDATE_API_KEY": "false",
         "SLIME_AGENT_E2B_TEMPLATE": "agentscope-qwenpaw-0604",
 
@@ -93,7 +93,7 @@ def setup_environment():
         "ADAPTER_PUBLIC_HOST": "10.29.255.115",
         "JUDGE_FORWARDER_PORT": "18005",
         "JUDGE_MODEL_SERVER": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "JUDGE_DASHSCOPE_KEY": "***REMOVED:JUDGE_DASHSCOPE_KEY***",
+        "JUDGE_DASHSCOPE_KEY": os.environ.get("JUDGE_DASHSCOPE_KEY", ""),
         "E2B_ATBENCH_JUDGE_MODEL": "glm-5.2",
 
         # Material + claude code 二进制
@@ -111,7 +111,7 @@ def setup_environment():
         "REMOTE_MODEL_PATH": "/dev/shm/Qwen3.6-35B-A3B",
         "FORCE_RESTART_SWARM_ENGINE": "1",
         "E2B_ATBENCH_VLLM_TOOL_PARSER": "qwen3_coder",
-        "SWANLAB_API_KEY": "***REMOVED:SWANLAB_API_KEY***",
+        "SWANLAB_API_KEY": os.environ.get("SWANLAB_API_KEY", ""),
         "SWANLAB_API_HOST": "https://cloud-20.agent-matrix.com/api",
         "SWANLAB_WEB_HOST": "https://cloud-20.agent-matrix.com",
 
@@ -119,6 +119,14 @@ def setup_environment():
         "ULYSSES_SEQUENCE_PARALLEL_SIZE": "8",
         "PPO_MAX_TOKEN_LEN_PER_GPU": "20000",
     }
+    # SECURITY: secrets must come from the environment, never be hardcoded/committed.
+    _required_secrets = ("E2B_API_KEY", "JUDGE_DASHSCOPE_KEY", "SWANLAB_API_KEY")
+    _missing = [k for k in _required_secrets if not env.get(k)]
+    if _missing:
+        raise SystemExit(
+            "FATAL: required secrets not in env: " + ", ".join(_missing)
+            + ". Export them locally (e.g. via load_research_env.sh); never commit them."
+        )
     os.environ.update(env)
 
     # 把训练 env 落盘成 shell 文件, 供 tmux pane 启动时 source。
