@@ -245,6 +245,7 @@ def build_spec():
                 f"{VENV_PY} -m ajet.swarm_cli start --swarm-port=10086",
             ],
             "client": [
+                "sleep 16s",
                 "source /tmp/e2b_train_env.sh",
                 f"cd {REPO}",
                 "echo '[client] GRPO batch=16 repeat=4 16并行'",

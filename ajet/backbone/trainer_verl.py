@@ -223,6 +223,29 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                 from ajet.tuner_lib.experimental.interchange_utils import http_change_engine_status
                 http_change_engine_status(self.config, status, global_step=self.global_steps)
 
+    def _safe_sleep_replicas(self):
+        """Abort in-flight rollout requests, then sleep replicas.
+
+        verl's ``CheckpointEngine.sleep_replicas()`` frees KV-cache memory
+        without clearing in-flight requests. A request left in the scheduler at
+        sleep time then either (a) hits a freed block-table buffer on the next
+        ``execute_model`` step -> ``CUDA error: invalid argument`` in
+        ``block_table.copy_to_gpu``, or (b) lingers across the sleep/wake
+        boundary -> ``KeyError`` on ``req_id_to_index`` at wake. We abort
+        (``finish_requests(ABORTED)``, which removes them from the scheduler)
+        and immediately resume the scheduler, so the engine is empty AND
+        running before sleep. Mirrors verl's ``update_weights`` abort+resume.
+        (``wait_for_requests_to_drain`` is the wrong tool: it only polls
+        ``dp_engines_running()`` and can return while a request is still
+        queued, which is exactly what left the stale req_id.)
+        """
+        import ray
+        handles = getattr(self.async_rollout_manager, "server_handles", None) or []
+        if handles:
+            ray.get([h.abort_all_requests.remote() for h in handles])
+            ray.get([h.resume_generation.remote() for h in handles])
+        self.checkpoint_manager.sleep_replicas()
+
     # #######################################
     # training loop
     # #######################################
@@ -244,7 +267,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
         # load checkpoint before doing anything
         self._load_checkpoint()
         self.checkpoint_manager.update_weights(self.global_steps)
-        self.checkpoint_manager.sleep_replicas()
+        self._safe_sleep_replicas()
 
         # [oc] swarm_mode is not compatible with `val_before_train` and `val_only`
         assert not (self.config.ajet.enable_swarm_mode and (self.config.ajet.trainer_common.val_before_train or self.config.ajet.trainer_common.val_only)), \
@@ -393,7 +416,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
                             f"gen_batch_output.info batch.keys={gen_batch_output.batch.keys()}"
                         )
                         self._update_interchange_server_status_flag("ENGINE.WEIGHT_SYNCING")
-                        self.checkpoint_manager.sleep_replicas()
+                        self._safe_sleep_replicas()
                     logger.info("rollout step end")
 
                     batch.non_tensor_batch["uid"] = np.array(
@@ -736,7 +759,7 @@ class AjetRayPPOTrainer(RayPPOTrainer):
             )
             logger.info("Completed validate rollout")
             test_output_gen_batch = self.parallel_env.to_dataproto(context_tracker_arr)
-            self.checkpoint_manager.sleep_replicas()
+            self._safe_sleep_replicas()
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]

@@ -611,13 +611,16 @@ class MultiAgentContextTracker(SingleAgentContextTracker):
         for i in range(1, len(timeline)):
             assert not timeline[i].first_message
 
+        # deep copy timeline
+        copied_timeline = copy.deepcopy(timeline)
+
         # no longer write anything
         if self._read_only or self._stop_writing_new_timeline or context["pre_inference_timestamp"] < self.start_from_time:
             logger.exception("Timeline is in read-only mode, should not save new timeline. Please report a github issue if you see this error.")
             return
 
         # save to self.saved_timelines
-        self.saved_timelines += [copy.deepcopy(timeline)]
+        self.saved_timelines.append(copied_timeline)
 
         # warn when merge fails
         timeline_merging_policy: TimelineMergingPolicyConfig = self.config.ajet.context_tracker.timeline_merging_policy

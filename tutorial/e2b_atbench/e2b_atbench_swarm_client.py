@@ -13,7 +13,6 @@ Run:
 
 import os
 
-from tqdm import tqdm
 
 from ajet.copilot.job import AgentJetJob
 from ajet.tuner_lib.experimental.swarm_client import SwarmClient
@@ -51,7 +50,7 @@ TASK_LIMIT = int(os.getenv("E2B_ATBENCH_TASK_LIMIT", "0")) or None  # 0=不限
 
 ajet_job = AgentJetJob(
     ensure_new_experiment=True,
-    experiment_name="e2b_atbench_grpo_z1",
+    experiment_name="e2b_atbench_grpo_alpha_1",
     algorithm="grpo",
     logging="swanlab",
     n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
@@ -70,11 +69,14 @@ ajet_job = AgentJetJob(
     max_prompt_length=30000,
     max_response_length=96000,
     max_model_len=126000,   # >= prompt(30000)+response(96000)=126000
-    max_response_length_in_one_turn=4096,
+    max_response_length_in_one_turn=10240,
 )
 # The Qwen3.6 model emits XML tool calls (`<function=...>`), so keep the
 # engine parser and AgentJet's response parser on the same configured format.
 ajet_job.config.ajet.rollout.vllm_tool_parser = E2B_VLLM_TOOL_PARSER
+# Checkpoint 保存间隔: 每 N 步存一次 (默认 5; ajet 原默认 20). 经 align_parameters
+# 映射到 trainer.save_freq, 在 global_steps % save_freq == 0 时触发 _save_checkpoint.
+ajet_job.config.ajet.trainer_common.save_freq = int(os.getenv("AJET_SAVE_FREQ", "5"))
 
 
 def main():

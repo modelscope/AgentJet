@@ -156,7 +156,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         if DEBUG: logger.info(f"[server] episode_uuid: {episode_uuid} | send_string")
 
         result_str = ""
-        timeout_sec = 1200 * 1000   # max 20 minutes wait = 20 * 60 * 1000 ms
+        timeout_sec = 3600 * 1000   # max 1 hour wait = 3600 * 1000 ms
         for _ in range(timeout_sec//timeout_recv_ms):
 
             if enable_swarm_mode:
