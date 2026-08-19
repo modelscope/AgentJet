@@ -19,9 +19,11 @@ from tutorial.e2b_atbench.atbench_runtime.utils.cc_sandbox import (
     _CC_TREE_PY,
     _capture_sandbox_state,
     _cc_verdict_to_reward,
+    _download_jsonl,
     _poll_sandbox_state,
     _wait_sandbox_ready,
     _write_verdict_local,
+    _save_trajectory_local,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,7 +108,7 @@ JUDGE_PROMPT_TEMPLATE = """\
 """
 
 
-async def _run_claudecode_in_sandbox(sb: E2BSandbox, task_id: str, adapter_url: str, session_id: str,
+async def _run_claudecode_in_sandbox(sb: E2BSandbox, task_id: str,
                                      solver_base_url: "str | None" = None,
                                      judge_base_url: "str | None" = None,
                                      solver_model: "str | None" = None,
@@ -138,13 +140,13 @@ async def _run_claudecode_in_sandbox(sb: E2BSandbox, task_id: str, adapter_url: 
     SOLVER_BASE_URL = solver_base_url or os.environ.get("CC_SOLVER_BASE_URL") or os.environ.get("CC_ANTHROPIC_BASE_URL", "http://47.76.255.52:29928")
     JUDGE_BASE_URL = judge_base_url or os.environ.get("CC_JUDGE_BASE_URL") or SOLVER_BASE_URL
     AUTH_TOKEN = auth_token or os.environ.get("CC_ANTHROPIC_AUTH_TOKEN", "sk-wefjoewfewhviuwhoewjfoiwehfiuewhvbdjnasjcoqjfdow")
-    # solver/judge 各自模型: solver 默认 Qwen3.6-35B-A3B, judge 默认 glm-5.2。
-    # CC_MODEL 兼容旧用法: 同时设两阶段; 单独 CC_SOLVER_MODEL / CC_JUDGE_MODEL 优先。
-    # adapter 调用(solver_model/judge_model 参数)优先, 支持每 episode 独立(并发安全)。
     SOLVER_MODEL = solver_model or os.environ.get("CC_SOLVER_MODEL") or os.environ.get("CC_MODEL", "Qwen3.6-35B-A3B")
     JUDGE_MODEL = judge_model or os.environ.get("CC_JUDGE_MODEL") or os.environ.get("CC_MODEL", "glm-5.2")
     SOLVER_TIMEOUT = int(os.environ.get("CC_SOLVER_TIMEOUT", "1800"))
     JUDGE_TIMEOUT = int(os.environ.get("CC_JUDGE_TIMEOUT", "1800"))
+    # 类型收窄: 上述变量经 env 默认值兜底, 运行时恒为 str; assert 供 mypy 通过
+    assert SOLVER_BASE_URL and JUDGE_BASE_URL and AUTH_TOKEN and SOLVER_MODEL and JUDGE_MODEL
+
 
     task_dir = task_id
     enhance = task_dir
@@ -155,27 +157,34 @@ async def _run_claudecode_in_sandbox(sb: E2BSandbox, task_id: str, adapter_url: 
 
     # step 1: claude + tmux + libevent (node 沙盒已自带)
     await _upload_binaries(sb, CLAUDE_BIN, TMUX_BIN, TMUX_LIB)
-    # step 2: solver/judge 各一份 settings.json (各自模型 + 各自 base_url)
-    # naive 模式仅在 solver settings 中 deny Agent/Task，judge 始终不受影响。
+
+    # step 2: solver/judge 各一份 settings.json (各自模型 + 各自 base_url) naive 模式仅在 solver settings 中 deny Agent/Task，judge 始终不受影响。
     await _write_settings(sb, SOLVER_BASE_URL, JUDGE_BASE_URL, AUTH_TOKEN,
                           SOLVER_MODEL, JUDGE_MODEL, solver_mode)
+
     # step 3: driver + helper + run_stage
     await _up_dir(sb, DRIVER_DIR, "/root/cc_driver")
+
     # step 4: solver 任务文件 (environment + instruction.md) -> /root/task_dir/solver
     instruction = await _stage_solver_files(sb, enhance)
 
-    # step 5: 跑 solver (tmux-driven claude code, cwd=/root/task_dir/solver)
-    # forcedmulti 注入强制多子代理 prompt；freechoice/naive 不注入。
-    # naive 的单 agent 约束已由 settings deny 工具强制执行。
+    # step 5: 跑 solver (tmux-driven claude code, cwd=/root/task_dir/solver) forcedmulti 注入强制多子代理 prompt；freechoice/naive 不注入。naive 的单 agent 约束已由 settings deny 工具强制执行。
     subagent_guidance = SUBAGENT_GUIDANCE if solver_mode == "forcedmulti" else ""
-    solver_prompt = SOLVER_PROMPT_TEMPLATE.format(
-        instruction_in_instruction_md=instruction, subagent_guidance=subagent_guidance)
-    logger.info("[cc_rl] solver mode=%s disallowed_tools=%s", solver_mode,
-                ",".join(NAIVE_DISALLOWED_TOOLS) if solver_mode == "naive" else "none")
+    solver_prompt = SOLVER_PROMPT_TEMPLATE.format(instruction_in_instruction_md=instruction, subagent_guidance=subagent_guidance)
+    logger.info("[cc_rl] solver mode=%s disallowed_tools=%s", solver_mode, ",".join(NAIVE_DISALLOWED_TOOLS) if solver_mode == "naive" else "none")
     await sb._sb.files.write("/root/task_dir/_solver_prompt.txt", solver_prompt)
     await _run_stage(sb, exec_and_wait, "solver", "/root/task_dir/solver",
                      "/root/cc_settings_solver.json", SOLVER_MODEL, SOLVER_TIMEOUT,
                      "/root/task_dir/_solver_prompt.txt", "cc_solver", "/root/task_dir", tag="cc_solver")
+
+    # step 5.5: solver 跑完 -> 提取 trajectory (jsonl 转写流) 落本地。必须在 step 6
+    # 之前: judge 会在同一沙盒开新 session 写自己的 jsonl, 不先取走就混在一起分不开。
+    # 全程容错, 失败不拖垮 rollout。
+    traj_path = await _save_trajectory_local(sb, stage="solver")
+    logger.info("[cc_rl] solver trajectory -> %s", traj_path or "(未落盘)")
+    # step 5.6: 从 trajectory 统计智能体用量 (数量/各 agent 结束上下文/耗时/输出
+    # token) 落 <trajectory>.agent_stats.json + 一行摘要日志。CC_AGENT_STATS=0 可关。
+    _record_agent_stats(traj_path)
 
     # step 6: judge 文件 + solver 答案 -> judge 树
     await _stage_judge_files(sb, enhance)
@@ -220,13 +229,10 @@ async def _run_claudecode_in_sandbox(sb: E2BSandbox, task_id: str, adapter_url: 
             break
         logger.warning("[cc_rl] judge attempt %d/3: 未取到 verdict (多候选路径全空), 重跑",
                        verdict_attempt)
-    # judge 完成: verdict.md 在沙盒里, 一旦沙盒回收就丢。这里同步拷一份到宿主机
-    # (CC_VERDICT_FILE, 批跑时每 job 一个 -> verdicts/T##_R#.md), NONE/空 verdict 也照拷,
-    # 直接证据留底, 不用再翻 worker 日志的 verdict_head。
+    # judge 完成: verdict.md 在沙盒里, 一旦沙盒回收就丢。这里同步拷一份到宿主机 (CC_VERDICT_FILE, 批跑时每 job 一个 -> verdicts/T##_R#.md), NONE/空 verdict 也照拷, 直接证据留底, 不用再翻 worker 日志的 verdict_head。
     _write_verdict_local(verdict)
     reward = _cc_verdict_to_reward(verdict)
-    logger.info("[cc_rl] verdict (attempt %d) reward=%.2f\n%s",
-                verdict_attempt, reward, (verdict or "")[:600])
+    logger.info("[cc_rl] verdict (attempt %d) reward=%.2f\n%s", verdict_attempt, reward, (verdict or "")[:600])
     return {"dataset": [{"reward": reward}], "total_steps": 2, "verdict": verdict or ""}
 
 
@@ -289,13 +295,14 @@ def _cc_settings(base_url: str, auth_token: str, model: str,
         "env": {
             "ANTHROPIC_AUTH_TOKEN": auth_token,
             "ANTHROPIC_BASE_URL": base_url,
-            "API_TIMEOUT_MS": "600000",
+            "API_TIMEOUT_MS": "3600000",
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": model,
             "ANTHROPIC_DEFAULT_SONNET_MODEL": model,
             "ANTHROPIC_DEFAULT_OPUS_MODEL": model,
         },
         "includeCoAuthoredBy": False,
+        "skipDangerousModePermissionPrompt": True,
         "model": model,
     }
     if disallowed_tools:
@@ -363,6 +370,9 @@ async def _run_stage(sb, exec_and_wait, stage: str, cwd: str, settings: str,
         _, out = await exec_and_wait(sb, cmd=cmd, time_budget_sec=timeout + 300,
                                      tag=tag, want_output=True)
         logger.info("[cc_rl] %s done. tail:\n%s", tag, (out or "")[-1800:])
+        # done 后立刻把完整转写 jsonl 拉回宿主机 (沙箱 kill 后再也拿不到)
+        jsonl_dir = os.environ.get("CC_JSONL_DIR", os.path.join("tmp", "cc_state"))
+        await _download_jsonl(sb, jsonl_dir, tag=tag)
         return out or ""
     except Exception:
         # stall/超时: 抓回沙盒内诊断 (state.json + jsonl 末尾 + tmux 屏) 供事后定位
@@ -404,3 +414,39 @@ def _reward_from_output(output: dict) -> float:
         return float(dummy)
     dataset = output.get("dataset", [])
     return float(dataset[0]["reward"]) if dataset else 0.0
+
+
+def _record_agent_stats(traj_path: str | None) -> dict | None:
+    """step 5.6: 统计 solver 用的智能体数量与每个 agent 的上下文/耗时/输出 token。
+
+    数据源是 step 5.5 落盘的 trajectory tar (主会话 <uuid>.jsonl + 每个子代理
+    <uuid>/subagents/agent-<hash>.jsonl, assistant 条目自带 usage/timestamp)。
+    统计逻辑在 utils.cc_session_stats, 可靠口径: 按 message.id 去重防 token 翻倍
+    (一次调用拆多条 jsonl 且 usage 重复)、跳过全 0 usage (网关偶发不回传, 取最后
+    一条非零)、meta.toolUseId 精确关联子代理 (fallback 时间戳就近)。
+
+    产物: CC_AGENT_STATS_FILE 指定路径, 否则 <trajectory 去掉 .tar.gz>.agent_stats.json
+    (与 tar 同目录好对齐)。全程容错: 失败只 warning; CC_AGENT_STATS=0 关闭。
+    """
+    if not traj_path:
+        return None
+    if os.environ.get("CC_AGENT_STATS", "1").strip().lower() in ("0", "false", "no", "off"):
+        return None
+    try:
+        try:
+            from tutorial.e2b_atbench.atbench_runtime.utils.cc_session_stats import (
+                analyze_path, summarize_line)
+        except Exception:
+            from utils.cc_session_stats import analyze_path, summarize_line
+        stats = analyze_path(traj_path)
+        out_path = os.environ.get("CC_AGENT_STATS_FILE", "").strip() or (
+            traj_path[:-len(".tar.gz")] + ".agent_stats.json"
+            if traj_path.endswith(".tar.gz") else traj_path + ".agent_stats.json")
+        os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+        logger.info("[cc_stats] solver agent 用量 -> %s | %s", out_path, summarize_line(stats))
+        return stats
+    except Exception as e:
+        logger.warning("[cc_stats] 统计失败(忽略): %s", str(e)[:160])
+        return None

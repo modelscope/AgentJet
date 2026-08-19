@@ -144,6 +144,37 @@ async def _capture_sandbox_state(sb, dest_dir: str, tag: str = "") -> None:
     logger.info("[cc_state] 沙盒诊断已抓回 -> %s-*", base)
 
 
+async def _download_jsonl(sb, dest_dir: str, tag: str) -> None:
+    """stage 正常结束后, 把沙箱内 claude 转写 jsonl 完整拉回宿主机落盘。
+
+    jsonl 只存在于沙箱 (episode 结束 __aexit__ kill 后永久丢失), 所以必须在
+    stage done 之后、沙箱销毁之前取。实测本环境转写在 /root/.claude/projects
+    (claude-code 原生 session 转写, /root/cc_data 下只有 driver runtime 无
+    jsonl), 因此默认两个根都拉。文件名带时间戳前缀, 多 episode 互不覆盖。
+    全程容错: 任一步失败只 warning 不抛。
+    """
+    roots = "/root/cc_data /root/.claude/projects"
+    try:
+        r = await sb._sb.commands.run(f"find {roots} -name '*.jsonl' 2>/dev/null", timeout=30)
+        paths = (r.stdout or "").split()
+    except Exception as e:
+        logger.warning("[cc_state] jsonl 枚举失败(%s): %s", tag, str(e)[:120])
+        return
+    os.makedirs(dest_dir, exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    n = 0
+    for p in paths:
+        try:
+            txt = await sb._sb.files.read(p, format="text")
+            with open(os.path.join(dest_dir, f"{ts}-{tag}-{p.replace('/', '_')}.jsonl"),
+                      "w", encoding="utf-8") as f:
+                f.write(txt or "")
+            n += 1
+        except Exception as e:
+            logger.warning("[cc_state] jsonl %s 拉取失败: %s", p, str(e)[:120])
+    logger.info("[cc_state] %s 完整 jsonl 已落盘 %d 个 -> %s", tag, n, dest_dir)
+
+
 async def _poll_sandbox_state(sb, interval_sec: float = 5.0) -> None:
     """后台每 interval_sec 秒打印一次沙盒 claude-code 的"当前状态"一行到日志。
 
@@ -262,3 +293,67 @@ else:
     print(root)
     render(build(root, 0))
 """
+
+
+# 沙盒里 claude-code 的 trajectory (训练/复盘用的完整转写流)。
+# judge 阶段会复用同一个沙盒开新 session, 也往这两个目录写新 jsonl, 所以必须在
+# judge staging 之前 (solver 跑完、judge 还没开) 就把 solver 的 trajectory 取走。
+_CC_TRAJ_PATHS = ("/root/.claude/projects", "/root/cc_data")
+
+
+async def _save_trajectory_local(sb, stage: str = "solver") -> str | None:
+    """把沙盒里 claude-code 的 trajectory (jsonl 转写流) 打包取回宿主机落盘。
+
+    在 judge staging 之前调: 此时 /root/.claude/projects 和 /root/cc_data 下只有
+    solver 的转写, 取走的是干净的 solver trajectory; judge 跑完后再取会混在一起。
+
+    落盘路径: 优先 CC_TRAJECTORY_FILE; 否则 <CC_JSONL_DIR 父目录>/trajectories/
+    trajectory-<stage>-<sandbox_id 前 8 位>.tar.gz —— swarm 多线程并发 rollout 共享
+    进程级 env, 默认名必须带 sandbox id 防互相覆盖; 批跑 (每 job 子进程) 用
+    CC_TRAJECTORY_FILE 每 job 唯一路径。方式: 沙盒内 tar czf -> files.read(bytes)
+    取回 -> 本地解包保留 root/.claude/... 结构。全程容错, 失败只 warning。返回 tar 路径。
+    """
+    sand_tar = f"/tmp/_cc_traj_{stage}.tar.gz"
+    paths = " ".join(p.lstrip("/") for p in _CC_TRAJ_PATHS)
+    try:
+        r = await sb._sb.commands.run(
+            f"tar czf {sand_tar} -C / {paths} 2>/dev/null; "
+            f"echo size=$(wc -c < {sand_tar} 2>/dev/null || echo 0)", timeout=120)
+        logger.info("[cc_traj] %s trajectory 打包: %s", stage, (r.stdout or "")[:120])
+    except Exception as e:
+        logger.warning("[cc_traj] %s 沙盒内打包 trajectory 失败(忽略): %s", stage, str(e)[:160])
+        return None
+    try:
+        data = await sb._sb.files.read(sand_tar, format="bytes", request_timeout=600)
+    except Exception as e:
+        logger.warning("[cc_traj] %s 取回 trajectory tar 失败(忽略): %s", stage, str(e)[:160])
+        return None
+    if not data:
+        logger.warning("[cc_traj] %s trajectory tar 为空(忽略)", stage)
+        return None
+    tar_path = os.environ.get("CC_TRAJECTORY_FILE", "").strip()
+    if not tar_path:
+        sbid = ""
+        try:
+            sbid = "-" + str(getattr(sb._sb, "sandbox_id", "") or "")[:8]
+        except Exception:
+            pass
+        base_dir = os.path.dirname(os.environ.get("CC_JSONL_DIR", "").rstrip("/")) or "tmp"
+        tar_path = os.path.join(base_dir, "trajectories", f"trajectory-{stage}{sbid}.tar.gz")
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(tar_path)), exist_ok=True)
+        with open(tar_path, "wb") as f:
+            f.write(bytes(data))
+        logger.info("[cc_traj] %s trajectory tar 已落本地 -> %s (%d 字节)", stage, tar_path, len(data))
+    except Exception as e:
+        logger.warning("[cc_traj] %s 写 trajectory tar 本地失败: %s", stage, str(e)[:160])
+        return None
+    import tarfile
+    extract_dir = tar_path[:-len(".tar.gz")] if tar_path.endswith(".tar.gz") else tar_path + ".dir"
+    try:
+        with tarfile.open(tar_path, "r:gz") as tar:
+            tar.extractall(extract_dir, filter="data")
+        logger.info("[cc_traj] %s trajectory 已解包 -> %s", stage, extract_dir)
+    except Exception as e:
+        logger.warning("[cc_traj] %s 解包 trajectory 失败(忽略, tar.gz 仍可用): %s", stage, str(e)[:160])
+    return tar_path
