@@ -20,7 +20,7 @@ import logging
 import time
 from typing import Any, AsyncIterator, Optional
 
-from aiohttp import ClientSession, ClientTimeout, web
+from aiohttp import ClientResponse, ClientSession, ClientTimeout, web
 
 logger = logging.getLogger("anthropic_to_openai")
 
@@ -227,7 +227,7 @@ def _sse(event_type: str, data: dict) -> bytes:
 
 
 async def _iter_openai_sse(
-    resp: "ClientResponse", model: str
+    resp: ClientResponse, model: str
 ) -> AsyncIterator[bytes]:
     """读上游 OpenAI SSE 流, 产出 Anthropic SSE 字节流."""
     msg_id = f"msg_{int(time.time() * 1000)}"
@@ -341,6 +341,41 @@ async def _iter_openai_sse(
     yield _sse("message_stop", {"type": "message_stop"})
 
 
+def _retry_after_sec(up, attempt: int) -> float:
+    """429 退避时长: 优先上游指示, 否则指数退避 10s -> 30s.
+
+    - ``Retry-After``: 秒数或 HTTP-Date (RFC 7231)
+    - ``X-RateLimit-Reset``: unix 秒时间戳
+    - fallback: ``min(30, 10 * 2**(attempt-1))`` — dashscope 限流窗口通常
+      10-30s, 旧版 0.5s/1s 在窗口内白烧重试.
+    上限 60s, 防上游给离谱大的值把 judge 卡死.
+    """
+    import email.utils
+    for hdr in ("Retry-After", "X-RateLimit-Reset"):
+        v = up.headers.get(hdr)
+        if not v:
+            continue
+        if hdr == "X-RateLimit-Reset":
+            # unix 秒时间戳 -> 相对秒
+            try:
+                sec = float(v) - time.time()
+            except (ValueError, TypeError):
+                continue
+        else:
+            # Retry-After: 秒数或 HTTP-Date (RFC 7231)
+            try:
+                sec = float(v)
+            except (ValueError, TypeError):
+                try:
+                    dt = email.utils.parsedate_to_datetime(v)
+                    sec = dt.timestamp() - time.time()
+                except (ValueError, TypeError):
+                    continue
+        if 0 < sec <= 60:
+            return sec
+    return min(30.0, 10.0 * (2 ** (attempt - 1)))
+
+
 # ───────────────────────────── aiohttp app ─────────────────────────────────────
 
 def build_translator_app(
@@ -375,9 +410,13 @@ def build_translator_app(
 
         # 每次请求独立 session, 用 async with 确保连接总被释放 (并发时不泄漏,
         # 否则 16 并行 judge 会攒出大量 Unclosed connection 到 dashscope).
+        # 429 退避: 优先按上游指示 (Retry-After 头, 秒数或 HTTP-Date), 其次
+        # X-RateLimit-Reset (unix 秒), 都没有则指数退避 10s -> 30s (dashscope
+        # 限流窗口通常 10-30s, 旧的 0.5s/1s 在窗口内白烧重试).
         async with ClientSession(timeout=timeout_obj) as sess:
             # 429 (上游限流, dashscope 并发时偶发) -> 退避重试
             _retries = 0
+            _MAX_RETRIES = 5
             up = None
             while True:
                 try:
@@ -385,11 +424,11 @@ def build_translator_app(
                 except Exception as e:
                     logger.exception("[translator] upstream connect failed: %s", e)
                     return web.Response(status=502, text=f"upstream connect failed: {e}")
-                if up.status != 429 or _retries >= 2:
+                if up.status != 429 or _retries >= _MAX_RETRIES:
                     break
                 _retries += 1
-                await asyncio.sleep(0.5 * _retries)   # 0.5s, 1s
-                logger.warning("[translator] upstream 429, retry %d/2", _retries)
+                await asyncio.sleep(_retry_after_sec(up, _retries))
+                logger.warning("[translator] upstream 429, retry %d/%d", _retries, _MAX_RETRIES)
 
             if up.status >= 400:
                 txt = await up.text()

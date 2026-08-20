@@ -63,7 +63,10 @@ EXIT_TIME_BUDGET_EXCEEDED = -1
 # How long _await_done_marker tolerates continuously failing polls before
 # declaring the sandbox unreachable (each failing poll already burnt ~1min of
 # in-exec retries, so this bounds a dead-sandbox episode to ~5 extra minutes).
-_POLL_GIVEUP_SEC = 300.0
+# 2026-08-20: 300s -> 60s. A gateway-blipped sandbox recovers in ~1s, so 60s of
+# continuous unreachability already means dead; polling longer only stalls the
+# episode's concurrency slot until the stage budget expires.
+_POLL_GIVEUP_SEC = 60.0
 
 
 def _registry_log(event: str, sandbox_id: str) -> None:

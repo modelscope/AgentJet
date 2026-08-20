@@ -80,7 +80,10 @@ class AsyncLlmBridge(object):
             tools=[],
             request_id: str = "",
         ) -> dict:
-            request_id = uuid.uuid4().hex
+            # request_id arrives from run_infer as the episode-scoped sticky key
+            # (see run_infer); fall back to a fresh uuid only when absent, e.g.
+            # non-verl llm_mode paths that call this fn without an id.
+            request_id = request_id or uuid.uuid4().hex
 
             updated_sampling_params = {}
             if sampling_params:
@@ -418,6 +421,7 @@ class OpenaiLlmProxyWithTracker(object):
         # generate timeline uuid
         timeline_uuid = uuid.uuid4().hex
         pre_inference_timestamp = time.time()
+        sticky_request_id = getattr(self.context_tracker, "episode_uuid", "") or timeline_uuid
 
         # prepare context tracker, check context safety
         (
@@ -442,7 +446,7 @@ class OpenaiLlmProxyWithTracker(object):
             #     otherwise, for abnormal output, can still proceed, but we do not track output anymore
 
         # run llm inference ✨ (llm_chat_verl)
-        llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools)
+        llm_output = await self.llm_inference_fn(converted_message, custom_sampling_params, tools, request_id=sticky_request_id)
 
         # check timestamp
         if pre_inference_timestamp < self.context_tracker.start_from_time:
