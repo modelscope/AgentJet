@@ -50,6 +50,7 @@ class Sandbox(Protocol):
         env: dict[str, str] | None = None,
         timeout: int = 120,
         check: bool = False,
+        idempotent: bool = True,
     ) -> ExecResult: ...
 
     async def write_file(self, sandbox_path: str, content: FileContent, *, user: str = "root") -> None: ...
@@ -59,6 +60,30 @@ class Sandbox(Protocol):
 
 EXIT_TIME_BUDGET_EXCEEDED = -1
 
+# How long _await_done_marker tolerates continuously failing polls before
+# declaring the sandbox unreachable (each failing poll already burnt ~1min of
+# in-exec retries, so this bounds a dead-sandbox episode to ~5 extra minutes).
+_POLL_GIVEUP_SEC = 300.0
+
+
+def _registry_log(event: str, sandbox_id: str) -> None:
+    """Append a sandbox lifecycle event to the registry file (best-effort, never raises).
+
+    Lets a hard-killed run's sandboxes be reaped precisely afterwards: reapers read
+    ids whose last event is CREATED/KILL_FAILED (never KILLED) and delete the ones
+    still alive. Path via $E2B_SANDBOX_REGISTRY, default tmp/e2b_sandbox_registry.log
+    relative to the client cwd (the swarm client exports the per-experiment path).
+    """
+    path = os.environ.get("E2B_SANDBOX_REGISTRY") or os.path.join("tmp", "e2b_sandbox_registry.log")
+    try:
+        d = os.path.dirname(path)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}\t{event}\t{sandbox_id}\t{os.getpid()}\n")
+    except Exception:
+        pass
+
 
 async def _await_done_marker(sb: Sandbox, done_file: str, *, user: str, time_budget_sec: int) -> int:
     """Poll a detached command's exit-code marker until it appears, returning the
@@ -67,11 +92,29 @@ async def _await_done_marker(sb: Sandbox, done_file: str, *, user: str, time_bud
     The 5s ``test -f && cat`` polls are deliberately short, idempotent RPCs --
     they keep the sandbox alive against idle GC while the detached command runs
     over a stream the gateway can't sever.
+
+    A failed poll must not kill the episode: production traces show the e2b
+    gateway/envd path blips for ~1s (ConnectError EOF -> SDK TimeoutException
+    with a misleading "sandbox timeout" hint) while the sandbox itself stays
+    alive -- kills and diagnostic downloads succeed seconds later. So keep
+    polling through blips and give up only after ``_POLL_GIVEUP_SEC`` of
+    continuous RPC unreachability (a genuinely dead sandbox).
     """
     deadline = time.time() + time_budget_sec
+    last_ok_poll = time.time()
     while time.time() < deadline:
         await asyncio.sleep(5)
-        ec, out, _ = await sb.exec(f"test -f {done_file} && cat {done_file}", user=user, timeout=15, check=False)
+        try:
+            ec, out, _ = await sb.exec(f"test -f {done_file} && cat {done_file}", user=user, timeout=15, check=False)
+        except Exception as e:
+            if time.time() - last_ok_poll > _POLL_GIVEUP_SEC:
+                raise
+            logger.warning(
+                "[agent.sandbox] done-marker poll failed (%s: %s), keeps polling",
+                type(e).__name__, str(e)[:120],
+            )
+            continue
+        last_ok_poll = time.time()
         if ec == 0 and (out or "").strip():
             return int(out.strip())
     return EXIT_TIME_BUDGET_EXCEEDED
@@ -206,13 +249,26 @@ class E2BSandbox:
         }
     )
 
+    # Messages that mean the sandbox itself is gone -- retrying is pointless.
+    # e2b's TimeoutException carries these only on confirmed death; otherwise
+    # its "likely due to sandbox timeout" hint is a guess made when the health
+    # probe (which rides the same severed transport) also failed.
+    _SANDBOX_GONE_MARKERS = ("does not exist", "not found", "was killed", "STOPPED state")
+
     @classmethod
     def _is_transient_rpc_error(cls, e: BaseException) -> bool:
         """True if e is a transient E2B client-side failure safe to retry."""
         name = type(e).__name__
+        msg = str(e)
+        if name == "TimeoutException":
+            # e2b wraps transport severance (ConnectError EOF, "invalid Read on
+            # closed Body") into TimeoutException whenever its own health probe
+            # also fails; production traces show the sandbox alive and RPCs
+            # recovering in ~1s, so retry (the pool reset between attempts
+            # reconnects). Only confirmed-death messages stay non-transient.
+            return not any(k in msg for k in cls._SANDBOX_GONE_MARKERS)
         if name in cls._TRANSIENT_RPC_ERRORS:
             return True
-        msg = str(e)
         if name == "SandboxException":
             if "does not exist" in msg or "STOPPED state" in msg:
                 return False
@@ -275,6 +331,7 @@ class E2BSandbox:
             )
             await self._wait_until_ready()
             self.sandbox_id = self._sb.sandbox_id
+            _registry_log("CREATED", self.sandbox_id)
             return self
 
         print(f"*************** {self.image_metadata_key} ***************")
@@ -297,6 +354,7 @@ class E2BSandbox:
 
         self._sb = await self._rpc_retry("create", lambda: AsyncSandbox.create(timeout=self.timeout, metadata=md))
         self.sandbox_id = self._sb.sandbox_id
+        _registry_log("CREATED", self.sandbox_id)
         return self
 
     async def _wait_until_ready(self, max_attempts: int = 60, interval: float = 3.0) -> None:
@@ -315,7 +373,9 @@ class E2BSandbox:
         try:
             if self._sb is not None:
                 await self._sb.kill()
+            _registry_log("KILLED", self.sandbox_id)
         except Exception as e:
+            _registry_log("KILL_FAILED", self.sandbox_id)
             logger.warning("[agent.sandbox] kill %s failed: %s", self.sandbox_id[:8], e)
 
     async def exec(

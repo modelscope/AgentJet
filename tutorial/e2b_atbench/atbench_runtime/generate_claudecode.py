@@ -20,6 +20,7 @@ from tutorial.e2b_atbench.atbench_runtime.utils.cc_sandbox import (
     _capture_sandbox_state,
     _cc_verdict_to_reward,
     _download_jsonl,
+    _download_pane_logs,
     _poll_sandbox_state,
     _wait_sandbox_ready,
     _write_verdict_local,
@@ -373,11 +374,14 @@ async def _run_stage(sb, exec_and_wait, stage: str, cwd: str, settings: str,
         # done 后立刻把完整转写 jsonl 拉回宿主机 (沙箱 kill 后再也拿不到)
         jsonl_dir = os.environ.get("CC_JSONL_DIR", os.path.join("tmp", "cc_state"))
         await _download_jsonl(sb, jsonl_dir, tag=tag)
+        # pane 捕获 (带秒级时间戳的 claude TUI 全量输出) 也一并拉回, 用于与 interchange 侧 [reqmon] 对表; 沙箱销毁后不可再取。
+        await _download_pane_logs(sb, jsonl_dir, tag=tag)
         return out or ""
     except Exception:
         # stall/超时: 抓回沙盒内诊断 (state.json + jsonl 末尾 + tmux 屏) 供事后定位
         state_dir = os.environ.get("CC_STATE_DIR", os.path.join("tmp", "cc_state"))
         await _capture_sandbox_state(sb, state_dir, tag=tag)
+        await _download_pane_logs(sb, state_dir, tag=tag)
         raise
     finally:
         poll_task.cancel()

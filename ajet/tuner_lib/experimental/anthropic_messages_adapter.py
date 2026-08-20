@@ -333,11 +333,11 @@ def _parse_tool_arguments(arguments: Any) -> Dict[str, Any]:
     if arguments is None:
         return {}
     if isinstance(arguments, (dict, list)):
-        return arguments  # type: ignore[return-value]
+        return arguments if isinstance(arguments, dict) else {"_list": arguments}
     try:
         parsed = json.loads(arguments)
         if isinstance(parsed, (dict, list)):
-            return parsed
+            return parsed if isinstance(parsed, dict) else {"_list": parsed}
     except (json.JSONDecodeError, TypeError):
         pass
     return {}
@@ -410,63 +410,93 @@ def _sse(event_type: str, payload: Dict[str, Any]) -> str:
     return f"event: {event_type}\ndata: {json.dumps(payload_with_type, ensure_ascii=False)}\n\n"
 
 
-def iter_anthropic_sse_events(message_dict: Dict[str, Any]) -> Iterable[str]:
-    """Yield SSE-formatted Messages events for the given Message dict."""
+def _iter_content_block_events(block: Dict[str, Any], index: int) -> Iterable[str]:
+    """One content_block_start / deltas / content_block_stop for a single block."""
+    btype = block.get("type")
+    if btype == "text":
+        yield _sse(
+            "content_block_start",
+            {"index": index, "content_block": {"type": "text", "text": ""}},
+        )
+        full_text = block.get("text", "") or ""
+        # Ship the whole text in a single delta - the worker isn't incremental.
+        yield _sse(
+            "content_block_delta",
+            {"index": index, "delta": {"type": "text_delta", "text": full_text}},
+        )
+    elif btype == "tool_use":
+        start_block = {
+            "type": "tool_use",
+            "id": block.get("id"),
+            "name": block.get("name"),
+            "input": {},
+        }
+        yield _sse("content_block_start", {"index": index, "content_block": start_block})
+        input_json = json.dumps(block.get("input", {}), ensure_ascii=False)
+        yield _sse(
+            "content_block_delta",
+            {"index": index, "delta": {"type": "input_json_delta", "partial_json": input_json}},
+        )
+    else:
+        # Unknown block type; emit a minimal start so indices stay aligned.
+        yield _sse(
+            "content_block_start",
+            {"index": index, "content_block": {"type": btype or "text", "text": ""}},
+        )
+    yield _sse("content_block_stop", {"index": index})
+
+
+def iter_anthropic_sse_events(message_dict: Dict[str, Any], prologue_already_sent: bool = False) -> Iterable[str]:
+    """Yield SSE-formatted Messages events for the given Message dict.
+
+    ``prologue_already_sent=True`` skips the message_start/ping prologue and
+    expects an empty text block already OPEN at index 0 (emitted by the
+    caller): the first text block of the real message is merged into that
+    open block, all remaining blocks are emitted at indices 1..N. Used by
+    the interchange's /v1/messages stream proxy to keep claude-code's
+    byte-stream idle watchdog fed during long non-incremental generations.
+    """
     usage = message_dict.get("usage", {}) or {}
     input_tokens = int(usage.get("input_tokens", 0) or 0)
     output_tokens = int(usage.get("output_tokens", 0) or 0)
 
-    # message_start — message snapshot with empty content and output_tokens: 0.
-    start_snapshot = {
-        "id": message_dict.get("id"),
-        "type": "message",
-        "role": "assistant",
-        "model": message_dict.get("model"),
-        "content": [],
-        "stop_reason": None,
-        "stop_sequence": None,
-        "usage": {"input_tokens": input_tokens, "output_tokens": 0},
-    }
-    yield _sse("message_start", {"message": start_snapshot})
+    if not prologue_already_sent:
+        # message_start - message snapshot with empty content and output_tokens: 0.
+        start_snapshot = {
+            "id": message_dict.get("id"),
+            "type": "message",
+            "role": "assistant",
+            "model": message_dict.get("model"),
+            "content": [],
+            "stop_reason": None,
+            "stop_sequence": None,
+            "usage": {"input_tokens": input_tokens, "output_tokens": 0},
+        }
+        yield _sse("message_start", {"message": start_snapshot})
 
-    # Optional keepalive; harmless and matches the real API's stream shape.
-    yield _sse("ping", {})
+        # Optional keepalive; harmless and matches the real API's stream shape.
+        yield _sse("ping", {})
 
-    # One content_block_start / deltas / content_block_stop per content block.
-    content_blocks = message_dict.get("content", []) or []
-    for index, block in enumerate(content_blocks):
-        btype = block.get("type")
-        if btype == "text":
-            yield _sse(
-                "content_block_start",
-                {"index": index, "content_block": {"type": "text", "text": ""}},
-            )
-            full_text = block.get("text", "") or ""
-            # Ship the whole text in a single delta — the worker isn't incremental.
-            yield _sse(
-                "content_block_delta",
-                {"index": index, "delta": {"type": "text_delta", "text": full_text}},
-            )
-        elif btype == "tool_use":
-            start_block = {
-                "type": "tool_use",
-                "id": block.get("id"),
-                "name": block.get("name"),
-                "input": {},
-            }
-            yield _sse("content_block_start", {"index": index, "content_block": start_block})
-            input_json = json.dumps(block.get("input", {}), ensure_ascii=False)
-            yield _sse(
-                "content_block_delta",
-                {"index": index, "delta": {"type": "input_json_delta", "partial_json": input_json}},
-            )
+        for index, block in enumerate(message_dict.get("content", []) or []):
+            yield from _iter_content_block_events(block, index)
+    else:
+        content_blocks = list(message_dict.get("content", []) or [])
+        # Merge the first text block (when it comes first) into open block 0.
+        if content_blocks and content_blocks[0].get("type") == "text":
+            full_text = content_blocks[0].get("text", "") or ""
+            if full_text:
+                yield _sse(
+                    "content_block_delta",
+                    {"index": 0, "delta": {"type": "text_delta", "text": full_text}},
+                )
+            yield _sse("content_block_stop", {"index": 0})
+            rest = content_blocks[1:]
         else:
-            # Unknown block type; emit a minimal start so indices stay aligned.
-            yield _sse(
-                "content_block_start",
-                {"index": index, "content_block": {"type": btype or "text", "text": ""}},
-            )
-        yield _sse("content_block_stop", {"index": index})
+            # Close the (still empty) prologue block; real blocks follow.
+            yield _sse("content_block_stop", {"index": 0})
+            rest = content_blocks
+        for offset, block in enumerate(rest, start=1):
+            yield from _iter_content_block_events(block, offset)
 
     # message_delta carries stop_reason + final output_tokens; then message_stop.
     yield _sse(

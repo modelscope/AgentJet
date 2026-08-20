@@ -21,6 +21,7 @@ import zmq
 import uvicorn
 import atexit
 import httpx
+from datetime import datetime
 
 from loguru import logger
 from pydantic import BaseModel
@@ -92,7 +93,13 @@ def ep_key(episode_uuid: str) -> str:
 STREAM_KEEPALIVE_INTERVAL_SEC = 5.0
 
 
-async def _drain_result_with_keepalives(executor, fn, fn_args, keepalive_sse):
+def _reqmon(line: str) -> None:
+    """Request-lifecycle monitoring log (second-precision wall clock inline,
+    because the project's loguru format only carries HH:MM)."""
+    logger.info(f"[reqmon {datetime.now().strftime('%H:%M:%S')}] {line}")
+
+
+async def _drain_result_with_keepalives(executor, fn, fn_args, keepalive_sse, log_tag: str = ""):
     """Run ``fn(*fn_args)`` in ``executor``; emit ``keepalive_sse`` immediately and
     every ``STREAM_KEEPALIVE_INTERVAL_SEC`` while it is pending, then yield the
     ChatCompletion result as the final item.
@@ -107,19 +114,41 @@ async def _drain_result_with_keepalives(executor, fn, fn_args, keepalive_sse):
     cancelled mid-flight).
     """
     loop = asyncio.get_running_loop()
+    t0 = time.time()
+    pings = 0
+    finished = False
     fut = loop.run_in_executor(executor, fn, *fn_args)
     # Immediate first byte so short time-to-first-byte timeouts are satisfied.
     yield keepalive_sse
+    pings += 1
     while True:
         try:
             result = await asyncio.wait_for(asyncio.shield(fut), timeout=STREAM_KEEPALIVE_INTERVAL_SEC)
+            if log_tag:
+                _reqmon(f"GEN_DONE {log_tag} dur={time.time()-t0:.1f}s pings={pings}")
+            finished = True
             yield result
             return
         except asyncio.TimeoutError:
             yield keepalive_sse
+            pings += 1
         except Exception as e:  # pragma: no cover - rare mid-stream worker failure
+            if log_tag:
+                _reqmon(f"GEN_ERR {log_tag} dur={time.time()-t0:.1f}s pings={pings} err={e!r}")
             logger.exception(f"[stream-proxy] background LLM call failed: {e!r}; closing SSE stream early.")
             return
+        except (GeneratorExit, asyncio.CancelledError):
+            # Client (or a middle layer) closed the connection while the
+            # generation was still running. The shielded executor future keeps
+            # generating server-side -- this is exactly the ghost-sample path.
+            if log_tag and not finished:
+                # `finished=True` here is the post-success finalization of this
+                # generator (consumer broke out of the async-for after the
+                # result; GC's aclose() throws GeneratorExit at the yield) --
+                # NOT a client disconnect. Only an unfinished generator that
+                # gets closed/cancelled is a real CLIENT_GONE.
+                _reqmon(f"CLIENT_GONE {log_tag} dur={time.time()-t0:.1f}s pings={pings}")
+            raise
 
 def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_dict=None, shared_mem_dict_lock=None) -> Tuple[FastAPI, Optional[Coroutine]]:
 
@@ -428,13 +457,15 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 result = None
                 async for item in _drain_result_with_keepalives(
                     executor, _begin_handle_chat_completion,
-                    (episode_address, int_req, episode_uuid), ": keepalive\n\n",
+                    (episode_address, int_req, episode_uuid), ": keepalive\n\n", log_tag=f"ep={episode_uuid} tl={timeline_uuid} endpoint=/v1/chat/completions",
                 ):
                     if isinstance(item, ChatCompletion):
                         result = item
                         break
                     yield item
                 if result is None:
+                    # close the open block so the client's parser ends sanely
+                    yield _anthropic_sse("content_block_stop", {"index": 0})
                     return
                 if enable_swarm_mode:
                     assert shared_mem_dict is not None
@@ -517,7 +548,7 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 result = None
                 async for item in _drain_result_with_keepalives(
                     executor, _begin_handle_chat_completion,
-                    (episode_address, int_req, episode_uuid), ": keepalive\n\n",
+                    (episode_address, int_req, episode_uuid), ": keepalive\n\n", log_tag=f"ep={episode_uuid} tl={timeline_uuid} endpoint=/v1/responses",
                 ):
                     if isinstance(item, ChatCompletion):
                         result = item
@@ -587,7 +618,11 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
 
         if VERBOSE: logger.info(f"Running [{episode_uuid}]: /v1/messages")
 
-        body = await request.json()
+        try:
+            body = await request.json()
+        except Exception as e:
+            _reqmon(f"BODY_FAIL ep={episode_uuid} endpoint=/v1/messages err={type(e).__name__}:{str(e)[:120]}")
+            raise
 
         new_req, original_stream = build_chat_completion_request(body)
 
@@ -603,6 +638,9 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         # and we synthesize Messages SSE events ourselves on the way back.
         new_req.stream = False
         new_req.stream_options = None
+        _reqmon(f"REQ_START ep={episode_uuid} tl={timeline_uuid} endpoint=/v1/messages "
+                f"stream={int(bool(original_stream))} msgs={len(new_req.messages)} "
+                f"max_tokens={new_req.max_tokens}")
 
         int_req = InterchangeCompletionRequest(
             completion_request=new_req,
@@ -620,13 +658,44 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
         if original_stream:
             async def _stream_messages():
                 result = None
-                # Anthropic's own API sends `event: ping` keepalives during long
-                # generations; the SDK ignores them, so they hold the stream open
-                # without disturbing the message event sequence.
+                # claude-code (Bun binary 2.1.193) runs a byte-stream idle
+                # watchdog (~300s) on /v1/messages streams that is NOT reset
+                # by `event: ping` frames -- only by content_block_delta
+                # traffic. A generation longer than 300s with ping-only
+                # keepalives gets aborted and re-issued by the client
+                # (ghost-sample bug, 2026-08-19). Feed the watchdog instead:
+                # open the message and an empty text block immediately, then
+                # heartbeat with EMPTY content_block_delta events (verified
+                # end-to-end: a 320s stream with these heartbeats is
+                # delivered and assembled correctly).
+                from ajet.tuner_lib.experimental.anthropic_messages_adapter import _sse as _anthropic_sse
+                yield _anthropic_sse(
+                    "message_start",
+                    {
+                        "message": {
+                            "id": timeline_uuid,
+                            "type": "message",
+                            "role": "assistant",
+                            "model": model_name or "unknown",
+                            "content": [],
+                            "stop_reason": None,
+                            "stop_sequence": None,
+                            "usage": {"input_tokens": 0, "output_tokens": 0},
+                        }
+                    },
+                )
+                yield _anthropic_sse(
+                    "content_block_start",
+                    {"index": 0, "content_block": {"type": "text", "text": ""}},
+                )
                 async for item in _drain_result_with_keepalives(
                     executor, _begin_handle_chat_completion,
                     (episode_address, int_req, episode_uuid),
-                    'event: ping\ndata: {"type": "ping"}\n\n',
+                    # ping keeps generic SSE clients alive; the EMPTY text
+                    # delta resets claude-code's byte-stream watchdog.
+                    ('event: ping\ndata: {"type": "ping"}\n\n'
+                     'event: content_block_delta\ndata: {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": ""}}\n\n'),
+                    log_tag=f"ep={episode_uuid} tl={timeline_uuid} endpoint=/v1/messages",
                 ):
                     if isinstance(item, ChatCompletion):
                         result = item
@@ -641,8 +710,9 @@ def get_app(max_fastapi_threads: int = 512, enable_swarm_mode=False, shared_mem_
                 if enable_swarm_mode:
                     assert shared_mem_dict is not None
                     shared_mem_dict["latest_llm_call"] = {"input": body, "output": message_dict, "format": "messages"}
-                for chunk in iter_anthropic_sse_events(message_dict):
+                for chunk in iter_anthropic_sse_events(message_dict, prologue_already_sent=True):
                     yield chunk
+                _reqmon(f"RESP_SENT ep={episode_uuid} tl={timeline_uuid} endpoint=/v1/messages")
 
             return StreamingResponse(
                 _stream_messages(),
@@ -723,7 +793,10 @@ def _run_fastapi_worker(port, max_fastapi_threads, enable_swarm_mode, shared_mem
     """
     sock = _bind_reuseport_socket("0.0.0.0", port)
     app, _ = get_app(max_fastapi_threads, enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock)
-    config = uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="error")
+    # [debug 2026-08-19 排查 claude-code 重试] access_log 已注释恢复默认: 256 任务的
+    # claim_episode/get_engine_status 轮询刷屏; _reqmon 行(REQ_START/GEN_DONE/...)保留。
+    # config = uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="info", access_log=True)
+    config = uvicorn.Config(app=app, host="0.0.0.0", port=port)
     server = uvicorn.Server(config)
     try:
         asyncio.run(server.serve(sockets=[sock]))
@@ -812,7 +885,9 @@ class InterchangeServer(Process):
                     app=app,
                     host="0.0.0.0",
                     port=self.port,
-                    log_level="error",
+                    # [debug 2026-08-19] access_log 注释恢复默认(轮询请求刷屏), 需要时取消注释:
+                    # log_level="info",
+                    # access_log=True,
                 )
                 server = uvicorn.Server(config)
                 if additional_coro:

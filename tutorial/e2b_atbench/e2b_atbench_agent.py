@@ -66,8 +66,6 @@ async def _run_episode(
             output = await _run_claudecode_in_sandbox(
                 sb,
                 task_id=task_dir,
-                adapter_url="",
-                session_id=session_id,
                 # solver: claude 直连 interchange (Anthropic /v1/messages)
                 solver_base_url=solver_base_url,
                 # judge: 独立转发进程 (judge_forwarder.py) → dashscope

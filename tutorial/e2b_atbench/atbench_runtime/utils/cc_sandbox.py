@@ -150,7 +150,9 @@ async def _download_jsonl(sb, dest_dir: str, tag: str) -> None:
     jsonl 只存在于沙箱 (episode 结束 __aexit__ kill 后永久丢失), 所以必须在
     stage done 之后、沙箱销毁之前取。实测本环境转写在 /root/.claude/projects
     (claude-code 原生 session 转写, /root/cc_data 下只有 driver runtime 无
-    jsonl), 因此默认两个根都拉。文件名带时间戳前缀, 多 episode 互不覆盖。
+    jsonl), 因此默认两个根都拉。judge 复用同一沙箱, solver 的旧转写会一直留在
+    projects 里, 所以按内容去重: 同一源文件之前批次已抓过且内容未变则跳过。
+    文件名带时间戳前缀, 多 episode 互不覆盖。
     全程容错: 任一步失败只 warning 不抛。
     """
     roots = "/root/cc_data /root/.claude/projects"
@@ -166,13 +168,58 @@ async def _download_jsonl(sb, dest_dir: str, tag: str) -> None:
     for p in paths:
         try:
             txt = await sb._sb.files.read(p, format="text")
-            with open(os.path.join(dest_dir, f"{ts}-{tag}-{p.replace('/', '_')}.jsonl"),
+            flat = f"-{p.replace('/', '_')}.jsonl"
+            # 内容去重: 该源文件已被之前批次原样落过盘 -> 跳过
+            if any(f.endswith(flat) and _files_equal(os.path.join(dest_dir, f), txt)
+                   for f in os.listdir(dest_dir)):
+                continue
+            with open(os.path.join(dest_dir, f"{ts}-{tag}{flat}"),
                       "w", encoding="utf-8") as f:
                 f.write(txt or "")
             n += 1
         except Exception as e:
             logger.warning("[cc_state] jsonl %s 拉取失败: %s", p, str(e)[:120])
     logger.info("[cc_state] %s 完整 jsonl 已落盘 %d 个 -> %s", tag, n, dest_dir)
+
+
+def _files_equal(path: str, txt: str) -> bool:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read() == txt
+    except OSError:
+        return False
+
+
+async def _download_pane_logs(sb, dest_dir: str, tag: str) -> None:
+    """stage 结束后, 把沙箱内 tmux pipe-pane 捕获的 claude-code 屏幕 log 拉回宿主机。
+
+    /root/cc_pane_<window>.log 由 driver (_start_pane_capture) 在每个 claude 窗口
+    创建时开启 pipe-pane 落盘, 每行带 %H:%M:%S.%f 时间戳前缀。claude-code 的
+    "API Error (attempt n) ... Retrying" 横幅只画在 TUI 上、不进 jsonl, 这里把它
+    回收后可与 interchange 侧 [reqmon] 日志逐秒对表, 裁定重试是谁发起的。
+    全程容错: 任一步失败只 warning 不抛。
+    """
+    try:
+        r = await sb._sb.commands.run("ls -1 /root/cc_pane_*.log 2>/dev/null", timeout=15)
+        paths = [p for p in (r.stdout or "").split() if p.strip()]
+    except Exception as e:
+        logger.warning("[cc_state] pane log 枚举失败(%s): %s", tag, str(e)[:120])
+        return
+    if not paths:
+        return
+    os.makedirs(dest_dir, exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    n = 0
+    for p in paths:
+        try:
+            txt = await sb._sb.files.read(p, format="text")
+            with open(os.path.join(dest_dir, f"{ts}-{tag}-{os.path.basename(p)}"),
+                      "w", encoding="utf-8") as f:
+                f.write(txt or "")
+            n += 1
+        except Exception as e:
+            logger.warning("[cc_state] pane log %s 拉取失败: %s", p, str(e)[:120])
+    logger.info("[cc_state] %s pane log 已落盘 %d 个 -> %s", tag, n, dest_dir)
 
 
 async def _poll_sandbox_state(sb, interval_sec: float = 5.0) -> None:

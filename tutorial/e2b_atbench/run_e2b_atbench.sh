@@ -23,7 +23,7 @@ done
 export E2B_DOMAIN=sandbox01.vpc.cn-hongkong.pai-eas.aliyuncs.com
 export E2B_API_KEY="${E2B_API_KEY:?ERROR: E2B_API_KEY missing/empty — export it in ~/.bashrc}"
 export E2B_VALIDATE_API_KEY=false
-export SLIME_AGENT_E2B_TEMPLATE=agentscope-qwenpaw-0604
+export SLIME_AGENT_E2B_TEMPLATE=agentscope-qwenpaw-atbench-v3
 
 # 网络: 沙箱回连本机 + judge 独立转发进程 (judge_forwarder.py → dashscope)
 export ADAPTER_PUBLIC_HOST="${ADAPTER_PUBLIC_HOST:-10.29.255.115}"
@@ -31,12 +31,14 @@ export JUDGE_FORWARDER_PORT="${JUDGE_FORWARDER_PORT:-18005}"
 export JUDGE_MODEL_SERVER="${JUDGE_MODEL_SERVER:-https://dashscope.aliyuncs.com/compatible-mode/v1}"
 export JUDGE_DASHSCOPE_KEY="${JUDGE_DASHSCOPE_KEY:?ERROR: JUDGE_DASHSCOPE_KEY missing/empty — export it in ~/.bashrc}"
 
-# coding-agent-material 路径 + 二进制
+# claude code 二进制 + python driver: 已 vendored 进 atbench_runtime/
+# (不再依赖外部 coding-agent-material; E2B_ATBENCH_MATERIAL 仅作 legacy sys.path shim 保留)
+ATBENCH_RUNTIME="$(cd "$(dirname "${BASH_SOURCE[0]}")/atbench_runtime" && pwd)"
 export E2B_ATBENCH_MATERIAL="$MAT"
-export CC_CLAUDE_BIN="$MAT/claudecode_binary/claude"
-export CC_TMUX_BIN="$MAT/tmux_binary/tmux"
-export CC_TMUX_LIBEVENT="$MAT/tmux_binary/libevent_core-2.1.so.7"
-export CC_DRIVER_DIR="$MAT/claudecode_py_driver"
+export CC_CLAUDE_BIN="$ATBENCH_RUNTIME/claudecode_binary/claude"
+export CC_TMUX_BIN="$ATBENCH_RUNTIME/tmux_binary/tmux"
+export CC_TMUX_LIBEVENT="$ATBENCH_RUNTIME/tmux_binary/libevent_core-2.1.so.7"
+export CC_DRIVER_DIR="$ATBENCH_RUNTIME/claudecode_py_driver"
 
 # 模型: 策略 (被训练, solver 直连 interchange) + 固定 judge
 export E2B_ATBENCH_POLICY_MODEL="${E2B_ATBENCH_POLICY_MODEL:-Qwen3.6-35B-A3B}"

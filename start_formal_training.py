@@ -96,12 +96,12 @@ def setup_environment():
         "JUDGE_DASHSCOPE_KEY": os.environ.get("JUDGE_DASHSCOPE_KEY", ""),
         "E2B_ATBENCH_JUDGE_MODEL": "glm-5.2",
 
-        # Material + claude code 二进制
+        # claude code 二进制 + python driver (vendored in tutorial/e2b_atbench/atbench_runtime)
         "E2B_ATBENCH_MATERIAL": "/root/slime/examples/coding_agent_rl",
-        "CC_CLAUDE_BIN": "/root/slime/examples/coding_agent_rl/claudecode_binary/claude",
-        "CC_TMUX_BIN": "/root/slime/examples/coding_agent_rl/tmux_binary/tmux",
-        "CC_TMUX_LIBEVENT": "/root/slime/examples/coding_agent_rl/tmux_binary/libevent_core-2.1.so.7",
-        "CC_DRIVER_DIR": "/root/slime/examples/coding_agent_rl/claudecode_py_driver",
+        "CC_CLAUDE_BIN": REPO + "/tutorial/e2b_atbench/atbench_runtime/claudecode_binary/claude",
+        "CC_TMUX_BIN": REPO + "/tutorial/e2b_atbench/atbench_runtime/tmux_binary/tmux",
+        "CC_TMUX_LIBEVENT": REPO + "/tutorial/e2b_atbench/atbench_runtime/tmux_binary/libevent_core-2.1.so.7",
+        "CC_DRIVER_DIR": REPO + "/tutorial/e2b_atbench/atbench_runtime/claudecode_py_driver",
 
         # 数据: 用 slime 源 (含 Clean_Tasks)
         "E2B_ATBENCH_CLEAN_TASKS": "/root/slime/examples/coding_agent_rl/0730_ATBV3_TRAIN/Clean_Tasks",

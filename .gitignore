@@ -207,3 +207,7 @@ TODO
 .trash.*
 tutorial/opencode_build_aime/auto_research/results/*
 vllm_token/
+
+# vendored 245MB claude-code binary (sync via filesystem, not git)
+tutorial/e2b_atbench/atbench_runtime/claudecode_binary/
+tutorial/e2b_atbench/atbench_runtime/tmux_binary

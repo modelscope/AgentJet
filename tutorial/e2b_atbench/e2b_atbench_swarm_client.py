@@ -22,7 +22,7 @@ from tutorial.e2b_atbench.atb_task_reader import AtbDirTaskReader
 from tutorial.e2b_atbench.e2b_atbench_agent import _execute_agent
 
 # ── 用户指定参数 ─────────────────────────────────────────────
-REMOTE_BATCH_SIZE = 16      # remote batch size (修正 1→4: 原 1×repeat4=4ep→~10sample < world_size16 触发对齐清空 max-empty; 4×4=16ep→~40sample)
+REMOTE_BATCH_SIZE = 64      # remote batch size (修正 1→4: 原 1×repeat4=4ep→~10sample < world_size16 触发对齐清空 max-empty; 4×4=16ep→~40sample)
 NUM_REPEAT = 4             # num_repeat (GRPO 组大小)
 MAX_PARALLEL = 64          # 并行最大 episode 数
 # ────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ REMOTE_TENSOR_PARALLEL_SIZE = 8
 REMOTE_ULYSSES_SP = int(os.getenv("ULYSSES_SEQUENCE_PARALLEL_SIZE", "2"))
 # 用户指定: ppo_max_token_len_per_gpu (PPO 更新每 GPU token 预算). 若 OOM 二分下调.
 REMOTE_PPO_MAX_TOKEN_LEN_PER_GPU = int(os.getenv("PPO_MAX_TOKEN_LEN_PER_GPU", "30000"))
-REMOTE_GPU_MEMORY_UTILIZATION = float(os.getenv("REMOTE_GPU_MEMORY_UTILIZATION", "0.75"))
+REMOTE_GPU_MEMORY_UTILIZATION = float(os.getenv("REMOTE_GPU_MEMORY_UTILIZATION", "0.90"))
 E2B_VLLM_TOOL_PARSER = os.getenv("E2B_ATBENCH_VLLM_TOOL_PARSER", "qwen3_coder")
 
 # ATB v3 任务池
@@ -50,7 +50,7 @@ TASK_LIMIT = int(os.getenv("E2B_ATBENCH_TASK_LIMIT", "0")) or None  # 0=不限
 
 ajet_job = AgentJetJob(
     ensure_new_experiment=True,
-    experiment_name="e2b_atbench_grpo_alpha_1",
+    experiment_name="e2b_atbench_grpo_alpha_2",
     algorithm="grpo",
     logging="swanlab",
     n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
@@ -67,8 +67,8 @@ ajet_job = AgentJetJob(
     max_num_seqs=1024,   # 用户指定: vLLM 每引擎并行 seq 数 (默认64)
     # 用户指定: 126k 上下文, 单轮 4k, 总 response 96k, prompt 30k
     max_prompt_length=30000,
-    max_response_length=96000,
-    max_model_len=126000,   # >= prompt(30000)+response(96000)=126000
+    max_response_length=85000,
+    max_model_len=115000,   # >= prompt(30000)+response(96000)=126000
     max_response_length_in_one_turn=10240,
 )
 # The Qwen3.6 model emits XML tool calls (`<function=...>`), so keep the
@@ -97,6 +97,10 @@ def main():
     exp_dir = swarm_worker.server_experiment_dir() or "saved_experiments"
     os.makedirs(exp_dir, exist_ok=True)
     os.environ.setdefault("LLM_IO_LOG", os.path.join(exp_dir, "cc_dump_tree.log"))
+    # 完整转写 jsonl 落盘目录 (generate_claudecode._download_jsonl 读取)
+    os.environ.setdefault("CC_JSONL_DIR", os.path.join(exp_dir, "jsonl"))
+    # 沙盒生命周期注册表 (sandbox.py _registry_log 写, e2b_tools/reap_sandboxes.py 读)
+    os.environ.setdefault("E2B_SANDBOX_REGISTRY", os.path.join(exp_dir, "e2b_sandbox_registry.log"))
 
     def rollout(task):
         episode_uuid, api_baseurl_key = swarm_worker.begin_episode(
