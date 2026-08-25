@@ -793,10 +793,10 @@ def _run_fastapi_worker(port, max_fastapi_threads, enable_swarm_mode, shared_mem
     """
     sock = _bind_reuseport_socket("0.0.0.0", port)
     app, _ = get_app(max_fastapi_threads, enable_swarm_mode, shared_mem_dict, shared_mem_dict_lock)
-    # [debug 2026-08-19 排查 claude-code 重试] access_log 已注释恢复默认: 256 任务的
-    # claim_episode/get_engine_status 轮询刷屏; _reqmon 行(REQ_START/GEN_DONE/...)保留。
-    # config = uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="info", access_log=True)
-    config = uvicorn.Config(app=app, host="0.0.0.0", port=port)
+    # [2026-08-25 恢复 log_level=error] 引擎退出后被 get_engine_status 轮询 access log
+    # 刷屏冲掉现场 (scrollback 8000 行全是它)。默认 info+access_log 是 08-19 debug 时改的,
+    # 提交 59d122d 前这里一直是 log_level="error"。排查时可临时改回 info+access_log=True。
+    config = uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="error")
     server = uvicorn.Server(config)
     try:
         asyncio.run(server.serve(sockets=[sock]))
@@ -885,9 +885,8 @@ class InterchangeServer(Process):
                     app=app,
                     host="0.0.0.0",
                     port=self.port,
-                    # [debug 2026-08-19] access_log 注释恢复默认(轮询请求刷屏), 需要时取消注释:
-                    # log_level="info",
-                    # access_log=True,
+                    # [2026-08-25 恢复 log_level=error] 同上: 防轮询 access log 刷屏。
+                    log_level="error",
                 )
                 server = uvicorn.Server(config)
                 if additional_coro:

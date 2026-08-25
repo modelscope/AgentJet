@@ -38,7 +38,9 @@ REMOTE_TENSOR_PARALLEL_SIZE = 8
 REMOTE_ULYSSES_SP = int(os.getenv("ULYSSES_SEQUENCE_PARALLEL_SIZE", "2"))
 # 用户指定: ppo_max_token_len_per_gpu (PPO 更新每 GPU token 预算). 若 OOM 二分下调.
 REMOTE_PPO_MAX_TOKEN_LEN_PER_GPU = int(os.getenv("PPO_MAX_TOKEN_LEN_PER_GPU", "30000"))
-REMOTE_GPU_MEMORY_UTILIZATION = float(os.getenv("REMOTE_GPU_MEMORY_UTILIZATION", "0.90"))
+# [2026-08-25] 0.90→0.85: step14 vLLM sleep-mode wake_up 在 112 节点 CUDA OOM (cumem_allocator.cpp:163),
+# 留 5% 显存余量给睡眠模式释放/重占窗口。env 可覆盖。
+REMOTE_GPU_MEMORY_UTILIZATION = float(os.getenv("REMOTE_GPU_MEMORY_UTILIZATION", "0.85"))
 E2B_VLLM_TOOL_PARSER = os.getenv("E2B_ATBENCH_VLLM_TOOL_PARSER", "qwen3_coder")
 
 # ATB v3 任务池
@@ -48,9 +50,14 @@ CLEAN_TASKS_ROOT = os.getenv(
 )
 TASK_LIMIT = int(os.getenv("E2B_ATBENCH_TASK_LIMIT", "0")) or None  # 0=不限
 
+# RESUME 模式 (2026-08-24): alpha_2 于 step10 因 TaskRunner FD 耗尽 (OSError 24) 崩溃。
+# 续训必须复用原 experiment_name (=原 checkpoint 目录 saved_checkpoints/.../e2b_atbench_grpo_alpha_2_20260820-141448),
+# resume_mode=auto 才能找到 global_step_10 并从 step11 继续。RESUME_EXPERIMENT=0 恢复全新实验行为。
+_RESUME = os.getenv("RESUME_EXPERIMENT", "1") == "1"
+_RESUME_NAME = os.getenv("RESUME_EXPERIMENT_NAME", "e2b_atbench_grpo_alpha_2_20260820-141448")
 ajet_job = AgentJetJob(
-    ensure_new_experiment=True,
-    experiment_name="e2b_atbench_grpo_alpha_2",
+    ensure_new_experiment=not _RESUME,
+    experiment_name=(_RESUME_NAME if _RESUME else "e2b_atbench_grpo_alpha_2"),
     algorithm="grpo",
     logging="swanlab",
     n_gpu=REMOTE_ALLOCATE_GPU_PER_NODE,
@@ -77,6 +84,15 @@ ajet_job.config.ajet.rollout.vllm_tool_parser = E2B_VLLM_TOOL_PARSER
 # Checkpoint 保存间隔: 每 N 步存一次 (默认 5; ajet 原默认 20). 经 align_parameters
 # 映射到 trainer.save_freq, 在 global_steps % save_freq == 0 时触发 _save_checkpoint.
 ajet_job.config.ajet.trainer_common.save_freq = int(os.getenv("AJET_SAVE_FREQ", "5"))
+# RESUME: 用户要求至少训满 100 步; 原默认 total_epochs=50(=750 步) 虽也够, 显式钉死 100 免歧义。
+ajet_job.config.ajet.trainer_common.total_training_steps = int(os.getenv("AJET_TOTAL_TRAINING_STEPS", "100"))
+# RESUME: 多节点下 ./saved_checkpoints 是各 ray worker 的相对 CWD -> head 写 CPFS, worker 写各自
+# /mnt/data/fuqingxu/root/... (NFS), checkpoint 被写散 (step10 曾因此只凑齐 8/32 分片)。
+# 统一指到 4 节点共享的 NFS 绝对路径 (已把 head 的 rank16-23 补齐进去)。
+ajet_job.config.ajet.trainer_common.checkpoint_base_dir = os.getenv(
+    "AJET_CHECKPOINT_BASE_DIR",
+    "/mnt/data/fuqingxu/root/saved_checkpoints",
+)
 
 
 def main():
